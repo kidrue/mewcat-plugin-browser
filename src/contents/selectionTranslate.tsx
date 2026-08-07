@@ -35,11 +35,10 @@ const SCxContainer = styled.div.withConfig({
     min-height: 120px;
     /* max-height: 300px; */
     z-index: 99999;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(25, 118, 210, 0.2);
-    border: 1px solid rgba(25, 118, 210, 0.1);
-    backdrop-filter: blur(10px);
+    background: #fbf8f0;
+    border-radius: 4px;
+    box-shadow: 0 10px 34px rgba(26, 23, 20, 0.16);
+    border: 1px solid #d8d0be;
     opacity: ${props => (props.isVisible ? 1 : 0)};
     transform: ${props =>
         props.isVisible
@@ -51,6 +50,7 @@ const SCxContainer = styled.div.withConfig({
     display: flex;
     flex-direction: column;
 
+    /* 顶端一道朱砂封边 */
     &::before {
         content: "";
         position: absolute;
@@ -58,13 +58,13 @@ const SCxContainer = styled.div.withConfig({
         left: 0;
         right: 0;
         height: 3px;
-        background: linear-gradient(90deg, #1976d2 0%, #42a5f5 100%);
+        background: #b23a2e;
     }
 `
 
 const SCxHeader = styled.div`
     padding: 12px 16px 8px 16px;
-    border-bottom: 1px solid rgba(25, 118, 210, 0.08);
+    border-bottom: 1px solid #e4ddcd;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -73,7 +73,8 @@ const SCxHeader = styled.div`
 const SCxTitle = styled.div`
     font-size: 12px;
     font-weight: 600;
-    color: #1976d2;
+    color: #b23a2e;
+    letter-spacing: 0.04em;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -81,8 +82,9 @@ const SCxTitle = styled.div`
     .icon-translate {
         width: 18px;
         height: 18px;
-        background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
-        border-radius: 4px;
+        background: #b23a2e;
+        border-radius: 3px;
+        box-shadow: inset 0 0 0 1px rgba(251, 248, 240, 0.55);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -98,14 +100,14 @@ const SCxCloseButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
-    color: #666;
+    border-radius: 2px;
+    color: #6e665c;
     font-size: 12px;
-    transition: all 0.2s ease;
+    transition: all 0.16s ease;
 
     &:hover {
-        background: rgba(25, 118, 210, 0.1);
-        color: #1976d2;
+        background: rgba(178, 58, 46, 0.09);
+        color: #b23a2e;
     }
 `
 

@@ -1,101 +1,116 @@
 // ============================================
-// 现代简约主题配置 - Modern Minimalist Theme
+// 宣纸朱印 - Rice Paper & Vermilion Seal
+// --------------------------------------------
+// 设计主张：翻译是「落定文本」。
+// 设置页是典籍的目录与注解，悬浮球是一枚朱砂印 —— 开启翻译＝盖章。
+//
+// 三条规则：
+// 1. 朱砂是唯一强调色。石青只用于「成功/通过」。
+// 2. 圆角近方（2px），只有印章与帮助图标是圆的。
+// 3. 人写的话用无衬线，机器给的值（模型名、URL、耗时）用等宽，标题用宋体。
 // ============================================
-:root {
-    // ============================================
-    // 主题色系 - Warm Orange Accent
-    // ============================================
-    --primary-color: #f97316;
-    --primary-hover: #ea580c;
-    --primary-light: #fff7ed;
-    --primary-muted: #fb923c;
 
-    // 柔和渐变（仅用于特殊场景）
-    --gradient-subtle: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+// :host 是必需的 —— content script 的样式注入 Shadow DOM，
+// 而 :root 在 shadow root 内不匹配，只写 :root 会让悬浮球拿不到任何变量。
+:root,
+:host {
+    // ============================================
+    // 主题色 - 朱砂
+    // ============================================
+    --primary-color: #b23a2e;
+    --primary-hover: #8e2a20;
+    --primary-light: #f7efe6; // 朱砂淡底（不透明版，用于实底场景）
+    --primary-muted: #c4685c;
+
+    --seal-wash: rgba(178, 58, 46, 0.09); // 朱砂淡底（透明版）
+    --seal-ring: rgba(178, 58, 46, 0.16); // focus 环
+
+    // 渐变仅保留极弱的一档，纸不该有强渐变
+    --gradient-subtle: linear-gradient(180deg, #fbf8f0 0%, #f2ede1 100%);
     --gradient-primary-soft: linear-gradient(
         135deg,
-        rgba(249, 115, 22, 0.08) 0%,
-        rgba(251, 146, 60, 0.08) 100%
+        rgba(178, 58, 46, 0.06) 0%,
+        rgba(178, 58, 46, 0.03) 100%
     );
 
     // ============================================
-    // 中性色 - Clean Grayscale
+    // 纸与墨 - Paper & Ink
     // ============================================
     --white: #ffffff;
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
-    --bg-tertiary: #f1f5f9;
+    --bg-primary: #f2ede1; // 纸底
+    --bg-secondary: #fbf8f0; // 纸面（抬起）
+    --bg-tertiary: #eae3d4; // 纸的凹陷
+    --paper-3: #eae3d4; // 语义别名，供新代码使用
 
-    --gray-50: #f8fafc;
-    --gray-100: #f1f5f9;
-    --gray-200: #e2e8f0;
-    --gray-300: #cbd5e1;
-    --gray-400: #94a3b8;
-    --gray-500: #64748b;
-    --gray-600: #475569;
-    --gray-700: #334155;
-    --gray-800: #1e293b;
-    --gray-900: #0f172a;
-
-    // ============================================
-    // 文字颜色 - Typography
-    // ============================================
-    --text-primary: #1e293b;
-    --text-secondary: #64748b;
-    --text-tertiary: #94a3b8;
-    --text-disabled: #cbd5e1;
-    --text-inverse: #ffffff;
+    --gray-50: #fbf8f0;
+    --gray-100: #eae3d4;
+    --gray-200: #ded5c3;
+    --gray-300: #cfc4ae;
+    --gray-400: #9a9188;
+    --gray-500: #6e665c;
+    --gray-600: #4a443c;
+    --gray-700: #3a352e;
+    --gray-800: #2a2620;
+    --gray-900: #1a1714;
 
     // ============================================
-    // 功能色 - Semantic Colors
+    // 文字 - Typography Colors
     // ============================================
-    --success: #10b981;
-    --success-bg: #ecfdf5;
-    --success-border: #a7f3d0;
-
-    --warning: #f59e0b;
-    --warning-bg: #fffbeb;
-    --warning-border: #fde68a;
-
-    --error: #ef4444;
-    --error-bg: #fef2f2;
-    --error-border: #fecaca;
-
-    --info: #3b82f6;
-    --info-bg: #eff6ff;
-    --info-border: #bfdbfe;
+    --text-primary: #1a1714; // 墨
+    --text-secondary: #4a443c;
+    --text-tertiary: #6e665c; // 淡墨
+    --text-disabled: #9a9188;
+    --text-inverse: #fbf8f0;
 
     // ============================================
-    // 边框和圆角 - Borders & Radius
+    // 功能色 - Semantic
+    // 石青作成功，赭黄作警示，深赤作错误，均压低饱和度以融入纸面
     // ============================================
-    --border-color: #e2e8f0;
-    --border-light: #f1f5f9;
-    --border-focus: #f97316;
+    --jade: #3e6b63;
+    --success: #3e6b63;
+    --success-bg: rgba(62, 107, 99, 0.1);
+    --success-border: #a8c2bc;
 
-    --radius-sm: 6px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
-    --radius-full: 9999px;
+    --warning: #a97a1f;
+    --warning-bg: rgba(169, 122, 31, 0.09);
+    --warning-border: #ddc48b;
 
-    // ============================================
-    // 阴影 - Soft Shadows
-    // ============================================
-    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
-    --shadow-md:
-        0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
-    --shadow-lg:
-        0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
-    --shadow-xl:
-        0 20px 25px -5px rgba(0, 0, 0, 0.05),
-        0 10px 10px -5px rgba(0, 0, 0, 0.02);
+    --error: #a5342a;
+    --error-bg: rgba(165, 52, 42, 0.08);
+    --error-border: #d8a49e;
 
-    --shadow-primary: 0 4px 12px rgba(249, 115, 22, 0.15);
-    --shadow-primary-sm: 0 2px 8px rgba(249, 115, 22, 0.12);
+    --info: #4a6b8a;
+    --info-bg: rgba(74, 107, 138, 0.08);
+    --info-border: #a8bccd;
 
     // ============================================
-    // 间距系统 - Spacing
+    // 界线与圆角 - Rules & Radius
+    // ============================================
+    --border-color: #d8d0be; // hairline
+    --border-light: #e4ddcd;
+    --rule-strong: #bfb49d; // 骑缝线、较重的分隔
+    --border-focus: #b23a2e;
+
+    --radius-sm: 2px;
+    --radius-md: 2px; // 近方是这套语言的基调
+    --radius-lg: 4px;
+    --radius-xl: 6px;
+    --radius-full: 9999px; // 仅印章与帮助图标
+
+    // ============================================
+    // 阴影 - 纸面不该悬空，一律极轻
+    // ============================================
+    --shadow-xs: 0 1px 0 rgba(26, 23, 20, 0.03);
+    --shadow-sm: 0 1px 2px rgba(26, 23, 20, 0.05);
+    --shadow-md: 0 2px 6px rgba(26, 23, 20, 0.07);
+    --shadow-lg: 0 6px 18px rgba(26, 23, 20, 0.1);
+    --shadow-xl: 0 10px 34px rgba(26, 23, 20, 0.14);
+
+    --shadow-primary: 0 3px 10px rgba(142, 42, 32, 0.2);
+    --shadow-primary-sm: 0 2px 6px rgba(142, 42, 32, 0.16);
+
+    // ============================================
+    // 间距 - Spacing
     // ============================================
     --space-1: 4px;
     --space-2: 8px;
@@ -103,25 +118,32 @@
     --space-4: 16px;
     --space-5: 20px;
     --space-6: 24px;
+    --space-7: 28px;
     --space-8: 32px;
     --space-10: 40px;
     --space-12: 48px;
 
     // ============================================
-    // 字体系统 - Typography
+    // 字体 - 三层分工
+    // display 只用于 ≥19px 的标题：SimSun 在小字号下有点阵感
+    // mono 只用于机器给的值：模型名、URL、版本号、耗时
     // ============================================
+    --font-display:
+        "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong",
+        SimSun, serif;
     --font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-        Arial, sans-serif;
+        "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", -apple-system,
+        BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "Cascadia Mono", "SF Mono", Consolas, "Courier New", monospace;
 
     --font-size-xs: 12px;
     --font-size-sm: 13px;
     --font-size-base: 14px;
     --font-size-lg: 15px;
     --font-size-xl: 16px;
-    --font-size-2xl: 18px;
+    --font-size-2xl: 19px;
     --font-size-3xl: 22px;
-    --font-size-4xl: 26px;
+    --font-size-4xl: 31px;
 
     --font-weight-normal: 400;
     --font-weight-medium: 500;
@@ -129,13 +151,13 @@
     --font-weight-bold: 600;
 
     --line-height-tight: 1.25;
-    --line-height-normal: 1.5;
+    --line-height-normal: 1.55;
     --line-height-relaxed: 1.75;
 
     // ============================================
     // 动画 - Transitions
     // ============================================
-    --transition-fast: 0.15s ease;
+    --transition-fast: 0.16s ease;
     --transition-base: 0.2s ease;
     --transition-slow: 0.3s ease;
 
@@ -147,27 +169,6 @@
     --z-tooltip: 300;
     --z-notification: 400;
 }
-
-// 深色模式支持（可选）
-// @media (prefers-color-scheme: dark) {
-//   :root {
-//     --text-primary: #e0e0e0;
-//     --text-secondary: #bdbdbd;
-//     --text-disabled: #757575;
-
-//     --gray-50: #212121;
-//     --gray-100: #303030;
-//     --gray-200: #424242;
-//     --gray-300: #616161;
-
-//     --border-color: #424242;
-//     --border-light: #303030;
-
-//     --shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-//     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-//     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-//   }
-// }
 
 // ============================================
 // 通用工具类 - Utility Classes
@@ -197,10 +198,10 @@
 }
 
 // ============================================
-// Mixins - Modern Component Styles
+// Mixins
 // ============================================
 
-// 主按钮 - Primary Button
+// 主按钮 - 朱砂实底
 @mixin btn-primary {
     display: inline-flex;
     align-items: center;
@@ -208,7 +209,7 @@
     gap: var(--space-2);
     background: var(--primary-color);
     color: var(--text-inverse);
-    border: none;
+    border: 1px solid var(--primary-color);
     border-radius: var(--radius-md);
     padding: var(--space-2) var(--space-4);
     font-size: var(--font-size-sm);
@@ -219,23 +220,23 @@
 
     &:hover {
         background: var(--primary-hover);
-        box-shadow: var(--shadow-primary-sm);
+        border-color: var(--primary-hover);
     }
 
     &:active {
-        transform: scale(0.98);
+        transform: scale(0.99);
     }
 
     &:disabled {
-        background: var(--gray-300);
-        color: var(--gray-500);
+        background: var(--gray-200);
+        border-color: var(--gray-200);
+        color: var(--text-disabled);
         cursor: not-allowed;
         transform: none;
-        box-shadow: none;
     }
 }
 
-// 次按钮 - Secondary Button
+// 次按钮 - 纸面描边
 @mixin btn-secondary {
     display: inline-flex;
     align-items: center;
@@ -243,7 +244,7 @@
     gap: var(--space-2);
     background: var(--bg-secondary);
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--rule-strong);
     border-radius: var(--radius-md);
     padding: var(--space-2) var(--space-4);
     font-size: var(--font-size-sm);
@@ -252,12 +253,12 @@
     transition: all var(--transition-fast);
 
     &:hover {
-        background: var(--gray-50);
-        border-color: var(--gray-300);
+        background: var(--bg-primary);
+        border-color: var(--text-tertiary);
     }
 
     &:active {
-        transform: scale(0.98);
+        transform: scale(0.99);
     }
 
     &:disabled {
@@ -266,7 +267,7 @@
     }
 }
 
-// 危险按钮 - Danger Button
+// 危险按钮
 @mixin btn-danger {
     display: inline-flex;
     align-items: center;
@@ -285,19 +286,20 @@
     &:hover {
         background: var(--error);
         color: var(--text-inverse);
+        border-color: var(--error);
     }
 
     &:active {
-        transform: scale(0.98);
+        transform: scale(0.99);
     }
 }
 
-// 输入框 - Input
+// 输入框
 @mixin input-base {
     width: 100%;
     padding: var(--space-2) var(--space-3);
     background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--rule-strong);
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
     font-family: var(--font-family);
@@ -306,26 +308,28 @@
     transition: all var(--transition-fast);
 
     &::placeholder {
-        color: var(--text-tertiary);
+        color: var(--text-disabled);
     }
 
     &:hover {
-        border-color: var(--gray-300);
+        border-color: var(--text-disabled);
     }
 
     &:focus {
         outline: none;
         border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        box-shadow: 0 0 0 3px var(--seal-ring);
     }
 
     &:disabled {
-        background: var(--gray-100);
+        background: var(--bg-tertiary);
+        color: var(--text-tertiary);
+        border-color: var(--border-color);
         cursor: not-allowed;
     }
 }
 
-// 卡片 - Card
+// 卡片 —— 这套语言里少用卡片，优先用留白与 hairline 分隔
 @mixin card-base {
     background: var(--bg-secondary);
     border-radius: var(--radius-lg);
@@ -335,26 +339,23 @@
 
 @mixin card-hover {
     &:hover {
-        border-color: var(--gray-300);
-        box-shadow: var(--shadow-md);
+        border-color: var(--rule-strong);
     }
 }
 
-// 悬浮卡片 - Elevated Card
 @mixin card-elevated {
     background: var(--bg-secondary);
     border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
     box-shadow: var(--shadow-md);
-    border: none;
     transition: all var(--transition-base);
 
     &:hover {
         box-shadow: var(--shadow-lg);
-        transform: translateY(-1px);
     }
 }
 
-// 列表项 - List Item
+// 列表项
 @mixin list-item {
     display: flex;
     align-items: center;
@@ -366,19 +367,37 @@
     transition: all var(--transition-fast);
 
     &:hover {
-        background: var(--gray-50);
+        background: var(--bg-primary);
     }
 
     &.active {
-        background: var(--primary-light);
+        background: var(--seal-wash);
         border-color: var(--primary-color);
     }
 }
 
-// 分割线 - Divider
+// 分割线
 @mixin divider {
     width: 100%;
     height: 1px;
-    background: var(--border-light);
+    background: var(--border-color);
     margin: var(--space-4) 0;
+}
+
+// 骑缝线 —— 一条实线压着一枚朱砂方印，用于分隔大段落
+@mixin seam {
+    position: relative;
+    height: 1px;
+    background: var(--rule-strong);
+    border: 0;
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: -4px;
+        width: 9px;
+        height: 9px;
+        background: var(--primary-color);
+    }
 }

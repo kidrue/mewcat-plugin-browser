@@ -57,7 +57,7 @@ const SelectButton = styled.button`
     &:focus {
         outline: none;
         border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(119, 72, 249, 0.1);
+        box-shadow: 0 0 0 3px var(--seal-ring);
     }
 `
 
@@ -105,15 +105,18 @@ const Option = styled.div<{ isSelected: boolean }>`
     color: ${props =>
         props.isSelected ? "var(--primary-color)" : "var(--text-primary)"};
     background: ${props =>
-        props.isSelected ? "var(--primary-light)" : "transparent"};
+        props.isSelected ? "var(--seal-wash)" : "transparent"};
+    /* 选中不只靠颜色：左侧压一道朱砂 */
+    box-shadow: ${props =>
+        props.isSelected ? "inset 3px 0 0 var(--primary-color)" : "none"};
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    transition: all var(--transition-fast);
+    transition: background var(--transition-fast);
 
     &:hover {
         background: ${props =>
-            props.isSelected ? "var(--primary-light)" : "var(--gray-100)"};
+            props.isSelected ? "var(--seal-wash)" : "var(--bg-tertiary)"};
     }
 `
 

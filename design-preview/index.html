@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>mewCat UI 重设计 · 三方向对比</title>
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: #16151a;
+    color: #e8e5df;
+    font-family: "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei",
+                 -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding: 56px 24px 80px; }
+
+/* ---------- 头 ---------- */
+.head { margin-bottom: 48px; max-width: 720px; }
+.head-kicker {
+    font-family: "Cascadia Mono", "SF Mono", Consolas, monospace;
+    font-size: 11.5px; letter-spacing: .16em; color: #7d7770; margin-bottom: 14px;
+}
+.head h1 { font-size: 34px; line-height: 1.25; margin: 0 0 16px; font-weight: 600; letter-spacing: -.01em; }
+.head p { margin: 0 0 12px; color: #a8a29a; font-size: 14.5px; }
+.head p b { color: #e8e5df; font-weight: 600; }
+
+/* ---------- 卡片 ---------- */
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-bottom: 52px; }
+
+.card {
+    display: flex; flex-direction: column;
+    background: #1e1d23;
+    border: 1px solid #2e2c34;
+    border-radius: 6px;
+    overflow: hidden;
+    text-decoration: none;
+    transition: border-color .2s ease, transform .2s ease;
+}
+.card:hover, .card:focus-visible { border-color: #4a4752; transform: translateY(-2px); }
+.card:focus-visible { outline: 2px solid #8f8aa0; outline-offset: 3px; }
+
+/* 色板缩略：每个方向用自己的语言画一小块 */
+.swatch { height: 168px; position: relative; overflow: hidden; }
+
+/* A */
+.sw-a { background: #f2ede1; display: flex; align-items: center; justify-content: center; }
+.sw-a-seal {
+    width: 62px; height: 62px; border-radius: 9px; background: #b23a2e; color: #fdf6ec;
+    font-family: "Songti SC", "STSong", SimSun, serif; font-size: 30px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 2px rgba(253,246,236,.6);
+}
+.sw-a-rule { position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #bfb49d; }
+.sw-a-mark { position: absolute; left: 22px; top: calc(50% - 5px); width: 10px; height: 10px; background: #b23a2e; }
+
+/* B */
+.sw-b { background: #0d1117; display: flex; align-items: center; justify-content: center; }
+.sw-b-eye {
+    width: 62px; height: 40px; border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 45%, #d8c46a 0%, #a8912f 58%, #6b5a18 100%);
+    position: relative;
+}
+.sw-b-pupil { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 8px; height: 34px; background: #0a0d12; border-radius: 40%/50%; }
+.sw-b-line {
+    position: absolute; left: 0; right: 0; bottom: 16px; height: 1px;
+    background: linear-gradient(to right, transparent, #3fd6a8, transparent);
+}
+.sw-b-tag {
+    position: absolute; left: 14px; top: 14px;
+    font-family: "Cascadia Mono", Consolas, monospace; font-size: 10.5px; color: #3fd6a8;
+}
+
+/* C */
+.sw-c { background: #fffcf5; display: flex; align-items: center; justify-content: center; }
+.sw-c-cat {
+    width: 58px; height: 58px; background: #ff6a00; border: 3px solid #14110d;
+    box-shadow: 6px 6px 0 #14110d; position: relative;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.sw-c-cat::before, .sw-c-cat::after {
+    content: ""; position: absolute; top: -13px;
+    border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 13px solid #14110d;
+}
+.sw-c-cat::before { left: 2px; } .sw-c-cat::after { right: 2px; }
+.sw-c-eye { width: 7px; height: 12px; background: #14110d; }
+.sw-c-bar { position: absolute; left: 16px; right: 16px; bottom: 16px; height: 8px; background: #14110d; }
+
+/* 卡片正文 */
+.card-in { padding: 18px 20px 20px; flex: 1; display: flex; flex-direction: column; }
+.card-idx {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 11px; color: #7d7770; letter-spacing: .12em; margin-bottom: 7px;
+}
+.card h2 { font-size: 19px; margin: 0 0 4px; font-weight: 600; }
+.card-claim { font-size: 12.5px; color: #a8a29a; margin: 0 0 14px; min-height: 40px; }
+.card-dots { display: flex; gap: 6px; margin-bottom: 14px; }
+.card-dot { width: 20px; height: 20px; border-radius: 3px; border: 1px solid rgba(255,255,255,.14); }
+
+.card-facts { list-style: none; margin: 0 0 16px; padding: 0; font-size: 12px; color: #a8a29a; }
+.card-facts li { display: flex; gap: 10px; padding: 5px 0; border-top: 1px solid #2a2830; }
+.card-facts li:first-child { border-top: 0; }
+.card-facts b { flex: 0 0 62px; color: #7d7770; font-weight: 500; }
+.card-facts span { flex: 1; color: #c9c4bc; }
+
+.card-risk {
+    font-size: 11.5px; line-height: 1.6; color: #d3a06a;
+    background: rgba(211,160,106,.09); border-left: 2px solid #d3a06a;
+    padding: 8px 10px; margin: 0 0 16px;
+}
+.card-cta {
+    margin-top: auto;
+    display: inline-flex; align-items: center; justify-content: space-between;
+    font-size: 13px; font-weight: 600; color: #e8e5df;
+    border-top: 1px solid #2e2c34; padding-top: 14px;
+}
+.card-cta span:last-child { color: #7d7770; }
+.card:hover .card-cta span:last-child { color: #e8e5df; }
+
+/* ---------- 看什么 ---------- */
+.guide { border-top: 1px solid #2a2830; padding-top: 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.guide h3 { font-size: 15px; margin: 0 0 14px; font-weight: 600; }
+.guide ol, .guide ul { margin: 0; padding-left: 20px; color: #a8a29a; font-size: 13px; }
+.guide li { margin-bottom: 9px; }
+.guide li b { color: #e8e5df; font-weight: 600; }
+.guide-note {
+    margin-top: 20px; font-size: 12.5px; color: #8b857c;
+    background: #1a191f; border: 1px solid #2a2830; border-radius: 5px; padding: 13px 15px;
+}
+.guide-note b { color: #c9c4bc; }
+
+@media (max-width: 980px) {
+    .grid { grid-template-columns: 1fr; }
+    .guide { grid-template-columns: 1fr; gap: 28px; }
+    .card-claim { min-height: 0; }
+}
+@media (max-width: 560px) {
+    .wrap { padding: 34px 16px 60px; }
+    .head h1 { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+    <div class="head">
+        <div class="head-kicker">MEWCAT · 译趣喵 / UI 重设计评审</div>
+        <h1>三个方向，同一套真实界面</h1>
+        <p>每个方向都渲染了<b>完整的设置页四个分类</b>（含 20+ 控件的翻译服务页）和<b>模拟真实网页上的悬浮球四种状态</b>。控件都能点，tab 能切，悬浮球能循环状态 —— 不是色板演示。</p>
+        <p>三份预览都是<b>单文件、零依赖、不请求任何远程资源</b>，字体全部走系统栈，所以你看到的就是这台机器上的真实渲染结果。</p>
+    </div>
+
+    <div class="grid">
+
+        <a class="card" href="theme-a-inkseal.html">
+            <div class="swatch sw-a">
+                <div class="sw-a-rule"></div>
+                <div class="sw-a-mark"></div>
+                <div class="sw-a-seal">譯</div>
+            </div>
+            <div class="card-in">
+                <div class="card-idx">方向 A</div>
+                <h2>宣纸朱印</h2>
+                <p class="card-claim">翻译是「落定文本」。设置页是典籍的目录与注解，悬浮球是一枚朱砂印 —— 开启翻译＝盖章。</p>
+                <div class="card-dots">
+                    <span class="card-dot" style="background:#f2ede1"></span>
+                    <span class="card-dot" style="background:#b23a2e"></span>
+                    <span class="card-dot" style="background:#1a1714"></span>
+                    <span class="card-dot" style="background:#3e6b63"></span>
+                    <span class="card-dot" style="background:#d8d0be"></span>
+                </div>
+                <ul class="card-facts">
+                    <li><b>字体</b><span>中文宋体做标题，无衬线做正文，等宽做机器值</span></li>
+                    <li><b>结构</b><span>书脊式竖排目录 + 骑缝线 + 朱砂方标记</span></li>
+                    <li><b>动作</b><span>落印：下压 + 墨渍扩散 + 浮出「已」</span></li>
+                    <li><b>深浅</b><span>亮色，长时间读表单不累</span></li>
+                </ul>
+                <p class="card-risk">风险：米白＋衬线＋红是当下 AI 生成设计最常见的一套。用三处差异拉开 —— 中文宋体而非西文 serif、偏冷朱砂而非土陶橙、印/骑缝线而非 hairline 网格。<b>请重点检验这条是否成立。</b></p>
+                <div class="card-cta"><span>查看完整预览</span><span>→</span></div>
+            </div>
+        </a>
+
+        <a class="card" href="theme-b-terminal.html">
+            <div class="swatch sw-b">
+                <div class="sw-b-tag">mewcat ~ config</div>
+                <div class="sw-b-eye"><span class="sw-b-pupil"></span></div>
+                <div class="sw-b-line"></div>
+            </div>
+            <div class="card-in">
+                <div class="card-idx">方向 B</div>
+                <h2>夜航终端</h2>
+                <p class="card-claim">插件是一台常驻的机器。顶部状态栏永远告诉你它此刻在用什么，悬浮球是一颗猫眼。</p>
+                <div class="card-dots">
+                    <span class="card-dot" style="background:#0d1117"></span>
+                    <span class="card-dot" style="background:#3fd6a8"></span>
+                    <span class="card-dot" style="background:#e3a008"></span>
+                    <span class="card-dot" style="background:#e4e8ee"></span>
+                    <span class="card-dot" style="background:#2a313c"></span>
+                </div>
+                <ul class="card-facts">
+                    <li><b>字体</b><span>等宽承载全部机器值，中文一律无衬线</span></li>
+                    <li><b>结构</b><span>vim 式状态栏 + 键···值对齐 + 进程表模型清单</span></li>
+                    <li><b>动作</b><span>瞳孔宽度即状态：细缝 → 收缩 → 全开</span></li>
+                    <li><b>深浅</b><span>强制深色，没有浅色版本</span></li>
+                </ul>
+                <p class="card-risk">代价有两个：<b>等于放弃浅色</b>（要浅色就得做两套 token）；<b>深色球落在白底网页上是硬割裂的</b> —— 场景二那一屏请重点看。</p>
+                <div class="card-cta"><span>查看完整预览</span><span>→</span></div>
+            </div>
+        </a>
+
+        <a class="card" href="theme-c-brutal.html">
+            <div class="swatch sw-c">
+                <div class="sw-c-cat">
+                    <span class="sw-c-eye"></span><span class="sw-c-eye"></span>
+                </div>
+                <div class="sw-c-bar"></div>
+            </div>
+            <div class="card-in">
+                <div class="card-idx">方向 C</div>
+                <h2>硬边橙</h2>
+                <p class="card-claim">把品牌橙放到最大。零圆角、粗黑边、硬投影、零模糊。投影＝可按下，按下时投影归零并位移。</p>
+                <div class="card-dots">
+                    <span class="card-dot" style="background:#fffcf5"></span>
+                    <span class="card-dot" style="background:#ff6a00"></span>
+                    <span class="card-dot" style="background:#14110d"></span>
+                    <span class="card-dot" style="background:#2b4eff"></span>
+                    <span class="card-dot" style="background:#12b76a"></span>
+                </div>
+                <ul class="card-facts">
+                    <li><b>字体</b><span>靠 800/900 字重建立层级，非字号</span></li>
+                    <li><b>结构</b><span>黑条分节标题 + 白块内容，像排版海报</span></li>
+                    <li><b>动作</b><span>物理按压，动效全走 steps() 而非 ease</span></li>
+                    <li><b>深浅</b><span>亮色，保留并放大现有品牌橙</span></li>
+                </ul>
+                <p class="card-risk">三个方向里<b>执行难度最高</b>。已做三处克制（投影只给可按下的、行分隔线降到 1px 淡色、橙不做大面积文字底），但翻译服务页仍是最吵的一屏 —— 觉得吵就该否掉，这正是做预览的目的。</p>
+                <div class="card-cta"><span>查看完整预览</span><span>→</span></div>
+            </div>
+        </a>
+
+    </div>
+
+    <div class="guide">
+        <div>
+            <h3>建议这样看</h3>
+            <ol>
+                <li><b>先开「翻译服务」页。</b>那是最密的一屏，20+ 控件。设计语言在轻页面上都好看，只有在这一页才见真章。</li>
+                <li><b>再看场景二的悬浮球。</b>它要落在别人的网页上，不是自家地盘。看它是否既能被找到、又不抢正文。</li>
+                <li><b>点一遍悬浮球的三个状态。</b>静止 → 翻译中 → 已翻译。看状态变化是否一眼可辨，不用读文字。</li>
+                <li><b>用 Tab 键走一遍。</b>三个方向的 focus 环用色是不同的设计决策（C 刻意用蓝而非橙，因为橙已经是选中态）。</li>
+            </ol>
+        </div>
+        <div>
+            <h3>可以混搭</h3>
+            <ul>
+                <li>不必整选一个。比如「A 的设置页 + C 的悬浮球」是成立的组合 —— 设置页要久读所以安静，悬浮球要被找到所以张扬。</li>
+                <li>也可以只取局部：B 的状态栏（不进任何页面就知道当前配置）可以嫁接到 A 或 C 上。</li>
+                <li>觉得三个都不对也是有效结论。告诉我哪里不对，比选一个勉强的更有用。</li>
+            </ul>
+            <div class="guide-note">
+                <b>这批文件是一次性评审产物。</b>它们放在 <code>design-preview/</code>，没有碰 <code>src/</code> 下任何代码，也没有提交 git。你选定方向后我再单独规划正式实现 —— 那时才会动 <code>theme.scss</code> 的 token、结构组件、以及清理散落在 8 个组件里的紫色主题残留和 <code>options.scss</code> 的死代码。看完直接删掉这个目录也没有任何影响。
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

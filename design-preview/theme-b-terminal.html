@@ -1,0 +1,1098 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>方向 B · 夜航终端 — mewCat UI 预览</title>
+<style>
+/* ============================================================
+   方向 B · 夜航终端  Midnight Terminal
+   设计主张：翻译插件是一台常驻的机器。设置页是它的配置面板，
+   状态栏永远告诉你它此刻在用什么；悬浮球是一颗猫眼。
+   ============================================================ */
+
+:root {
+    --bg:        #0d1117;
+    --bg-0:      #0a0d12;
+    --surf:      #161b22;
+    --surf-2:    #1f2630;
+    --surf-3:    #262e3a;
+    --edge:      #2a313c;
+    --edge-2:    #384250;
+
+    --fg:        #e4e8ee;
+    --fg-2:      #b6bec9;
+    --fg-3:      #8b95a3;
+    --fg-4:      #5d6673;
+
+    --cyan:      #3fd6a8;
+    --cyan-dim:  rgba(63, 214, 168, .14);
+    --cyan-edge: rgba(63, 214, 168, .38);
+    --amber:     #e3a008;
+    --amber-dim: rgba(227, 160, 8, .13);
+    --red:       #f85149;
+
+    --font-ui:   "Inter", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei",
+                 -apple-system, sans-serif;
+    --font-mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas,
+                 "Courier New", monospace;
+
+    --r: 3px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg-0);
+    color: var(--fg);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 评审工具条（非设计的一部分） ---------- */
+.rv-bar {
+    position: sticky; top: 0; z-index: 90;
+    display: flex; align-items: center; gap: 18px;
+    padding: 10px 20px;
+    background: #000; color: var(--fg-2);
+    font-family: var(--font-mono); font-size: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--edge);
+}
+.rv-bar strong { color: var(--cyan); font-weight: 600; }
+.rv-bar a { color: var(--fg-3); text-decoration: none; border-bottom: 1px solid transparent; padding-bottom: 1px; }
+.rv-bar a:hover, .rv-bar a:focus-visible { color: var(--fg); border-bottom-color: var(--cyan); }
+.rv-bar .rv-cur { color: var(--cyan); border-bottom-color: var(--cyan); }
+.rv-spacer { flex: 1; }
+.rv-note { color: var(--fg-4); font-family: var(--font-ui); }
+
+.rv-scene { max-width: 1320px; margin: 0 auto; padding: 28px 20px 8px; }
+.rv-scene-label { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; font-size: 12px; color: var(--fg-4); }
+.rv-scene-label b { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); font-weight: 600; }
+.rv-frame { border: 1px solid var(--edge); border-radius: var(--r); overflow: hidden; }
+
+/* ============================================================
+   场景一 · 设置页
+   ============================================================ */
+.b-app { display: flex; flex-direction: column; height: 760px; background: var(--bg); }
+
+/* --- statusline --- */
+.b-status {
+    display: flex; align-items: stretch;
+    background: var(--bg-0);
+    border-bottom: 1px solid var(--edge);
+    font-family: var(--font-mono); font-size: 11.5px;
+    flex: none;
+}
+.b-status-brand {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    background: var(--cyan); color: var(--bg-0);
+    font-weight: 700; letter-spacing: .04em;
+}
+.b-status-seg {
+    display: flex; align-items: center; gap: 7px;
+    padding: 7px 14px;
+    border-right: 1px solid var(--edge);
+    color: var(--fg-3);
+}
+.b-status-seg b { color: var(--fg); font-weight: 500; }
+.b-status-seg:first-of-type { border-left: 1px solid var(--edge); }
+.b-status-tail { margin-left: auto; display: flex; align-items: center; gap: 7px; padding: 7px 14px; color: var(--fg-4); }
+.b-led { width: 7px; height: 7px; border-radius: 50%; background: var(--cyan); flex: none; box-shadow: 0 0 6px var(--cyan-edge); }
+.b-led.off { background: transparent; box-shadow: none; border: 1px solid var(--fg-4); }
+.b-led.warn { background: var(--amber); box-shadow: 0 0 6px rgba(227,160,8,.4); }
+
+.b-body { flex: 1; display: flex; min-height: 0; }
+
+/* --- 左栏 --- */
+.b-rail {
+    flex: 0 0 208px;
+    background: var(--surf);
+    border-right: 1px solid var(--edge);
+    padding: 14px 10px;
+    display: flex; flex-direction: column; gap: 2px;
+}
+.b-rail-h {
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-4);
+    letter-spacing: .1em; padding: 4px 10px 10px;
+}
+.b-nav-item {
+    appearance: none; border: 0; background: none; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: var(--r);
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--fg-3);
+    text-align: left; position: relative;
+    transition: background .15s ease, color .15s ease;
+}
+.b-nav-item .b-nav-cn { font-family: var(--font-ui); font-size: 12px; color: var(--fg-4); margin-left: auto; }
+.b-nav-item:hover { background: var(--surf-2); color: var(--fg); }
+.b-nav-item:focus-visible { outline: 1px solid var(--cyan); outline-offset: 1px; }
+.b-nav-item[aria-selected="true"] { background: var(--surf-2); color: var(--cyan); }
+.b-nav-item[aria-selected="true"] .b-nav-cn { color: var(--fg-2); }
+.b-nav-item[aria-selected="true"]::before {
+    content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 2px; background: var(--cyan);
+}
+.b-rail-foot { margin-top: auto; font-family: var(--font-mono); font-size: 10.5px; color: var(--fg-4); padding: 10px; line-height: 1.7; }
+
+/* --- 主区 --- */
+.b-main { flex: 1; overflow-y: auto; padding: 26px 32px 60px; min-width: 0; }
+.b-main::-webkit-scrollbar { width: 10px; }
+.b-main::-webkit-scrollbar-thumb { background: var(--edge-2); border-radius: 5px; border: 3px solid var(--bg); }
+.b-main::-webkit-scrollbar-track { background: transparent; }
+.b-sheet { max-width: 860px; }
+
+.b-crumb { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-4); margin-bottom: 20px; }
+.b-crumb b { color: var(--fg-2); font-weight: 500; }
+
+/* --- 分节 --- */
+.b-sec { margin-bottom: 34px; }
+.b-sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.b-sec-key { font-family: var(--font-mono); font-size: 12.5px; color: var(--cyan); font-weight: 600; }
+.b-sec-cn { font-size: 12.5px; color: var(--fg-3); }
+.b-sec-lead { flex: 1; height: 1px; background: repeating-linear-gradient(to right, var(--edge) 0 2px, transparent 2px 6px); }
+.b-sec-extra { flex: none; }
+
+/* --- 紧凑行：键 ···· 值 --- */
+.b-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--edge); }
+.b-row-k { flex: none; max-width: 340px; }
+.b-row-k .b-k { display: block; font-size: 13px; color: var(--fg); }
+.b-row-k .b-n { display: block; font-size: 11.5px; color: var(--fg-4); line-height: 1.5; margin-top: 3px; }
+.b-row-lead { flex: 1; height: 1px; min-width: 24px; align-self: center; margin-top: 4px;
+    background: repeating-linear-gradient(to right, var(--edge) 0 2px, transparent 2px 7px); }
+.b-row-v { flex: none; }
+
+/* --- 块状行：宽控件 --- */
+.b-block { padding: 14px 0; border-bottom: 1px solid var(--edge); }
+.b-block-k { display: flex; align-items: baseline; gap: 9px; margin-bottom: 9px; }
+.b-block-k .b-k { font-size: 13px; color: var(--fg); }
+.b-block-k .b-req { color: var(--amber); font-family: var(--font-mono); font-size: 11px; }
+.b-block-k .b-n { font-size: 11.5px; color: var(--fg-4); }
+.b-tail { font-family: var(--font-mono); font-size: 11px; color: var(--fg-4); margin-top: 7px; }
+.b-tail a { color: var(--cyan); text-decoration: none; border-bottom: 1px solid var(--cyan-edge); }
+.b-tail a:hover { border-bottom-color: var(--cyan); }
+
+/* --- 控件 --- */
+.b-input, .b-select {
+    width: 100%;
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--fg);
+    background: var(--bg-0);
+    border: 1px solid var(--edge-2);
+    border-radius: var(--r);
+    padding: 8px 11px;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.b-input::placeholder { color: var(--fg-4); }
+.b-input:hover, .b-select:hover { border-color: var(--fg-4); }
+.b-input:focus, .b-select:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 3px var(--cyan-dim); }
+.b-input:disabled, .b-select:disabled { background: var(--surf); color: var(--fg-3); border-color: var(--edge); cursor: not-allowed; }
+.b-select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--fg-3) 50%),
+                      linear-gradient(135deg, var(--fg-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
+    background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+    padding-right: 30px;
+}
+
+/* mono 开关：[on] / [off] */
+.b-toggle {
+    appearance: none; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .06em;
+    padding: 4px 10px;
+    /* [ off ] 比 [ on ] 宽，min-width 需按更宽的那个定，并禁止换行 */
+    min-width: 66px; white-space: nowrap;
+    border-radius: var(--r);
+    border: 1px solid var(--edge-2);
+    background: var(--bg-0); color: var(--fg-4);
+    transition: all .15s ease;
+}
+.b-toggle::before { content: "[ off ]"; }
+.b-toggle[aria-pressed="true"] { border-color: var(--cyan); color: var(--cyan); background: var(--cyan-dim); }
+.b-toggle[aria-pressed="true"]::before { content: "[ on ]"; }
+.b-toggle:hover { border-color: var(--fg-3); }
+.b-toggle[aria-pressed="true"]:hover { border-color: var(--cyan); }
+.b-toggle:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+.b-toggle:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 按钮 */
+.b-btn {
+    appearance: none; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    font-family: var(--font-mono); font-size: 11.5px;
+    padding: 7px 13px; border-radius: var(--r);
+    border: 1px solid var(--edge-2);
+    background: var(--surf-2); color: var(--fg-2);
+    transition: all .15s ease; white-space: nowrap;
+}
+.b-btn:hover { border-color: var(--fg-4); color: var(--fg); background: var(--surf-3); }
+.b-btn:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+.b-btn-go { background: var(--cyan); border-color: var(--cyan); color: var(--bg-0); font-weight: 600; }
+.b-btn-go:hover { background: #55e5ba; border-color: #55e5ba; color: var(--bg-0); }
+.b-btn-danger { color: var(--red); border-color: rgba(248,81,73,.4); background: rgba(248,81,73,.08); }
+.b-btn-danger:hover { background: rgba(248,81,73,.16); border-color: var(--red); color: var(--red); }
+
+/* 分段 */
+.b-seg { display: inline-flex; border: 1px solid var(--edge-2); border-radius: var(--r); overflow: hidden; }
+.b-seg button {
+    appearance: none; border: 0; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11.5px;
+    padding: 7px 15px; background: var(--bg-0); color: var(--fg-3);
+    transition: all .15s ease;
+}
+.b-seg button + button { border-left: 1px solid var(--edge-2); }
+.b-seg button:hover { background: var(--surf-2); color: var(--fg); }
+.b-seg button[aria-pressed="true"] { background: var(--cyan); color: var(--bg-0); font-weight: 600; }
+.b-seg button:focus-visible { outline: 1px solid var(--cyan); outline-offset: -2px; }
+
+/* 数字 */
+.b-num { display: inline-flex; align-items: stretch; border: 1px solid var(--edge-2); border-radius: var(--r); overflow: hidden; }
+.b-num button { appearance: none; border: 0; cursor: pointer; width: 28px; background: var(--surf-2); color: var(--fg-3); font-family: var(--font-mono); }
+.b-num button:hover { background: var(--surf-3); color: var(--cyan); }
+.b-num input {
+    width: 78px; border: 0; background: var(--bg-0); text-align: center;
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--fg);
+    border-left: 1px solid var(--edge); border-right: 1px solid var(--edge);
+}
+.b-num input:focus { outline: none; box-shadow: inset 0 0 0 1px var(--cyan); }
+.b-unit { font-family: var(--font-mono); font-size: 11px; color: var(--fg-4); margin-left: 9px; align-self: center; }
+
+/* chips */
+.b-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--bg-0); border: 1px solid var(--edge-2); border-radius: var(--r); padding: 7px 9px; min-height: 38px; }
+.b-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-2);
+    background: var(--surf-2); border: 1px solid var(--edge-2); border-radius: var(--r);
+    padding: 3px 5px 3px 8px;
+}
+.b-chip button { appearance: none; border: 0; background: none; cursor: pointer; color: var(--fg-4); font-size: 13px; line-height: 1; padding: 0 1px; }
+.b-chip button:hover { color: var(--red); }
+.b-chips-ph { font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-4); padding-left: 3px; }
+
+/* url 列表 */
+.b-urls { border: 1px solid var(--edge-2); border-radius: var(--r); overflow: hidden; }
+.b-urls-add { display: flex; border-bottom: 1px solid var(--edge); }
+.b-urls-add .b-input { border: 0; border-radius: 0; }
+.b-urls-add .b-input:focus { box-shadow: none; background: var(--surf); }
+.b-urls-list { list-style: none; margin: 0; padding: 0; background: var(--bg-0); }
+.b-urls-list li {
+    display: flex; align-items: center; gap: 10px; padding: 7px 11px;
+    font-family: var(--font-mono); font-size: 12px; color: var(--fg-2);
+    border-bottom: 1px solid var(--edge);
+}
+.b-urls-list li:last-child { border-bottom: 0; }
+.b-urls-list li::before { content: "▸"; color: var(--fg-4); font-size: 10px; }
+.b-urls-list .b-del { margin-left: auto; appearance: none; border: 0; background: none; font-family: var(--font-mono); font-size: 11px; color: var(--fg-4); cursor: pointer; }
+.b-urls-list .b-del:hover { color: var(--red); }
+.b-urls-empty { padding: 13px 11px; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-4); background: var(--bg-0); }
+
+/* 译文预览 */
+.b-preview { margin-top: 10px; padding: 13px 15px; background: var(--bg-0); border: 1px solid var(--edge); border-radius: var(--r); }
+.b-preview-tag { font-family: var(--font-mono); font-size: 10px; color: var(--fg-4); letter-spacing: .08em; display: block; margin-bottom: 7px; }
+.b-preview-src { font-size: 13px; color: var(--fg-3); }
+.b-preview-dst { font-size: 13px; color: var(--fg); border-bottom: 1px solid var(--cyan); }
+
+/* --- 进程表式模型清单 --- */
+.b-proc { border: 1px solid var(--edge-2); border-radius: var(--r); overflow: hidden; }
+.b-proc-head, .b-proc-row {
+    display: grid; grid-template-columns: 18px 1fr 90px 74px 62px;
+    align-items: center; gap: 12px; padding: 8px 12px;
+    font-family: var(--font-mono); font-size: 11.5px;
+}
+.b-proc-head { background: var(--surf-2); color: var(--fg-4); letter-spacing: .06em; border-bottom: 1px solid var(--edge); }
+.b-proc-row { background: var(--bg-0); border-bottom: 1px solid var(--edge); cursor: pointer; position: relative; transition: background .15s ease; }
+.b-proc-row:last-child { border-bottom: 0; }
+.b-proc-row:hover { background: var(--surf); }
+.b-proc-row[aria-current="true"] { background: var(--surf-2); }
+.b-proc-row[aria-current="true"]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--cyan); }
+.b-proc-name { color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.b-proc-name i { color: var(--fg-4); font-style: normal; }
+.b-proc-src { color: var(--fg-3); }
+.b-proc-st { justify-self: start; }
+.b-proc-row .b-toggle { justify-self: end; min-width: 62px; padding: 3px 8px; font-size: 11px; }
+
+.b-tag { font-family: var(--font-mono); font-size: 10.5px; padding: 2px 7px; border-radius: var(--r); border: 1px solid; letter-spacing: .04em; }
+.b-tag-ok { color: var(--cyan); border-color: var(--cyan-edge); background: var(--cyan-dim); }
+.b-tag-wait { color: var(--amber); border-color: rgba(227,160,8,.4); background: var(--amber-dim); }
+.b-tag-idle { color: var(--fg-4); border-color: var(--edge-2); }
+
+/* 模型详情 */
+.b-detail { margin-top: 20px; border: 1px solid var(--edge); border-radius: var(--r); background: var(--surf); padding: 18px 20px; }
+.b-detail-head { display: flex; align-items: flex-start; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--edge); margin-bottom: 4px; }
+.b-detail-head h4 { font-family: var(--font-mono); font-size: 15px; color: var(--fg); margin: 0 0 5px; font-weight: 600; }
+.b-detail-head p { margin: 0; font-size: 12px; color: var(--fg-3); line-height: 1.6; max-width: 52ch; }
+.b-detail-acts { margin-left: auto; display: flex; gap: 7px; flex: none; }
+.b-detail .b-row:last-child, .b-detail .b-block:last-child { border-bottom: 0; padding-bottom: 0; }
+
+/* 信息 */
+.b-meta { display: flex; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--edge); }
+.b-meta:last-child { border-bottom: 0; }
+.b-meta-k { flex: 0 0 108px; font-family: var(--font-mono); font-size: 11.5px; color: var(--fg-4); }
+.b-meta-v { font-size: 13px; color: var(--fg); }
+.b-meta-v.mono { font-family: var(--font-mono); font-size: 12.5px; color: var(--cyan); }
+
+/* ============================================================
+   场景二 · 宿主网页 + 猫眼
+   ============================================================ */
+.b-host { position: relative; height: 700px; overflow: hidden; background: #fff; }
+.b-host-page { height: 100%; overflow-y: auto; padding: 40px 56px 80px; }
+.b-host-inner { max-width: 620px; font-family: Georgia, "Times New Roman", serif; color: #23201d; }
+.b-host-kicker { font-family: var(--font-ui); font-size: 11px; letter-spacing: .14em; color: #8a8378; text-transform: uppercase; }
+.b-host-inner h2 { font-size: 27px; line-height: 1.28; margin: 8px 0 18px; font-weight: 600; }
+.b-host-inner p { font-size: 15.5px; line-height: 1.75; margin: 0 0 17px; }
+.b-host-inner a { color: #1b5e8f; }
+/* 注入译文：在白底上必须用深色，不能用 statusline 的亮青 */
+.b-trans {
+    display: block; margin-top: 7px;
+    font-family: var(--font-ui); font-size: 15px; line-height: 1.8;
+    color: #10131a;
+    border-left: 2px solid #0e7a5f;
+    padding-left: 11px;
+}
+.b-host-page[data-translated="false"] .b-trans { display: none; }
+
+/* 猫眼 */
+.b-dock { position: absolute; right: 34px; top: 210px; z-index: 20; }
+.b-eye-btn {
+    position: relative;
+    width: 56px; height: 56px;
+    border-radius: 15px;
+    background: linear-gradient(160deg, #1b222c 0%, #0d1117 100%);
+    border: 1px solid #2f3846;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; padding: 0;
+    transition: transform .18s cubic-bezier(.3,.7,.3,1), border-color .2s ease, box-shadow .2s ease;
+}
+.b-eye-btn:hover { transform: scale(1.05); border-color: var(--cyan-edge); }
+.b-eye-btn:active { transform: scale(.96); }
+.b-eye-btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+
+.b-eye {
+    position: relative; overflow: hidden;
+    width: 38px; height: 25px;
+    border-radius: 50%;
+    background: radial-gradient(ellipse at 50% 45%, #d8c46a 0%, #a8912f 58%, #6b5a18 100%);
+    opacity: .78;
+    transition: opacity .2s ease, box-shadow .3s ease;
+}
+.b-pupil {
+    position: absolute; left: 50%; top: 50%;
+    width: 5px; height: 21px;
+    transform: translate(-50%, -50%);
+    background: #0a0d12;
+    border-radius: 40% / 50%;
+    transition: width .28s cubic-bezier(.3,.7,.3,1), height .28s ease, border-radius .28s ease;
+}
+.b-glint { position: absolute; left: 9px; top: 5px; width: 6px; height: 4px; border-radius: 50%; background: rgba(255,255,255,.5); }
+.b-eye-btn:hover .b-eye { opacity: 1; }
+.b-eye-btn:hover .b-pupil { width: 8px; }
+
+/* 翻译中：瞳孔收缩 + 青色扫描线 + 呼吸 */
+.b-scan {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: linear-gradient(to right, transparent, var(--cyan), transparent);
+    opacity: 0;
+}
+.b-dock[data-state="loading"] .b-eye { opacity: 1; box-shadow: 0 0 0 0 var(--cyan-edge); animation: b-breathe 1.7s ease-in-out infinite; }
+.b-dock[data-state="loading"] .b-pupil { width: 3px; }
+.b-dock[data-state="loading"] .b-scan { opacity: 1; animation: b-scan 1.2s linear infinite; }
+@keyframes b-scan { from { top: -2px; } to { top: 25px; } }
+@keyframes b-breathe {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(63,214,168,.34); }
+    50%      { box-shadow: 0 0 0 5px rgba(63,214,168,0); }
+}
+
+/* 已翻译：瞳孔全开 + 青环 */
+.b-dock[data-state="done"] .b-eye { opacity: 1; }
+.b-dock[data-state="done"] .b-pupil { width: 17px; height: 17px; border-radius: 50%; }
+.b-dock[data-state="done"] .b-eye-btn { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--cyan-edge), 0 4px 16px rgba(63,214,168,.22); }
+.b-eye-badge {
+    position: absolute; right: -5px; bottom: -5px;
+    width: 19px; height: 19px; border-radius: 6px;
+    background: var(--cyan); color: var(--bg-0);
+    font-family: var(--font-mono); font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(.4);
+    transition: opacity .2s ease .1s, transform .22s cubic-bezier(.3,1.5,.5,1) .1s;
+}
+.b-dock[data-state="done"] .b-eye-badge { opacity: 1; transform: scale(1); }
+
+/* 设置入口 */
+.b-cog {
+    position: absolute; left: 50%; bottom: -40px; transform: translateX(-50%);
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--surf-2); border: 1px solid var(--edge-2); color: var(--fg-3);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+    opacity: 0; visibility: hidden; transition: all .2s ease;
+}
+.b-dock:hover .b-cog, .b-dock[data-open="true"] .b-cog { opacity: 1; visibility: visible; }
+.b-cog:hover { border-color: var(--cyan); color: var(--cyan); }
+.b-cog:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; opacity: 1; visibility: visible; }
+.b-cog svg { width: 15px; height: 15px; }
+
+/* 面板 */
+.b-panel {
+    position: absolute; right: 74px; top: 0; width: 320px;
+    background: var(--surf); border: 1px solid var(--edge-2); border-radius: 6px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, .45);
+    overflow: hidden;
+    opacity: 0; visibility: hidden; transform: scale(.97); transform-origin: right top;
+    transition: all .2s ease;
+}
+.b-dock[data-open="true"] .b-panel { opacity: 1; visibility: visible; transform: scale(1); }
+.b-panel-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; background: var(--bg-0); border-bottom: 1px solid var(--edge);
+    font-family: var(--font-mono); font-size: 11px; color: var(--fg-3);
+}
+.b-panel-bar b { color: var(--cyan); font-weight: 700; }
+.b-panel-bar span { margin-left: auto; color: var(--fg-4); }
+.b-panel-in { padding: 12px 14px 14px; }
+.b-panel-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--edge); }
+.b-panel-row:last-of-type { border-bottom: 0; }
+.b-panel-row > label { font-size: 12.5px; color: var(--fg-2); flex: 1; display: flex; align-items: center; gap: 7px; }
+.b-help {
+    width: 15px; height: 15px; flex: none;
+    border: 1px solid var(--fg-4); border-radius: 50%; color: var(--fg-4);
+    font-family: var(--font-mono); font-size: 10px;
+    display: inline-flex; align-items: center; justify-content: center; cursor: help; position: relative;
+}
+.b-help:hover { border-color: var(--cyan); color: var(--cyan); }
+.b-help-tip {
+    position: absolute; bottom: 22px; left: -74px; width: 210px;
+    background: var(--bg-0); color: var(--fg-2); border: 1px solid var(--edge-2);
+    font-family: var(--font-ui); font-size: 11.5px; line-height: 1.55;
+    padding: 8px 10px; border-radius: var(--r);
+    opacity: 0; visibility: hidden; transition: opacity .15s ease; z-index: 5; pointer-events: none;
+}
+.b-help:hover .b-help-tip { opacity: 1; visibility: visible; }
+.b-panel-sel { width: 130px; flex: none; }
+.b-pipe {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 12px; padding: 10px 11px;
+    background: var(--bg-0); border: 1px solid var(--edge); border-radius: var(--r);
+    font-family: var(--font-mono); font-size: 11.5px;
+}
+.b-pipe-box { flex: 1; min-width: 0; }
+.b-pipe-box label { display: block; font-size: 10px; color: var(--fg-4); margin-bottom: 4px; letter-spacing: .06em; }
+.b-pipe-box.r { text-align: right; }
+.b-pipe-arrow { color: var(--cyan); flex: none; }
+.b-pipe-v { color: var(--fg); }
+.b-pipe-v.dim { color: var(--fg-3); }
+.b-panel-foot { margin-top: 12px; }
+.b-panel-foot .b-btn { width: 100%; }
+
+/* 状态切换条 */
+.b-states { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; background: var(--surf); border-top: 1px solid var(--edge); align-items: center; }
+.b-state-btn {
+    appearance: none; cursor: pointer;
+    font-family: var(--font-mono); font-size: 11.5px; padding: 5px 11px;
+    border-radius: var(--r); border: 1px solid var(--edge-2);
+    background: var(--bg-0); color: var(--fg-3);
+}
+.b-state-btn[aria-pressed="true"] { background: var(--cyan); border-color: var(--cyan); color: var(--bg-0); font-weight: 600; }
+.b-state-btn:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+.b-states-hint { margin-left: auto; font-size: 11.5px; color: var(--fg-4); }
+
+/* ---------- 页脚 ---------- */
+.rv-foot { max-width: 1320px; margin: 0 auto; padding: 30px 20px 56px; font-size: 12.5px; color: var(--fg-3); line-height: 1.8; }
+.rv-foot h6 { font-family: var(--font-mono); font-size: 13px; color: var(--cyan); margin: 0 0 8px; font-weight: 600; }
+.rv-foot code { font-family: var(--font-mono); font-size: 11.5px; background: var(--surf-2); color: var(--fg-2); padding: 1px 5px; border-radius: var(--r); }
+.rv-foot ul { margin: 6px 0 16px; padding-left: 20px; }
+.rv-foot li { margin-bottom: 5px; }
+.rv-foot b { color: var(--fg); }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 940px) {
+    .b-app { height: auto; }
+    .b-body { flex-direction: column; }
+    .b-rail { flex: none; width: 100%; flex-direction: row; overflow-x: auto; padding: 8px; gap: 4px; border-right: 0; border-bottom: 1px solid var(--edge); }
+    .b-rail-h, .b-rail-foot { display: none; }
+    .b-nav-item { flex: none; }
+    .b-nav-item .b-nav-cn { display: none; }
+    .b-nav-item[aria-selected="true"]::before { top: auto; bottom: 0; left: 8px; right: 8px; width: auto; height: 2px; }
+    .b-main { padding: 20px 18px 48px; }
+    .b-status { flex-wrap: wrap; }
+    .b-status-tail { margin-left: 0; }
+    .b-proc-head, .b-proc-row { grid-template-columns: 16px 1fr 66px 58px; }
+    /* 表头第 3 个 span 是 SOURCE，必须与数据行隐藏的 .b-proc-src 对应，
+       否则剩下的表头会对错列（SOURCE 会顶到 status 数据上）。 */
+    .b-proc-head span:nth-child(3), .b-proc-row .b-proc-src { display: none; }
+    .b-panel { right: auto; left: -258px; }
+}
+@media (max-width: 560px) {
+    .b-row { flex-wrap: wrap; }
+    .b-row-lead { display: none; }
+    .b-row-k { max-width: none; flex: 1 1 100%; }
+    .b-host-page { padding: 24px 20px 70px; }
+    .b-dock { right: 14px; top: 130px; }
+    .b-panel { left: auto; right: 0; top: 68px; width: min(320px, calc(100vw - 60px)); }
+    .b-detail-head { flex-direction: column; }
+    .b-detail-acts { margin-left: 0; }
+    .rv-scene { padding: 18px 12px 6px; }
+}
+
+/* ---------- 动效降级 ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+    /* 扫描线动画停掉后仍需表达「进行中」：改为静止居中的实线 */
+    .b-dock[data-state="loading"] .b-scan { opacity: 1; top: 11px; animation: none; }
+    .b-dock[data-state="loading"] .b-eye { animation: none; box-shadow: 0 0 0 4px rgba(63,214,168,.3); }
+}
+</style>
+</head>
+<body>
+
+<div class="rv-bar">
+    <strong>方向 B · 夜航终端</strong>
+    <span class="rv-note">插件是一台常驻的机器 —— 状态栏永远告诉你它此刻在用什么，悬浮球是一颗猫眼</span>
+    <span class="rv-spacer"></span>
+    <a href="index.html">对比入口</a>
+    <a href="theme-a-inkseal.html">A 宣纸朱印</a>
+    <a href="theme-b-terminal.html" class="rv-cur">B 夜航终端</a>
+    <a href="theme-c-brutal.html">C 硬边橙</a>
+</div>
+
+<!-- ============ 场景一 · 设置页 ============ -->
+<div class="rv-scene">
+    <div class="rv-scene-label"><b>场景一 · 设置页</b><span>顶部状态栏是这个方向的结构核心：不进任何页面就知道当前配置</span></div>
+    <div class="rv-frame">
+    <div class="b-app">
+
+        <div class="b-status">
+            <div class="b-status-brand">mewcat</div>
+            <div class="b-status-seg"><span class="b-led"></span> 模型 <b>deepseek-chat</b></div>
+            <div class="b-status-seg">目标 <b>zh-CN</b></div>
+            <div class="b-status-seg">缓存 <b>on</b></div>
+            <div class="b-status-seg">限速 <b>3/s</b></div>
+            <div class="b-status-tail">v0.0.1</div>
+        </div>
+
+        <div class="b-body">
+            <aside class="b-rail">
+                <div class="b-rail-h">CONFIG</div>
+                <div role="tablist" aria-label="设置分类" style="display:flex;flex-direction:column;gap:2px">
+                    <button class="b-nav-item" role="tab" aria-selected="true"  data-tab="basic">[basic]<span class="b-nav-cn">基本配置</span></button>
+                    <button class="b-nav-item" role="tab" aria-selected="false" data-tab="service">[models]<span class="b-nav-cn">翻译服务</span></button>
+                    <button class="b-nav-item" role="tab" aria-selected="false" data-tab="image">[image]<span class="b-nav-cn">图片翻译</span></button>
+                    <button class="b-nav-item" role="tab" aria-selected="false" data-tab="about">[about]<span class="b-nav-cn">关于</span></button>
+                </div>
+                <div class="b-rail-foot">
+                    3 models enabled<br />
+                    cache 1.2 MB<br />
+                    <span style="color:var(--cyan)">●</span> ready
+                </div>
+            </aside>
+
+            <main class="b-main">
+            <div class="b-sheet">
+                <div class="b-crumb">mewcat / config / <b data-crumb>basic</b></div>
+
+                <!-- ===== basic ===== -->
+                <div data-pane="basic">
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">language/</span>
+                            <span class="b-sec-cn">翻译语言</span>
+                            <span class="b-sec-lead"></span>
+                        </div>
+                        <div class="b-block">
+                            <div class="b-block-k"><span class="b-k">总是翻译</span><span class="b-n">检测到这些语言时将自动翻译</span></div>
+                            <div class="b-chips">
+                                <span class="b-chip">en <button aria-label="移除 en">×</button></span>
+                                <span class="b-chip">ja <button aria-label="移除 ja">×</button></span>
+                                <span class="b-chip">de <button aria-label="移除 de">×</button></span>
+                                <span class="b-chips-ph">+ add</span>
+                            </div>
+                        </div>
+                        <div class="b-block">
+                            <div class="b-block-k"><span class="b-k">永不翻译</span><span class="b-n">选中的语言将不会被自动翻译</span></div>
+                            <div class="b-chips">
+                                <span class="b-chip">zh-CN <button aria-label="移除 zh-CN">×</button></span>
+                                <span class="b-chips-ph">+ add</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">sites/</span>
+                            <span class="b-sec-cn">翻译网址</span>
+                            <span class="b-sec-lead"></span>
+                        </div>
+                        <div class="b-block">
+                            <div class="b-block-k"><span class="b-k">总是翻译</span><span class="b-n">在这些网址上将自动启用翻译</span></div>
+                            <div class="b-urls">
+                                <div class="b-urls-add">
+                                    <input class="b-input" placeholder="example.com" />
+                                    <button class="b-btn" style="border-radius:0;border:0;border-left:1px solid var(--edge)">add</button>
+                                </div>
+                                <ul class="b-urls-list">
+                                    <li>news.ycombinator.com <button class="b-del">rm</button></li>
+                                    <li>arxiv.org <button class="b-del">rm</button></li>
+                                    <li>developer.mozilla.org <button class="b-del">rm</button></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="b-block">
+                            <div class="b-block-k"><span class="b-k">永不翻译</span><span class="b-n">在这些网址上将永不启用翻译</span></div>
+                            <div class="b-urls">
+                                <div class="b-urls-add">
+                                    <input class="b-input" placeholder="example.com" />
+                                    <button class="b-btn" style="border-radius:0;border:0;border-left:1px solid var(--edge)">add</button>
+                                </div>
+                                <div class="b-urls-empty">// 暂无配置</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">display/</span>
+                            <span class="b-sec-cn">显示</span>
+                            <span class="b-sec-lead"></span>
+                        </div>
+                        <div class="b-block">
+                            <div class="b-block-k"><span class="b-k">译文显示样式</span><span class="b-n">选择翻译文本的显示样式</span></div>
+                            <select class="b-select" style="max-width:240px">
+                                <option>underline</option>
+                                <option>highlight</option>
+                                <option>background</option>
+                                <option>border</option>
+                                <option>shadow</option>
+                                <option>none</option>
+                            </select>
+                            <div class="b-preview">
+                                <span class="b-preview-tag">// PREVIEW</span>
+                                <span class="b-preview-src">The quick brown fox jumps over the lazy dog.</span><br />
+                                <span class="b-preview-dst">敏捷的棕色狐狸跃过那只懒狗。</span>
+                            </div>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">自动翻译延迟</span><span class="b-n">网页自动翻译时等待网页加载多少毫秒</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v">
+                                <span class="b-num">
+                                    <button aria-label="减少">-</button>
+                                    <input value="700" aria-label="自动翻译延迟" />
+                                    <button aria-label="增加">+</button>
+                                </span>
+                                <span class="b-unit">ms · 100–3000</span>
+                            </span>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ===== models ===== -->
+                <div data-pane="service" hidden>
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">active/</span>
+                            <span class="b-sec-cn">当前模型</span>
+                            <span class="b-sec-lead"></span>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">用于翻译的模型</span><span class="b-n">仅列出已启用的模型</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v" style="width:240px">
+                                <select class="b-select">
+                                    <option>deepseek-chat</option>
+                                    <option>gpt-4o-mini</option>
+                                    <option>kimi-k2-thinking</option>
+                                </select>
+                            </span>
+                        </div>
+                    </section>
+
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">models/</span>
+                            <span class="b-sec-cn">模型清单</span>
+                            <span class="b-sec-lead"></span>
+                            <span class="b-sec-extra"><button class="b-btn">+ add model</button></span>
+                        </div>
+
+                        <div class="b-proc" role="listbox" aria-label="模型清单">
+                            <div class="b-proc-head">
+                                <span></span><span>NAME</span><span>SOURCE</span><span>STATUS</span><span style="justify-self:end">ENABLED</span>
+                            </div>
+                            <div class="b-proc-row" role="option" aria-current="true" data-model>
+                                <span class="b-led"></span>
+                                <span class="b-proc-name">deepseek-chat <i>· DeepSeek</i></span>
+                                <span class="b-proc-src">official</span>
+                                <span class="b-proc-st"><span class="b-tag b-tag-ok">ok</span></span>
+                                <button class="b-toggle" aria-pressed="true" aria-label="启用 deepseek-chat"></button>
+                            </div>
+                            <div class="b-proc-row" role="option" aria-current="false" data-model>
+                                <span class="b-led warn"></span>
+                                <span class="b-proc-name">gpt-4o-mini <i>· OpenAI</i></span>
+                                <span class="b-proc-src">custom</span>
+                                <span class="b-proc-st"><span class="b-tag b-tag-wait">no key</span></span>
+                                <button class="b-toggle" aria-pressed="true" aria-label="启用 gpt-4o-mini"></button>
+                            </div>
+                            <div class="b-proc-row" role="option" aria-current="false" data-model>
+                                <span class="b-led off"></span>
+                                <span class="b-proc-name">kimi-k2-thinking <i>· Moonshot</i></span>
+                                <span class="b-proc-src">official</span>
+                                <span class="b-proc-st"><span class="b-tag b-tag-idle">idle</span></span>
+                                <button class="b-toggle" aria-pressed="false" aria-label="启用 kimi-k2-thinking"></button>
+                            </div>
+                            <div class="b-proc-row" role="option" aria-current="false" data-model>
+                                <span class="b-led off"></span>
+                                <span class="b-proc-name">doubao-1.5-lite-32k <i>· 火山引擎</i></span>
+                                <span class="b-proc-src">official</span>
+                                <span class="b-proc-st"><span class="b-tag b-tag-idle">idle</span></span>
+                                <button class="b-toggle" aria-pressed="false" aria-label="启用 doubao"></button>
+                            </div>
+                        </div>
+
+                        <div class="b-detail">
+                            <div class="b-detail-head">
+                                <div>
+                                    <h4>DeepSeek</h4>
+                                    <p>深度求索，性价比高，中文能力强。推理切换通过模型名实现（deepseek-reasoner / deepseek-chat），无独立开关参数。</p>
+                                </div>
+                                <div class="b-detail-acts">
+                                    <button class="b-btn b-btn-go">test</button>
+                                    <button class="b-btn b-btn-danger">delete</button>
+                                </div>
+                            </div>
+
+                            <div class="b-row">
+                                <span class="b-row-k"><span class="b-k">模型类型</span><span class="b-n">官方用平台默认地址，自定义可填代理或私有部署</span></span>
+                                <span class="b-row-lead"></span>
+                                <span class="b-row-v">
+                                    <span class="b-seg" data-seg>
+                                        <button aria-pressed="true">official</button>
+                                        <button aria-pressed="false">custom</button>
+                                    </span>
+                                </span>
+                            </div>
+
+                            <div class="b-block">
+                                <div class="b-block-k"><span class="b-k">请求地址</span><span class="b-n">OpenAI 兼容端点</span></div>
+                                <input class="b-input" data-baseurl disabled value="https://api.deepseek.com/v1" />
+                                <div class="b-tail" data-baseurl-tail>// 官方模式，使用平台默认地址</div>
+                            </div>
+
+                            <div class="b-block">
+                                <div class="b-block-k"><span class="b-k">模型名称</span><span class="b-req">required</span><span class="b-n">可填写平台支持的任意模型字符串</span></div>
+                                <input class="b-input" value="deepseek-chat" />
+                            </div>
+
+                            <div class="b-block">
+                                <div class="b-block-k"><span class="b-k">API Key</span><span class="b-req">required</span><span class="b-n">保存在本地，不会上传</span></div>
+                                <div style="display:flex;gap:7px">
+                                    <input class="b-input" data-key type="password" value="sk-a1b2c3d4e5f6g7h8i9j0" />
+                                    <button class="b-btn" data-eye style="flex:none">show</button>
+                                    <button class="b-btn" style="flex:none">verify</button>
+                                </div>
+                                <div class="b-tail">// 前往 <a href="#">platform.deepseek.com</a> 创建密钥</div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">limits/</span>
+                            <span class="b-sec-cn">配置</span>
+                            <span class="b-sec-lead"></span>
+                            <span class="b-sec-extra"><button class="b-btn">test all</button></span>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">启用思考能力</span><span class="b-n">为支持思考的模型启用深度推理，会增加响应时间</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v"><button class="b-toggle" aria-pressed="false" aria-label="启用思考能力"></button></span>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">每秒最大请求数</span><span class="b-n">限制 AI 模型的请求频率</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v">
+                                <span class="b-num"><button aria-label="减少">-</button><input value="3" aria-label="每秒最大请求数" /><button aria-label="增加">+</button></span>
+                                <span class="b-unit">req/s</span>
+                            </span>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">每次请求最大文本长度</span><span class="b-n">单次请求的文本字符数限制</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v">
+                                <span class="b-num"><button aria-label="减少">-</button><input value="1024" aria-label="每次请求最大文本长度" /><button aria-label="增加">+</button></span>
+                                <span class="b-unit">chars</span>
+                            </span>
+                        </div>
+                        <div class="b-block">
+                            <div class="b-block-k"><span class="b-k">AI 专家角色</span><span class="b-n">不同角色会影响翻译风格</span></div>
+                            <select class="b-select" style="max-width:280px">
+                                <option>default</option>
+                                <option>tech-doc</option>
+                                <option>academic</option>
+                                <option>news</option>
+                            </select>
+                            <div class="b-tail">// 你是一位专业的翻译专家，请准确、自然地翻译文本。</div>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">启用 AI 智能上下文</span><span class="b-n">结合网页上下文提升翻译效果，会增加翻译时长</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v"><button class="b-toggle" aria-pressed="true" aria-label="启用 AI 智能上下文"></button></span>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ===== image ===== -->
+                <div data-pane="image" hidden>
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">image/</span>
+                            <span class="b-sec-cn">图片翻译</span>
+                            <span class="b-sec-lead"></span>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">图片上显示快捷翻译按钮</span><span class="b-n">鼠标悬浮在图片上时显示翻译按钮，点击可翻译图片</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v"><button class="b-toggle" aria-pressed="false" aria-label="图片上显示快捷翻译按钮"></button></span>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">图片翻译服务商</span><span class="b-n">当前使用系统默认翻译服务</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v" style="width:180px"><select class="b-select" disabled><option>system</option></select></span>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ===== about ===== -->
+                <div data-pane="about" hidden>
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">runtime/</span>
+                            <span class="b-sec-cn">扩展设置</span>
+                            <span class="b-sec-lead"></span>
+                        </div>
+                        <div class="b-row">
+                            <span class="b-row-k"><span class="b-k">启用本地缓存</span><span class="b-n">缓存翻译结果以提高性能</span></span>
+                            <span class="b-row-lead"></span>
+                            <span class="b-row-v"><button class="b-toggle" aria-pressed="true" aria-label="启用本地缓存"></button></span>
+                        </div>
+                    </section>
+                    <section class="b-sec">
+                        <div class="b-sec-head">
+                            <span class="b-sec-key">about/</span>
+                            <span class="b-sec-cn">扩展信息</span>
+                            <span class="b-sec-lead"></span>
+                        </div>
+                        <div class="b-meta"><span class="b-meta-k">version</span><span class="b-meta-v mono">v0.0.1</span></div>
+                        <div class="b-meta"><span class="b-meta-k">author</span><span class="b-meta-v">kidrue</span></div>
+                        <div class="b-meta"><span class="b-meta-k">description</span><span class="b-meta-v">智能网页翻译助手，支持多种翻译引擎和划词翻译</span></div>
+                    </section>
+                </div>
+
+            </div>
+            </main>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- ============ 场景二 · 悬浮球 ============ -->
+<div class="rv-scene">
+    <div class="rv-scene-label"><b>场景二 · 页面内猫眼</b><span>点击猫眼可循环状态；注意深色球体落在白底网页上的割裂感</span></div>
+    <div class="rv-frame">
+        <div class="b-host">
+            <div class="b-host-page" data-translated="false">
+                <div class="b-host-inner">
+                    <div class="b-host-kicker">Engineering · Nov 2025</div>
+                    <h2>Why context windows are not the bottleneck anymore
+                        <span class="b-trans">为什么上下文窗口不再是瓶颈</span>
+                    </h2>
+                    <p>For the past two years the industry has treated context length as the headline number. Every release
+                        announcement led with it. But the practical limit was never really the window size — it was retrieval
+                        quality and the cost curve of attention.
+                        <span class="b-trans">过去两年，业界一直把上下文长度当作头条数字，每次发布都以它领衔。但真正的实际限制从来不是窗口大小，而是检索质量与注意力机制的成本曲线。</span>
+                    </p>
+                    <p>Once you can afford to keep the whole document resident, the interesting question shifts. It becomes:
+                        what should the model attend to, and when? See the <a href="#">accompanying benchmark</a> for the
+                        full breakdown across seven workloads.
+                        <span class="b-trans">一旦你负担得起把整份文档常驻内存，有趣的问题就转移了 —— 变成了：模型应该关注什么，以及何时关注？完整的七类工作负载拆解见<a href="#">配套基准测试</a>。</span>
+                    </p>
+                    <p>The counterintuitive result is that smaller, well-scoped prompts still outperform full-document stuffing
+                        on extraction tasks, while the reverse holds for summarisation. Neither result is explained by window
+                        size alone.
+                        <span class="b-trans">反直觉的结果是：在抽取类任务上，更小、界定良好的提示仍然优于整篇塞入；而在摘要任务上结论相反。这两个结果都无法单靠窗口大小来解释。</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="b-dock" data-state="idle" data-open="false">
+                <button class="b-eye-btn" data-eyebtn aria-label="开启翻译">
+                    <span class="b-eye" aria-hidden="true">
+                        <span class="b-pupil"></span>
+                        <span class="b-glint"></span>
+                        <span class="b-scan"></span>
+                    </span>
+                    <span class="b-eye-badge" aria-hidden="true">✓</span>
+                </button>
+                <button class="b-cog" data-cog aria-label="打开设置面板">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                </button>
+
+                <div class="b-panel" role="dialog" aria-label="快捷设置">
+                    <div class="b-panel-bar"><b>mewcat</b> news.ycombinator.com <span>en → zh-CN</span></div>
+                    <div class="b-panel-in">
+                        <div class="b-panel-row">
+                            <label for="b-p1">启用划词翻译</label>
+                            <button class="b-toggle" id="b-p1" aria-pressed="true"></button>
+                        </div>
+                        <div class="b-panel-row">
+                            <label for="b-p2">AI 智能上下文
+                                <span class="b-help" tabindex="0">?
+                                    <span class="b-help-tip">结合网页上下文提升翻译效果。需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长。</span>
+                                </span>
+                            </label>
+                            <button class="b-toggle" id="b-p2" aria-pressed="false"></button>
+                        </div>
+                        <div class="b-panel-row">
+                            <label for="b-p3">总是翻译此网站</label>
+                            <button class="b-toggle" id="b-p3" aria-pressed="true"></button>
+                        </div>
+                        <div class="b-panel-row">
+                            <label for="b-p4">翻译模型</label>
+                            <span class="b-panel-sel">
+                                <select class="b-select" id="b-p4" style="font-size:11.5px;padding:6px 9px">
+                                    <option>deepseek-chat</option>
+                                    <option>gpt-4o-mini</option>
+                                </select>
+                            </span>
+                        </div>
+                        <div class="b-pipe">
+                            <span class="b-pipe-box">
+                                <label>DETECTED</label>
+                                <span class="b-pipe-v dim">en · english</span>
+                            </span>
+                            <span class="b-pipe-arrow">→</span>
+                            <span class="b-pipe-box r">
+                                <label>TARGET</label>
+                                <span class="b-pipe-v">zh-CN</span>
+                            </span>
+                        </div>
+                        <div class="b-panel-foot"><button class="b-btn">open advanced settings</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="b-states">
+            <button class="b-state-btn" data-st="idle"    aria-pressed="true">静止 · 瞳孔细缝</button>
+            <button class="b-state-btn" data-st="loading" aria-pressed="false">翻译中 · 扫描</button>
+            <button class="b-state-btn" data-st="done"    aria-pressed="false">已翻译 · 瞳孔全开</button>
+            <button class="b-state-btn" data-st="panel"   aria-pressed="false">展开面板</button>
+            <span class="b-states-hint">瞳孔宽度就是状态本身：细缝 → 收缩 → 全开</span>
+        </div>
+    </div>
+</div>
+
+<div class="rv-foot">
+    <h6>字体与落地说明</h6>
+    <ul>
+        <li>Mono：<code>"Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, monospace</code>。<b>不打包字体</b> —— Windows 自带 Cascadia Code / Consolas，macOS 自带 SF Mono。这一层是本方向的性格来源：模型名、URL、状态、数值、分节键名全部走 mono。</li>
+        <li>UI：<code>"Inter", "PingFang SC", "Microsoft YaHei", sans-serif</code>。中文说明文字一律走无衬线 —— <b>刻意不让中文进 mono</b>，避免 CJK 落进等宽 fallback 后字宽错乱。</li>
+        <li>开关做成了 <code>[ on ]</code> / <code>[ off ]</code> 的 mono 标签而不是拨动滑块。这是本方向最激进的一处取舍：更贴合终端语言、状态一眼可读，但牺牲了「拨动」这个通用手势的熟悉感。</li>
+        <li>状态点三态：实心青（已验证）/ 实心琥珀（待配置）/ 空心（未启用）。状态栏、清单、左栏页脚共用同一套语义。</li>
+    </ul>
+    <h6>必须提前知道的两个代价</h6>
+    <ul>
+        <li><b>这个方向等于强制深色。</b>options / popup / 面板全部深色，没有浅色版本；要浅色就得做两套 token，工作量翻倍。</li>
+        <li><b>悬浮球在白底网页上是硬割裂的。</b>场景二里那颗深色猫眼落在白色文章页上，突出但不融入 —— 这是它的优点也是它的风险，请重点看这一屏。注入的译文因此不能用状态栏的亮青 <code>#3fd6a8</code>（白底对比度仅约 2:1），改用深青 <code>#0e7a5f</code> 做左侧竖线。</li>
+    </ul>
+    <h6>可访问性与动效</h6>
+    <ul>
+        <li>青色 <code>#3fd6a8</code> 对底色 <code>#0d1117</code> 对比度约 11:1，主文 <code>#e4e8ee</code> 约 14:1，次文 <code>#8b95a3</code> 约 5.4:1，均过 AA。</li>
+        <li><code>prefers-reduced-motion</code> 下：扫描线停止移动但保留为居中静止实线（仍能表达「进行中」），呼吸光晕固定为静态外环。</li>
+    </ul>
+</div>
+
+<script>
+(function () {
+    var crumb = document.querySelector('[data-crumb]');
+    var keys = { basic: 'basic', service: 'models', image: 'image', about: 'about' };
+    document.querySelectorAll('.b-nav-item').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.dataset.tab;
+            document.querySelectorAll('.b-nav-item').forEach(function (b) { b.setAttribute('aria-selected', String(b === btn)); });
+            document.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.dataset.pane !== id; });
+            if (crumb) crumb.textContent = keys[id];
+            document.querySelector('.b-main').scrollTop = 0;
+        });
+    });
+
+    /* [on] / [off] 开关 */
+    document.querySelectorAll('.b-toggle').forEach(function (t) {
+        t.addEventListener('click', function (e) {
+            e.stopPropagation();
+            t.setAttribute('aria-pressed', t.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+        });
+    });
+
+    document.querySelectorAll('[data-model]').forEach(function (item) {
+        item.addEventListener('click', function (e) {
+            if (e.target.closest('.b-toggle')) return;
+            document.querySelectorAll('[data-model]').forEach(function (i) { i.setAttribute('aria-current', String(i === item)); });
+        });
+    });
+
+    var seg = document.querySelector('[data-seg]');
+    if (seg) {
+        var url = document.querySelector('[data-baseurl]');
+        var tail = document.querySelector('[data-baseurl-tail]');
+        seg.querySelectorAll('button').forEach(function (b, i) {
+            b.addEventListener('click', function () {
+                seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+                var official = i === 0;
+                url.disabled = official;
+                if (official) { url.value = 'https://api.deepseek.com/v1'; tail.textContent = '// 官方模式，使用平台默认地址'; }
+                else { url.value = ''; url.placeholder = 'https://your-proxy.example.com/v1'; tail.textContent = '// 自定义地址生效，请确保地址可用'; }
+            });
+        });
+    }
+
+    var eye = document.querySelector('[data-eye]');
+    if (eye) {
+        eye.addEventListener('click', function () {
+            var f = document.querySelector('[data-key]');
+            var show = f.type === 'password';
+            f.type = show ? 'text' : 'password';
+            eye.textContent = show ? 'hide' : 'show';
+        });
+    }
+
+    var dock = document.querySelector('.b-dock');
+    var page = document.querySelector('.b-host-page');
+    var order = ['idle', 'loading', 'done'];
+    function setState(st) {
+        if (st === 'panel') {
+            dock.dataset.open = dock.dataset.open === 'true' ? 'false' : 'true';
+        } else {
+            dock.dataset.state = st;
+            page.dataset.translated = String(st === 'done');
+        }
+        document.querySelectorAll('[data-st]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.st === st)); });
+    }
+    document.querySelector('[data-eyebtn]').addEventListener('click', function () {
+        setState(order[(order.indexOf(dock.dataset.state) + 1) % order.length]);
+    });
+    document.querySelector('[data-cog]').addEventListener('click', function (e) { e.stopPropagation(); setState('panel'); });
+    document.querySelectorAll('[data-st]').forEach(function (b) { b.addEventListener('click', function () { setState(b.dataset.st); }); });
+    document.querySelector('.b-panel').addEventListener('click', function (e) { e.stopPropagation(); });
+})();
+</script>
+</body>
+</html>

@@ -409,3 +409,70 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 **验证**：本地已验证 —— 构建产物解压抽查确认 JS 已混淆（`plasmo package` 不会覆盖 `obfuscate.js` 的就地修改）；crx 产出文件魔数为 `Cr24` + 版本字节 `03`（CRX3）；删除 `key.pem` 后 `pnpm crx` 报错且退出码为 1；base64 → 环境变量的 CI 路径打包成功；`git check-ignore` 确认 `key.pem` 不会被提交；`pnpm check` 通过。CI 端待用户配置好 Actions 写权限和 `CRX_PRIVATE_KEY_B64` Secret 后首次 push 验证。
 
 
+
+---
+
+### 2026-08-07 — UI 全面重设计：「宣纸朱印」
+
+**修改内容**：
+
+*Token 与基础样式*
+- `src/styles/theme.scss`：整体重写。**选择器由 `:root` 改为 `:root, :host`**；主题色由橙 `#f97316` 改为朱砂 `#b23a2e`，背景由白改纸（`--bg-primary: #f2ede1` / `--bg-secondary: #fbf8f0` / `--bg-tertiary: #eae3d4`），文字改墨（`#1a1714`），灰阶整体偏暖；圆角收到近方（`--radius-sm/md: 2px`、`lg: 4px`、`xl: 6px`，`full` 仅留给印章与帮助图标）；阴影全面减轻；成功色改石青 `#3e6b63`；新增 `--seal-wash` / `--seal-ring` / `--rule-strong` / `--paper-3` / `--jade` / `--font-display`（宋体族）/ `--font-mono`；新增 `--space-7: 28px`（原缺失，见下）；全部 mixin（`btn-*`、`input-base`、`card-*`、`list-item`）同步改写，新增 `seam`（骑缝线）mixin；删除文件末尾注释掉的深色模式死代码
+- `src/styles/options.scss`、`src/styles/popup.scss`：删除约 200 行引用不存在变量（`--gradient-header`、`--spacing-lg`、`--error-color`、`--border-radius-small` 等）的死代码，重写为纸底 + 细滚动条 + `prefers-reduced-motion` 降级；焦点样式由 `outline: none` 改为 `:focus-visible { outline: 2px solid var(--primary-color) }`
+
+*Options 结构*
+- `src/components/OptionsSidebar/index.tsx`：横排列表 → 76px 书脊式竖排目录（`writing-mode: vertical-rl` + 宋体 + 当前项右侧 3px 朱砂竖条），顶部朱砂印 logo；≤900px 降级为横排可滚动 tab 条
+- `src/components/OptionsSection/index.tsx`：卡片 → 分节（朱砂小方块 + 宋体标题 + 向右延伸的 hairline），去掉背景/边框/hover
+- `src/components/FormRow/index.tsx`：堆叠 → 术语/注解双栏（左列 208px 放 label + 说明，右列放控件），行间 hairline 分隔；≤900px 堆叠
+- `src/components/OptionsContentHeader/index.tsx`：改为 masthead —— 宋体大标题「譯趣貓」+ 等宽版本号 + 右侧常驻状态摘要 + 骑缝线。props 由 `title/description` 改为 `title/version/status`
+- `src/options/index.tsx`：接入 `configAtom` 计算状态摘要（`英语 → 简体中文 · DeepSeek`）传给 masthead；标题不再随 tab 变化（当前页已由书脊朱砂竖条指示）
+
+*控件*
+- `src/components/Switch/index.tsx`：圆 pill → 方形木闸，开合由「滑块位置 + 滑块颜色」双重编码（非纯色彩），新增 `:focus-visible` 环
+- 8 处紫色残留 `rgba(119,72,249,…)` → `var(--seal-ring)` / `var(--seal-wash)`：`ApiKeyInput`、`NativeSelect`、`NumberInput`、`Select`、`UrlManager`、`sidepanel`、`SettingsPanel`、`popup`
+- `src/components/Select/index.tsx`、`src/options/TranslateServices.tsx`：选中项由「浅底变色」改为「`--seal-wash` 底 + `inset 3px 0` 朱砂左边」，不靠投影
+- `src/components/Button/index.tsx` 的 `#dc2626`、`InfoDisplay` 的 `rgba(25,118,210,.1)` 与三个不存在的变量、`StylePreview` 整块注释死代码、`SettingGroup` 的圆点指示器 → 一律换 token / 方块
+- `src/components/Tooltip/index.tsx`：黑底改墨底纸字、圆角收到 2px，并加 `width: max-content`
+
+*悬浮球与面板*
+- `src/contents/TranslationControlCenter.tsx`：圆形浅紫球 + `icon.png` → 54px 朱砂方印（8px 圆角、内嵌 1.5px 纸色描边、宋体白字「譯」、静止态 0.84 不透明）。新增两个状态层：翻译中外沿朱砂虚线环缓转 5s（研墨）、落定时墨渍一次性扩散 0.62s（落印），并保留石青方形「已译」角标作为动画结束后的持久标记；两者都在 `prefers-reduced-motion` 下停转但保留形态。齿轮按钮改近方。移除 `iconImg` 依赖。**顺带修了 tooltip 文案 bug**：原为 `loading ? "清理翻译" : "开启翻译"`，翻译完成后 `loading` 为 false 但 `isTranslate` 为 true，会错误显示「开启翻译」，改为 `loading || isTranslate`
+- `src/components/SettingsPanel/index.tsx` + `src/popup/index.tsx`：二者原为 95% 逐行重复的两份代码，**合并为 `SettingsPanel` 单一实现**，新增 `variant: "floating" | "embedded"` 区分「悬浮球弹出（自带纸面与投影）」和「popup 窗口内（不叠纸）」；popup 只保留取当前 tab URL 的逻辑。Logo 由 `icon.png` 改朱砂印，头部加骑缝线
+- `src/sidepanel/index.tsx`：跟随纸底 + 朱砂印 logo + 骑缝线，移除 `icon.png` 依赖
+
+*页面注入 UI*
+- `src/utils/style.ts`：6 种译文样式全部由橙色系改朱砂系。HIGHLIGHT 改「米色底 + 左侧朱砂竖条」，UNDERLINE/BORDER/SHADOW 改为 `color: inherit`（不再强制染色，使其在深色网页上也可读），BACKGROUND 用淡朱砂底 + 细边。**`getStyleDescription` 文案同步改写**（原写「橙色下划线」「黄色背景」，改色后即为错误描述）
+- `src/types/translationStyle.ts`：枚举成员的 JSDoc 由「蓝色下划线」「淡蓝色背景」等改为实际描述（这些注释在改色前就已与代码不符）
+- `src/utils/dom.ts`：错误 UI 按钮 `#7748f9`/`#6b3fd9`/`#f0eaff` → 朱砂系；loading spinner `#3498db` → 朱砂；错误弹窗改纸底近方（遮罩、标题、详情区、关闭按钮全部换色）
+- `src/components/SelectionDot/index.tsx`：蓝色渐变圆点 → 朱砂小方印（4px 圆角 + 内描边），tooltip 改墨底，新增 reduced-motion 降级
+- `src/contents/selectionTranslate.tsx`：蓝色渐变 + 12px 圆角 → 纸底 + 4px 圆角 + 顶端朱砂封边
+- `src/components/TranslateTextPanel/index.tsx`、`src/components/ImageTranslateButton.tsx`：`#333`/`#666`/`#1976d2`/紫色渐变 → 朱砂与墨
+
+*图标*
+- `assets/icon.png`：橙色猫脸 → 朱砂印「譯」（512×512）。生成方式改为浏览器渲染 `design-preview/icon-source.html` 后截图直出
+- `scripts/gen-icon.js`：加文件头注释标注已停用（纯 Node + zlib 几何绘制画不出宋体字形），保留作历史参考
+
+*实机验证中发现并修复的 4 个缺陷*
+1. **`--space-7` 不存在**：`MainContent` 的 `padding: var(--space-7) var(--space-8) var(--space-10)` 中一个分量无法解析，导致**整条 padding 声明被丢弃**，options 主区完全没有内边距。已在 theme.scss 补 `--space-7: 28px`
+2. **grid item 撑破列**：`OptionsSection` 的 `layout="grid"` 下右列内容溢出视口（控件被裁切）。grid item 默认 `min-width: auto`，已显式加 `> * { min-width: 0 }`
+3. **两列网格首行错位**：`FormRow` 的分隔线按纵向堆叠设计（只有 DOM 第一个不画线），两列网格下第二个也在首行却画了线并加了 padding-top，导致右列整体下沉。已在 grid 分支加 `&& > *:nth-child(-n + 2)` 抵消，窄屏堆叠时再恢复
+4. **`TranslateServices` 无窄屏断点**：左侧模型列表固定 280px + 右侧配置区，在 375px 下右侧被压成一个字宽。已加 ≤900px 上下堆叠
+
+**原因**：原 UI 是「橙色 + 圆角白卡片」的通用后台风格，缺少辨识度。用户要求全新风格、允许大刀阔斧、功能保持不变，并确认了三件事：全部界面统一重排、扩展图标一并更换、不做深色模式。
+
+设计主张：**翻译是「落定文本」。设置页是典籍的目录与注解，悬浮球是一枚朱砂印 —— 开启翻译＝盖章。** 三条规则贯穿全部界面：(1) 朱砂是唯一强调色，石青只用于成功态；(2) 圆角近方，圆形只留给印章与帮助图标；(3) 人写的话用无衬线，机器给的值（模型名、URL、版本号）用等宽，标题用宋体。
+
+几个实现选择的理由：
+- **保留全部 CSS 变量名、只重写值**：`src/` 有 848 处 `var(--…)` 分布在 28 个文件，现有变量名都是通用语义（`--primary-color`、`--bg-primary`…），换成朱砂/纸/墨后语义依然成立。为命名洁癖去改 848 处引用是纯风险无收益
+- **`theme.scss` 必须 `:root, :host` 双选择器**：`TranslationControlCenter` / `selectionTranslate` / `imageTranslate` 都是 Plasmo CSUI，样式注入 Shadow DOM，而 **`:root` 在 shadow root 内不匹配**。这意味着改动前 `SCxSettingsIcon` 的 `var(--bg-primary)` / `var(--border-color)` 一直是失效的（齿轮按钮实际无背景、边框为黑）。实机已验证：注入 CSUI CSS 后 shadow root 内 `--primary-color` 解析为 `#b23a2e`，齿轮按钮拿到纸底 `#fbf8f0` 与 hairline `#d8d0be`
+- **合并 `SettingsPanel` 与 `popup`**：这是本次唯一超出纯视觉的结构调整。两份代码 95% 逐行相同，不合并就要把同一套新样式写两遍，且以后必然改一处忘一处
+- **注入页面的译文样式写字面值而非 token**：译文注入的是任意第三方页面，拿不到扩展的 CSS 变量。已在 `style.ts` 顶部注释说明这些字面值需与 theme.scss 同步
+- **图标放弃内嵌白框**：印面内框在 512px 下好看，但缩到 16px 工具栏尺寸时会吃掉约 20% 面积并产生与外轮廓竞争的第二道边，实测无内框版本在 16/24px 下明显更清晰
+
+**验证**：`pnpm check` 通过（typecheck + lint 0 error + format:check + cspell 0 issue + hotlink-rules）。`pnpm dev` 产物经本地静态服务器 + `chrome.*` API shim 在 Chrome 实机走查：
+- options 四个分类在 1280 / 768 / 375（设备模拟）三个宽度逐个切换，确认书脊导航正确降级、双栏正确堆叠、无横向溢出
+- 键盘 Tab 实测（非脚本 `.focus()`，后者不触发 `:focus-visible`）确认朱砂焦点环清晰可见
+- 悬浮球在真实页面的 Shadow DOM 内验证 token 解析、齿轮按钮样式、tooltip、点击切换翻译后进入「已落印」态（墨渍动画 + 石青角标）
+- popup、侧边栏逐个截图确认
+- 6 种译文样式在浅色与深色两种宿主页面上分别渲染，确认互相可区分且都可读
+
+**未验证**（如实记录）：划词翻译面板与图片翻译按钮的最终视觉、错误弹窗（`createTranslationErrorUI`）的最终视觉，这三处只做了颜色字面值替换并经代码检查，未在实机触发；真实 LLM 翻译链路未跑通（无可用 API Key），因此译文注入到真实网页后的效果未端到端验证。

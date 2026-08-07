@@ -9,7 +9,7 @@ interface InfoDisplayProps {
 }
 
 const SCxInfoRow = styled.div`
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--space-5);
 
     &:last-child {
         margin-bottom: 0;
@@ -21,7 +21,7 @@ const SCxLabel = styled.label`
     font-size: var(--font-size-base);
     font-weight: var(--font-weight-medium);
     color: var(--text-primary);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--space-2);
 `
 
 const SCxValue = styled.span<{ valueType: string }>`
@@ -32,12 +32,12 @@ const SCxValue = styled.span<{ valueType: string }>`
     ${props =>
         props.valueType === "version" &&
         `
-        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-        background: var(--gray-50);
-        padding: var(--spacing-xs) var(--spacing-sm);
-        border-radius: var(--border-radius-small);
+        font-family: var(--font-mono);
+        background: var(--bg-tertiary);
+        padding: var(--space-1) var(--space-2);
+        border-radius: var(--radius-sm);
         color: var(--primary-color);
-        border: 1px solid rgba(25, 118, 210, 0.1);
+        border: 1px solid var(--border-color);
         display: inline-block;
     `}
 

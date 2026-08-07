@@ -67,7 +67,7 @@ const StyledButton = styled.button<{
                     background: var(--error);
                     color: var(--text-inverse);
                     &:hover:not(:disabled) {
-                        background: #dc2626;
+                        background: var(--primary-hover);
                     }
                 `
             case "ghost":

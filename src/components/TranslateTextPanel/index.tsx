@@ -14,10 +14,8 @@ interface TranslateTextPanelProps {
 }
 
 const SCxContainer = styled.div`
-    width: 100%;
     padding: 8px;
-    overflow: hidden auto;
-    color: #333;
+    color: #1a1714;
     position: relative;
     width: 100%;
     max-height: 250px;
@@ -32,24 +30,23 @@ const SCxContainer = styled.div`
 const SCxText = styled.div.withConfig({
     shouldForwardProp: prop => !(prop === "loading")
 })<{ loading: boolean }>`
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.7;
     opacity: ${props => (props.loading ? 0.5 : 1)};
     transition: opacity 0.2s ease;
 `
 
 const SCxErrorText = styled.div`
-    font-size: 16px;
-    font-weight: 600;
-    color: red;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.6;
+    color: #a5342a;
 `
 
 const SCxLoadingContainer = styled.div`
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 6px;
     width: 100%;
     height: 100px;
-    /* padding: 12px 16px; */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -58,7 +55,7 @@ const SCxLoadingContainer = styled.div`
 
 const SCxLoadingText = styled.span`
     font-size: 12px;
-    color: #666;
+    color: #6e665c;
     font-weight: 500;
 `
 export const TranslateTextPanel: React.FunctionComponent<
@@ -100,7 +97,7 @@ export const TranslateTextPanel: React.FunctionComponent<
 
             {loading && (
                 <SCxLoadingContainer>
-                    <LoadingDots loading={true} color="#1976d2" size={4} />
+                    <LoadingDots loading={true} color="#b23a2e" size={4} />
                     <SCxLoadingText>翻译中...</SCxLoadingText>
                 </SCxLoadingContainer>
             )}

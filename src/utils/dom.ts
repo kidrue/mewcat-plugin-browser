@@ -118,8 +118,8 @@ export function createLoadingELement(size = 30) {
     spinner.style.cssText = `
             width: ${size}px;
             height: ${size}px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3498db;
+            border: 2px solid #e4ddcd;
+            border-top: 2px solid #b23a2e;
             border-radius: 50%;
             display: inline-block;
             animation: spin 1s linear infinite;
@@ -213,7 +213,7 @@ export function createTranslationErrorUI(
         const button = document.createElement("span")
         button.className = className
         button.style.cssText = `
-            color: #7748f9;
+            color: #b23a2e;
             cursor: pointer;
             user-select: none;
             ${className === "mewcat-retry-btn" ? "margin-right: 6px;" : ""}
@@ -224,7 +224,7 @@ export function createTranslationErrorUI(
             gap: 2px;
             transition: all 0.15s ease;
             padding: 2px 4px;
-            border-radius: 4px;
+            border-radius: 2px;
         `
         button.setAttribute("title", title)
         button.appendChild(icon)
@@ -232,11 +232,11 @@ export function createTranslationErrorUI(
 
         // 悬停效果
         button.addEventListener("mouseenter", () => {
-            button.style.color = "#6b3fd9"
-            button.style.backgroundColor = "#f0eaff"
+            button.style.color = "#8e2a20"
+            button.style.backgroundColor = "#f7efe6"
         })
         button.addEventListener("mouseleave", () => {
-            button.style.color = "#7748f9"
+            button.style.color = "#b23a2e"
             button.style.backgroundColor = "transparent"
         })
 
@@ -284,7 +284,7 @@ export function createTranslationErrorUI(
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(15, 23, 42, 0.5);
+        background: rgba(26, 23, 20, 0.46);
         backdrop-filter: blur(4px);
         z-index: 999999;
         justify-content: center;
@@ -296,10 +296,11 @@ export function createTranslationErrorUI(
     const errorModalContent = document.createElement("div")
     errorModalContent.className = "mewcat-error-modal-content"
     errorModalContent.style.cssText = `
-        background: #ffffff;
+        background: #fbf8f0;
         padding: 24px;
-        border-radius: 12px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border-radius: 4px;
+        border: 1px solid #d8d0be;
+        box-shadow: 0 10px 34px rgba(26, 23, 20, 0.18);
         max-width: 500px;
         min-width: 400px;
         position: relative;
@@ -318,18 +319,18 @@ export function createTranslationErrorUI(
         border: none;
         font-size: 20px;
         cursor: pointer;
-        color: #94a3b8;
+        color: #9a9188;
         padding: 4px 8px;
-        border-radius: 6px;
+        border-radius: 2px;
         transition: all 0.15s ease;
         line-height: 1;
     `
     closeButton.addEventListener("mouseenter", () => {
-        closeButton.style.color = "#1e293b"
-        closeButton.style.backgroundColor = "#f1f5f9"
+        closeButton.style.color = "#1a1714"
+        closeButton.style.backgroundColor = "#eae3d4"
     })
     closeButton.addEventListener("mouseleave", () => {
-        closeButton.style.color = "#94a3b8"
+        closeButton.style.color = "#9a9188"
         closeButton.style.backgroundColor = "transparent"
     })
 
@@ -339,7 +340,7 @@ export function createTranslationErrorUI(
         margin: 0 0 16px 0;
         font-size: 18px;
         font-weight: 600;
-        color: #ef4444;
+        color: #a5342a;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -349,16 +350,16 @@ export function createTranslationErrorUI(
     // 错误详情内容
     const errorDetailsContent = document.createElement("div")
     errorDetailsContent.style.cssText = `
-        color: #64748b;
+        color: #4a443c;
         font-size: 14px;
         line-height: 1.6;
         word-break: break-word;
         max-height: 300px;
         overflow-y: auto;
         padding: 12px;
-        background: #f8fafc;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
+        background: #f2ede1;
+        border-radius: 2px;
+        border: 1px solid #ded5c3;
     `
     errorDetailsContent.textContent = errorDetails
 

@@ -1,0 +1,1333 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>方向 A · 宣纸朱印 — mewCat UI 预览</title>
+<style>
+/* ============================================================
+   方向 A · 宣纸朱印  Rice Paper & Vermilion Seal
+   设计主张：翻译是「落定文本」。设置页是典籍的目录与注解，
+   悬浮球是一枚朱砂印 —— 开启翻译 = 盖章。
+   ============================================================ */
+
+:root {
+    /* 纸与墨 */
+    --paper:        #f2ede1;
+    --paper-2:      #fbf8f0;
+    --paper-3:      #eae3d4;
+    --ink:          #1a1714;
+    --ink-2:        #4a443c;
+    --ink-3:        #6e665c;
+    --ink-4:        #9a9188;
+    --rule:         #d8d0be;
+    --rule-strong:  #bfb49d;
+
+    /* 朱砂：唯一强调色 */
+    --seal:         #b23a2e;
+    --seal-deep:    #8e2a20;
+    --seal-wash:    rgba(178, 58, 46, 0.09);
+    --seal-ring:    rgba(178, 58, 46, 0.16);
+
+    /* 石青：次要 / 成功 */
+    --jade:         #3e6b63;
+    --jade-wash:    rgba(62, 107, 99, 0.1);
+    --amber:        #a97a1f;
+
+    --font-display: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC",
+                    "STSong", SimSun, serif;
+    --font-body:    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei",
+                    "Helvetica Neue", Arial, sans-serif;
+    --font-mono:    "Cascadia Mono", "SF Mono", Consolas, "Courier New", monospace;
+
+    --r-sq:   2px;   /* 近方，典籍感 */
+    --r-box:  4px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 评审工具条（非设计的一部分） ---------- */
+.rv-bar {
+    position: sticky; top: 0; z-index: 90;
+    display: flex; align-items: center; gap: 18px;
+    padding: 10px 20px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 12px;
+    flex-wrap: wrap;
+}
+.rv-bar strong { font-weight: 600; letter-spacing: .04em; }
+.rv-bar a {
+    color: var(--paper); opacity: .62;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+}
+.rv-bar a:hover, .rv-bar a:focus-visible { opacity: 1; border-bottom-color: var(--seal); }
+.rv-bar .rv-cur { opacity: 1; border-bottom-color: var(--seal); }
+.rv-spacer { flex: 1; }
+.rv-note { opacity: .5; }
+
+.rv-scene { max-width: 1320px; margin: 0 auto; padding: 28px 20px 8px; }
+.rv-scene-label {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 12px;
+    font-size: 12px; color: var(--ink-3);
+}
+.rv-scene-label b { font-family: var(--font-display); font-size: 15px; color: var(--ink); font-weight: 600; }
+.rv-frame {
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-box);
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 1px 0 rgba(26, 23, 20, .04);
+}
+
+/* ============================================================
+   场景一 · 设置页
+   ============================================================ */
+.a-app { display: flex; height: 760px; }
+
+/* --- 书脊式竖向目录 --- */
+.a-spine {
+    flex: 0 0 76px;
+    background: var(--paper-2);
+    border-right: 1px solid var(--rule);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 18px 0;
+    gap: 14px;
+}
+.a-spine-seal {
+    width: 40px; height: 40px; flex: none;
+    border-radius: 6px;
+    background: var(--seal);
+    color: var(--paper-2);
+    font-family: var(--font-display);
+    font-size: 21px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1.5px rgba(251, 248, 240, .55);
+    margin-bottom: 4px;
+    user-select: none;
+}
+.a-nav { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; }
+.a-nav-item {
+    writing-mode: vertical-rl;
+    appearance: none; border: 0; background: none;
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 600;
+    letter-spacing: .22em;
+    color: var(--ink-3);
+    padding: 14px 10px 14px 12px;
+    cursor: pointer;
+    position: relative;
+    border-radius: var(--r-sq);
+    transition: color .18s ease, background .18s ease;
+}
+.a-nav-item:hover { color: var(--ink); background: var(--paper-3); }
+.a-nav-item:focus-visible { outline: 2px solid var(--seal); outline-offset: 1px; }
+.a-nav-item[aria-selected="true"] { color: var(--seal); background: transparent; }
+.a-nav-item[aria-selected="true"]::after {
+    content: ""; position: absolute; right: 2px; top: 12%; bottom: 12%;
+    width: 3px; background: var(--seal);
+}
+
+/* --- 正文区 --- */
+.a-main { flex: 1; overflow-y: auto; padding: 34px 44px 60px; }
+.a-main::-webkit-scrollbar { width: 8px; }
+.a-main::-webkit-scrollbar-thumb { background: var(--rule-strong); border-radius: 4px; }
+.a-main::-webkit-scrollbar-track { background: transparent; }
+.a-sheet { max-width: 780px; }
+
+.a-masthead { display: flex; align-items: flex-end; gap: 14px; margin-bottom: 4px; }
+.a-masthead h1 {
+    font-family: var(--font-display);
+    font-size: 31px; font-weight: 600; letter-spacing: .06em;
+    margin: 0; line-height: 1.15;
+}
+.a-masthead .a-mast-meta {
+    font-family: var(--font-mono);
+    font-size: 11px; color: var(--ink-4); letter-spacing: .04em;
+    padding-bottom: 5px;
+}
+.a-masthead .a-mast-page {
+    margin-left: auto; padding-bottom: 5px;
+    font-family: var(--font-display); font-size: 14px; color: var(--ink-3);
+    letter-spacing: .18em;
+}
+/* 骑缝线：一条实线，压着一枚朱砂方印 */
+.a-seam { position: relative; height: 1px; background: var(--rule-strong); margin: 16px 0 34px; }
+.a-seam::after {
+    content: ""; position: absolute; left: 0; top: -4px;
+    width: 9px; height: 9px; background: var(--seal);
+}
+
+/* --- 分节 --- */
+.a-sec { margin-bottom: 44px; }
+.a-sec-head { display: flex; align-items: center; gap: 11px; margin-bottom: 6px; }
+.a-sec-mark { width: 7px; height: 7px; background: var(--seal); flex: none; }
+.a-sec-title {
+    font-family: var(--font-display);
+    font-size: 19px; font-weight: 600; letter-spacing: .08em;
+    margin: 0; color: var(--ink);
+}
+.a-sec-rule { flex: 1; height: 1px; background: var(--rule); }
+.a-sec-extra { flex: none; }
+
+/* --- 条目：术语 + 注解 双栏 --- */
+.a-row { display: flex; gap: 32px; padding: 19px 0; border-top: 1px solid var(--rule); }
+.a-row:first-of-type { border-top: 0; }
+.a-term { flex: 0 0 208px; padding-top: 2px; }
+.a-term-label { font-size: 13.5px; font-weight: 600; color: var(--ink); letter-spacing: .01em; }
+.a-term-label .a-req { color: var(--seal); margin-left: 4px; }
+.a-term-note { font-size: 12px; color: var(--ink-3); line-height: 1.55; margin-top: 5px; }
+.a-field { flex: 1; min-width: 0; }
+.a-field-tail { font-size: 11.5px; color: var(--ink-4); margin-top: 7px; line-height: 1.5; }
+.a-field-tail a { color: var(--seal); text-decoration: none; border-bottom: 1px solid var(--seal-ring); }
+.a-field-tail a:hover { border-bottom-color: var(--seal); }
+.a-row-tight { align-items: center; }
+
+/* --- 控件 --- */
+.a-input, .a-select {
+    width: 100%;
+    font-family: var(--font-body); font-size: 13px; color: var(--ink);
+    background: var(--paper-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-sq);
+    padding: 8px 11px;
+    transition: border-color .16s ease, box-shadow .16s ease, background .16s ease;
+}
+.a-input::placeholder { color: var(--ink-4); }
+.a-input:hover, .a-select:hover { border-color: var(--ink-4); }
+.a-input:focus, .a-select:focus {
+    outline: none; border-color: var(--seal);
+    box-shadow: 0 0 0 3px var(--seal-ring);
+}
+.a-input:disabled, .a-select:disabled {
+    background: var(--paper-3); color: var(--ink-3);
+    border-color: var(--rule); cursor: not-allowed;
+}
+.a-mono { font-family: var(--font-mono); font-size: 12px; letter-spacing: .01em; }
+.a-select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-3) 50%),
+                      linear-gradient(135deg, var(--ink-3) 50%, transparent 50%);
+    background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+    padding-right: 30px;
+}
+
+/* 方形开关：像一枚推拉的木闸 */
+.a-switch {
+    appearance: none; margin: 0; flex: none;
+    width: 42px; height: 22px;
+    background: var(--paper-3);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-sq);
+    position: relative; cursor: pointer;
+    transition: background .18s ease, border-color .18s ease;
+}
+.a-switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    background: var(--ink-4);
+    border-radius: 1px;
+    transition: transform .18s cubic-bezier(.3, .7, .3, 1), background .18s ease;
+}
+.a-switch:checked { background: var(--seal-wash); border-color: var(--seal); }
+.a-switch:checked::after { transform: translateX(20px); background: var(--seal); }
+.a-switch:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
+.a-switch:disabled { opacity: .45; cursor: not-allowed; }
+
+/* 语言 chip */
+.a-chips {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    min-height: 38px; align-items: center;
+    background: var(--paper-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-sq);
+    padding: 6px 8px;
+}
+.a-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-sq);
+    padding: 3px 5px 3px 8px;
+}
+.a-chip button {
+    appearance: none; border: 0; background: none; cursor: pointer;
+    color: var(--ink-4); font-size: 13px; line-height: 1; padding: 0 1px;
+}
+.a-chip button:hover { color: var(--seal); }
+.a-chips-ph { font-size: 12.5px; color: var(--ink-4); padding-left: 3px; }
+
+/* 网址清单 */
+.a-urls { border: 1px solid var(--rule-strong); border-radius: var(--r-sq); background: var(--paper-2); }
+.a-urls-add { display: flex; gap: 0; border-bottom: 1px solid var(--rule); }
+.a-urls-add .a-input { border: 0; border-radius: 0; background: transparent; }
+.a-urls-add .a-input:focus { box-shadow: none; background: var(--seal-wash); }
+.a-urls-list { list-style: none; margin: 0; padding: 0; }
+.a-urls-list li {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 10px;
+    border-bottom: 1px dashed var(--rule);
+    font-family: var(--font-mono); font-size: 12px; color: var(--ink-2);
+}
+.a-urls-list li:last-child { border-bottom: 0; }
+.a-urls-list li::before { content: ""; width: 4px; height: 4px; background: var(--ink-4); flex: none; }
+.a-urls-list .a-del {
+    margin-left: auto; appearance: none; border: 0; background: none;
+    font-family: var(--font-body); font-size: 11.5px; color: var(--ink-4);
+    cursor: pointer; padding: 2px 4px;
+}
+.a-urls-list .a-del:hover { color: var(--seal); }
+.a-urls-empty { padding: 14px 10px; font-size: 12px; color: var(--ink-4); }
+
+/* 按钮 */
+.a-btn {
+    appearance: none; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    font-family: var(--font-body); font-size: 12.5px; font-weight: 500;
+    padding: 7px 15px;
+    border-radius: var(--r-sq);
+    border: 1px solid var(--rule-strong);
+    background: var(--paper-2); color: var(--ink);
+    transition: all .16s ease;
+    white-space: nowrap;
+}
+.a-btn:hover { border-color: var(--ink-3); background: var(--paper); }
+.a-btn:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
+.a-btn-seal { background: var(--seal); border-color: var(--seal); color: var(--paper-2); }
+.a-btn-seal:hover { background: var(--seal-deep); border-color: var(--seal-deep); }
+.a-btn-quiet { background: transparent; border-color: transparent; color: var(--ink-3); }
+.a-btn-quiet:hover { color: var(--seal); background: var(--seal-wash); border-color: transparent; }
+.a-btn-sm { font-size: 11.5px; padding: 5px 10px; }
+
+/* 分段切换：官方 / 自定义 */
+.a-seg { display: inline-flex; border: 1px solid var(--rule-strong); border-radius: var(--r-sq); overflow: hidden; }
+.a-seg button {
+    appearance: none; border: 0; cursor: pointer;
+    font-family: var(--font-body); font-size: 12.5px;
+    padding: 7px 17px;
+    background: var(--paper-2); color: var(--ink-2);
+    transition: all .16s ease;
+}
+.a-seg button + button { border-left: 1px solid var(--rule-strong); }
+.a-seg button:hover { background: var(--paper-3); }
+.a-seg button[aria-pressed="true"] { background: var(--seal); color: var(--paper-2); }
+.a-seg button:focus-visible { outline: 2px solid var(--seal); outline-offset: -2px; }
+
+/* 数字步进 */
+.a-step { display: inline-flex; align-items: stretch; border: 1px solid var(--rule-strong); border-radius: var(--r-sq); overflow: hidden; background: var(--paper-2); }
+.a-step button {
+    appearance: none; border: 0; cursor: pointer; width: 30px;
+    background: var(--paper-3); color: var(--ink-2);
+    font-size: 14px; line-height: 1;
+}
+.a-step button:hover { background: var(--seal-wash); color: var(--seal); }
+.a-step input {
+    width: 84px; border: 0; background: transparent; text-align: center;
+    font-family: var(--font-mono); font-size: 13px; color: var(--ink);
+    border-left: 1px solid var(--rule); border-right: 1px solid var(--rule);
+}
+.a-step input:focus { outline: none; background: var(--seal-wash); }
+.a-step-unit { display: flex; align-items: center; padding: 0 9px; font-size: 11.5px; color: var(--ink-4); }
+
+/* 密钥输入 */
+.a-key { display: flex; gap: 7px; align-items: stretch; }
+.a-key .a-input { flex: 1; }
+.a-key-eye { flex: none; }
+
+/* 译文样式预览 */
+.a-preview {
+    margin-top: 10px; padding: 14px 16px;
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--seal);
+    border-radius: 0 var(--r-sq) var(--r-sq) 0;
+    font-size: 13px; line-height: 1.85;
+}
+.a-preview-src { color: var(--ink-3); }
+.a-preview-dst {
+    color: var(--ink);
+    text-decoration: underline; text-decoration-style: dashed;
+    text-decoration-color: var(--seal); text-decoration-thickness: 1px;
+    text-underline-offset: 5px;
+}
+.a-preview-tag {
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-4);
+    display: block; margin-bottom: 6px; letter-spacing: .06em;
+}
+
+/* --- 模型：两栏 --- */
+.a-models { display: flex; gap: 26px; align-items: flex-start; }
+.a-model-list { flex: 0 0 262px; border: 1px solid var(--rule); border-radius: var(--r-sq); background: var(--paper-2); overflow: hidden; }
+.a-model-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; cursor: pointer;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+    transition: background .16s ease;
+}
+.a-model-item:last-child { border-bottom: 0; }
+.a-model-item:hover { background: var(--paper); }
+.a-model-item[aria-current="true"] { background: var(--seal-wash); }
+.a-model-item[aria-current="true"]::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--seal);
+}
+.a-model-grip { color: var(--ink-4); font-size: 11px; letter-spacing: -1px; cursor: grab; flex: none; user-select: none; }
+.a-model-dot { width: 6px; height: 6px; flex: none; background: var(--seal); }
+.a-model-dot.off { background: transparent; box-shadow: inset 0 0 0 1px var(--ink-4); }
+.a-model-body { flex: 1; min-width: 0; }
+.a-model-name { display: block; font-size: 13px; font-weight: 600; color: var(--ink); }
+.a-model-sub {
+    display: block;
+    font-family: var(--font-mono); font-size: 11px; color: var(--ink-3);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;
+}
+/* 列表内的开关缩一号：不与「当前项」的朱砂指示争夺注意力 */
+.a-model-item .a-switch { width: 34px; height: 18px; }
+.a-model-item .a-switch::after { width: 12px; height: 12px; }
+.a-model-item .a-switch:checked::after { transform: translateX(16px); }
+.a-model-cfg { flex: 1; min-width: 0; }
+.a-model-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.a-model-head h4 {
+    font-family: var(--font-display); font-size: 21px; font-weight: 600;
+    letter-spacing: .05em; margin: 0 0 5px;
+}
+.a-model-head p { margin: 0; font-size: 12.5px; color: var(--ink-3); line-height: 1.6; max-width: 46ch; }
+.a-model-head-acts { margin-left: auto; display: flex; gap: 7px; flex: none; }
+
+/* 模型测试表 */
+.a-test { border: 1px solid var(--rule); border-radius: var(--r-sq); overflow: hidden; }
+.a-test-head {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 13px; background: var(--paper-3);
+    border-bottom: 1px solid var(--rule);
+}
+.a-test-head b { font-family: var(--font-display); font-size: 14px; font-weight: 600; letter-spacing: .06em; }
+.a-test-head span { font-size: 11.5px; color: var(--ink-3); }
+.a-test-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 9px 13px; border-bottom: 1px dashed var(--rule);
+    background: var(--paper-2);
+}
+.a-test-row:last-child { border-bottom: 0; }
+.a-test-name { font-family: var(--font-mono); font-size: 12px; color: var(--ink); flex: 1; }
+.a-test-ms { font-family: var(--font-mono); font-size: 11px; color: var(--ink-4); }
+.a-tag {
+    font-size: 10.5px; letter-spacing: .04em;
+    padding: 2px 7px; border-radius: var(--r-sq); border: 1px solid;
+}
+.a-tag-ok { color: var(--jade); border-color: var(--jade); background: var(--jade-wash); }
+.a-tag-wait { color: var(--amber); border-color: var(--amber); background: rgba(169, 122, 31, .08); }
+.a-tag-idle { color: var(--ink-4); border-color: var(--rule-strong); background: transparent; }
+
+/* 信息条目 */
+.a-meta-row { display: flex; align-items: baseline; gap: 14px; padding: 11px 0; border-top: 1px solid var(--rule); }
+.a-meta-row:first-of-type { border-top: 0; }
+.a-meta-k { flex: 0 0 100px; font-size: 12.5px; color: var(--ink-3); }
+.a-meta-v { font-size: 13px; color: var(--ink); }
+.a-meta-v.a-mono { color: var(--seal); }
+
+/* ============================================================
+   场景二 · 宿主网页 + 朱砂印
+   ============================================================ */
+.a-host { position: relative; height: 700px; overflow: hidden; background: #fff; }
+.a-host-page { height: 100%; overflow-y: auto; padding: 40px 56px 80px; }
+.a-host-inner { max-width: 620px; font-family: Georgia, "Times New Roman", serif; color: #23201d; }
+.a-host-kicker { font-family: var(--font-body); font-size: 11px; letter-spacing: .14em; color: #8a8378; text-transform: uppercase; }
+.a-host-inner h2 { font-size: 27px; line-height: 1.28; margin: 8px 0 18px; font-weight: 600; }
+.a-host-inner p { font-size: 15.5px; line-height: 1.75; margin: 0 0 17px; }
+.a-host-inner a { color: #1b5e8f; }
+/* 下划线作用于文本本身：每一行都有线，且只在文字下方。
+   若用块级 border-bottom，只有末行有线且会横贯整个容器宽度，看起来像段落分隔线。 */
+.a-trans {
+    display: block; margin-top: 7px;
+    font-family: var(--font-body); font-size: 15px; line-height: 1.9;
+    color: #1a1714;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: var(--seal);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 5px;
+}
+.a-trans a { text-decoration-color: var(--seal); }
+.a-host-page[data-translated="false"] .a-trans { display: none; }
+
+/* 印章本体 */
+.a-dock { position: absolute; right: 34px; top: 210px; z-index: 20; }
+.a-stamp {
+    position: relative;
+    width: 54px; height: 54px;
+    border-radius: 8px;
+    background: var(--seal);
+    color: #fdf6ec;
+    font-family: var(--font-display);
+    font-size: 25px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    border: 0; padding: 0;
+    opacity: .84;
+    box-shadow: inset 0 0 0 1.5px rgba(253, 246, 236, .6),
+                0 3px 10px rgba(142, 42, 32, .26);
+    transition: opacity .2s ease, transform .18s cubic-bezier(.3,.7,.3,1), box-shadow .2s ease;
+    user-select: none;
+}
+.a-stamp:hover { opacity: 1; transform: scale(1.05); }
+.a-stamp:active { transform: scale(.96); }
+.a-stamp:focus-visible { outline: 2px solid var(--seal); outline-offset: 4px; }
+
+/* 翻译中：外沿虚线缓转（研墨） */
+.a-stamp-ring {
+    position: absolute; inset: -7px;
+    border: 1.5px dashed var(--seal);
+    border-radius: 12px;
+    opacity: 0;
+    animation: a-grind 5s linear infinite;
+    pointer-events: none;
+}
+.a-dock[data-state="loading"] .a-stamp-ring { opacity: .75; }
+.a-dock[data-state="loading"] .a-stamp { opacity: 1; }
+@keyframes a-grind { to { transform: rotate(360deg); } }
+
+/* 落印：墨渍一次性扩散 */
+.a-stamp-wash {
+    position: absolute; inset: 0;
+    border-radius: 8px;
+    border: 2px solid var(--seal);
+    opacity: 0; pointer-events: none;
+}
+.a-dock[data-state="done"] .a-stamp-wash { animation: a-wash .62s ease-out 1; }
+@keyframes a-wash {
+    from { opacity: .42; transform: scale(1); }
+    to   { opacity: 0;   transform: scale(1.85); }
+}
+.a-dock[data-state="done"] .a-stamp { opacity: 1; transform: scale(.97); }
+
+/* 已落印标记 */
+.a-stamp-done {
+    position: absolute; right: -6px; bottom: -6px;
+    width: 20px; height: 20px;
+    background: #fdf6ec;
+    border: 1px solid var(--seal);
+    border-radius: 3px;
+    color: var(--seal);
+    font-family: var(--font-display); font-size: 12px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(.5);
+    transition: opacity .22s ease .12s, transform .22s cubic-bezier(.3,1.5,.5,1) .12s;
+}
+.a-dock[data-state="done"] .a-stamp-done { opacity: 1; transform: scale(1); }
+
+/* 设置入口 */
+.a-cog {
+    position: absolute; left: 50%; bottom: -40px; transform: translateX(-50%);
+    width: 28px; height: 28px;
+    background: #fdf6ec;
+    border: 1px solid var(--rule-strong);
+    border-radius: 3px;
+    color: var(--ink-3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; padding: 0;
+    opacity: 0; visibility: hidden;
+    transition: all .2s ease;
+}
+.a-dock[data-open="true"] .a-cog,
+.a-dock:hover .a-cog { opacity: 1; visibility: visible; }
+.a-cog:hover { border-color: var(--seal); color: var(--seal); }
+.a-cog:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; opacity: 1; visibility: visible; }
+.a-cog svg { width: 15px; height: 15px; }
+
+/* 面板 */
+.a-panel {
+    position: absolute; right: 72px; top: 0;
+    width: 320px;
+    background: var(--paper-2);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--r-box);
+    box-shadow: 0 10px 34px rgba(26, 23, 20, .16);
+    padding: 16px;
+    opacity: 0; visibility: hidden; transform: scale(.97);
+    transform-origin: right top;
+    transition: all .2s ease;
+}
+.a-dock[data-open="true"] .a-panel { opacity: 1; visibility: visible; transform: scale(1); }
+.a-panel-head { display: flex; align-items: center; gap: 11px; padding-bottom: 12px; border-bottom: 1px solid var(--rule); }
+.a-panel-seal {
+    width: 34px; height: 34px; border-radius: 5px; flex: none;
+    background: var(--seal); color: var(--paper-2);
+    font-family: var(--font-display); font-size: 18px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 0 0 1.2px rgba(251, 248, 240, .55);
+}
+.a-panel-head h5 { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: .06em; margin: 0; }
+.a-panel-head span { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-4); }
+.a-panel-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--rule); }
+.a-panel-row:last-of-type { border-bottom: 0; }
+.a-panel-row label { font-size: 13px; color: var(--ink); flex: 1; display: flex; align-items: center; gap: 7px; }
+.a-help {
+    width: 15px; height: 15px; flex: none;
+    border: 1px solid var(--ink-4); border-radius: 50%;
+    color: var(--ink-4); font-size: 10px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: help; position: relative;
+}
+.a-help:hover { border-color: var(--seal); color: var(--seal); }
+.a-help-tip {
+    position: absolute; bottom: 22px; left: -70px; width: 208px;
+    background: var(--ink); color: var(--paper);
+    font-size: 11.5px; line-height: 1.55; font-weight: 400;
+    padding: 8px 10px; border-radius: var(--r-sq);
+    opacity: 0; visibility: hidden; transition: opacity .16s ease;
+    z-index: 5; pointer-events: none;
+}
+.a-help:hover .a-help-tip { opacity: 1; visibility: visible; }
+.a-panel-sel { width: 132px; flex: none; }
+.a-lang {
+    display: flex; align-items: flex-end; gap: 10px;
+    margin-top: 12px; padding: 11px;
+    background: var(--seal-wash);
+    border: 1px solid var(--rule);
+    border-radius: var(--r-sq);
+}
+.a-lang-box { flex: 1; min-width: 0; }
+.a-lang-box label { display: block; font-size: 11px; color: var(--ink-3); margin-bottom: 5px; }
+.a-lang-box.r label { text-align: right; }
+.a-lang-arrow { padding-bottom: 8px; color: var(--ink-4); flex: none; font-family: var(--font-display); }
+.a-panel-foot { margin-top: 14px; }
+.a-panel-foot .a-btn { width: 100%; }
+
+/* 状态说明条 */
+.a-states { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; background: var(--paper-2); border-top: 1px solid var(--rule); }
+.a-state-btn {
+    appearance: none; cursor: pointer;
+    font-family: var(--font-body); font-size: 12px;
+    padding: 5px 12px; border-radius: var(--r-sq);
+    border: 1px solid var(--rule-strong); background: var(--paper); color: var(--ink-2);
+}
+.a-state-btn[aria-pressed="true"] { background: var(--seal); border-color: var(--seal); color: var(--paper-2); }
+.a-state-btn:focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
+.a-states-hint { margin-left: auto; align-self: center; font-size: 11.5px; color: var(--ink-4); }
+
+/* ---------- 页脚说明 ---------- */
+.rv-foot { max-width: 1320px; margin: 0 auto; padding: 30px 20px 56px; font-size: 12.5px; color: var(--ink-3); line-height: 1.8; }
+.rv-foot h6 { font-family: var(--font-display); font-size: 15px; color: var(--ink); margin: 0 0 8px; font-weight: 600; letter-spacing: .06em; }
+.rv-foot code { font-family: var(--font-mono); font-size: 11.5px; background: var(--paper-3); padding: 1px 5px; border-radius: var(--r-sq); }
+.rv-foot ul { margin: 6px 0 16px; padding-left: 20px; }
+.rv-foot li { margin-bottom: 5px; }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 900px) {
+    .a-app { flex-direction: column; height: auto; }
+    .a-spine { flex: none; width: 100%; flex-direction: row; justify-content: flex-start; padding: 10px 14px; gap: 10px; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--rule); }
+    .a-spine-seal { margin-bottom: 0; width: 34px; height: 34px; font-size: 18px; }
+    .a-nav { flex-direction: row; width: auto; gap: 4px; }
+    .a-nav-item { writing-mode: horizontal-tb; padding: 8px 12px; font-size: 14px; letter-spacing: .1em; }
+    .a-nav-item[aria-selected="true"]::after { right: 8px; left: 8px; top: auto; bottom: 2px; width: auto; height: 2px; }
+    .a-main { padding: 24px 20px 48px; height: auto; }
+    .a-row { flex-direction: column; gap: 9px; }
+    .a-term { flex: none; }
+    .a-models { flex-direction: column; }
+    .a-model-list { flex: none; width: 100%; }
+    .a-panel { right: auto; left: -260px; }
+}
+@media (max-width: 560px) {
+    .a-masthead { flex-wrap: wrap; }
+    .a-masthead .a-mast-page { margin-left: 0; }
+    .a-host-page { padding: 24px 20px 70px; }
+    .a-dock { right: 14px; top: 130px; }
+    .a-panel { left: auto; right: 0; top: 68px; width: min(320px, calc(100vw - 60px)); }
+    .a-model-head { flex-direction: column; }
+    .a-model-head-acts { margin-left: 0; }
+    .rv-scene { padding: 18px 12px 6px; }
+}
+
+/* ---------- 动效降级 ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+    .a-dock[data-state="loading"] .a-stamp-ring { opacity: .75; animation: none; }
+    .a-dock[data-state="done"] .a-stamp-wash { animation: none; opacity: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="rv-bar">
+    <strong>方向 A · 宣纸朱印</strong>
+    <span class="rv-note">翻译是「落定文本」—— 设置页是典籍的目录与注解，悬浮球是一枚朱砂印，开启翻译＝盖章</span>
+    <span class="rv-spacer"></span>
+    <a href="index.html">对比入口</a>
+    <a href="theme-a-inkseal.html" class="rv-cur">A 宣纸朱印</a>
+    <a href="theme-b-terminal.html">B 夜航终端</a>
+    <a href="theme-c-brutal.html">C 硬边橙</a>
+</div>
+
+<!-- ============ 场景一 · 设置页 ============ -->
+<div class="rv-scene">
+    <div class="rv-scene-label"><b>场景一 · 设置页</b><span>四个分类可真实点击切换，内容与现有代码一致</span></div>
+    <div class="rv-frame">
+    <div class="a-app">
+        <aside class="a-spine">
+            <div class="a-spine-seal" aria-hidden="true">譯</div>
+            <div class="a-nav" role="tablist" aria-label="设置分类">
+                <button class="a-nav-item" role="tab" aria-selected="true"  data-tab="basic">基本配置</button>
+                <button class="a-nav-item" role="tab" aria-selected="false" data-tab="service">翻译服务</button>
+                <button class="a-nav-item" role="tab" aria-selected="false" data-tab="image">图片翻译</button>
+                <button class="a-nav-item" role="tab" aria-selected="false" data-tab="about">关于</button>
+            </div>
+        </aside>
+
+        <main class="a-main">
+        <div class="a-sheet">
+
+            <div class="a-masthead">
+                <h1>譯趣貓</h1>
+                <span class="a-mast-meta">mewCat · v0.0.1</span>
+                <span class="a-mast-page" data-mast>英语 → 简体中文 · DeepSeek</span>
+            </div>
+            <div class="a-seam"></div>
+
+            <!-- ===== 基本配置 ===== -->
+            <div data-pane="basic">
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">翻译语言</h3>
+                        <span class="a-sec-rule"></span>
+                    </div>
+                    <div class="a-row">
+                        <div class="a-term">
+                            <div class="a-term-label">总是翻译</div>
+                            <div class="a-term-note">检测到这些语言时将自动翻译</div>
+                        </div>
+                        <div class="a-field">
+                            <div class="a-chips">
+                                <span class="a-chip">英语 <button aria-label="移除 英语">×</button></span>
+                                <span class="a-chip">日语 <button aria-label="移除 日语">×</button></span>
+                                <span class="a-chip">德语 <button aria-label="移除 德语">×</button></span>
+                                <span class="a-chips-ph">＋ 添加语言</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="a-row">
+                        <div class="a-term">
+                            <div class="a-term-label">永不翻译</div>
+                            <div class="a-term-note">选中的语言将不会被自动翻译</div>
+                        </div>
+                        <div class="a-field">
+                            <div class="a-chips">
+                                <span class="a-chip">简体中文 <button aria-label="移除 简体中文">×</button></span>
+                                <span class="a-chips-ph">＋ 添加语言</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">翻译网址</h3>
+                        <span class="a-sec-rule"></span>
+                    </div>
+                    <div class="a-row">
+                        <div class="a-term">
+                            <div class="a-term-label">总是翻译</div>
+                            <div class="a-term-note">在这些网址上将自动启用翻译</div>
+                        </div>
+                        <div class="a-field">
+                            <div class="a-urls">
+                                <div class="a-urls-add">
+                                    <input class="a-input a-mono" placeholder="输入网址，如：example.com" />
+                                    <button class="a-btn a-btn-quiet" style="border-radius:0;border-left:1px solid var(--rule)">添加</button>
+                                </div>
+                                <ul class="a-urls-list">
+                                    <li>news.ycombinator.com <button class="a-del">移除</button></li>
+                                    <li>arxiv.org <button class="a-del">移除</button></li>
+                                    <li>developer.mozilla.org <button class="a-del">移除</button></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="a-row">
+                        <div class="a-term">
+                            <div class="a-term-label">永不翻译</div>
+                            <div class="a-term-note">在这些网址上将永不启用翻译</div>
+                        </div>
+                        <div class="a-field">
+                            <div class="a-urls">
+                                <div class="a-urls-add">
+                                    <input class="a-input a-mono" placeholder="输入网址，如：example.com" />
+                                    <button class="a-btn a-btn-quiet" style="border-radius:0;border-left:1px solid var(--rule)">添加</button>
+                                </div>
+                                <div class="a-urls-empty">暂无配置</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">显示</h3>
+                        <span class="a-sec-rule"></span>
+                    </div>
+                    <div class="a-row">
+                        <div class="a-term">
+                            <div class="a-term-label">译文显示样式</div>
+                            <div class="a-term-note">选择翻译文本的显示样式</div>
+                        </div>
+                        <div class="a-field">
+                            <select class="a-select" style="max-width:240px">
+                                <option>下划线</option>
+                                <option>高亮显示</option>
+                                <option>背景色</option>
+                                <option>边框</option>
+                                <option>阴影</option>
+                                <option>无样式</option>
+                            </select>
+                            <div class="a-preview">
+                                <span class="a-preview-tag">实时预览</span>
+                                <span class="a-preview-src">The quick brown fox jumps over the lazy dog.</span><br />
+                                <span class="a-preview-dst">敏捷的棕色狐狸跃过那只懒狗。</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">自动翻译延迟</div>
+                            <div class="a-term-note">网页自动翻译时等待网页加载多少毫秒</div>
+                        </div>
+                        <div class="a-field">
+                            <div class="a-step">
+                                <button aria-label="减少">−</button>
+                                <input value="700" aria-label="自动翻译延迟" />
+                                <button aria-label="增加">＋</button>
+                                <span class="a-step-unit">毫秒 · 100–3000</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== 翻译服务 ===== -->
+            <div data-pane="service" hidden>
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">当前模型</h3>
+                        <span class="a-sec-rule"></span>
+                    </div>
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">用于翻译的模型</div>
+                            <div class="a-term-note">仅列出已启用的模型</div>
+                        </div>
+                        <div class="a-field">
+                            <select class="a-select" style="max-width:280px">
+                                <option>DeepSeek</option>
+                                <option>OpenAI</option>
+                                <option>月之暗面 Moonshot</option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">模型清单</h3>
+                        <span class="a-sec-rule"></span>
+                        <div class="a-sec-extra"><button class="a-btn a-btn-sm">＋ 添加模型</button></div>
+                    </div>
+
+                    <div class="a-models">
+                        <div class="a-model-list" role="listbox" aria-label="模型清单">
+                            <div class="a-model-item" role="option" aria-current="true" data-model>
+                                <span class="a-model-grip" aria-hidden="true">⣿</span>
+                                <span class="a-model-dot"></span>
+                                <span class="a-model-body">
+                                    <span class="a-model-name">DeepSeek</span>
+                                    <span class="a-model-sub">deepseek-chat</span>
+                                </span>
+                                <input class="a-switch" type="checkbox" checked aria-label="启用 DeepSeek" />
+                            </div>
+                            <div class="a-model-item" role="option" aria-current="false" data-model>
+                                <span class="a-model-grip" aria-hidden="true">⣿</span>
+                                <span class="a-model-dot"></span>
+                                <span class="a-model-body">
+                                    <span class="a-model-name">OpenAI</span>
+                                    <span class="a-model-sub">gpt-4o-mini</span>
+                                </span>
+                                <input class="a-switch" type="checkbox" checked aria-label="启用 OpenAI" />
+                            </div>
+                            <div class="a-model-item" role="option" aria-current="false" data-model>
+                                <span class="a-model-grip" aria-hidden="true">⣿</span>
+                                <span class="a-model-dot off"></span>
+                                <span class="a-model-body">
+                                    <span class="a-model-name">月之暗面 Moonshot</span>
+                                    <span class="a-model-sub">kimi-k2-thinking</span>
+                                </span>
+                                <input class="a-switch" type="checkbox" aria-label="启用 Moonshot" />
+                            </div>
+                            <div class="a-model-item" role="option" aria-current="false" data-model>
+                                <span class="a-model-grip" aria-hidden="true">⣿</span>
+                                <span class="a-model-dot off"></span>
+                                <span class="a-model-body">
+                                    <span class="a-model-name">火山引擎</span>
+                                    <span class="a-model-sub">doubao-1.5-lite-32k</span>
+                                </span>
+                                <input class="a-switch" type="checkbox" aria-label="启用 火山引擎" />
+                            </div>
+                        </div>
+
+                        <div class="a-model-cfg">
+                            <div class="a-model-head">
+                                <div>
+                                    <h4>DeepSeek</h4>
+                                    <p>深度求索，性价比高，中文能力强。推理切换通过模型名实现（deepseek-reasoner / deepseek-chat）。</p>
+                                </div>
+                                <div class="a-model-head-acts">
+                                    <button class="a-btn a-btn-seal a-btn-sm">测试</button>
+                                    <button class="a-btn a-btn-sm">删除模型</button>
+                                </div>
+                            </div>
+
+                            <div class="a-row">
+                                <div class="a-term">
+                                    <div class="a-term-label">模型类型</div>
+                                    <div class="a-term-note">官方使用平台默认请求地址；自定义可填代理或私有部署地址</div>
+                                </div>
+                                <div class="a-field">
+                                    <div class="a-seg" data-seg>
+                                        <button aria-pressed="true">官方模型</button>
+                                        <button aria-pressed="false">自定义</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="a-row">
+                                <div class="a-term">
+                                    <div class="a-term-label">请求地址</div>
+                                    <div class="a-term-note">OpenAI 兼容端点</div>
+                                </div>
+                                <div class="a-field">
+                                    <input class="a-input a-mono" data-baseurl disabled value="https://api.deepseek.com/v1" />
+                                    <div class="a-field-tail" data-baseurl-tail>已选择官方模型，使用平台默认地址</div>
+                                </div>
+                            </div>
+
+                            <div class="a-row">
+                                <div class="a-term">
+                                    <div class="a-term-label">模型名称<span class="a-req">*</span></div>
+                                    <div class="a-term-note">可填写平台支持的任意模型字符串</div>
+                                </div>
+                                <div class="a-field">
+                                    <input class="a-input a-mono" value="deepseek-chat" />
+                                </div>
+                            </div>
+
+                            <div class="a-row">
+                                <div class="a-term">
+                                    <div class="a-term-label">API Key<span class="a-req">*</span></div>
+                                    <div class="a-term-note">保存在本地，不会上传</div>
+                                </div>
+                                <div class="a-field">
+                                    <div class="a-key">
+                                        <input class="a-input a-mono" data-key type="password" value="sk-a1b2c3d4e5f6g7h8i9j0" />
+                                        <button class="a-btn a-btn-sm a-key-eye" data-eye>显示</button>
+                                        <button class="a-btn a-btn-sm">检测连接</button>
+                                    </div>
+                                    <div class="a-field-tail">前往 <a href="#">platform.deepseek.com</a> 创建密钥</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">配置</h3>
+                        <span class="a-sec-rule"></span>
+                    </div>
+
+                    <div class="a-test">
+                        <div class="a-test-head">
+                            <b>模型测试</b>
+                            <span>测试所有可用模型的翻译能力 · Hello, world! → 简体中文</span>
+                            <span style="margin-left:auto"><button class="a-btn a-btn-sm">全部测试</button></span>
+                        </div>
+                        <div class="a-test-row">
+                            <span class="a-model-dot"></span>
+                            <span class="a-test-name">deepseek-chat</span>
+                            <span class="a-test-ms">842 ms</span>
+                            <span class="a-tag a-tag-ok">通过</span>
+                        </div>
+                        <div class="a-test-row">
+                            <span class="a-model-dot"></span>
+                            <span class="a-test-name">gpt-4o-mini</span>
+                            <span class="a-test-ms">—</span>
+                            <span class="a-tag a-tag-wait">待配置</span>
+                        </div>
+                        <div class="a-test-row">
+                            <span class="a-model-dot off"></span>
+                            <span class="a-test-name">kimi-k2-thinking</span>
+                            <span class="a-test-ms">—</span>
+                            <span class="a-tag a-tag-idle">未启用</span>
+                        </div>
+                    </div>
+
+                    <div style="height:26px"></div>
+
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">启用思考能力</div>
+                            <div class="a-term-note">为支持思考的模型启用深度推理，会增加响应时间</div>
+                        </div>
+                        <div class="a-field"><input class="a-switch" type="checkbox" aria-label="启用思考能力" /></div>
+                    </div>
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">每秒最大请求数</div>
+                            <div class="a-term-note">限制 AI 模型的请求频率</div>
+                        </div>
+                        <div class="a-field">
+                            <div class="a-step">
+                                <button aria-label="减少">−</button>
+                                <input value="3" aria-label="每秒最大请求数" />
+                                <button aria-label="增加">＋</button>
+                                <span class="a-step-unit">1–100</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">每次请求最大文本长度</div>
+                            <div class="a-term-note">单次请求的文本字符数限制</div>
+                        </div>
+                        <div class="a-field">
+                            <div class="a-step">
+                                <button aria-label="减少">−</button>
+                                <input value="1024" aria-label="每次请求最大文本长度" />
+                                <button aria-label="增加">＋</button>
+                                <span class="a-step-unit">100–10000</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="a-row">
+                        <div class="a-term">
+                            <div class="a-term-label">AI 专家角色</div>
+                            <div class="a-term-note">不同角色会影响翻译风格</div>
+                        </div>
+                        <div class="a-field">
+                            <select class="a-select" style="max-width:280px">
+                                <option>默认</option>
+                                <option>技术文档专家</option>
+                                <option>学术论文译者</option>
+                                <option>新闻编辑</option>
+                            </select>
+                            <div class="a-field-tail">你是一位专业的翻译专家，请准确、自然地翻译文本。</div>
+                        </div>
+                    </div>
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">启用 AI 智能上下文</div>
+                            <div class="a-term-note">结合网页上下文提升翻译效果，会增加翻译时长</div>
+                        </div>
+                        <div class="a-field"><input class="a-switch" type="checkbox" checked aria-label="启用 AI 智能上下文" /></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== 图片 ===== -->
+            <div data-pane="image" hidden>
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">图片翻译</h3>
+                        <span class="a-sec-rule"></span>
+                    </div>
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">图片上显示快捷翻译按钮</div>
+                            <div class="a-term-note">鼠标悬浮在图片上时显示翻译按钮，点击可翻译图片</div>
+                        </div>
+                        <div class="a-field"><input class="a-switch" type="checkbox" aria-label="图片上显示快捷翻译按钮" /></div>
+                    </div>
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">图片翻译服务商</div>
+                            <div class="a-term-note">当前使用系统默认翻译服务</div>
+                        </div>
+                        <div class="a-field">
+                            <select class="a-select" style="max-width:240px" disabled><option>系统</option></select>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ===== 关于 ===== -->
+            <div data-pane="about" hidden>
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">扩展设置</h3>
+                        <span class="a-sec-rule"></span>
+                    </div>
+                    <div class="a-row a-row-tight">
+                        <div class="a-term">
+                            <div class="a-term-label">启用本地缓存</div>
+                            <div class="a-term-note">缓存翻译结果以提高性能</div>
+                        </div>
+                        <div class="a-field"><input class="a-switch" type="checkbox" checked aria-label="启用本地缓存" /></div>
+                    </div>
+                </section>
+                <section class="a-sec">
+                    <div class="a-sec-head">
+                        <span class="a-sec-mark"></span>
+                        <h3 class="a-sec-title">扩展信息</h3>
+                        <span class="a-sec-rule"></span>
+                    </div>
+                    <div class="a-meta-row"><span class="a-meta-k">版本号</span><span class="a-meta-v a-mono">v0.0.1</span></div>
+                    <div class="a-meta-row"><span class="a-meta-k">作者</span><span class="a-meta-v">kidrue</span></div>
+                    <div class="a-meta-row"><span class="a-meta-k">描述</span><span class="a-meta-v">智能网页翻译助手，支持多种翻译引擎和划词翻译</span></div>
+                </section>
+            </div>
+
+        </div>
+        </main>
+    </div>
+    </div>
+</div>
+
+<!-- ============ 场景二 · 悬浮球 ============ -->
+<div class="rv-scene">
+    <div class="rv-scene-label"><b>场景二 · 页面内朱砂印</b><span>点击印章可循环状态，也可用下方按钮直接切换</span></div>
+    <div class="rv-frame">
+        <div class="a-host">
+            <div class="a-host-page" data-translated="false">
+                <div class="a-host-inner">
+                    <div class="a-host-kicker">Engineering · Nov 2025</div>
+                    <h2>Why context windows are not the bottleneck anymore
+                        <span class="a-trans">为什么上下文窗口不再是瓶颈</span>
+                    </h2>
+                    <p>For the past two years the industry has treated context length as the headline number. Every release
+                        announcement led with it. But the practical limit was never really the window size — it was retrieval
+                        quality and the cost curve of attention.
+                        <span class="a-trans">过去两年，业界一直把上下文长度当作头条数字，每次发布都以它领衔。但真正的实际限制从来不是窗口大小，而是检索质量与注意力机制的成本曲线。</span>
+                    </p>
+                    <p>Once you can afford to keep the whole document resident, the interesting question shifts. It becomes:
+                        what should the model attend to, and when? See the <a href="#">accompanying benchmark</a> for the
+                        full breakdown across seven workloads.
+                        <span class="a-trans">一旦你负担得起把整份文档常驻内存，有趣的问题就转移了 —— 变成了：模型应该关注什么，以及何时关注？完整的七类工作负载拆解见<a href="#">配套基准测试</a>。</span>
+                    </p>
+                    <p>The counterintuitive result is that smaller, well-scoped prompts still outperform full-document stuffing
+                        on extraction tasks, while the reverse holds for summarisation. Neither result is explained by window
+                        size alone.
+                        <span class="a-trans">反直觉的结果是：在抽取类任务上，更小、界定良好的提示仍然优于整篇塞入；而在摘要任务上结论相反。这两个结果都无法单靠窗口大小来解释。</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="a-dock" data-state="idle" data-open="false">
+                <button class="a-stamp" data-stamp aria-label="开启翻译">
+                    <span class="a-stamp-ring" aria-hidden="true"></span>
+                    <span class="a-stamp-wash" aria-hidden="true"></span>
+                    譯
+                    <span class="a-stamp-done" aria-hidden="true">已</span>
+                </button>
+                <button class="a-cog" data-cog aria-label="打开设置面板">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                </button>
+
+                <div class="a-panel" role="dialog" aria-label="快捷设置">
+                    <div class="a-panel-head">
+                        <div class="a-panel-seal" aria-hidden="true">譯</div>
+                        <div>
+                            <h5>譯趣貓</h5>
+                            <span>news.ycombinator.com</span>
+                        </div>
+                    </div>
+                    <div class="a-panel-row">
+                        <label for="a-p1">启用划词翻译</label>
+                        <input class="a-switch" id="a-p1" type="checkbox" checked />
+                    </div>
+                    <div class="a-panel-row">
+                        <label for="a-p2">AI 智能上下文
+                            <span class="a-help" tabindex="0">?
+                                <span class="a-help-tip">结合网页上下文提升翻译效果。需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长。</span>
+                            </span>
+                        </label>
+                        <input class="a-switch" id="a-p2" type="checkbox" />
+                    </div>
+                    <div class="a-panel-row">
+                        <label for="a-p3">总是翻译此网站</label>
+                        <input class="a-switch" id="a-p3" type="checkbox" checked />
+                    </div>
+                    <div class="a-panel-row">
+                        <label for="a-p4">翻译模型</label>
+                        <span class="a-panel-sel">
+                            <select class="a-select" id="a-p4" style="font-size:12px;padding:6px 9px">
+                                <option>DeepSeek</option>
+                                <option>OpenAI</option>
+                            </select>
+                        </span>
+                    </div>
+                    <div class="a-lang">
+                        <div class="a-lang-box">
+                            <label for="a-p5">网页语言</label>
+                            <select class="a-select" id="a-p5" disabled style="font-size:12px;padding:6px 9px"><option>英语</option></select>
+                        </div>
+                        <span class="a-lang-arrow" aria-hidden="true">→</span>
+                        <div class="a-lang-box r">
+                            <label for="a-p6">目标语言</label>
+                            <select class="a-select" id="a-p6" style="font-size:12px;padding:6px 9px"><option>简体中文</option></select>
+                        </div>
+                    </div>
+                    <div class="a-panel-foot">
+                        <button class="a-btn">高级设置</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="a-states">
+            <button class="a-state-btn" data-st="idle"    aria-pressed="true">静止</button>
+            <button class="a-state-btn" data-st="loading" aria-pressed="false">翻译中 · 研墨</button>
+            <button class="a-state-btn" data-st="done"    aria-pressed="false">已翻译 · 落印</button>
+            <button class="a-state-btn" data-st="panel"   aria-pressed="false">展开面板</button>
+            <span class="a-states-hint">静止态刻意压到 84% 不透明度，避免干扰阅读</span>
+        </div>
+    </div>
+</div>
+
+<div class="rv-foot">
+    <h6>字体与落地说明</h6>
+    <ul>
+        <li>标题（宋体）：<code>"Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", SimSun, serif</code>。<b>不打包字体文件</b> —— 依赖系统。macOS 上是 Songti SC，Windows 上退到 SimSun，观感有差异；因此宋体只用在 ≥19px 的标题，小字号一律走无衬线，避开 SimSun 小字的点阵感。</li>
+        <li>正文：<code>"PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif</code>。</li>
+        <li>机器值（模型名、URL、版本号、耗时）：<code>"Cascadia Mono", "SF Mono", Consolas, monospace</code>。这一层的区分是刻意的 —— 人写的话用无衬线，机器给的值用等宽。</li>
+        <li>圆角：主体 2px（近方），容器 4px。整套语言里<b>只有印章和帮助图标是圆的</b>，状态点、开关滑块全部是方的。</li>
+        <li>朱砂 <code>#b23a2e</code> 是唯一强调色，用在：当前项指示、分节标记、印章、focus 环、必填星号、译文下划线。石青 <code>#3e6b63</code> 只用于「通过」这类成功态。</li>
+        <li><b>繁简策略：界面文字一律简体，只有印章刻字「譯」和品牌字「譯趣貓」用繁体。</b>初稿里我把分节标题也做成了繁体想加强典籍感，实测下来那是廉价取巧 —— 简繁混排在中文产品里会被当成 bug，而不是风格。印章用繁体则有依据：篆刻本来就用繁体字。</li>
+        <li>右上角是常驻状态摘要（<code>英语 → 简体中文 · DeepSeek</code>），不随分类切换。当前在哪一页已经由书脊上的朱砂竖线指示了，这个位置应该承载别的信息而不是重复它。</li>
+    </ul>
+    <h6>可访问性与动效</h6>
+    <ul>
+        <li>所有可聚焦元素有 2px 朱砂 focus 环；印章 focus 时设置入口强制可见（键盘用户不依赖 hover）。</li>
+        <li><code>prefers-reduced-motion</code> 下：研墨虚线停转但保留（仍能表达「进行中」），落印墨渍不扩散，所有 transition 归零。</li>
+        <li>朱砂 <code>#b23a2e</code> 对纸底 <code>#f2ede1</code> 对比度约 5.6:1，正文墨色约 13:1，均过 AA。</li>
+    </ul>
+</div>
+
+<script>
+(function () {
+    /* tab 切换。masthead 右上是常驻状态摘要（当前语种链路 + 模型），
+       不随 tab 变化 —— 当前在哪一页已由书脊上的朱砂竖线指示，不必重复。 */
+    document.querySelectorAll('.a-nav-item').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.dataset.tab;
+            document.querySelectorAll('.a-nav-item').forEach(function (b) {
+                b.setAttribute('aria-selected', String(b === btn));
+            });
+            document.querySelectorAll('[data-pane]').forEach(function (p) {
+                p.hidden = p.dataset.pane !== id;
+            });
+            document.querySelector('.a-main').scrollTop = 0;
+        });
+    });
+
+    /* 模型清单选中 */
+    document.querySelectorAll('[data-model]').forEach(function (item) {
+        item.addEventListener('click', function (e) {
+            if (e.target.classList.contains('a-switch')) return;
+            document.querySelectorAll('[data-model]').forEach(function (i) {
+                i.setAttribute('aria-current', String(i === item));
+            });
+        });
+    });
+
+    /* 官方 / 自定义 */
+    var seg = document.querySelector('[data-seg]');
+    if (seg) {
+        var url = document.querySelector('[data-baseurl]');
+        var tail = document.querySelector('[data-baseurl-tail]');
+        seg.querySelectorAll('button').forEach(function (b, i) {
+            b.addEventListener('click', function () {
+                seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+                var official = i === 0;
+                url.disabled = official;
+                if (official) {
+                    url.value = 'https://api.deepseek.com/v1';
+                    tail.textContent = '已选择官方模型，使用平台默认地址';
+                } else {
+                    url.value = '';
+                    url.placeholder = '请输入自定义请求地址（如代理或私有部署）';
+                    tail.textContent = '自定义请求地址生效，请确保地址可用';
+                }
+            });
+        });
+    }
+
+    /* API Key 显隐 */
+    var eye = document.querySelector('[data-eye]');
+    if (eye) {
+        eye.addEventListener('click', function () {
+            var f = document.querySelector('[data-key]');
+            var show = f.type === 'password';
+            f.type = show ? 'text' : 'password';
+            eye.textContent = show ? '隐藏' : '显示';
+        });
+    }
+
+    /* 悬浮球状态 */
+    var dock = document.querySelector('.a-dock');
+    var page = document.querySelector('.a-host-page');
+    var order = ['idle', 'loading', 'done'];
+    function setState(st) {
+        if (st === 'panel') {
+            dock.dataset.open = dock.dataset.open === 'true' ? 'false' : 'true';
+        } else {
+            dock.dataset.state = st;
+            page.dataset.translated = String(st === 'done');
+        }
+        document.querySelectorAll('[data-st]').forEach(function (b) {
+            b.setAttribute('aria-pressed', String(b.dataset.st === st));
+        });
+    }
+    document.querySelector('[data-stamp]').addEventListener('click', function () {
+        var next = order[(order.indexOf(dock.dataset.state) + 1) % order.length];
+        setState(next);
+    });
+    document.querySelector('[data-cog]').addEventListener('click', function (e) {
+        e.stopPropagation();
+        setState('panel');
+    });
+    document.querySelectorAll('[data-st]').forEach(function (b) {
+        b.addEventListener('click', function () { setState(b.dataset.st); });
+    });
+    document.querySelector('.a-panel').addEventListener('click', function (e) { e.stopPropagation(); });
+})();
+</script>
+</body>
+</html>

@@ -3,49 +3,53 @@ import styled, { css } from "styled-components"
 
 import type { FormRowProps } from "./types"
 
-const FormRow = styled.div`
-    margin-bottom: var(--space-3);
-    padding: var(--space-1) var(--space-3);
-    transition: all var(--transition-fast);
+// 术语 / 注解双栏：左列是词条与释义，右列是控件。
+// 行与行之间用 hairline 分隔，不用卡片、不用 hover 背景 —— 像一页注解，不像一叠卡片。
+const Row = styled.div`
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-6);
+    padding: var(--space-4) 0;
+    border-top: 1px solid var(--border-light);
 
-    &:last-child {
-        margin-bottom: 0;
+    &:first-child {
+        border-top: none;
+        padding-top: 0;
     }
 
-    &:hover {
-        background: var(--gray-50);
-        border-radius: var(--radius-md);
+    &:last-child {
+        padding-bottom: 0;
+    }
+
+    @media (max-width: 900px) {
+        flex-direction: column;
+        gap: var(--space-2);
     }
 `
 
-const Label = styled.label<{ required: boolean }>`
+const Term = styled.div`
+    flex: 0 0 208px;
+    padding-top: 2px;
+
+    @media (max-width: 900px) {
+        flex: none;
+        padding-top: 0;
+    }
+`
+
+const Label = styled.label<{ $required: boolean }>`
     display: block;
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
-    margin-bottom: var(--space-2);
-    position: relative;
-    padding-left: var(--space-3);
 
-    &::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 4px;
-        height: 4px;
-        border-radius: 50%;
-        background: var(--gray-400);
-    }
-
-    ${({ required }) =>
-        required &&
+    ${({ $required }) =>
+        $required &&
         css`
             &::after {
-                margin-left: 8px;
                 content: "*";
-                color: var(--error);
+                margin-left: var(--space-1);
+                color: var(--primary-color);
                 font-size: var(--font-size-xs);
             }
         `}
@@ -53,9 +57,17 @@ const Label = styled.label<{ required: boolean }>`
 
 const Description = styled.p`
     font-size: var(--font-size-xs);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     margin: var(--space-1) 0 0 0;
     line-height: var(--line-height-normal);
+`
+
+const Field = styled.div`
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
 `
 
 const FormRowComponent: React.FC<FormRowProps> = ({
@@ -67,11 +79,13 @@ const FormRowComponent: React.FC<FormRowProps> = ({
     style
 }) => {
     return (
-        <FormRow className={className} style={style}>
-            <Label required={required}>{label}</Label>
-            {children}
-            {description && <Description>{description}</Description>}
-        </FormRow>
+        <Row className={className} style={style}>
+            <Term>
+                <Label $required={!!required}>{label}</Label>
+                {description && <Description>{description}</Description>}
+            </Term>
+            <Field>{children}</Field>
+        </Row>
     )
 }
 

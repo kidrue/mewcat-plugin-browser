@@ -35,10 +35,10 @@ const SCxTooltipContent = styled.div.withConfig({
     show: boolean
     width?: number | string
 }>`
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
+    background: var(--gray-900, #1a1714);
+    color: var(--text-inverse, #fbf8f0);
+    padding: 6px 10px;
+    border-radius: 2px;
     font-size: 12px;
     line-height: 1.5;
     opacity: ${props => (props.show ? 1 : 0)};
@@ -47,7 +47,9 @@ const SCxTooltipContent = styled.div.withConfig({
     pointer-events: ${props => (props.show ? "auto" : "none")};
     z-index: 1000;
     max-width: 300px;
-    word-wrap: break-word;
+    overflow-wrap: break-word;
+    /* 没给宽度时按内容定宽 —— 否则会去参照定位父级（可能只有 54px 的悬浮球）折行 */
+    width: max-content;
     ${props =>
         props.width
             ? typeof props.width === "number"
@@ -60,7 +62,7 @@ const SCxTooltipArrow = styled.div`
     position: absolute;
     width: 10px;
     height: 10px;
-    background: rgba(0, 0, 0, 0.8);
+    background: var(--gray-900, #1a1714);
     transform: rotate(45deg);
     z-index: -1;
 `

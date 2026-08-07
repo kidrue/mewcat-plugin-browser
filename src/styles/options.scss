@@ -1,8 +1,9 @@
 @use "./theme.scss" as *;
 
-// Options页面基础样式
+// ============================================
+// Options 页基础样式
+// ============================================
 html {
-    -webkit-box-sizing: border-box;
     box-sizing: border-box;
 }
 
@@ -11,8 +12,9 @@ body {
     padding: 0;
     font-size: var(--font-size-base);
     font-family: var(--font-family);
+    line-height: var(--line-height-normal);
     color: var(--text-primary);
-    background: var(--gray-100);
+    background: var(--bg-primary);
 }
 
 #__plasmo {
@@ -20,340 +22,68 @@ body {
     width: 100vw;
     overflow: hidden;
 }
+
 *,
 *:before,
 *:after {
-    -webkit-box-sizing: inherit;
     box-sizing: inherit;
-    outline: none;
-    --webkit-tap-highlight-color: transparent;
-}
-
-@media (any-hover: none) {
-    *:hover {
-        cursor: none;
-    }
+    -webkit-tap-highlight-color: transparent;
 }
 
 a {
     text-decoration: none;
 }
 
-// Options页面特定样式
+// 焦点一律用朱砂环。不写 outline: none —— 键盘用户需要它。
+:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
 .options-container {
     font-family: var(--font-family);
     color: var(--text-primary);
-    line-height: 1.5;
 }
 
-// 滚动条样式
+// 滚动条：细，与纸面同色系，不抢注意力
 .options-scrollbar {
     &::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
     }
 
     &::-webkit-scrollbar-track {
-        background: var(--gray-100);
-        border-radius: 3px;
+        background: transparent;
     }
 
     &::-webkit-scrollbar-thumb {
-        background: var(--gray-400);
-        border-radius: 3px;
-        transition: var(--transition-base);
+        background: var(--rule-strong);
+        border-radius: var(--radius-lg);
 
         &:hover {
-            background: var(--gray-500);
+            background: var(--text-disabled);
         }
     }
 
     &::-webkit-scrollbar-corner {
-        background: var(--gray-100);
+        background: transparent;
     }
 }
 
-// 导航项图标
-.nav-icon {
-    width: 16px;
-    height: 16px;
-    margin-right: var(--spacing-sm);
-    opacity: 0.7;
-    transition: var(--transition-base);
-}
-
-.nav-item-active .nav-icon {
-    opacity: 1;
-}
-
-// 表单控件增强
-.form-control-enhanced {
-    position: relative;
-
-    &::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: var(--gradient-header);
-        border-radius: var(--border-radius-small) var(--border-radius-small) 0 0;
-        opacity: 0;
-        transition: var(--transition-base);
-    }
-
-    &:focus-within::before,
-    &:hover::before {
-        opacity: 1;
-    }
-}
-
-// 切换开关样式增强
-.toggle-enhanced {
-    .toggle-track {
-        background: var(--gray-300);
-        transition: var(--transition-base);
-
-        &.active {
-            background: var(--primary-color);
-            box-shadow: var(--shadow-primary);
-        }
-    }
-
-    .toggle-thumb {
-        background: var(--white);
-        box-shadow: var(--shadow-sm);
-        transition: var(--transition-base);
-
-        &.active {
-            box-shadow: var(--shadow);
-        }
-    }
-}
-
-// 列表项动画
-.list-item-animated {
-    transition: var(--transition-base);
-
-    &:hover {
-        transform: translateX(2px);
-        box-shadow: var(--shadow-md);
-    }
-}
-
-// 删除按钮增强
-.delete-button-enhanced {
-    background: var(--error-background);
-    color: var(--error-color);
-    border: 1px solid var(--error-light);
-    border-radius: var(--border-radius-small);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    cursor: pointer;
-    transition: var(--transition-base);
-
-    &:hover {
-        background: var(--error-color);
-        color: var(--text-inverse);
-        border-color: var(--error-color);
-        box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
-    }
-}
-
-// 添加按钮增强
-.add-button-enhanced {
-    background: var(--primary-color);
-    color: var(--text-inverse);
-    border: none;
-    border-radius: var(--border-radius-small);
-    padding: var(--spacing-sm) var(--spacing-lg);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
-    cursor: pointer;
-    transition: var(--transition-base);
-
-    &:hover {
-        background: var(--primary-dark);
-        box-shadow: var(--shadow-primary-md);
-    }
-
-    &:active {
-        transform: translateY(1px);
-    }
-
-    &:disabled {
-        background: var(--gray-300);
-        color: var(--text-disabled);
-        cursor: not-allowed;
-        transform: none;
-    }
-}
-
-// 样式预览区域
-.style-preview {
-    background: var(--gradient-primary);
-    border: 1px solid var(--border-light);
-    border-radius: var(--border-radius);
-    padding: var(--spacing-lg);
-    position: relative;
-    overflow: hidden;
-
-    &::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: var(--gradient-header);
-        opacity: 0.8;
-    }
-}
-
-// 版本信息样式
-.version-info {
-    font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
-    background: var(--gray-50);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--border-radius-small);
-    font-size: var(--font-size-sm);
-    color: var(--primary-color);
-    border: 1px solid rgba(25, 118, 210, 0.1);
-}
-
-// 描述文本增强
-.description-enhanced {
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
-    line-height: 1.4;
-    margin-top: var(--spacing-xs);
-
-    &.with-icon::before {
-        content: "ℹ️";
-        margin-right: var(--spacing-xs);
-    }
-}
-
-// 成功状态
-.status-success {
-    color: var(--success-color);
-    background: var(--success-background);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--border-radius-small);
-    font-size: var(--font-size-sm);
-    border: 1px solid var(--success-light);
-}
-
-// 警告状态
-.status-warning {
-    color: var(--warning-color);
-    background: var(--warning-background);
-    padding: var(--spacing-xs) var(--spacing-sm);
-    border-radius: var(--border-radius-small);
-    font-size: var(--font-size-sm);
-    border: 1px solid var(--warning-light);
-}
-
-// 加载状态
-.loading-shimmer {
-    background: linear-gradient(
-        90deg,
-        var(--gray-200) 25%,
-        var(--gray-100) 50%,
-        var(--gray-200) 75%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-}
-
-@keyframes shimmer {
-    0% {
-        background-position: -200% 0;
-    }
-    100% {
-        background-position: 200% 0;
-    }
-}
-
-// 空状态样式
-.empty-state {
-    text-align: center;
-    padding: var(--spacing-3xl) var(--spacing-xl);
-    color: var(--text-disabled);
-    font-size: var(--font-size-sm);
-
-    .empty-icon {
-        font-size: 24px;
-        margin-bottom: var(--spacing-md);
-        opacity: 0.5;
-    }
-}
-
-// 标签样式
-.tag {
-    display: inline-block;
-    padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--primary-background);
-    color: var(--primary-color);
-    border-radius: var(--border-radius-small);
+// 机器给的值统一走等宽：模型名、URL、版本号、耗时
+.mono-value {
+    font-family: var(--font-mono);
     font-size: var(--font-size-xs);
-    font-weight: var(--font-weight-medium);
-    margin: 2px;
-
-    &.tag-success {
-        background: var(--success-background);
-        color: var(--success-color);
-    }
-
-    &.tag-warning {
-        background: var(--warning-background);
-        color: var(--warning-color);
-    }
-
-    &.tag-error {
-        background: var(--error-background);
-        color: var(--error-color);
-    }
+    letter-spacing: 0.01em;
 }
 
-// 响应式断点
-@media (max-width: 768px) {
-    .options-container {
-        .sidebar {
-            width: 200px;
-        }
-
-        .content {
-            padding: var(--spacing-lg);
-        }
-
-        .section {
-            padding: var(--spacing-lg);
-        }
-    }
-}
-
-@media (max-width: 480px) {
-    .options-container {
-        flex-direction: column;
-
-        .sidebar {
-            width: 100%;
-            height: auto;
-        }
-
-        .nav {
-            display: flex;
-            overflow-x: auto;
-            padding: var(--spacing-sm);
-
-            .nav-item {
-                white-space: nowrap;
-                min-width: auto;
-                padding: var(--spacing-sm) var(--spacing-lg);
-            }
-        }
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
     }
 }

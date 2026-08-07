@@ -1,5 +1,4 @@
 import { useAtom, useSetAtom } from "jotai"
-import { useAsyncRetry } from "react-use"
 import styled from "styled-components"
 
 import { AUTO_DETECT_OPTION, languages } from "@/constants"
@@ -8,13 +7,14 @@ import { configAtom, updateConfigAtom } from "@/state"
 import NativeSelect from "../NativeSelect"
 import CustomToggle from "../Switch"
 import Tooltip from "../Tooltip"
-import iconImg from "~/assets/icon.png"
 
 // ============================================
 // Styled Components
 // ============================================
 
-const PanelContainer = styled.div`
+// floating：浮在页面上，需要自己的纸面与边界。
+// embedded：已经处在 popup 自己的窗口里，不再叠一层纸。
+const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
     width: 320px;
     min-height: 400px;
     padding: var(--space-4);
@@ -23,9 +23,14 @@ const PanelContainer = styled.div`
     background: var(--bg-primary);
     font-family: var(--font-family);
     color: var(--text-primary);
-    border-radius: var(--radius-lg);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    border: 1px solid var(--border-color);
+
+    ${p =>
+        p.$variant === "floating" &&
+        `
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-xl);
+    `}
 `
 
 const Header = styled.div`
@@ -34,24 +39,51 @@ const Header = styled.div`
     gap: var(--space-3);
     margin-bottom: var(--space-4);
     padding-bottom: var(--space-3);
-    border-bottom: 1px solid var(--border-light);
+    /* 骑缝线：实线压一枚朱砂方印 */
+    position: relative;
+    border-bottom: 1px solid var(--rule-strong);
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: -4px;
+        width: 8px;
+        height: 8px;
+        background: var(--primary-color);
+    }
 `
 
-const Logo = styled.img`
+// 与页面上的悬浮球同形制：朱砂方印 + 内留白边 + 宋体印文
+const Seal = styled.div`
     width: 40px;
     height: 40px;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm);
+    flex: none;
+    border-radius: 6px;
+    background: var(--primary-color);
+    color: var(--text-inverse);
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1.5px rgba(251, 248, 240, 0.55);
+    user-select: none;
 `
 
 const HeaderInfo = styled.div`
     flex: 1;
+    min-width: 0;
 `
 
 const HeaderTitle = styled.h1`
-    font-size: var(--font-size-lg);
+    font-family: var(--font-display);
+    font-size: var(--font-size-xl);
     font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
+    letter-spacing: 0.08em;
     margin: 0 0 var(--space-1) 0;
     line-height: var(--line-height-tight);
 `
@@ -59,6 +91,7 @@ const HeaderTitle = styled.h1`
 const HeaderSubtitle = styled.span`
     font-size: var(--font-size-xs);
     color: var(--text-tertiary);
+    letter-spacing: 0.04em;
 `
 
 const Section = styled.div`
@@ -72,7 +105,8 @@ const ListItem = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--space-2) 0;
+    gap: var(--space-3);
+    padding: var(--space-3) 0;
     border-bottom: 1px solid var(--border-light);
 
     &:last-child {
@@ -88,25 +122,28 @@ const ListItem = styled.div`
 const ListItemLabel = styled.span`
     font-size: var(--font-size-sm);
     color: var(--text-primary);
-    font-weight: var(--font-weight-normal);
     display: flex;
     align-items: center;
     gap: var(--space-2);
 `
 
+// 帮助图标是这套语言里少数保留圆形的元素之一
 const HelpIcon = styled.span`
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 14px;
     height: 14px;
-    border-radius: 50%;
+    border-radius: var(--radius-full);
     border: 1px solid var(--text-tertiary);
     color: var(--text-tertiary);
     font-size: 10px;
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-semibold);
     cursor: help;
-    transition: all var(--transition-fast);
+    transition:
+        color var(--transition-fast),
+        border-color var(--transition-fast),
+        background var(--transition-fast);
 
     &:hover {
         border-color: var(--primary-color);
@@ -125,9 +162,11 @@ const LanguageRow = styled.div`
     align-items: flex-end;
     gap: var(--space-3);
     margin-top: var(--space-1);
+    /* 与底部「高级设置」之间的最小间距 —— 后者用 margin-top:auto 贴底，撑满时不会自带间距 */
+    margin-bottom: var(--space-5);
     padding: var(--space-3);
-    background: rgba(119, 72, 249, 0.04);
-    border-radius: var(--radius-md);
+    background: var(--seal-wash);
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-light);
 `
 
@@ -149,7 +188,7 @@ const LanguageLabelRight = styled(LanguageLabel)`
 `
 
 const ArrowIcon = styled.span`
-    color: var(--text-tertiary);
+    color: var(--primary-muted);
     display: flex;
     align-items: flex-end;
     padding-bottom: var(--space-1);
@@ -163,11 +202,11 @@ const ArrowIcon = styled.span`
 
 const SettingsButton = styled.button`
     width: 100%;
-    margin-top: var(--space-5);
+    margin-top: auto;
     padding: var(--space-3);
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
     color: var(--text-secondary);
@@ -176,7 +215,10 @@ const SettingsButton = styled.button`
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    transition: all var(--transition-fast);
+    transition:
+        color var(--transition-fast),
+        border-color var(--transition-fast),
+        background var(--transition-fast);
 
     svg {
         width: 16px;
@@ -187,15 +229,31 @@ const SettingsButton = styled.button`
         background: var(--primary-light);
         border-color: var(--primary-color);
         color: var(--primary-color);
-        box-shadow: var(--shadow-sm);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
     }
 `
 
+const GearPath = () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+)
+
 interface SettingsPanelProps {
     currentTabUrl?: URL
+    /** floating = 悬浮球弹出的面板（自带纸面与投影）；embedded = popup 窗口内（不叠纸） */
+    variant?: "floating" | "embedded"
 }
 
-function SettingsPanel({ currentTabUrl }: SettingsPanelProps) {
+function SettingsPanel({
+    currentTabUrl,
+    variant = "floating"
+}: SettingsPanelProps) {
     const [config] = useAtom(configAtom)
     const updateConfig = useSetAtom(updateConfigAtom)
 
@@ -255,14 +313,15 @@ function SettingsPanel({ currentTabUrl }: SettingsPanelProps) {
     }
 
     return (
-        <PanelContainer>
+        <PanelContainer $variant={variant}>
             <Header>
-                <Logo src={iconImg} alt="mewCat" />
+                <Seal aria-hidden="true">譯</Seal>
                 <HeaderInfo>
-                    <HeaderTitle>译趣喵</HeaderTitle>
+                    <HeaderTitle>譯趣貓</HeaderTitle>
                     <HeaderSubtitle>智能翻译助手</HeaderSubtitle>
                 </HeaderInfo>
             </Header>
+
             <Section>
                 <ListItem>
                     <ListItemLabel>启用划词翻译</ListItemLabel>
@@ -320,7 +379,7 @@ function SettingsPanel({ currentTabUrl }: SettingsPanelProps) {
                         size="sm"
                     />
                 </LanguageBox>
-                <ArrowIcon>
+                <ArrowIcon aria-hidden="true">
                     <svg
                         viewBox="0 0 24 24"
                         fill="none"
@@ -343,15 +402,7 @@ function SettingsPanel({ currentTabUrl }: SettingsPanelProps) {
             </LanguageRow>
 
             <SettingsButton onClick={handleOpenSettings}>
-                <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                >
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
+                <GearPath />
                 高级设置
             </SettingsButton>
         </PanelContainer>

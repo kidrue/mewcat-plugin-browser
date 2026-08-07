@@ -1,49 +1,45 @@
+@use "./theme.scss" as *;
+
 html {
-    -webkit-box-sizing: border-box;
     box-sizing: border-box;
 }
 
 body {
     margin: 0;
     padding: 0;
-    font-size: var(--font-size-base, 14px);
-    font-family: var(
-        --font-family,
-        Inter,
-        -apple-system,
-        BlinkMacSystemFont,
-        Segoe UI,
-        Roboto,
-        Helvetica Neue,
-        Arial,
-        Noto Sans,
-        sans-serif,
-        Apple Color Emoji,
-        Segoe UI Emoji,
-        Segoe UI Symbol,
-        Noto Color Emoji
-    );
-    color: var(--text-primary, #333);
-    background: var(--light-bg, #f8f9fa);
+    font-size: var(--font-size-base);
+    font-family: var(--font-family);
+    line-height: var(--line-height-normal);
+    color: var(--text-primary);
+    background: var(--bg-primary);
     overflow: hidden;
+    // 原来是 `* { word-break: break-all }`，会把英文单词从中间截断。
+    // 换成 overflow-wrap，只在长串（URL、密钥）溢出时才断。
+    overflow-wrap: break-word;
 }
 
 *,
 *:before,
 *:after {
-    -webkit-box-sizing: inherit;
     box-sizing: inherit;
-    outline: none;
-    word-break: break-all;
-    --webkit-tap-highlight-color: transparent;
-}
-
-@media (any-hover: none) {
-    *:hover {
-        cursor: none;
-    }
+    -webkit-tap-highlight-color: transparent;
 }
 
 a {
     text-decoration: none;
+}
+
+:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

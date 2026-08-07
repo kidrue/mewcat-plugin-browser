@@ -49,10 +49,19 @@ const ModelListContainer = styled.div`
     gap: var(--space-6);
     min-height: 400px;
     max-height: 600px;
+
+    /* 窄屏放弃左右分栏：目录在上、配置在下 */
+    @media (max-width: 900px) {
+        flex-direction: column;
+        max-height: none;
+        min-height: 0;
+        gap: var(--space-4);
+    }
 `
 
 const ModelList = styled.div`
     width: 280px;
+    flex-shrink: 0;
     background: var(--bg-secondary);
     border-right: 1px solid var(--border-color);
     padding: var(--space-3);
@@ -61,18 +70,31 @@ const ModelList = styled.div`
     gap: var(--space-2);
     max-height: 100%;
     overflow: auto;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     ${hideScrollBar}
+
+    @media (max-width: 900px) {
+        width: 100%;
+        max-height: 240px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    }
 `
 
 const ModelConfigContainer = styled.div`
     flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
     max-height: 100%;
     overflow: auto;
     ${hideScrollBar}
+
+    @media (max-width: 900px) {
+        max-height: none;
+    }
 `
 
 const ModelHeader = styled.div`
@@ -146,24 +168,25 @@ const SourceToggleButton = styled.button<{ $active: boolean }>`
 
 const ModelItem = styled.div<{ $selected: boolean }>`
     padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: var(--space-2);
     background: ${props =>
-        props.$selected ? "var(--primary-light)" : "transparent"};
+        props.$selected ? "var(--seal-wash)" : "transparent"};
     color: ${props =>
         props.$selected ? "var(--primary-color)" : "var(--text-primary)"};
-    transition: all var(--transition-fast);
-    border: 1px solid
-        ${props => (props.$selected ? "var(--primary-color)" : "transparent")};
+    /* 选中态压一道朱砂边，不靠投影 —— 列表里每行都可点，投影会退化成无意义装饰 */
+    box-shadow: ${props =>
+        props.$selected ? "inset 3px 0 0 var(--primary-color)" : "none"};
+    transition:
+        background var(--transition-fast),
+        box-shadow var(--transition-fast);
 
     &:hover {
         background: ${props =>
-            props.$selected ? "var(--primary-light)" : "var(--gray-100)"};
-        border-color: ${props =>
-            props.$selected ? "var(--primary-color)" : "var(--gray-300)"};
+            props.$selected ? "var(--seal-wash)" : "var(--bg-tertiary)"};
     }
 `
 
@@ -199,9 +222,8 @@ const ModelItemActions = styled.div`
 const StatusDot = styled.div<{ $enabled: boolean }>`
     width: 6px;
     height: 6px;
-    border-radius: 50%;
     background: ${props =>
-        props.$enabled ? "var(--success)" : "var(--gray-400)"};
+        props.$enabled ? "var(--jade)" : "var(--gray-300)"};
     flex-shrink: 0;
 `
 
@@ -231,8 +253,8 @@ const LoadingSpinner = styled.div`
 const TestSection = styled.div`
     margin-bottom: var(--space-5);
     padding: var(--space-4);
-    background: var(--gray-50);
-    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-light);
 `
 

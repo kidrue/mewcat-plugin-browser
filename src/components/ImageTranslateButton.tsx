@@ -40,10 +40,12 @@ const SCxButton = styled.button.withConfig({
     position: fixed;
     width: 40px;
     height: 40px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #7748f9 0%, #9d6fff 100%);
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 0 4px 12px rgba(119, 72, 249, 0.4);
+    border-radius: 6px;
+    background: #b23a2e;
+    border: none;
+    box-shadow:
+        inset 0 0 0 1.5px rgba(251, 248, 240, 0.6),
+        0 3px 10px rgba(142, 42, 32, 0.28);
     cursor: ${props => (props.translating ? "not-allowed" : "pointer")};
     display: flex;
     align-items: center;
@@ -57,12 +59,12 @@ const SCxButton = styled.button.withConfig({
         box-shadow 0.15s ease;
 
     &:hover {
-        transform: ${props => (props.translating ? "scale(1)" : "scale(1.1)")};
-        box-shadow: 0 6px 16px rgba(119, 72, 249, 0.5);
+        transform: ${props =>
+            props.translating ? "none" : "translateY(-1px)"};
     }
 
     &:active {
-        transform: ${props => (props.translating ? "scale(1)" : "scale(0.95)")};
+        transform: ${props => (props.translating ? "none" : "scale(0.96)")};
     }
 
     svg {

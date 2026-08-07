@@ -11,7 +11,6 @@ import { TranslationServiceManager } from "@/translation/TranslationServiceManag
 
 import LoadingDots from "../components/LoadingDots"
 import NativeSelect from "../components/NativeSelect"
-import iconImg from "~/assets/icon.png"
 
 // ============================================
 // Layout
@@ -32,20 +31,47 @@ const Header = styled.div`
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-4);
-    border-bottom: 1px solid var(--border-light);
     background: var(--bg-secondary);
     flex-shrink: 0;
+    /* 骑缝线 */
+    position: relative;
+    border-bottom: 1px solid var(--rule-strong);
+
+    &::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: -4px;
+        width: 8px;
+        height: 8px;
+        background: var(--primary-color);
+    }
 `
 
-const Logo = styled.img`
+// 朱砂印 —— 与悬浮球、popup 同形制
+const Seal = styled.div`
     width: 28px;
     height: 28px;
-    border-radius: var(--radius-md);
+    flex: none;
+    border-radius: 4px;
+    background: var(--primary-color);
+    color: var(--text-inverse);
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px rgba(251, 248, 240, 0.55);
+    user-select: none;
 `
 
 const HeaderTitle = styled.h1`
-    font-size: var(--font-size-base);
+    font-family: var(--font-display);
+    font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.06em;
     color: var(--text-primary);
     margin: 0;
     flex: 1;
@@ -130,7 +156,7 @@ const StyledTextarea = styled.textarea`
     &:focus {
         outline: none;
         border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(119, 72, 249, 0.1);
+        box-shadow: 0 0 0 3px var(--seal-ring);
     }
 `
 
@@ -142,7 +168,7 @@ const ClearButton = styled.button`
     height: 20px;
     border: none;
     background: var(--gray-200);
-    border-radius: 50%;
+    border-radius: var(--radius-sm);
     color: var(--text-tertiary);
     cursor: pointer;
     display: flex;
@@ -201,7 +227,7 @@ const TranslateButton = styled.button<{ $loading?: boolean }>`
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
-    color: #fff;
+    color: var(--text-inverse);
     cursor: ${p => (p.$loading ? "not-allowed" : "pointer")};
     opacity: ${p => (p.$loading ? 0.7 : 1)};
     display: flex;
@@ -384,7 +410,7 @@ const SlidePanel: React.FunctionComponent = () => {
     return (
         <Container>
             <Header>
-                <Logo src={iconImg} alt="mewCat" />
+                <Seal aria-hidden="true">譯</Seal>
                 <HeaderTitle>翻译侧边栏</HeaderTitle>
             </Header>
 
@@ -472,7 +498,11 @@ const SlidePanel: React.FunctionComponent = () => {
                         disabled={loading || !inputText.trim()}
                     >
                         {loading ? (
-                            <LoadingDots loading color="#fff" size={4} />
+                            <LoadingDots
+                                loading
+                                color="var(--text-inverse)"
+                                size={4}
+                            />
                         ) : (
                             <svg
                                 viewBox="0 0 24 24"

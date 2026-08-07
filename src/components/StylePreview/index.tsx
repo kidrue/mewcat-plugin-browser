@@ -10,23 +10,14 @@ interface StylePreviewProps {
 }
 
 const SCxPreviewContainer = styled.div`
-    /* background: var(--gradient-primary); */
-    /* border: 1px solid var(--border-light); */
-    /* border-radius: var(--border-radius); */
-    /* padding: var(--spacing-lg); */
     position: relative;
     overflow: hidden;
-
-    /* &::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: var(--gradient-header);
-        opacity: 0.8;
-    } */
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
 `
 
 const SCxPreviewText = styled.div.withConfig({

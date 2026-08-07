@@ -9,49 +9,58 @@ interface OptionsSectionProps {
     className?: string
 }
 
-const Section = styled.div`
-    background: var(--bg-secondary);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4) var(--space-5);
-    margin-bottom: var(--space-4);
-    border: 1px solid var(--border-color);
-    position: relative;
-    transition: all var(--transition-base);
+// 分节不是卡片：没有背景、没有外框、没有 hover。
+// 层级完全由「朱砂方块 + 宋体标题 + 向右延伸的 hairline」建立。
+const Section = styled.section`
+    margin-bottom: var(--space-8);
 
-    &:hover {
-        border-color: var(--gray-300);
+    &:last-child {
+        margin-bottom: 0;
     }
 `
 
 const SectionHeader = styled.div`
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--border-light);
-    margin: 0 0 var(--space-4) 0;
-    padding-bottom: var(--space-3);
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
 `
 
 const SectionTitle = styled.h3`
-    font-size: var(--font-size-base);
+    font-family: var(--font-display);
+    font-size: var(--font-size-2xl);
     font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
+    letter-spacing: 0.04em;
     display: flex;
-    justify-content: baseline;
-    gap: var(--space-2);
-    position: relative;
+    align-items: center;
+    gap: var(--space-3);
     margin: 0;
+    flex-shrink: 0;
 
+    /* 方块，不是圆点 —— 这套语言里圆形只留给印章 */
     &::before {
         content: "";
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
+        width: 7px;
+        height: 7px;
         background: var(--primary-color);
-        margin-right: var(--space-2);
         flex-shrink: 0;
-        margin-top: 5px;
     }
+`
+
+// 标题右侧一直延伸到尽头的细线
+const Lead = styled.span`
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
+    min-width: var(--space-4);
+`
+
+const RightSection = styled.div`
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
 `
 
 const SectionContent = styled.div<{ layout?: string }>`
@@ -70,11 +79,27 @@ const SectionContent = styled.div<{ layout?: string }>`
         props.layout === "grid" &&
         `
         grid-template-columns: 1fr 1fr;
-        gap: var(--space-4);
+        column-gap: var(--space-8);
 
-        @media (max-width: 768px) {
+        /* grid item 默认 min-width:auto，内容宽就撑破列 —— 必须显式放开 */
+        > * {
+            min-width: 0;
+        }
+
+        /* FormRow 的分隔线按「纵向堆叠」设计，只有 DOM 第一个不画线。
+           两列网格下第二个也在首行，同样不该画 —— 否则两列会错开一行的高度。 */
+        && > *:nth-child(-n + 2) {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        @media (max-width: 900px) {
             grid-template-columns: 1fr;
-            gap: var(--space-3);
+
+            && > *:nth-child(2) {
+                border-top: 1px solid var(--border-light);
+                padding-top: var(--space-4);
+            }
         }
     `}
 
@@ -88,7 +113,7 @@ const SectionContent = styled.div<{ layout?: string }>`
             flex: 1;
         }
 
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
             flex-direction: column;
             gap: var(--space-3);
         }
@@ -106,7 +131,8 @@ const OptionsSection: React.FC<OptionsSectionProps> = ({
         <Section className={className}>
             <SectionHeader>
                 <SectionTitle>{title}</SectionTitle>
-                <div>{rightSection}</div>
+                <Lead aria-hidden="true" />
+                {rightSection && <RightSection>{rightSection}</RightSection>}
             </SectionHeader>
             <SectionContent layout={layout}>{children}</SectionContent>
         </Section>

@@ -32,25 +32,21 @@ const SCxGroupTitle = styled.h4`
     text-transform: uppercase;
     letter-spacing: 0.05em;
 
-    /* 简洁的左侧指示器 */
+    /* 方形指示器 —— 圆形只留给印章 */
     &::before {
         content: "";
-        width: 3px;
-        height: 3px;
-        border-radius: 50%;
+        width: 4px;
+        height: 4px;
         background: var(--primary-color);
         flex-shrink: 0;
-        opacity: 0.6;
     }
 `
 
 const SCxGroupDescription = styled.p`
     font-size: var(--font-size-xs);
-    color: var(--text-secondary);
+    color: var(--text-tertiary);
     margin: 0;
-    opacity: 0.6;
-    font-style: italic;
-    line-height: 1.3;
+    line-height: var(--line-height-normal);
 `
 
 const SCxGroupContent = styled.div.withConfig({

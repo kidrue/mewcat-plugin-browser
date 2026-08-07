@@ -19,21 +19,23 @@ const SCxDot = styled.div<{ x: number; y: number }>`
     z-index: 100000;
     width: 24px;
     height: 24px;
-    background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
-    border-radius: 50%;
+    /* 一枚小朱砂印 —— 与页面悬浮球同形制 */
+    background: #b23a2e;
+    border-radius: 4px;
+    box-shadow:
+        inset 0 0 0 1px rgba(251, 248, 240, 0.55),
+        0 2px 6px rgba(142, 42, 32, 0.24);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(25, 118, 210, 0.3);
     transform: translate(-50%, -100%) translateY(-8px);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.16s ease;
     opacity: 0;
     animation: fadeInScale 0.2s ease-out forwards;
 
     &:hover {
-        transform: translate(-50%, -100%) translateY(-8px) scale(1.1);
-        box-shadow: 0 4px 12px rgba(25, 118, 210, 0.4);
+        transform: translate(-50%, -100%) translateY(-9px);
     }
 
     &:active {
@@ -43,12 +45,17 @@ const SCxDot = styled.div<{ x: number; y: number }>`
     @keyframes fadeInScale {
         0% {
             opacity: 0;
-            transform: translate(-50%, -100%) translateY(-8px) scale(0.8);
+            transform: translate(-50%, -100%) translateY(-8px) scale(0.85);
         }
         100% {
             opacity: 1;
             transform: translate(-50%, -100%) translateY(-8px) scale(1);
         }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+        opacity: 1;
     }
 `
 
@@ -59,16 +66,16 @@ const SCxTooltip = styled.div.withConfig({
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%) translateY(-4px);
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
+    background: #1a1714;
+    color: #fbf8f0;
     padding: 4px 8px;
-    border-radius: 4px;
+    border-radius: 2px;
     font-size: 12px;
     font-weight: 500;
     white-space: nowrap;
     opacity: ${props => (props.show ? 1 : 0)};
     visibility: ${props => (props.show ? "visible" : "hidden")};
-    transition: all 0.2s ease;
+    transition: opacity 0.16s ease;
     pointer-events: none;
 
     &::after {
@@ -78,7 +85,7 @@ const SCxTooltip = styled.div.withConfig({
         left: 50%;
         transform: translateX(-50%);
         border: 4px solid transparent;
-        border-top-color: rgba(0, 0, 0, 0.8);
+        border-top-color: #1a1714;
     }
 `
 
@@ -149,7 +156,7 @@ const SelectionDot = React.forwardRef<HTMLDivElement, SelectionDotProps>(
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
             >
-                <Icon name={getIcon()} size={14} color="white" />
+                <Icon name={getIcon()} size={14} color="#fbf8f0" />
                 <SCxTooltip show={showTooltip}>{getTooltipText()}</SCxTooltip>
             </SCxDot>
         )

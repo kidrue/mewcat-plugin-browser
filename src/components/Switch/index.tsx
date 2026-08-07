@@ -9,25 +9,52 @@ interface SwitchProps {
     size?: "sm" | "md" | "lg"
 }
 
-const SwitchContainer = styled.label<{ $disabled: boolean; $size: string }>`
-    display: inline-flex;
-    align-items: center;
-    cursor: ${props => (props.$disabled ? "not-allowed" : "pointer")};
-    opacity: ${props => (props.$disabled ? 0.5 : 1)};
+const SIZES = {
+    sm: { width: 36, height: 20, knob: 14 },
+    md: { width: 44, height: 24, knob: 18 },
+    lg: { width: 52, height: 28, knob: 22 }
+} as const
 
-    ${props => {
-        const sizes = {
-            sm: { width: "36px", height: "20px", knob: "16px", offset: "18px" },
-            md: { width: "44px", height: "24px", knob: "20px", offset: "22px" },
-            lg: { width: "52px", height: "28px", knob: "24px", offset: "26px" }
-        }
-        const s = sizes[props.$size as keyof typeof sizes] || sizes.md
+type SizeKey = keyof typeof SIZES
 
-        return `
-            width: ${s.width};
-            height: ${s.height};
-        `
-    }}
+const sizeOf = (size: string) => SIZES[size as SizeKey] ?? SIZES.md
+
+const SwitchTrack = styled.span<{ $checked: boolean; $size: string }>`
+    position: relative;
+    width: 100%;
+    height: 100%;
+    /* 方形木闸，不是胶囊 —— 圆形在这套语言里只留给印章 */
+    border-radius: var(--radius-sm);
+    background: ${p =>
+        p.$checked ? "var(--primary-color)" : "var(--bg-tertiary)"};
+    box-shadow: inset 0 0 0 1px
+        ${p => (p.$checked ? "var(--primary-hover)" : "var(--border-color)")};
+    transition:
+        background var(--transition-fast),
+        box-shadow var(--transition-fast);
+    flex-shrink: 0;
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: ${p => (sizeOf(p.$size).height - sizeOf(p.$size).knob) / 2}px;
+        left: ${p => (sizeOf(p.$size).height - sizeOf(p.$size).knob) / 2}px;
+        width: ${p => sizeOf(p.$size).knob}px;
+        height: ${p => sizeOf(p.$size).knob}px;
+        border-radius: 1px;
+        /* 开合状态由「位置 + 闸块颜色」双重编码，不只靠颜色 */
+        background: ${p =>
+            p.$checked ? "var(--text-inverse)" : "var(--gray-400)"};
+        transform: translateX(
+            ${p => {
+                const s = sizeOf(p.$size)
+                return p.$checked ? `${s.width - s.height}px` : "0"
+            }}
+        );
+        transition:
+            transform var(--transition-fast),
+            background var(--transition-fast);
+    }
 `
 
 const SwitchInput = styled.input`
@@ -36,60 +63,30 @@ const SwitchInput = styled.input`
     width: 0;
     height: 0;
     pointer-events: none;
+
+    &:focus-visible + ${SwitchTrack} {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
 `
 
-const SwitchTrack = styled.span<{ $checked: boolean; $size: string }>`
+const SwitchContainer = styled.label<{ $disabled: boolean; $size: string }>`
     position: relative;
-    width: 100%;
-    height: 100%;
-    background-color: ${props =>
-        props.$checked ? "var(--primary-color)" : "var(--gray-300)"};
-    border-radius: 9999px;
-    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
     flex-shrink: 0;
+    cursor: ${p => (p.$disabled ? "not-allowed" : "pointer")};
+    opacity: ${p => (p.$disabled ? 0.5 : 1)};
+    width: ${p => sizeOf(p.$size).width}px;
+    height: ${p => sizeOf(p.$size).height}px;
 
-    &::before {
-        content: "";
-        position: absolute;
-        top: 2px;
-        left: ${props => {
-            const sizes = {
-                sm: "2px",
-                md: "2px",
-                lg: "2px"
-            }
-            return sizes[props.$size as keyof typeof sizes] || sizes.md
-        }};
-        width: ${props => {
-            const sizes = {
-                sm: "16px",
-                md: "20px",
-                lg: "24px"
-            }
-            return sizes[props.$size as keyof typeof sizes] || "20px"
-        }};
-        height: ${props => {
-            const sizes = {
-                sm: "16px",
-                md: "20px",
-                lg: "24px"
-            }
-            return sizes[props.$size as keyof typeof sizes] || "20px"
-        }};
-        background-color: white;
-        border-radius: 50%;
-        transition: all var(--transition-fast);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-        transform: ${props =>
-            props.$checked ? "translateX(calc(100% - 2px))" : "translateX(0)"};
-    }
-
-    &:hover {
-        box-shadow: ${props =>
-            props.$checked
-                ? "0 0 0 4px rgba(119, 72, 249, 0.15)"
-                : "0 0 0 4px rgba(0, 0, 0, 0.05)"};
-    }
+    ${p =>
+        !p.$disabled &&
+        `
+        &:hover ${SwitchTrack} {
+            box-shadow: inset 0 0 0 1px var(--primary-muted);
+        }
+    `}
 `
 
 const Switch: React.FC<SwitchProps> = ({

@@ -10,7 +10,6 @@ import Tooltip from "../components/Tooltip"
 import { useDrag } from "../hooks/useDrag"
 import { configAtom } from "../state"
 import { ImmersiveTranslator } from "../translation/ImmersiveTranslator"
-import iconImg from "~/assets/icon.png"
 
 import "@/styles/theme.scss"
 
@@ -32,96 +31,148 @@ const SCxContainer = styled.div.withConfig({
 
 const SCxFloatingButton = styled.div`
     position: relative;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    opacity: 0.7;
-    /* background: linear-gradient(135deg, #f0eaff 0%, #7748f9 100%); */
-    background: #f0eaff;
-    box-shadow: 0 4px 12px rgba(119, 72, 249, 0.25);
+    width: 54px;
+    height: 54px;
+    border-radius: 8px;
+    background: var(--primary-color, #b23a2e);
+    /* 内描边 —— 印面的留白边 */
+    box-shadow:
+        inset 0 0 0 1.5px rgba(251, 248, 240, 0.6),
+        0 3px 10px rgba(142, 42, 32, 0.24);
+    opacity: 0.84;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition:
+        opacity var(--transition-base, 0.2s ease),
+        transform var(--transition-base, 0.2s ease);
     user-select: none;
-    border: 1px solid #e2e8f0;
 
     &:hover {
-        transform: scale(1.1);
-        box-shadow: 0 6px 20px rgba(119, 72, 249, 0.35);
-        /* background: linear-gradient(135deg, #f0eaff 0%, #6b3fd9 100%); */
-        /* border-color: #6b3fd9; */
+        opacity: 1;
+        transform: translateY(-1px);
     }
 
     &:active {
-        transform: scale(0.95);
+        transform: translateY(0) scale(0.96);
     }
 `
 
-const SCxIcon = styled.img`
-    width: 28px;
-    height: 28px;
-    object-fit: contain;
-    -webkit-user-drag: none;
+// 印文：一个「譯」字。用系统宋体，不依赖任何图片资源。
+const SCxSealGlyph = styled.span`
+    font-family: var(--font-display, serif);
+    font-size: 27px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--text-inverse, #fbf8f0);
     user-select: none;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+    -webkit-user-drag: none;
 `
 
+// 研墨：翻译进行中，外沿一圈虚线缓慢转动
+const SCxGrindRing = styled.div<{ $active: boolean }>`
+    position: absolute;
+    inset: -7px;
+    border: 1.5px dashed var(--primary-color, #b23a2e);
+    border-radius: 12px;
+    pointer-events: none;
+    opacity: ${p => (p.$active ? 0.75 : 0)};
+    transition: opacity var(--transition-base, 0.2s ease);
+    animation: mewcat-grind 5s linear infinite;
+
+    @keyframes mewcat-grind {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* 降级后停转，但形态保留 —— 状态仍然可辨认 */
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+`
+
+// 落印：译文落定的一瞬，墨渍向外扩散一次
+const SCxInkWash = styled.div<{ $active: boolean }>`
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background: var(--primary-color, #b23a2e);
+    pointer-events: none;
+    opacity: 0;
+    ${p => p.$active && `animation: mewcat-wash 0.62s ease-out 1;`}
+
+    @keyframes mewcat-wash {
+        from {
+            opacity: 0.42;
+            transform: scale(1);
+        }
+        to {
+            opacity: 0;
+            transform: scale(1.85);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
+`
+
+// 已落印的持久标记 —— 动画结束后状态依然可读
 const SCxTickIcon = styled.div`
     position: absolute;
-    right: -4px;
-    bottom: -8px;
+    right: -5px;
+    bottom: -5px;
     z-index: 1;
-    width: 20px;
-    height: 20px;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #68cd52;
-    border-radius: 100%;
-    z-index: 1;
-    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
+    background: var(--jade, #3e6b63);
+    box-shadow: inset 0 0 0 1.5px rgba(251, 248, 240, 0.85);
 `
 
 const SCxSettingsIcon = styled.div.withConfig({
     shouldForwardProp: prop => prop !== "visible"
 })<{ visible: boolean }>`
     position: absolute;
-    bottom: -45px;
+    bottom: -44px;
     left: 50%;
     transform: translateX(-50%);
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    width: 30px;
+    height: 30px;
+    border-radius: 3px;
+    background: var(--bg-secondary, #fbf8f0);
+    border: 1px solid var(--border-color, #d8d0be);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(26, 23, 20, 0.05));
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition:
+        opacity var(--transition-base, 0.2s ease),
+        border-color var(--transition-base, 0.2s ease),
+        background var(--transition-base, 0.2s ease);
     opacity: ${props => (props.visible ? 1 : 0)};
     visibility: ${props => (props.visible ? "visible" : "hidden")};
     pointer-events: ${props => (props.visible ? "auto" : "none")};
 
     &:hover {
-        background: var(--primary-light);
-        border-color: var(--primary-color);
-        transform: translateX(-50%) scale(1.1);
-        box-shadow: 0 4px 12px rgba(119, 72, 249, 0.25);
+        background: var(--primary-light, #f7efe6);
+        border-color: var(--primary-color, #b23a2e);
 
         svg {
-            color: var(--primary-color);
+            color: var(--primary-color, #b23a2e);
         }
     }
 
     svg {
         width: 16px;
         height: 16px;
-        color: var(--text-tertiary);
-        transition: color 0.3s ease;
+        color: var(--text-tertiary, #6e665c);
+        transition: color var(--transition-base, 0.2s ease);
     }
 `
 
@@ -439,17 +490,36 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 onMouseLeave={handleMouseLeave}
             >
                 <Tooltip
-                    content={loading ? "清理翻译" : `开启翻译`}
+                    content={loading || isTranslate ? "清理翻译" : "开启翻译"}
                     position="left"
                     trigger="hover"
                     disabled={isDragging}
                 >
-                    <SCxFloatingButton>
-                        <SCxIcon src={iconImg} alt="Translate" />
+                    <SCxFloatingButton
+                        role="button"
+                        aria-label={
+                            loading
+                                ? "翻译中"
+                                : isTranslate
+                                  ? "清理翻译"
+                                  : "开启翻译"
+                        }
+                    >
+                        <SCxGrindRing $active={loading} aria-hidden="true" />
+                        <SCxInkWash
+                            key={isTranslate ? "washed" : "idle"}
+                            $active={isTranslate && !loading}
+                            aria-hidden="true"
+                        />
+                        <SCxSealGlyph aria-hidden="true">譯</SCxSealGlyph>
 
                         {isTranslate && (
                             <SCxTickIcon>
-                                <Icon name={"check"} size={16} color="white" />
+                                <Icon
+                                    name={"check"}
+                                    size={12}
+                                    color="#fbf8f0"
+                                />
                             </SCxTickIcon>
                         )}
                     </SCxFloatingButton>

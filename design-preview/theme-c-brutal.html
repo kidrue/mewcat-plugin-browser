@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>方向 C · 硬边橙 — mewCat UI 预览</title>
+<style>
+/* ============================================================
+   方向 C · 硬边橙  Neo-Brutalist Orange
+   设计主张：把品牌橙放到最大。零圆角、粗黑边、硬投影、零模糊。
+   投影 = 可按下。所有可交互元素按下时投影归零并位移。
+   ============================================================ */
+
+:root {
+    --bg:     #fffcf5;
+    --surf:   #ffffff;
+    --surf-2: #f4f0e6;
+    --ink:    #14110d;
+    --ink-2:  #443f37;
+    --ink-3:  #6d675c;
+    --ink-4:  #9a9488;
+
+    --orange:      #ff6a00;
+    --orange-deep: #e05d00;
+    --orange-pale: #ffe9d6;
+    --blue:        #2b4eff;
+    --blue-pale:   #e0e5ff;
+    --green:       #12b76a;
+    --green-pale:  #d6f5e6;
+    --red:         #e5342b;
+
+    --bd: 2px solid var(--ink);
+    --bd-thick: 3px solid var(--ink);
+    --sh:   4px 4px 0 var(--ink);
+    --sh-2: 2px 2px 0 var(--ink);
+    --sh-5: 5px 5px 0 var(--ink);
+
+    --font-heavy: "Arial Black", "Archivo Black", "PingFang SC", "Microsoft YaHei", sans-serif;
+    --font-ui:    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei",
+                  -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --font-mono:  "Cascadia Mono", "SF Mono", Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 评审工具条（非设计的一部分） ---------- */
+.rv-bar {
+    position: sticky; top: 0; z-index: 90;
+    display: flex; align-items: center; gap: 18px;
+    padding: 10px 20px;
+    background: var(--ink); color: var(--bg);
+    font-size: 12px; flex-wrap: wrap;
+}
+.rv-bar strong { color: var(--orange); font-weight: 800; letter-spacing: .02em; }
+.rv-bar a { color: var(--bg); opacity: .6; text-decoration: none; border-bottom: 2px solid transparent; }
+.rv-bar a:hover, .rv-bar a:focus-visible { opacity: 1; border-bottom-color: var(--orange); }
+.rv-bar .rv-cur { opacity: 1; border-bottom-color: var(--orange); }
+.rv-spacer { flex: 1; }
+.rv-note { opacity: .55; }
+
+.rv-scene { max-width: 1320px; margin: 0 auto; padding: 28px 20px 8px; }
+.rv-scene-label { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; font-size: 12px; color: var(--ink-3); }
+.rv-scene-label b { font-family: var(--font-heavy); font-size: 14px; color: var(--ink); }
+.rv-frame { border: var(--bd-thick); overflow: hidden; background: var(--bg); }
+
+/* ============================================================
+   场景一 · 设置页
+   ============================================================ */
+.c-app { height: 780px; display: flex; flex-direction: column; }
+
+/* 报头 */
+.c-head {
+    display: flex; align-items: stretch;
+    border-bottom: var(--bd-thick);
+    background: var(--orange);
+    flex: none;
+}
+.c-head-mark {
+    width: 62px; flex: none;
+    border-right: var(--bd-thick);
+    background: var(--ink); color: var(--orange);
+    font-family: var(--font-heavy); font-size: 26px;
+    display: flex; align-items: center; justify-content: center;
+    user-select: none;
+}
+.c-head-txt { padding: 12px 18px; flex: 1; min-width: 0; }
+.c-head-txt h1 {
+    font-family: var(--font-heavy); font-size: 25px; line-height: 1.05;
+    margin: 0; letter-spacing: -.01em; color: var(--ink);
+}
+.c-head-txt p { margin: 3px 0 0; font-size: 12px; font-weight: 700; letter-spacing: .16em; color: var(--ink); opacity: .72; }
+.c-head-meta {
+    flex: none; border-left: var(--bd-thick);
+    padding: 12px 16px;
+    font-family: var(--font-mono); font-size: 11px; color: var(--ink);
+    display: flex; flex-direction: column; justify-content: center; gap: 2px;
+}
+
+.c-body { flex: 1; display: flex; min-height: 0; }
+
+/* 左栏 */
+.c-rail { flex: 0 0 216px; border-right: var(--bd-thick); background: var(--surf-2); padding: 16px 14px; display: flex; flex-direction: column; gap: 12px; }
+.c-tab {
+    appearance: none; cursor: pointer; display: block; width: 100%;
+    text-align: left;
+    font-family: var(--font-ui); font-size: 14px; font-weight: 800;
+    padding: 11px 13px;
+    border: var(--bd); border-radius: 0;
+    background: var(--surf); color: var(--ink);
+    box-shadow: var(--sh);
+    transition: box-shadow .1s linear, transform .1s linear, background .1s linear;
+}
+.c-tab small { display: block; font-size: 10.5px; font-weight: 600; letter-spacing: .1em; color: var(--ink-3); margin-top: 2px; }
+.c-tab:hover { box-shadow: var(--sh-2); transform: translate(2px, 2px); }
+.c-tab:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.c-tab[aria-selected="true"] { background: var(--orange); box-shadow: 0 0 0 var(--ink); transform: translate(4px, 4px); }
+.c-tab[aria-selected="true"] small { color: var(--ink); opacity: .7; }
+.c-rail-note { margin-top: auto; font-size: 11px; font-weight: 700; line-height: 1.6; color: var(--ink-3); border-top: var(--bd); padding-top: 10px; }
+
+/* 主区 */
+.c-main { flex: 1; overflow-y: auto; padding: 22px 26px 60px; min-width: 0; }
+.c-main::-webkit-scrollbar { width: 14px; }
+.c-main::-webkit-scrollbar-track { background: var(--surf-2); border-left: var(--bd); }
+.c-main::-webkit-scrollbar-thumb { background: var(--ink); border: 3px solid var(--surf-2); }
+.c-sheet { max-width: 880px; }
+
+/* 分节：黑条标题 + 白块内容 */
+.c-sec { border: var(--bd); background: var(--surf); box-shadow: var(--sh); margin-bottom: 24px; }
+.c-sec-head {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--ink); color: var(--bg);
+    padding: 9px 14px;
+}
+.c-sec-head h3 { font-family: var(--font-heavy); font-size: 15px; margin: 0; letter-spacing: .01em; }
+.c-sec-head .c-sec-en { font-family: var(--font-mono); font-size: 10.5px; color: var(--orange); letter-spacing: .1em; }
+.c-sec-head .c-sec-extra { margin-left: auto; }
+.c-sec-in { padding: 4px 14px; }
+
+/* 行 */
+.c-row { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-bottom: 1px solid rgba(20,17,13,.16); }
+.c-row:last-child { border-bottom: 0; }
+.c-row-k { flex: 1 1 auto; min-width: 0; }
+.c-row-k .c-k { display: block; font-size: 13.5px; font-weight: 800; }
+.c-row-k .c-k .c-req { color: var(--red); }
+.c-row-k .c-n { display: block; font-size: 11.5px; color: var(--ink-3); font-weight: 500; margin-top: 2px; line-height: 1.5; }
+.c-row-v { flex: none; }
+.c-stack { padding: 14px 0; border-bottom: 1px solid rgba(20,17,13,.16); }
+.c-stack:last-child { border-bottom: 0; }
+.c-stack-k { margin-bottom: 8px; }
+.c-tail { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); margin-top: 7px; }
+.c-tail a { color: var(--blue); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--blue); }
+
+/* 控件 */
+.c-input, .c-select {
+    width: 100%;
+    font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--ink);
+    background: var(--surf);
+    border: var(--bd); border-radius: 0;
+    padding: 8px 11px;
+    transition: box-shadow .1s linear, background .1s linear;
+}
+.c-input::placeholder { color: var(--ink-4); font-weight: 500; }
+.c-input:focus, .c-select:focus { outline: none; box-shadow: 4px 4px 0 var(--orange); }
+.c-input:disabled, .c-select:disabled { background: var(--surf-2); color: var(--ink-3); cursor: not-allowed; }
+.c-mono { font-family: var(--font-mono); font-size: 12px; }
+.c-select {
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%),
+                      linear-gradient(135deg, var(--ink) 50%, transparent 50%);
+    background-position: calc(100% - 16px) 53%, calc(100% - 10px) 53%;
+    background-size: 6px 6px, 6px 6px; background-repeat: no-repeat;
+    padding-right: 32px;
+}
+
+/* 方块开关 */
+.c-switch {
+    appearance: none; margin: 0; cursor: pointer; flex: none;
+    width: 54px; height: 28px;
+    background: var(--surf-2);
+    border: var(--bd); border-radius: 0;
+    position: relative;
+    transition: background .1s linear;
+}
+/* 双重编码：位置（左/右）＋ 滑块颜色（灰/黑）。
+   若两态都用黑滑块，「黑左+米白右」和「橙左+黑右」都是「一半黑一半彩」，一眼分不出开关。 */
+.c-switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 22px; height: 20px;
+    background: var(--ink-4);
+    transition: transform .12s steps(3, end), background .12s linear;
+}
+.c-switch:checked { background: var(--orange); }
+.c-switch:checked::after { transform: translateX(26px); background: var(--ink); }
+.c-switch:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.c-switch:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 按钮：投影 = 可按下 */
+.c-btn {
+    appearance: none; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    font-family: var(--font-ui); font-size: 12.5px; font-weight: 800;
+    padding: 8px 15px;
+    border: var(--bd); border-radius: 0;
+    background: var(--surf); color: var(--ink);
+    box-shadow: var(--sh);
+    transition: box-shadow .1s linear, transform .1s linear, background .1s linear;
+    white-space: nowrap;
+}
+.c-btn:hover { box-shadow: var(--sh-2); transform: translate(2px, 2px); }
+.c-btn:active { box-shadow: 0 0 0 var(--ink); transform: translate(4px, 4px); }
+.c-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.c-btn-go { background: var(--orange); }
+.c-btn-blue { background: var(--blue); color: #fff; }
+.c-btn-red { background: var(--red); color: #fff; }
+.c-btn-sm { font-size: 11.5px; padding: 5px 10px; box-shadow: var(--sh-2); }
+.c-btn-sm:hover { box-shadow: 1px 1px 0 var(--ink); transform: translate(1px, 1px); }
+.c-btn-sm:active { box-shadow: 0 0 0 var(--ink); transform: translate(2px, 2px); }
+.c-btn-flat { box-shadow: none; }
+.c-btn-flat:hover { box-shadow: none; transform: none; background: var(--orange-pale); }
+.c-btn-flat:active { box-shadow: none; transform: none; }
+
+/* 分段 */
+.c-seg { display: inline-flex; border: var(--bd); }
+.c-seg button {
+    appearance: none; cursor: pointer; border: 0; border-radius: 0;
+    font-family: var(--font-ui); font-size: 12.5px; font-weight: 800;
+    padding: 8px 18px; background: var(--surf); color: var(--ink);
+    transition: background .1s linear;
+}
+.c-seg button + button { border-left: var(--bd); }
+.c-seg button:hover { background: var(--orange-pale); }
+.c-seg button[aria-pressed="true"] { background: var(--orange); }
+.c-seg button:focus-visible { outline: 3px solid var(--blue); outline-offset: -3px; }
+
+/* 数字 */
+.c-num { display: inline-flex; align-items: stretch; border: var(--bd); }
+.c-num button {
+    appearance: none; border: 0; cursor: pointer; width: 32px;
+    background: var(--ink); color: var(--bg);
+    font-family: var(--font-heavy); font-size: 15px; line-height: 1;
+}
+.c-num button:hover { background: var(--orange); color: var(--ink); }
+.c-num input {
+    width: 84px; border: 0; text-align: center; background: var(--surf);
+    font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--ink);
+}
+.c-num input:focus { outline: none; background: var(--orange-pale); }
+.c-unit { font-size: 11px; font-weight: 700; color: var(--ink-3); margin-left: 10px; align-self: center; }
+
+/* chips */
+.c-chips { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; border: var(--bd); padding: 8px 9px; min-height: 42px; background: var(--surf); }
+.c-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 12px; font-weight: 800;
+    background: var(--orange-pale); border: var(--bd); padding: 3px 5px 3px 9px;
+}
+.c-chip button { appearance: none; border: 0; background: var(--ink); color: var(--bg); cursor: pointer; width: 15px; height: 15px; font-size: 11px; line-height: 1; padding: 0; }
+.c-chip button:hover { background: var(--red); }
+.c-chips-ph { font-size: 12px; font-weight: 700; color: var(--ink-4); padding-left: 3px; }
+
+/* url */
+.c-urls { border: var(--bd); background: var(--surf); }
+.c-urls-add { display: flex; border-bottom: var(--bd); }
+.c-urls-add .c-input { border: 0; }
+.c-urls-add .c-input:focus { box-shadow: none; background: var(--orange-pale); }
+.c-urls-add .c-btn { border: 0; border-left: var(--bd); box-shadow: none; transform: none; }
+.c-urls-add .c-btn:hover { background: var(--orange); box-shadow: none; transform: none; }
+.c-urls-list { list-style: none; margin: 0; padding: 0; }
+.c-urls-list li {
+    display: flex; align-items: center; gap: 10px; padding: 8px 11px;
+    font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+    border-bottom: 1px solid rgba(20,17,13,.16);
+}
+.c-urls-list li:last-child { border-bottom: 0; }
+.c-urls-list li::before { content: ""; width: 9px; height: 9px; background: var(--orange); border: 1.5px solid var(--ink); flex: none; }
+.c-urls-list .c-del { margin-left: auto; appearance: none; border: 0; background: none; font-family: var(--font-ui); font-size: 11px; font-weight: 800; color: var(--ink-3); cursor: pointer; }
+.c-urls-list .c-del:hover { color: var(--red); }
+.c-urls-empty { padding: 14px 11px; font-size: 12px; font-weight: 700; color: var(--ink-4); }
+
+/* 预览 */
+.c-preview { margin-top: 10px; border: var(--bd); background: var(--surf-2); padding: 13px 15px; }
+.c-preview-tag { display: block; font-family: var(--font-mono); font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--ink-3); margin-bottom: 7px; }
+.c-preview-src { font-size: 13px; color: var(--ink-3); }
+.c-preview-dst {
+    font-size: 13.5px; font-weight: 700; color: var(--ink);
+    text-decoration: underline; text-decoration-color: var(--orange);
+    text-decoration-thickness: 3px; text-underline-offset: 4px; text-decoration-skip-ink: none;
+}
+
+/* 模型清单 */
+.c-models { display: flex; flex-direction: column; gap: 10px; }
+.c-model {
+    display: flex; align-items: center; gap: 12px;
+    border: var(--bd); background: var(--surf); padding: 10px 12px;
+    cursor: pointer;
+    transition: box-shadow .1s linear, transform .1s linear, background .1s linear;
+}
+.c-model:hover { background: var(--orange-pale); }
+/* 选中态刻意不给投影：投影在这套语言里只表示「可按下的按钮」。
+   列表每一行都可点击，若只给选中行投影，投影就退化成选中标记，语义就乱了。 */
+.c-model[aria-current="true"] { background: var(--orange-pale); border-left: 8px solid var(--orange); padding-left: 8px; }
+.c-model-grip { font-family: var(--font-mono); font-size: 13px; color: var(--ink-4); cursor: grab; flex: none; user-select: none; }
+.c-model-body { flex: 1; min-width: 0; }
+.c-model-name { display: block; font-size: 13.5px; font-weight: 800; }
+.c-model-sub { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-badge {
+    font-size: 10.5px; font-weight: 800; letter-spacing: .04em;
+    border: 1.5px solid var(--ink); padding: 2px 7px; flex: none;
+}
+.c-badge-ok { background: var(--green-pale); }
+.c-badge-wait { background: var(--orange-pale); }
+.c-badge-idle { background: var(--surf-2); color: var(--ink-3); }
+.c-badge-src { background: var(--blue-pale); }
+
+/* 模型详情 */
+.c-detail { border: var(--bd); background: var(--surf-2); margin-top: 16px; }
+.c-detail-head { display: flex; align-items: flex-start; gap: 14px; padding: 14px; border-bottom: var(--bd); background: var(--surf); }
+.c-detail-head h4 { font-family: var(--font-heavy); font-size: 19px; margin: 0 0 4px; }
+.c-detail-head p { margin: 0; font-size: 12px; color: var(--ink-2); line-height: 1.55; max-width: 52ch; font-weight: 500; }
+.c-detail-acts { margin-left: auto; display: flex; gap: 8px; flex: none; }
+.c-detail-in { padding: 4px 14px; }
+
+/* 信息 */
+.c-meta { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(20,17,13,.16); }
+.c-meta:last-child { border-bottom: 0; }
+.c-meta-k { flex: 0 0 96px; font-size: 11px; font-weight: 800; letter-spacing: .1em; color: var(--ink-3); }
+.c-meta-v { font-size: 13.5px; font-weight: 700; }
+.c-meta-v.c-mono { background: var(--orange); border: var(--bd); padding: 1px 8px; }
+
+/* ============================================================
+   场景二 · 宿主网页 + 方块猫头
+   ============================================================ */
+.c-host { position: relative; height: 700px; overflow: hidden; background: #fff; }
+.c-host-page { height: 100%; overflow-y: auto; padding: 40px 56px 80px; }
+.c-host-inner { max-width: 620px; font-family: Georgia, "Times New Roman", serif; color: #23201d; }
+.c-host-kicker { font-family: var(--font-ui); font-size: 11px; font-weight: 800; letter-spacing: .14em; color: #8a8378; text-transform: uppercase; }
+.c-host-inner h2 { font-size: 27px; line-height: 1.28; margin: 8px 0 18px; font-weight: 600; }
+.c-host-inner p { font-size: 15.5px; line-height: 1.75; margin: 0 0 17px; }
+.c-host-inner a { color: #1b5e8f; }
+/* 下划线作用于文本本身：每一行都有线。块级 border-bottom 只有末行有线且横贯整宽，
+   会被误读成段落分隔线。 */
+.c-trans {
+    display: block; margin-top: 6px;
+    font-family: var(--font-ui); font-size: 15px; font-weight: 600; line-height: 1.95;
+    color: var(--ink);
+    text-decoration: underline;
+    text-decoration-color: var(--orange);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 4px;
+    text-decoration-skip-ink: none;
+}
+.c-trans a { text-decoration-color: var(--orange); }
+.c-host-page[data-translated="false"] .c-trans { display: none; }
+
+/* 方块猫头 */
+.c-dock { position: absolute; right: 36px; top: 210px; z-index: 20; }
+.c-cat {
+    position: relative;
+    width: 54px; height: 54px;
+    background: var(--surf);
+    border: var(--bd-thick);
+    box-shadow: var(--sh-5);
+    cursor: pointer; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow .1s linear, transform .1s linear, background .12s linear;
+}
+/* 两只方耳 */
+.c-cat::before, .c-cat::after {
+    content: ""; position: absolute; top: -12px;
+    width: 0; height: 0;
+    border-left: 9px solid transparent;
+    border-right: 9px solid transparent;
+    border-bottom: 12px solid var(--ink);
+}
+.c-cat::before { left: 3px; }
+.c-cat::after { right: 3px; }
+.c-cat:hover { box-shadow: 2px 2px 0 var(--ink); transform: translate(3px, 3px); }
+.c-cat:active { box-shadow: 0 0 0 var(--ink); transform: translate(5px, 5px); }
+.c-cat:focus-visible { outline: 3px solid var(--blue); outline-offset: 3px; }
+
+.c-face { display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.c-eyes { display: flex; gap: 11px; }
+.c-eye { width: 7px; height: 11px; background: var(--ink); transition: height .12s steps(2, end), width .12s steps(2, end); }
+.c-mouth { font-family: var(--font-mono); font-size: 10px; font-weight: 700; color: var(--ink); line-height: 1; }
+
+/* 翻译中：橙底 + 眼睛变横线 + 底部黑色进度块 */
+.c-dock[data-state="loading"] .c-cat { background: var(--orange); }
+.c-dock[data-state="loading"] .c-eye { height: 3px; width: 11px; }
+.c-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; overflow: hidden; opacity: 0; }
+.c-bar i { position: absolute; top: 0; bottom: 0; width: 40%; background: var(--ink); animation: c-slide .9s steps(6, end) infinite; }
+.c-dock[data-state="loading"] .c-bar { opacity: 1; }
+@keyframes c-slide { from { left: -40%; } to { left: 100%; } }
+
+/* 已翻译：整块翻成橙底 + 眼睛弯成开心 + 黑角标 */
+.c-dock[data-state="done"] .c-cat { background: var(--orange); box-shadow: 0 0 0 var(--ink); transform: translate(5px, 5px); }
+.c-dock[data-state="done"] .c-eye { height: 4px; width: 10px; }
+/* 角标放右下：右上会和猫耳三角重叠 */
+.c-flag {
+    position: absolute; right: -11px; bottom: -11px;
+    width: 22px; height: 22px;
+    background: var(--ink); color: var(--orange);
+    border: 2px solid var(--ink);
+    font-family: var(--font-heavy); font-size: 12px;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(.3);
+    transition: opacity .12s linear .06s, transform .14s steps(3, end) .06s;
+}
+.c-dock[data-state="done"] .c-flag { opacity: 1; transform: scale(1); }
+
+/* 设置入口 */
+.c-cog {
+    position: absolute; left: 50%; bottom: -44px; transform: translateX(-50%);
+    width: 30px; height: 30px;
+    background: var(--surf); border: var(--bd); box-shadow: var(--sh-2);
+    color: var(--ink);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;
+    opacity: 0; visibility: hidden; transition: opacity .12s linear, visibility .12s linear;
+}
+.c-dock:hover .c-cog, .c-dock[data-open="true"] .c-cog { opacity: 1; visibility: visible; }
+.c-cog:hover { background: var(--orange); }
+.c-cog:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; opacity: 1; visibility: visible; }
+.c-cog svg { width: 16px; height: 16px; }
+
+/* 面板 */
+.c-panel {
+    position: absolute; right: 76px; top: 0; width: 320px;
+    background: var(--bg); border: var(--bd-thick); box-shadow: 7px 7px 0 var(--ink);
+    opacity: 0; visibility: hidden; transform: translate(6px, -6px);
+    transition: opacity .12s linear, visibility .12s linear, transform .12s steps(3, end);
+}
+.c-dock[data-open="true"] .c-panel { opacity: 1; visibility: visible; transform: translate(0, 0); }
+.c-panel-head { display: flex; align-items: center; gap: 11px; padding: 11px 13px; background: var(--orange); border-bottom: var(--bd-thick); }
+.c-panel-mark { width: 32px; height: 32px; background: var(--ink); color: var(--orange); font-family: var(--font-heavy); font-size: 17px; display: flex; align-items: center; justify-content: center; flex: none; }
+.c-panel-head h5 { font-family: var(--font-heavy); font-size: 15px; margin: 0; }
+.c-panel-head span { font-family: var(--font-mono); font-size: 10.5px; font-weight: 600; }
+.c-panel-in { padding: 4px 13px 13px; }
+.c-panel-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(20,17,13,.16); }
+.c-panel-row:last-of-type { border-bottom: 0; }
+.c-panel-row > label { font-size: 12.5px; font-weight: 700; flex: 1; display: flex; align-items: center; gap: 7px; }
+.c-help {
+    width: 16px; height: 16px; flex: none;
+    border: var(--bd); background: var(--surf);
+    font-size: 10px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center; cursor: help; position: relative;
+}
+.c-help:hover { background: var(--orange); }
+.c-help-tip {
+    position: absolute; bottom: 24px; left: -78px; width: 212px;
+    background: var(--ink); color: var(--bg); border: var(--bd);
+    font-size: 11.5px; font-weight: 500; line-height: 1.5;
+    padding: 8px 10px;
+    opacity: 0; visibility: hidden; transition: opacity .12s linear; z-index: 5; pointer-events: none;
+}
+.c-help:hover .c-help-tip { opacity: 1; visibility: visible; }
+.c-panel-sel { width: 132px; flex: none; }
+.c-pipe { display: flex; align-items: flex-end; gap: 10px; margin-top: 12px; padding: 11px; border: var(--bd); background: var(--orange-pale); }
+.c-pipe-box { flex: 1; min-width: 0; }
+.c-pipe-box label { display: block; font-size: 10px; font-weight: 800; letter-spacing: .1em; color: var(--ink-3); margin-bottom: 5px; }
+.c-pipe-box.r label { text-align: right; }
+.c-pipe-arrow { font-family: var(--font-heavy); font-size: 15px; padding-bottom: 7px; flex: none; }
+.c-panel-foot { margin-top: 12px; }
+.c-panel-foot .c-btn { width: 100%; }
+
+/* 状态条 */
+.c-states { display: flex; flex-wrap: wrap; gap: 9px; padding: 13px 16px; background: var(--surf-2); border-top: var(--bd-thick); align-items: center; }
+.c-state-btn {
+    appearance: none; cursor: pointer;
+    font-family: var(--font-ui); font-size: 12px; font-weight: 800;
+    padding: 6px 12px; border: var(--bd); background: var(--surf); color: var(--ink);
+    box-shadow: var(--sh-2);
+    transition: box-shadow .1s linear, transform .1s linear, background .1s linear;
+}
+.c-state-btn:hover { box-shadow: 1px 1px 0 var(--ink); transform: translate(1px, 1px); }
+.c-state-btn[aria-pressed="true"] { background: var(--orange); box-shadow: 0 0 0 var(--ink); transform: translate(2px, 2px); }
+.c-state-btn:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.c-states-hint { margin-left: auto; font-size: 11.5px; font-weight: 700; color: var(--ink-3); }
+
+/* ---------- 页脚 ---------- */
+.rv-foot { max-width: 1320px; margin: 0 auto; padding: 30px 20px 56px; font-size: 12.5px; color: var(--ink-2); line-height: 1.8; }
+.rv-foot h6 { font-family: var(--font-heavy); font-size: 15px; color: var(--ink); margin: 0 0 8px; }
+.rv-foot code { font-family: var(--font-mono); font-size: 11.5px; background: var(--surf-2); border: 1px solid var(--ink); padding: 0 5px; }
+.rv-foot ul { margin: 6px 0 16px; padding-left: 20px; }
+.rv-foot li { margin-bottom: 5px; }
+.rv-foot b { color: var(--ink); }
+
+/* ---------- 响应式 ---------- */
+@media (max-width: 960px) {
+    .c-app { height: auto; }
+    .c-body { flex-direction: column; }
+    .c-rail { flex: none; width: 100%; flex-direction: row; gap: 8px; overflow-x: auto; border-right: 0; border-bottom: var(--bd-thick); padding: 12px; }
+    .c-tab { width: auto; flex: none; box-shadow: var(--sh-2); }
+    .c-tab small { display: none; }
+    .c-rail-note { display: none; }
+    .c-main { padding: 18px 16px 48px; }
+    .c-head-meta { display: none; }
+    .c-panel { right: auto; left: -260px; }
+}
+@media (max-width: 560px) {
+    .c-row { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .c-head-txt h1 { font-size: 20px; }
+    .c-host-page { padding: 24px 20px 70px; }
+    .c-dock { right: 16px; top: 130px; }
+    .c-panel { left: auto; right: 0; top: 72px; width: min(320px, calc(100vw - 64px)); }
+    .c-detail-head { flex-direction: column; }
+    .c-detail-acts { margin-left: 0; }
+    .rv-scene { padding: 18px 12px 6px; }
+}
+
+/* ---------- 动效降级 ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+    /* 进度块停止滑动后改为满宽静止块，仍表达「进行中」 */
+    .c-dock[data-state="loading"] .c-bar i { animation: none; left: 0; width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="rv-bar">
+    <strong>方向 C · 硬边橙</strong>
+    <span class="rv-note">把品牌橙放到最大 —— 零圆角、粗黑边、硬投影。投影＝可按下，按下时投影归零并位移</span>
+    <span class="rv-spacer"></span>
+    <a href="index.html">对比入口</a>
+    <a href="theme-a-inkseal.html">A 宣纸朱印</a>
+    <a href="theme-b-terminal.html">B 夜航终端</a>
+    <a href="theme-c-brutal.html" class="rv-cur">C 硬边橙</a>
+</div>
+
+<!-- ============ 场景一 · 设置页 ============ -->
+<div class="rv-scene">
+    <div class="rv-scene-label"><b>场景一 · 设置页</b><span>重点看「翻译服务」页：20+ 控件下粗黑边是否还成立</span></div>
+    <div class="rv-frame">
+    <div class="c-app">
+
+        <div class="c-head">
+            <div class="c-head-mark" aria-hidden="true">猫</div>
+            <div class="c-head-txt">
+                <h1>譯趣貓 / MEWCAT</h1>
+                <p>SETTINGS · 设置</p>
+            </div>
+            <div class="c-head-meta">
+                <span>v0.0.1</span>
+                <span>3 models on</span>
+            </div>
+        </div>
+
+        <div class="c-body">
+            <aside class="c-rail" role="tablist" aria-label="设置分类">
+                <button class="c-tab" role="tab" aria-selected="true"  data-tab="basic">基本配置<small>BASIC</small></button>
+                <button class="c-tab" role="tab" aria-selected="false" data-tab="service">翻译服务<small>MODELS</small></button>
+                <button class="c-tab" role="tab" aria-selected="false" data-tab="image">图片翻译<small>IMAGE</small></button>
+                <button class="c-tab" role="tab" aria-selected="false" data-tab="about">关于<small>ABOUT</small></button>
+                <div class="c-rail-note">当前模型<br />DEEPSEEK-CHAT<br />→ 简体中文</div>
+            </aside>
+
+            <main class="c-main">
+            <div class="c-sheet">
+
+                <!-- ===== 基本配置 ===== -->
+                <div data-pane="basic">
+                    <section class="c-sec">
+                        <div class="c-sec-head"><h3>翻译语言</h3><span class="c-sec-en">LANGUAGE</span></div>
+                        <div class="c-sec-in">
+                            <div class="c-stack">
+                                <div class="c-stack-k">
+                                    <div class="c-k">总是翻译</div>
+                                    <div class="c-n">检测到这些语言时将自动翻译</div>
+                                </div>
+                                <div class="c-chips">
+                                    <span class="c-chip">英语 <button aria-label="移除 英语">×</button></span>
+                                    <span class="c-chip">日语 <button aria-label="移除 日语">×</button></span>
+                                    <span class="c-chip">德语 <button aria-label="移除 德语">×</button></span>
+                                    <span class="c-chips-ph">＋ 添加语言</span>
+                                </div>
+                            </div>
+                            <div class="c-stack">
+                                <div class="c-stack-k">
+                                    <div class="c-k">永不翻译</div>
+                                    <div class="c-n">选中的语言将不会被自动翻译</div>
+                                </div>
+                                <div class="c-chips">
+                                    <span class="c-chip">简体中文 <button aria-label="移除 简体中文">×</button></span>
+                                    <span class="c-chips-ph">＋ 添加语言</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="c-sec">
+                        <div class="c-sec-head"><h3>翻译网址</h3><span class="c-sec-en">SITES</span></div>
+                        <div class="c-sec-in">
+                            <div class="c-stack">
+                                <div class="c-stack-k">
+                                    <div class="c-k">总是翻译</div>
+                                    <div class="c-n">在这些网址上将自动启用翻译</div>
+                                </div>
+                                <div class="c-urls">
+                                    <div class="c-urls-add">
+                                        <input class="c-input c-mono" placeholder="输入网址，如：example.com" />
+                                        <button class="c-btn">添加</button>
+                                    </div>
+                                    <ul class="c-urls-list">
+                                        <li>news.ycombinator.com <button class="c-del">移除</button></li>
+                                        <li>arxiv.org <button class="c-del">移除</button></li>
+                                        <li>developer.mozilla.org <button class="c-del">移除</button></li>
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="c-stack">
+                                <div class="c-stack-k">
+                                    <div class="c-k">永不翻译</div>
+                                    <div class="c-n">在这些网址上将永不启用翻译</div>
+                                </div>
+                                <div class="c-urls">
+                                    <div class="c-urls-add">
+                                        <input class="c-input c-mono" placeholder="输入网址，如：example.com" />
+                                        <button class="c-btn">添加</button>
+                                    </div>
+                                    <div class="c-urls-empty">暂无配置</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="c-sec">
+                        <div class="c-sec-head"><h3>显示</h3><span class="c-sec-en">DISPLAY</span></div>
+                        <div class="c-sec-in">
+                            <div class="c-stack">
+                                <div class="c-stack-k">
+                                    <div class="c-k">译文显示样式</div>
+                                    <div class="c-n">选择翻译文本的显示样式</div>
+                                </div>
+                                <select class="c-select" style="max-width:240px">
+                                    <option>下划线</option><option>高亮显示</option><option>背景色</option>
+                                    <option>边框</option><option>阴影</option><option>无样式</option>
+                                </select>
+                                <div class="c-preview">
+                                    <span class="c-preview-tag">实时预览 / PREVIEW</span>
+                                    <span class="c-preview-src">The quick brown fox jumps over the lazy dog.</span><br />
+                                    <span class="c-preview-dst">敏捷的棕色狐狸跃过那只懒狗。</span>
+                                </div>
+                            </div>
+                            <div class="c-row">
+                                <span class="c-row-k">
+                                    <span class="c-k">自动翻译延迟</span>
+                                    <span class="c-n">网页自动翻译时等待网页加载多少毫秒</span>
+                                </span>
+                                <span class="c-row-v">
+                                    <span class="c-num"><button aria-label="减少">−</button><input value="700" aria-label="自动翻译延迟" /><button aria-label="增加">＋</button></span>
+                                    <span class="c-unit">毫秒</span>
+                                </span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ===== 翻译服务 ===== -->
+                <div data-pane="service" hidden>
+                    <section class="c-sec">
+                        <div class="c-sec-head"><h3>当前模型</h3><span class="c-sec-en">ACTIVE</span></div>
+                        <div class="c-sec-in">
+                            <div class="c-row">
+                                <span class="c-row-k">
+                                    <span class="c-k">用于翻译的模型</span>
+                                    <span class="c-n">仅列出已启用的模型</span>
+                                </span>
+                                <span class="c-row-v" style="width:240px"><select class="c-select"><option>DeepSeek</option><option>OpenAI</option><option>Moonshot</option></select></span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="c-sec">
+                        <div class="c-sec-head">
+                            <h3>模型清单</h3><span class="c-sec-en">MODELS</span>
+                            <span class="c-sec-extra"><button class="c-btn c-btn-go c-btn-sm">＋ 添加模型</button></span>
+                        </div>
+                        <div class="c-sec-in" style="padding-top:14px;padding-bottom:14px">
+                            <div class="c-models" role="listbox" aria-label="模型清单">
+                                <div class="c-model" role="option" aria-current="true" data-model>
+                                    <span class="c-model-grip" aria-hidden="true">::</span>
+                                    <span class="c-model-body">
+                                        <span class="c-model-name">DeepSeek</span>
+                                        <span class="c-model-sub">deepseek-chat</span>
+                                    </span>
+                                    <span class="c-badge c-badge-src">官方</span>
+                                    <span class="c-badge c-badge-ok">已验证</span>
+                                    <input class="c-switch" type="checkbox" checked aria-label="启用 DeepSeek" />
+                                </div>
+                                <div class="c-model" role="option" aria-current="false" data-model>
+                                    <span class="c-model-grip" aria-hidden="true">::</span>
+                                    <span class="c-model-body">
+                                        <span class="c-model-name">OpenAI</span>
+                                        <span class="c-model-sub">gpt-4o-mini</span>
+                                    </span>
+                                    <span class="c-badge c-badge-src">自定义</span>
+                                    <span class="c-badge c-badge-wait">待配置</span>
+                                    <input class="c-switch" type="checkbox" checked aria-label="启用 OpenAI" />
+                                </div>
+                                <div class="c-model" role="option" aria-current="false" data-model>
+                                    <span class="c-model-grip" aria-hidden="true">::</span>
+                                    <span class="c-model-body">
+                                        <span class="c-model-name">月之暗面 Moonshot</span>
+                                        <span class="c-model-sub">kimi-k2-thinking</span>
+                                    </span>
+                                    <span class="c-badge c-badge-src">官方</span>
+                                    <span class="c-badge c-badge-idle">未启用</span>
+                                    <input class="c-switch" type="checkbox" aria-label="启用 Moonshot" />
+                                </div>
+                                <div class="c-model" role="option" aria-current="false" data-model>
+                                    <span class="c-model-grip" aria-hidden="true">::</span>
+                                    <span class="c-model-body">
+                                        <span class="c-model-name">火山引擎</span>
+                                        <span class="c-model-sub">doubao-1.5-lite-32k</span>
+                                    </span>
+                                    <span class="c-badge c-badge-src">官方</span>
+                                    <span class="c-badge c-badge-idle">未启用</span>
+                                    <input class="c-switch" type="checkbox" aria-label="启用 火山引擎" />
+                                </div>
+                            </div>
+
+                            <div class="c-detail">
+                                <div class="c-detail-head">
+                                    <div>
+                                        <h4>DeepSeek</h4>
+                                        <p>深度求索，性价比高，中文能力强。推理切换通过模型名实现（deepseek-reasoner / deepseek-chat），无独立开关参数。</p>
+                                    </div>
+                                    <div class="c-detail-acts">
+                                        <button class="c-btn c-btn-go c-btn-sm">测试</button>
+                                        <button class="c-btn c-btn-red c-btn-sm">删除</button>
+                                    </div>
+                                </div>
+                                <div class="c-detail-in">
+                                    <div class="c-row">
+                                        <span class="c-row-k">
+                                            <span class="c-k">模型类型</span>
+                                            <span class="c-n">官方用平台默认地址，自定义可填代理或私有部署</span>
+                                        </span>
+                                        <span class="c-row-v">
+                                            <span class="c-seg" data-seg>
+                                                <button aria-pressed="true">官方模型</button>
+                                                <button aria-pressed="false">自定义</button>
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div class="c-stack">
+                                        <div class="c-stack-k"><div class="c-k">请求地址</div><div class="c-n">OpenAI 兼容端点</div></div>
+                                        <input class="c-input c-mono" data-baseurl disabled value="https://api.deepseek.com/v1" />
+                                        <div class="c-tail" data-baseurl-tail>已选择官方模型，使用平台默认地址</div>
+                                    </div>
+                                    <div class="c-stack">
+                                        <div class="c-stack-k"><div class="c-k">模型名称<span class="c-req"> *</span></div><div class="c-n">可填写平台支持的任意模型字符串</div></div>
+                                        <input class="c-input c-mono" value="deepseek-chat" />
+                                    </div>
+                                    <div class="c-stack">
+                                        <div class="c-stack-k"><div class="c-k">API Key<span class="c-req"> *</span></div><div class="c-n">保存在本地，不会上传</div></div>
+                                        <div style="display:flex;gap:8px">
+                                            <input class="c-input c-mono" data-key type="password" value="sk-a1b2c3d4e5f6g7h8i9j0" />
+                                            <button class="c-btn c-btn-sm" data-eye style="flex:none">显示</button>
+                                            <button class="c-btn c-btn-blue c-btn-sm" style="flex:none">检测连接</button>
+                                        </div>
+                                        <div class="c-tail">前往 <a href="#">platform.deepseek.com</a> 创建密钥</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="c-sec">
+                        <div class="c-sec-head">
+                            <h3>配置</h3><span class="c-sec-en">LIMITS</span>
+                            <span class="c-sec-extra"><button class="c-btn c-btn-sm">全部测试</button></span>
+                        </div>
+                        <div class="c-sec-in">
+                            <div class="c-row">
+                                <span class="c-row-k"><span class="c-k">启用思考能力</span><span class="c-n">为支持思考的模型启用深度推理，会增加响应时间</span></span>
+                                <span class="c-row-v"><input class="c-switch" type="checkbox" aria-label="启用思考能力" /></span>
+                            </div>
+                            <div class="c-row">
+                                <span class="c-row-k"><span class="c-k">每秒最大请求数</span><span class="c-n">限制 AI 模型的请求频率</span></span>
+                                <span class="c-row-v">
+                                    <span class="c-num"><button aria-label="减少">−</button><input value="3" aria-label="每秒最大请求数" /><button aria-label="增加">＋</button></span>
+                                    <span class="c-unit">次/秒</span>
+                                </span>
+                            </div>
+                            <div class="c-row">
+                                <span class="c-row-k"><span class="c-k">每次请求最大文本长度</span><span class="c-n">单次请求的文本字符数限制</span></span>
+                                <span class="c-row-v">
+                                    <span class="c-num"><button aria-label="减少">−</button><input value="1024" aria-label="每次请求最大文本长度" /><button aria-label="增加">＋</button></span>
+                                    <span class="c-unit">字符</span>
+                                </span>
+                            </div>
+                            <div class="c-stack">
+                                <div class="c-stack-k"><div class="c-k">AI 专家角色</div><div class="c-n">不同角色会影响翻译风格</div></div>
+                                <select class="c-select" style="max-width:280px">
+                                    <option>默认</option><option>技术文档专家</option><option>学术论文译者</option><option>新闻编辑</option>
+                                </select>
+                                <div class="c-tail">你是一位专业的翻译专家，请准确、自然地翻译文本。</div>
+                            </div>
+                            <div class="c-row">
+                                <span class="c-row-k"><span class="c-k">启用 AI 智能上下文</span><span class="c-n">结合网页上下文提升翻译效果，会增加翻译时长</span></span>
+                                <span class="c-row-v"><input class="c-switch" type="checkbox" checked aria-label="启用 AI 智能上下文" /></span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ===== 图片 ===== -->
+                <div data-pane="image" hidden>
+                    <section class="c-sec">
+                        <div class="c-sec-head"><h3>图片翻译</h3><span class="c-sec-en">IMAGE</span></div>
+                        <div class="c-sec-in">
+                            <div class="c-row">
+                                <span class="c-row-k"><span class="c-k">图片上显示快捷翻译按钮</span><span class="c-n">鼠标悬浮在图片上时显示翻译按钮，点击可翻译图片</span></span>
+                                <span class="c-row-v"><input class="c-switch" type="checkbox" aria-label="图片上显示快捷翻译按钮" /></span>
+                            </div>
+                            <div class="c-row">
+                                <span class="c-row-k"><span class="c-k">图片翻译服务商</span><span class="c-n">当前使用系统默认翻译服务</span></span>
+                                <span class="c-row-v" style="width:180px"><select class="c-select" disabled><option>系统</option></select></span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- ===== 关于 ===== -->
+                <div data-pane="about" hidden>
+                    <section class="c-sec">
+                        <div class="c-sec-head"><h3>扩展设置</h3><span class="c-sec-en">RUNTIME</span></div>
+                        <div class="c-sec-in">
+                            <div class="c-row">
+                                <span class="c-row-k"><span class="c-k">启用本地缓存</span><span class="c-n">缓存翻译结果以提高性能</span></span>
+                                <span class="c-row-v"><input class="c-switch" type="checkbox" checked aria-label="启用本地缓存" /></span>
+                            </div>
+                        </div>
+                    </section>
+                    <section class="c-sec">
+                        <div class="c-sec-head"><h3>扩展信息</h3><span class="c-sec-en">ABOUT</span></div>
+                        <div class="c-sec-in">
+                            <div class="c-meta"><span class="c-meta-k">版本号</span><span class="c-meta-v c-mono">v0.0.1</span></div>
+                            <div class="c-meta"><span class="c-meta-k">作者</span><span class="c-meta-v">kidrue</span></div>
+                            <div class="c-meta"><span class="c-meta-k">描述</span><span class="c-meta-v" style="font-weight:600">智能网页翻译助手，支持多种翻译引擎和划词翻译</span></div>
+                        </div>
+                    </section>
+                </div>
+
+            </div>
+            </main>
+        </div>
+    </div>
+    </div>
+</div>
+
+<!-- ============ 场景二 · 悬浮球 ============ -->
+<div class="rv-scene">
+    <div class="rv-scene-label"><b>场景二 · 页面内方块猫头</b><span>点击猫头可循环状态；注意硬投影在真实网页上的侵入感</span></div>
+    <div class="rv-frame">
+        <div class="c-host">
+            <div class="c-host-page" data-translated="false">
+                <div class="c-host-inner">
+                    <div class="c-host-kicker">Engineering · Nov 2025</div>
+                    <h2>Why context windows are not the bottleneck anymore
+                        <span class="c-trans">为什么上下文窗口不再是瓶颈</span>
+                    </h2>
+                    <p>For the past two years the industry has treated context length as the headline number. Every release
+                        announcement led with it. But the practical limit was never really the window size — it was retrieval
+                        quality and the cost curve of attention.
+                        <span class="c-trans">过去两年，业界一直把上下文长度当作头条数字，每次发布都以它领衔。但真正的实际限制从来不是窗口大小，而是检索质量与注意力机制的成本曲线。</span>
+                    </p>
+                    <p>Once you can afford to keep the whole document resident, the interesting question shifts. It becomes:
+                        what should the model attend to, and when? See the <a href="#">accompanying benchmark</a> for the
+                        full breakdown across seven workloads.
+                        <span class="c-trans">一旦你负担得起把整份文档常驻内存，有趣的问题就转移了 —— 变成了：模型应该关注什么，以及何时关注？完整的七类工作负载拆解见<a href="#">配套基准测试</a>。</span>
+                    </p>
+                    <p>The counterintuitive result is that smaller, well-scoped prompts still outperform full-document stuffing
+                        on extraction tasks, while the reverse holds for summarisation. Neither result is explained by window
+                        size alone.
+                        <span class="c-trans">反直觉的结果是：在抽取类任务上，更小、界定良好的提示仍然优于整篇塞入；而在摘要任务上结论相反。这两个结果都无法单靠窗口大小来解释。</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="c-dock" data-state="idle" data-open="false">
+                <button class="c-cat" data-cat aria-label="开启翻译">
+                    <span class="c-face" aria-hidden="true">
+                        <span class="c-eyes"><span class="c-eye"></span><span class="c-eye"></span></span>
+                        <span class="c-mouth">ω</span>
+                    </span>
+                    <span class="c-bar" aria-hidden="true"><i></i></span>
+                    <span class="c-flag" aria-hidden="true">✓</span>
+                </button>
+                <button class="c-cog" data-cog aria-label="打开设置面板">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                </button>
+
+                <div class="c-panel" role="dialog" aria-label="快捷设置">
+                    <div class="c-panel-head">
+                        <div class="c-panel-mark" aria-hidden="true">猫</div>
+                        <div>
+                            <h5>譯趣貓</h5>
+                            <span>news.ycombinator.com</span>
+                        </div>
+                    </div>
+                    <div class="c-panel-in">
+                        <div class="c-panel-row">
+                            <label for="c-p1">启用划词翻译</label>
+                            <input class="c-switch" id="c-p1" type="checkbox" checked />
+                        </div>
+                        <div class="c-panel-row">
+                            <label for="c-p2">AI 智能上下文
+                                <span class="c-help" tabindex="0">?
+                                    <span class="c-help-tip">结合网页上下文提升翻译效果。需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长。</span>
+                                </span>
+                            </label>
+                            <input class="c-switch" id="c-p2" type="checkbox" />
+                        </div>
+                        <div class="c-panel-row">
+                            <label for="c-p3">总是翻译此网站</label>
+                            <input class="c-switch" id="c-p3" type="checkbox" checked />
+                        </div>
+                        <div class="c-panel-row">
+                            <label for="c-p4">翻译模型</label>
+                            <span class="c-panel-sel"><select class="c-select" id="c-p4" style="font-size:12px;padding:6px 9px"><option>DeepSeek</option><option>OpenAI</option></select></span>
+                        </div>
+                        <div class="c-pipe">
+                            <span class="c-pipe-box">
+                                <label>网页语言</label>
+                                <select class="c-select" disabled style="font-size:12px;padding:6px 9px"><option>英语</option></select>
+                            </span>
+                            <span class="c-pipe-arrow" aria-hidden="true">→</span>
+                            <span class="c-pipe-box r">
+                                <label>目标语言</label>
+                                <select class="c-select" style="font-size:12px;padding:6px 9px"><option>简体中文</option></select>
+                            </span>
+                        </div>
+                        <div class="c-panel-foot"><button class="c-btn c-btn-go">高级设置</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="c-states">
+            <button class="c-state-btn" data-st="idle"    aria-pressed="true">静止</button>
+            <button class="c-state-btn" data-st="loading" aria-pressed="false">翻译中 · 进度块</button>
+            <button class="c-state-btn" data-st="done"    aria-pressed="false">已翻译 · 按下去了</button>
+            <button class="c-state-btn" data-st="panel"   aria-pressed="false">展开面板</button>
+            <span class="c-states-hint">已翻译＝投影归零，猫头「被按进去」并保持</span>
+        </div>
+    </div>
+</div>
+
+<div class="rv-foot">
+    <h6>字体与落地说明</h6>
+    <ul>
+        <li>标题：<code>"Arial Black", "Archivo Black", "PingFang SC", "Microsoft YaHei"</code> + <code>font-weight: 800/900</code>。<b>不打包字体</b>。中文没有真正的超粗系统字体，只能靠 800/900 字重 —— 这是本方向的硬伤：西文标题够狠，中文标题的重量感明显弱一档，两者并置时不完全对等。</li>
+        <li>正文：<code>"PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif</code>，正文也普遍加重到 600–800，靠字重而非字号建立层级。</li>
+        <li>机器值：<code>"Cascadia Mono", "SF Mono", Consolas, monospace</code>。</li>
+        <li>动效全部走 <code>steps()</code> 而不是 ease —— 卡顿的、机械的、非流体的，与硬边语言一致。</li>
+    </ul>
+    <h6>为了让高密度表单还能用，做了三处克制</h6>
+    <ul>
+        <li><b>硬投影只给「可按下」的东西。</b>按钮、当前 tab、悬浮球、面板有投影；输入框、下拉框、开关<b>没有</b>投影，只有 focus 时才弹出橙色投影。否则一页 20+ 控件会全是重影。</li>
+        <li><b>粗黑边只到容器级。</b>分节外框、控件边框是 2px 纯黑；分节<b>内部</b>的行分隔线降到 <code>1px rgba(20,17,13,.16)</code>。如果连行分隔都用 2px 黑线，翻译服务页会变成一张网格牢笼。</li>
+        <li><b>橙色不做大面积文字底。</b>橙只用在报头、当前 tab、主按钮、状态强调、译文下划线。正文区域仍是白底黑字。</li>
+    </ul>
+    <h6>还是要诚实说的风险</h6>
+    <ul>
+        <li>即便有上面三处克制，「翻译服务」页仍然是三个方向里最吵的一屏。请重点看那一页 —— 如果你觉得它吵，那这个方向就该被否掉，这正是做预览的目的。</li>
+        <li>硬投影落在真实网页上（场景二）比另两个方向侵入感更强。它抢注意力，但也最不容易被忽略。</li>
+    </ul>
+    <h6>可访问性与动效</h6>
+    <ul>
+        <li>focus 环用<b>电蓝</b> <code>#2b4eff</code> 而非橙色 —— 橙是选中态的颜色，如果 focus 也用橙，键盘用户分不清「聚焦」和「已选中」。</li>
+        <li>黑字对白底 17:1，橙 <code>#ff6a00</code> 只承载大字与色块（不做小字前景色）。</li>
+        <li><code>prefers-reduced-motion</code> 下：翻译中的滑动进度块改为满宽静止黑块，仍表达「进行中」；所有 steps 位移归零。</li>
+    </ul>
+</div>
+
+<script>
+(function () {
+    document.querySelectorAll('.c-tab').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.dataset.tab;
+            document.querySelectorAll('.c-tab').forEach(function (b) { b.setAttribute('aria-selected', String(b === btn)); });
+            document.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.dataset.pane !== id; });
+            document.querySelector('.c-main').scrollTop = 0;
+        });
+    });
+
+    document.querySelectorAll('[data-model]').forEach(function (item) {
+        item.addEventListener('click', function (e) {
+            if (e.target.classList.contains('c-switch')) return;
+            document.querySelectorAll('[data-model]').forEach(function (i) { i.setAttribute('aria-current', String(i === item)); });
+        });
+    });
+
+    var seg = document.querySelector('[data-seg]');
+    if (seg) {
+        var url = document.querySelector('[data-baseurl]');
+        var tail = document.querySelector('[data-baseurl-tail]');
+        seg.querySelectorAll('button').forEach(function (b, i) {
+            b.addEventListener('click', function () {
+                seg.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+                var official = i === 0;
+                url.disabled = official;
+                if (official) { url.value = 'https://api.deepseek.com/v1'; tail.textContent = '已选择官方模型，使用平台默认地址'; }
+                else { url.value = ''; url.placeholder = '请输入自定义请求地址（如代理或私有部署）'; tail.textContent = '自定义请求地址生效，请确保地址可用'; }
+            });
+        });
+    }
+
+    var eye = document.querySelector('[data-eye]');
+    if (eye) {
+        eye.addEventListener('click', function () {
+            var f = document.querySelector('[data-key]');
+            var show = f.type === 'password';
+            f.type = show ? 'text' : 'password';
+            eye.textContent = show ? '隐藏' : '显示';
+        });
+    }
+
+    var dock = document.querySelector('.c-dock');
+    var page = document.querySelector('.c-host-page');
+    var order = ['idle', 'loading', 'done'];
+    function setState(st) {
+        if (st === 'panel') {
+            dock.dataset.open = dock.dataset.open === 'true' ? 'false' : 'true';
+        } else {
+            dock.dataset.state = st;
+            page.dataset.translated = String(st === 'done');
+        }
+        document.querySelectorAll('[data-st]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.st === st)); });
+    }
+    document.querySelector('[data-cat]').addEventListener('click', function () {
+        setState(order[(order.indexOf(dock.dataset.state) + 1) % order.length]);
+    });
+    document.querySelector('[data-cog]').addEventListener('click', function (e) { e.stopPropagation(); setState('panel'); });
+    document.querySelectorAll('[data-st]').forEach(function (b) { b.addEventListener('click', function () { setState(b.dataset.st); }); });
+    document.querySelector('.c-panel').addEventListener('click', function (e) { e.stopPropagation(); });
+})();
+</script>
+</body>
+</html>
