@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <!--
+            assets/icon.png 的来源。
+            生成方式：用浏览器以 512×512 视口打开本文件，整页截图另存为 assets/icon.png。
+            （scripts/gen-icon.js 是纯几何绘制，画不出宋体字形，已停用。）
+
+            无内嵌白框是刻意的：内框在 512px 下好看，但缩到 16px 工具栏尺寸时
+            会吃掉约 20% 面积、并产生与外轮廓竞争的第二道边，实测明显更糊。
+        -->
+        <style>
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                background: transparent;
+            }
+            #seal {
+                position: relative;
+                width: 512px;
+                height: 512px;
+                box-sizing: border-box;
+                background: #b23a2e; /* 朱砂，同 --primary-color */
+                border-radius: 84px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            #glyph {
+                font-family:
+                    "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC",
+                    "STSong", SimSun, serif;
+                font-size: 340px;
+                font-weight: 600;
+                line-height: 1;
+                color: #fbf8f0; /* 纸色，同 --text-inverse */
+                transform: translateY(6px); /* 宋体「譯」字面重心略偏上 */
+                user-select: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="seal"><span id="glyph">譯</span></div>
+    </body>
+</html>
