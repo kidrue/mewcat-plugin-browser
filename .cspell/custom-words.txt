@@ -46,6 +46,7 @@ RERANK
 Rerank
 reranker
 Segoe
+Songti
 stackoverflow
 Syxxx
 wechat

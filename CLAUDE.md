@@ -107,7 +107,7 @@ cache/                       # 两级缓存（L1 内存 + L2 IndexedDB）
 **平台枚举**（`src/types/aiModel.ts`）：
 ```
 HUOSHAN / BAILIAN / ZHIPU / HUNYUAN / DEEPSEEK /
-OPENAI / MOONSHOT / GEMINI / BASE / SYSTEM / DEEPL / DEEPLX
+OPENAI / MOONSHOT / GEMINI / BASE / DEEPL / DEEPLX
 ```
 
 **BaseModel 结构**：
@@ -117,19 +117,16 @@ OPENAI / MOONSHOT / GEMINI / BASE / SYSTEM / DEEPL / DEEPLX
   type: AiModel_Platform_Enum
   enabled: boolean
   name: string
-  isSystem: boolean          // true = 系统模型（mewCat 后端）
   params: {
-    modelName: string
-    baseUrl?: string
-    modelVersion: LLMModel
+    modelName: string        // 可编辑的模型标识符，直接作为 API 的 model 字段
+    baseUrl?: string         // 仅自定义模式下持久化
+    isOfficial?: boolean     // true = 用 PLATFORM_OFFICIAL_BASE_URLS 的官方地址
     apiKey: string
   }
 }
 ```
 
-**SYSTEM 模型**：使用 mewCat 后端（`PLASMO_PUBLIC_DOC2X_API_DOMAIN`），无需用户填写 API Key，默认模型为 Doubao-1.5-lite-32K。
-
-**第三方模型**：用户在设置页填写 API Key，`UniversalTranslator` 直接调用对应平台 API。
+**官方 / 自定义**：`isOfficial` 为 true 时 baseUrl 不落库，统一从 `PLATFORM_OFFICIAL_BASE_URLS`（`src/constants/model.ts`）取；自定义模式下才使用 `params.baseUrl`。用户在设置页填写 API Key，`UniversalTranslator` 直接调用对应平台 API。
 
 ### CSS 类名 / DOM 属性前缀
 
@@ -170,11 +167,16 @@ OPENAI / MOONSHOT / GEMINI / BASE / SYSTEM / DEEPL / DEEPLX
 }
 ```
 
-### 环境变量（.env）
+### 环境变量
 
-| 变量 | 说明 |
-|------|------|
-| `PLASMO_PUBLIC_DOC2X_API_DOMAIN` | 后端 API 域名（系统模型使用） |
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `PLASMO_PUBLIC_ENABLE_CANVAS_REBUILD` | 是否启用 canvas 重建 | `"true"` |
+| `PLASMO_PUBLIC_CANVAS_ROLLOUT_PERCENT` | canvas 功能灰度百分比 | `"100"` |
+
+两者都在 `src/background/config/canvas-sites.ts` 内有代码级默认值，**构建不需要 `.env` 文件，也不需要任何 secret**。
+
+> 注：早期文档中记载的 `PLASMO_PUBLIC_DOC2X_API_DOMAIN` 已随 SYSTEM 平台一并移除，`src/` 中不再有任何引用。
 
 ---
 
@@ -188,9 +190,26 @@ pnpm lint         # ESLint
 pnpm format       # Prettier 格式化
 pnpm check        # 全量检查
 pnpm package      # 打包为带日期的 ZIP
+pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ```
 
 **构建流程**：`plasmo build` → `scripts/obfuscate.js`（JS 混淆）→ `scripts/package-with-date.js`（ZIP 打包）
+
+---
+
+## CI / 自动发布
+
+`.github/workflows/release.yml`：push 到 `main` 时自动执行。
+
+**流程**：`pnpm install --frozen-lockfile` → **`pnpm check`（门禁，失败即中止）** → 读取 `package.json` 的 `version` → 若 tag `v{version}` 不存在则 `pnpm build` + `pnpm crx` → `gh release create` 创建 pre-release 并上传 `mewcat-v{version}.zip` 和 `mewcat-v{version}.crx`。
+
+**发版方式**：手动 bump `package.json` 的 `version` 并推到 `main`。不改 version 的 push 只跑检查和构建校验，不产出 Release。发布判据是「tag 是否已存在」，因此对 squash merge、重复 push、workflow 重跑都是幂等的。
+
+**依赖的仓库配置**：
+- Settings → Actions → General → Workflow permissions 设为 **Read and write permissions**
+- Secret `CRX_PRIVATE_KEY_B64`：crx 签名私钥的 base64，由 `node scripts/gen-crx-key.js` 生成
+
+**关于 crx 私钥**：扩展 ID 由私钥推导，必须固定。`key.pem` 已被 `.gitignore` 排除，丢失后无法恢复，已通过 crx 安装的用户将收不到更新。
 
 ---
 
@@ -365,5 +384,28 @@ pnpm package      # 打包为带日期的 ZIP
 - `src/background/config/hotlink-sites.generated.ts`：重新同步生成
 
 **原因**：旧实现里官方 baseUrl 在三处重复硬编码（`UniversalTranslator.getBaseUrl` 内联表、`PLATFORM_OFFICIAL_BASE_URLS`、以及 `handleSourceChange` 切到自定义时塞进 `config.aiModelList[].params.baseUrl` 的持久化数据），改地址需要三处同步。本次统一以 `PLATFORM_OFFICIAL_BASE_URLS` 为唯一数据源——`UniversalTranslator` 内部 fallback、UI 显示「官方模式」时只读展示、调用方 `isOfficial` 时不传 baseUrl，均指向这一个常量。持久化层只保留用户真正填写的自定义地址，避免「修改官方默认值要同步修改用户旧数据」的耦合。`TranslateServices.tsx` 中「请求地址」FormRow 官方模式下的展示值仍走 `PLATFORM_OFFICIAL_BASE_URLS` 映射，纯 UI 展示不写回 config。存量用户：之前切过自定义然后切回官方的模型，`baseUrl` 字段可能残留官方 URL 字符串，但由于调用方在 `isOfficial=true` 时已忽略该字段直接走 fallback，无功能影响，不做迁移。
+
+---
+
+### 2026-08-06 — 新增 GitHub Actions 自动构建发布流水线
+
+**修改内容**：
+- `.github/workflows/release.yml`：新增。push `main`（及手动 `workflow_dispatch`）触发，单 job 依次执行 `pnpm install --frozen-lockfile` → `pnpm check`（质量门禁，失败即中止）→ 读取 `package.json` 的 `version` 判断 tag `v{version}` 是否已存在 → 不存在则 `pnpm build` + `pnpm crx` → `gh release create` 创建 pre-release 并上传 `mewcat-v{version}.zip` 与 `mewcat-v{version}.crx`。声明 `permissions: contents: write`，用 `concurrency` 串行化同分支 push 防止并发创建同一 Release，私钥经 `if: always()` 步骤清理
+- `scripts/build-crx.js`：修复三处缺陷 —— (1) `sourceDir` 由不存在的 `build/chrome-mv3` 改为实际产物目录 `build/chrome-mv3-prod`，且目录缺失时报错退出；(2) 私钥改为 `CRX_PRIVATE_KEY` 环境变量优先、其次 `key.pem`，**两者都无时直接报错退出**，不再回退到自动生成随机密钥；(3) `.catch` 内补 `process.exit(1)`，失败不再返回 0。同时修正 `load()` 返回值被误当作 Buffer 写入的 bug（`crx` 的 `load()` 返回实例，需再调 `pack()` 才得到 Buffer），移除占位的 `appId` / `codebase`，输出路径改为 `release/mewcat-v{version}.crx`
+- `package.json`：`crx` 依赖 `3.0.1` → `5.0.1`
+- `scripts/gen-crx-key.js`：新增一次性工具，用 Node 内置 `crypto.generateKeyPairSync` 生成 pkcs1 RSA 2048 私钥，写出 `key.pem`（权限 0600）并打印 base64 串供粘贴到 GitHub Secret；已存在 `key.pem` 时拒绝覆盖
+- `.gitignore`：新增 `key.pem`、`*.pem`、`release/`、`dist-assets/`
+- `CLAUDE.md`：新增「CI / 自动发布」章节；「环境变量」表勘误（原记载的 `PLASMO_PUBLIC_DOC2X_API_DOMAIN` 已无任何代码引用，实际生效的是 `PLASMO_PUBLIC_ENABLE_CANVAS_REBUILD` 和 `PLASMO_PUBLIC_CANVAS_ROLLOUT_PERCENT`，二者均有代码级默认值）；AI 模型系统章节的平台枚举与 `BaseModel` 结构同步 2026-05-21 的改动（移除已删除的 `SYSTEM` / `isSystem` / `modelVersion`，补充 `isOfficial`）
+
+**原因**：此前发版全靠人工在本地跑 `pnpm build` 再手动上传产物，容易漏跑质量检查，也没有可追溯的版本记录。
+
+几个设计选择的理由：
+- **发布判据用「tag 是否已存在」而非 diff `HEAD~1` 的 package.json**：前者对 squash merge、同版本多次 push、workflow 重跑都是幂等的，后者在这些场景下会误判
+- **crx 私钥必须固定且不能静默生成**：扩展 ID 由私钥推导，随机密钥意味着每次发布都是一个「新扩展」，已安装用户永远收不到更新。原脚本在无 `key.pem` 时静默生成随机密钥，属于会悄悄产出错误结果的缺陷，故改为硬失败
+- **私钥以 base64 存 Secret**：避免多行 PEM 在 secret 注入时被换行符处理影响
+- **用 runner 预装的 `gh` CLI 而非第三方 release action**：减少供应链攻击面
+- **升级 `crx` 到 5.0.1**：3.0.1 的 `loadContents()` 依赖 archiver 的 `readable` 事件累积 Buffer，在当前 Node 22 下会读到 `null` 导致 `Cannot read properties of null`；5.0.1 重写了该实现，且默认产出 CRX3 格式（3.0.1 产出的是 Chrome 已废弃的 CRX2）。npm 上 `crx` 全系列已标记 deprecated，但仍是可用的方案，后续如遇问题可迁移到 `crx3` 包
+
+**验证**：本地已验证 —— 构建产物解压抽查确认 JS 已混淆（`plasmo package` 不会覆盖 `obfuscate.js` 的就地修改）；crx 产出文件魔数为 `Cr24` + 版本字节 `03`（CRX3）；删除 `key.pem` 后 `pnpm crx` 报错且退出码为 1；base64 → 环境变量的 CI 路径打包成功；`git check-ignore` 确认 `key.pem` 不会被提交；`pnpm check` 通过。CI 端待用户配置好 Actions 写权限和 `CRX_PRIVATE_KEY_B64` Secret 后首次 push 验证。
 
 

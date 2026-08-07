@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  # 允许在 Actions 页面手动触发（同样遵守「tag 已存在则跳过发布」的规则）
+  workflow_dispatch:
+
+# 创建 tag 和 Release 需要写权限
+permissions:
+  contents: write
+
+# 同一分支上的多次 push 串行执行，避免并发创建同一个 Release
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Release notes 自动生成需要完整的提交历史和 tag
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        # 不指定 version，自动读取 package.json 的 packageManager 字段
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 质量门禁：typecheck + lint + format:check + hotlink-rules + spell
+      # 任一失败则整个流程中止，不构建也不发布
+      - name: Check
+        run: pnpm check
+
+      - name: Resolve version and decide whether to release
+        id: version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # 以「tag 是否已存在」作为判据，而非 diff HEAD~1 的 package.json。
+          # 这样对 squash merge、同版本多次 push、workflow 重跑都是幂等的。
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::tag v$VERSION 已存在，跳过发布。要发新版请先 bump package.json 的 version。"
+          else
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::将发布 v$VERSION"
+          fi
+
+      - name: Build
+        if: steps.version.outputs.should_release == 'true'
+        run: pnpm build
+
+      - name: Write crx signing key
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          CRX_PRIVATE_KEY_B64: ${{ secrets.CRX_PRIVATE_KEY_B64 }}
+        run: |
+          if [ -z "$CRX_PRIVATE_KEY_B64" ]; then
+            echo "::error::缺少仓库 Secret CRX_PRIVATE_KEY_B64。请用 \`node scripts/gen-crx-key.js\` 生成后添加。"
+            exit 1
+          fi
+
+          # Secret 兼容两种粘贴方式：base64 串，或直接粘 key.pem 的 PEM 原文
+          if printf '%s' "$CRX_PRIVATE_KEY_B64" | grep -q "BEGIN RSA PRIVATE KEY"; then
+            printf '%s' "$CRX_PRIVATE_KEY_B64" > key.pem
+          else
+            printf '%s' "$CRX_PRIVATE_KEY_B64" | base64 -d > key.pem
+          fi
+
+          # 校验落盘结果确实是一份完整私钥，避免带着损坏的 key 继续跑
+          if ! grep -q "BEGIN RSA PRIVATE KEY" key.pem || ! grep -q "END RSA PRIVATE KEY" key.pem; then
+            echo "::error::Secret CRX_PRIVATE_KEY_B64 解析后不是合法的 RSA 私钥。请确认粘贴的是 gen-crx-key.js 输出的完整 base64 串（单行、无空格换行），或 key.pem 的完整原文。"
+            exit 1
+          fi
+
+      - name: Pack crx
+        if: steps.version.outputs.should_release == 'true'
+        run: pnpm crx
+
+      - name: Collect release assets
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p dist-assets
+
+          # scripts/package-with-date.js 产出的文件名带日期后缀，
+          # 这里统一改名为带版本号的形式再上传
+          ZIP="$(ls build/chrome-mv3-prod-*.zip 2>/dev/null | head -n 1)"
+          if [ -z "$ZIP" ]; then
+            echo "::error::未找到构建产物 build/chrome-mv3-prod-*.zip"
+            exit 1
+          fi
+          cp "$ZIP" "dist-assets/mewcat-v${VERSION}.zip"
+          cp "release/mewcat-v${VERSION}.crx" "dist-assets/mewcat-v${VERSION}.crx"
+
+          ls -lh dist-assets
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --generate-notes \
+            --prerelease \
+            --target "${GITHUB_SHA}" \
+            "dist-assets/mewcat-v${VERSION}.zip" \
+            "dist-assets/mewcat-v${VERSION}.crx"
+
+      # 无论成功失败都清掉私钥，避免残留在 runner 工作区
+      - name: Remove signing key
+        if: always()
+        run: rm -f key.pem

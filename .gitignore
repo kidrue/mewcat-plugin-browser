@@ -2,3 +2,11 @@
 .deepseek
 node_modules/
 build/
+
+# crx 签名私钥 —— 绝不能提交
+key.pem
+*.pem
+
+# crx 打包输出目录 / CI 产物暂存目录
+release/
+dist-assets/
