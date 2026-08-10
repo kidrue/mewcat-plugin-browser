@@ -15,6 +15,6 @@
             "~/*": ["./*"]
         }
     },
-    "exclude": ["node_modules", "build/**/*", "test/**/*", "docs", "**/rule.old.ts"],
+    "exclude": ["node_modules", "build/**/*", "test/**/*", "docs", "**/rule.old.ts", "scripts/**/*"],
     "include": [".plasmo/index.d.ts", ".plasmo/messaging.d.ts", "src/**/*.ts", "src/**/*.tsx"]
 }

@@ -40,7 +40,7 @@ const SCxButton = styled.button.withConfig({
     position: fixed;
     width: 40px;
     height: 40px;
-    border-radius: 6px;
+    border-radius: var(--radius-xl);
     background: #b23a2e;
     border: none;
     box-shadow:
