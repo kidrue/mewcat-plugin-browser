@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client"
 
 import { AI_TRANSLATION_SERVICES } from "../src/constants/translationServices"
 import { AddModel } from "../src/components/AddModel"
+import { AIModelEmptyState } from "../src/components/AIModelEmptyState"
 
 const act = (
     React as typeof React & {
@@ -45,7 +46,7 @@ await act(async () => {
     root.render(
         <>
             <AddModel onItemClick={() => undefined} />
-            <AddModel label="添加 AI 模型" onItemClick={() => undefined} />
+            <AIModelEmptyState onItemClick={() => undefined} />
         </>
     )
 })
@@ -101,16 +102,18 @@ function getAccessibleName(element: HTMLElement): string {
     return getTextAlternative(element).replace(/\s+/g, " ").trim()
 }
 
-function hasRole(element: HTMLElement, role: "button"): boolean {
+function hasRole(element: HTMLElement, role: "button" | "heading"): boolean {
     const explicitRole = element.getAttribute("role")
     if (explicitRole) {
         return explicitRole.split(/\s+/).includes(role)
     }
 
-    return element instanceof HTMLButtonElement
+    return role === "button"
+        ? element instanceof HTMLButtonElement
+        : /^H[1-6]$/.test(element.tagName)
 }
 
-function getByRole(role: "button", options: { name: string }) {
+function getByRole(role: "button" | "heading", options: { name: string }) {
     const elements = Array.from(document.body.querySelectorAll<HTMLElement>("*"))
     const matching = elements.filter(
         element =>
@@ -130,16 +133,31 @@ assert.equal(
     getByRole("button", { name: "添加模型" }).textContent,
     "添加模型"
 )
-const customTrigger = getByRole("button", { name: "添加 AI 模型" })
-assert.equal(customTrigger.textContent, "添加 AI 模型")
+const emptyStateTrigger = getByRole("button", { name: "添加 AI 模型" })
+assert.equal(emptyStateTrigger.textContent, "添加 AI 模型")
 
 await act(async () => {
-    customTrigger.dispatchEvent(new window.MouseEvent("click", { bubbles: true }))
+    emptyStateTrigger.dispatchEvent(
+        new window.MouseEvent("click", { bubbles: true })
+    )
 })
 
 for (const service of AI_TRANSLATION_SERVICES) {
     assert.ok(document.body.textContent?.includes(service.name), service.name)
 }
+
+assert.ok(getByRole("heading", { name: "添加你的第一个 AI 模型" }))
+assert.match(
+    document.body.textContent ?? "",
+    /未添加时仍会使用 Google 翻译/
+)
+assert.ok(getByRole("button", { name: "添加 AI 模型" }))
+assert.equal(
+    document.querySelectorAll('[aria-hidden="true"]').length,
+    1,
+    "the empty-state marker is hidden from assistive technology"
+)
+assert.equal(document.querySelectorAll("img").length, 0)
 
 await act(async () => {
     root.unmount()
