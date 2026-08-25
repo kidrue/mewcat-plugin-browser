@@ -7,9 +7,8 @@ import {
     useInteractions,
     useRole
 } from "@floating-ui/react"
-import type React from "react"
-import { useState } from "react"
-import styled from "styled-components"
+import React, { useState } from "react"
+import { styled } from "styled-components"
 
 import { AI_TRANSLATION_SERVICES } from "@/constants"
 import type { AiModel_Platform_Enum } from "@/types"
