@@ -18,6 +18,7 @@ import Button from "../Button"
 
 interface AddModelProps {
     onItemClick: (platform: AiModel_Platform_Enum) => void
+    label?: string
 }
 
 const SCXList = styled.ul`
@@ -46,7 +47,8 @@ const SCXListItem = styled.li`
 `
 
 export const AddModel: React.FunctionComponent<AddModelProps> = ({
-    onItemClick
+    onItemClick,
+    label = "添加模型"
 }) => {
     const [isOpen, setIsOpen] = useState(false)
 
@@ -76,7 +78,7 @@ export const AddModel: React.FunctionComponent<AddModelProps> = ({
                 onClick={() => setIsOpen(true)}
                 {...getReferenceProps()}
             >
-                添加模型
+                {label}
             </Button>
             {isOpen && (
                 <SCXList
