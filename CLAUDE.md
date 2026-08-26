@@ -5,6 +5,7 @@
 > **格式规则**：所有代码修改必须符合 Prettier 格式规范。修改 `src/` 下的文件后，必须执行 `pnpm format` 确保格式一致。Claude Code 已配置 PostToolUse hook，会在每次文件写入/编辑后自动执行 `pnpm format`。
 
 > **功能开发规则**：实现任何新功能前，必须按以下顺序完成分析，经用户确认后再动手编码：
+>
 > 1. **需求可行性分析** — 明确需求边界、约束条件（MV3 限制、CSP、跨域等），判断是否可行及潜在风险
 > 2. **技术选型** — 列出可选方案及各自的优缺点，给出推荐选项和理由
 > 3. **技术落地方案** — 描述具体实现路径：涉及哪些文件、新增/修改哪些模块、数据流如何变化
@@ -16,8 +17,8 @@
 
 **名称**：mewCat（译趣喵）  
 **类型**：Chrome MV3 浏览器扩展  
-**框架**：Plasmo 0.90.5  
-**语言**：TypeScript 5.9.2  
+**框架**：WXT 0.21.4（Vite 8）<br>
+**语言**：TypeScript 5.8.3<br>
 **包管理**：pnpm 10.20.0
 
 浏览器翻译插件，支持沉浸式翻译、划词翻译、图片翻译，通过第三方 LLM API 驱动翻译能力。
@@ -43,6 +44,8 @@ src/
 │   ├── bridges/canvas-hook-bridge.ts
 │   └── inject/canvas-image-hook.ts
 │
+├── entrypoints/         # WXT 入口（background、content scripts、popup、options、sidepanel）
+├── messaging/           # 类型安全的扩展消息协议
 ├── popup/               # 弹出窗口（点击扩展图标）
 ├── sidepanel/           # 侧边栏
 ├── options/             # 设置页（Basic、TranslateServices、Selection、Image、About）
@@ -54,8 +57,7 @@ src/
 ├── types/               # TypeScript 类型定义
 ├── constants/           # 应用常量
 ├── utils/               # 工具函数
-├── hooks/               # React Hooks
-└── config/              # 构建时配置（mewCat 页面 URL）
+└── hooks/               # React Hooks
 ```
 
 ---
@@ -76,6 +78,7 @@ cache/                       # 两级缓存（L1 内存 + L2 IndexedDB）
 ```
 
 **翻译流程**：
+
 1. `initialize.tsx` 检测页面语言（franc 库）
 2. `DOMTraverser` 遍历 DOM，提取待翻译文本节点
 3. `RuleEngine` 按站点规则过滤
@@ -86,15 +89,15 @@ cache/                       # 两级缓存（L1 内存 + L2 IndexedDB）
 
 ### 状态管理（src/state/，Jotai）
 
-| Atom | 文件 | 说明 |
-|------|------|------|
-| `configAtom` | state/config.ts | 主配置，持久化到 Chrome local storage |
-| `updateConfigAtom` | state/config.ts | 更新配置的写入 atom |
-| `userAtom` | state/user.ts | 用户信息（头像、手机号等） |
-| `accessTokenAtom` | state/user.ts | 访问 token，持久化 |
-| `refreshTokenAtom` | state/user.ts | 刷新 token，持久化 |
-| `fetchUserAtom` | state/user.ts | 触发拉取用户信息 |
-| `setAccessTokenAtom` | state/user.ts | 设置 token 并同步到请求头 |
+| Atom                 | 文件            | 说明                                  |
+| -------------------- | --------------- | ------------------------------------- |
+| `configAtom`         | state/config.ts | 主配置，持久化到 Chrome local storage |
+| `updateConfigAtom`   | state/config.ts | 更新配置的写入 atom                   |
+| `userAtom`           | state/user.ts   | 用户信息（头像、手机号等）            |
+| `accessTokenAtom`    | state/user.ts   | 访问 token，持久化                    |
+| `refreshTokenAtom`   | state/user.ts   | 刷新 token，持久化                    |
+| `fetchUserAtom`      | state/user.ts   | 触发拉取用户信息                      |
+| `setAccessTokenAtom` | state/user.ts   | 设置 token 并同步到请求头             |
 
 ### 服务层（src/services/）
 
@@ -105,12 +108,14 @@ cache/                       # 两级缓存（L1 内存 + L2 IndexedDB）
 ### AI 模型系统
 
 **平台枚举**（`src/types/aiModel.ts`）：
+
 ```
 HUOSHAN / BAILIAN / ZHIPU / HUNYUAN / DEEPSEEK /
 OPENAI / MOONSHOT / GEMINI / BASE / DEEPL / DEEPLX
 ```
 
 **BaseModel 结构**：
+
 ```typescript
 {
   id: string
@@ -132,17 +137,17 @@ OPENAI / MOONSHOT / GEMINI / BASE / DEEPL / DEEPLX
 
 所有注入页面的 DOM 标识符统一使用 `mewcat-` 前缀：
 
-| 标识符 | 用途 |
-|--------|------|
-| `mewcat-container` | 翻译结果容器 |
-| `mewcat-wrapper` | 翻译文本包装 |
-| `mewcat-error-container` | 错误提示容器 |
-| `mewcat-error-modal` | 错误详情弹窗 |
-| `mewcat-retry-btn` | 重试按钮 |
-| `data-mewcat-parent-node-id` | 翻译节点唯一 ID |
-| `data-mewcat-canvas-id` | Canvas 元素 ID |
-| `mewcat-canvas-hook` | Canvas Hook 通信频道 |
-| `__mewCatCanvasHookState__` | Window 上的 Hook 状态标记 |
+| 标识符                       | 用途                      |
+| ---------------------------- | ------------------------- |
+| `mewcat-container`           | 翻译结果容器              |
+| `mewcat-wrapper`             | 翻译文本包装              |
+| `mewcat-error-container`     | 错误提示容器              |
+| `mewcat-error-modal`         | 错误详情弹窗              |
+| `mewcat-retry-btn`           | 重试按钮                  |
+| `data-mewcat-parent-node-id` | 翻译节点唯一 ID           |
+| `data-mewcat-canvas-id`      | Canvas 元素 ID            |
+| `mewcat-canvas-hook`         | Canvas Hook 通信频道      |
+| `__mewCatCanvasHookState__`  | Window 上的 Hook 状态标记 |
 
 ---
 
@@ -154,12 +159,12 @@ OPENAI / MOONSHOT / GEMINI / BASE / DEEPL / DEEPLX
 {
   isSelectedTranslate: true,
   targetLanguage: "zh-CN",
-  currentModel: "SYSTEM",
+  currentModel: "google-translate",
   enableGoogleTranslate: true,
   enableMicrosoftTranslate: true,
   maxRequestsPerSecond: 3,
   maxTextLengthPerRequest: 1024,
-  selectionTriggerMode: "shift",
+  selectionTriggerMode: "direct",
   cacheEnabled: true,
   enableThinking: false,
   enableContext: false,
@@ -169,10 +174,10 @@ OPENAI / MOONSHOT / GEMINI / BASE / DEEPL / DEEPLX
 
 ### 环境变量
 
-| 变量 | 说明 | 默认值 |
-|------|------|--------|
-| `PLASMO_PUBLIC_ENABLE_CANVAS_REBUILD` | 是否启用 canvas 重建 | `"true"` |
-| `PLASMO_PUBLIC_CANVAS_ROLLOUT_PERCENT` | canvas 功能灰度百分比 | `"100"` |
+| 变量                         | 说明                  | 默认值   |
+| ---------------------------- | --------------------- | -------- |
+| `WXT_ENABLE_CANVAS_REBUILD`  | 是否启用 canvas 重建  | `"true"` |
+| `WXT_CANVAS_ROLLOUT_PERCENT` | canvas 功能灰度百分比 | `"100"`  |
 
 两者都在 `src/background/config/canvas-sites.ts` 内有代码级默认值，**构建不需要 `.env` 文件，也不需要任何 secret**。
 
@@ -184,7 +189,7 @@ OPENAI / MOONSHOT / GEMINI / BASE / DEEPL / DEEPLX
 
 ```bash
 pnpm dev          # 开发模式（热重载）
-pnpm build        # 生产构建（Plasmo → 混淆 → ZIP）
+pnpm build        # WXT 生产构建并生成带日期的 ZIP
 pnpm typecheck    # TypeScript 检查
 pnpm lint         # ESLint
 pnpm format       # Prettier 格式化
@@ -193,7 +198,7 @@ pnpm package      # 打包为带日期的 ZIP
 pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ```
 
-**构建流程**：`plasmo build` → `scripts/obfuscate.js`（JS 混淆）→ `scripts/package-with-date.js`（ZIP 打包）
+**构建流程**：`wxt build` → `scripts/package-with-date.cjs`（WXT ZIP 打包并添加日期后缀）。`pnpm obfuscate` 是可选的独立步骤，不属于默认发布流程。
 
 ---
 
@@ -206,6 +211,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 **发版方式**：手动 bump `package.json` 的 `version` 并推到 `main`。不改 version 的 push 只跑检查和构建校验，不产出 Release。发布判据是「tag 是否已存在」，因此对 squash merge、重复 push、workflow 重跑都是幂等的。
 
 **依赖的仓库配置**：
+
 - Settings → Actions → General → Workflow permissions 设为 **Read and write permissions**
 - Secret `CRX_PRIVATE_KEY_B64`：crx 签名私钥的 base64，由 `node scripts/gen-crx-key.js` 生成
 
@@ -217,8 +223,21 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 
 ```json
 {
-  "host_permissions": ["<all_urls>", "http://*/*", "https://*/*", "https://v2c.doc2x.noedgeai.com/*"],
-  "permissions": ["storage", "tabs", "scripting", "windows", "contextMenus", "declarativeNetRequest", "declarativeNetRequestWithHostAccess"]
+    "host_permissions": [
+        "<all_urls>",
+        "http://*/*",
+        "https://*/*",
+        "https://v2c.doc2x.noedgeai.com/*"
+    ],
+    "permissions": [
+        "storage",
+        "tabs",
+        "scripting",
+        "windows",
+        "contextMenus",
+        "declarativeNetRequest",
+        "declarativeNetRequestWithHostAccess"
+    ]
 }
 ```
 
@@ -227,6 +246,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ## 修改记录
 
 > **格式**：每次修改后在此追加，格式如下：
+>
 > ```
 > ### YYYY-MM-DD — 简短标题
 > **修改内容**：具体改了什么文件、什么逻辑
@@ -238,6 +258,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-11 — 品牌重命名：Doc2X → 译趣喵 (mewCat)
 
 **修改内容**：
+
 - `package.json`：`name` 改为 `mewcat-plugin-browser`，`displayName` 改为 `mewCat`
 - `src/config/index.ts`：常量 `DOC2X_MATCHES` → `MEWCAT_MATCHES`，`DOC2X_FRONTEND_URL` → `MEWCAT_FRONTEND_URL`，函数 `isDoc2xPage` → `isMewCatPage`
 - `src/constants/common.ts`：`DOC2X_URL` → `MEWCAT_URL`
@@ -267,6 +288,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-12 — 修复 typecheck / spell / hotlink-rules 全部报错
 
 **修改内容**：
+
 - `src/types/aiModel.ts`：`AiModel_Platform_Enum` 新增 `SYSTEM = "SYSTEM"` 成员；`BaseModel` 新增 `isSystem?: boolean` 属性
 - `src/constants/model.ts`：新增 `SYSTEM_LLM_MODEL_NAMES: Record<SystemLLMModel, string>` 常量（29 个 SystemLLMModel 枚举值到模型名称的映射）
 - `src/constants/translationServices.ts`：`platformNameMap` 补上 `[AiModel_Platform_Enum.SYSTEM]: "系统模型"`
@@ -275,6 +297,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 - `.cspell/custom-words.txt`：新增 53 个项目专有词汇
 
 **原因**：
+
 1. `SYSTEM_LLM_MODEL_NAMES` 在 `llmModel.ts` 中从 `@/constants/model` 导入但从未定义，导致 options 页面打开时 `Cannot read properties of undefined (reading '32')`
 2. `AiModel_Platform_Enum` 缺少 `SYSTEM` 成员，`BaseModel` 缺少 `isSystem` 属性，多个文件引用但缺失定义
 3. 拼写检查无自定义词典
@@ -285,12 +308,14 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-13 — 主题色修改为橙色
 
 **修改内容**：
+
 - `src/styles/theme.scss`：主题色系从紫色改为橙色——`--primary-color: #f97316`、`--primary-hover: #ea580c`、`--primary-light: #fff7ed`、`--primary-muted: #fb923c`；同步更新 `--border-focus`、`--gradient-primary-soft`、`--shadow-primary`、`--shadow-primary-sm` 及 input focus 的 box-shadow rgba 值
 - `src/utils/style.ts`：翻译高亮色从蓝色 `#1976d2` 改为橙色 `#f97316`，同步更新所有翻译样式（HIGHLIGHT、UNDERLINE、BACKGROUND、BORDER、SHADOW）的颜色值及相关 rgba，更新样式描述文字
 
 **原因**：将插件整体主题色从紫色改为橙色
 
 **修改内容**：
+
 - `src/translation/UniversalTranslator.ts`：`checkConnection` 方法中，非 DEEPL 的 AI 提供商测试路径增加内部字段剥离逻辑——将 `requestBody.config` 中的 `apiKey`、`baseUrl`、`headers`、`timeout` 字段解构移除后，只发送 `model` + `messages` + `thinking` 作为 API 请求体，与 background handler（`translate-request.ts`）的处理方式对齐
 
 **原因**：`checkConnection` 直接通过 axios 发送请求，原有代码将整个 `UnifiedRequestBody.config`（含内部路由字段）作为 POST body 发送给目标 API，导致 DeepSeek 等严格校验未知字段的接口拒绝请求；实际翻译通过 background handler 走 `fetch` 时会正确剥离这些字段
@@ -300,6 +325,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-18 — 修复 typecheck / lint 全量检查报错
 
 **修改内容**：
+
 - `.plasmo/index.d.ts`、`.plasmo/messaging.d.ts`：新增 Plasmo 生成文件（tsconfig 中已 include 但缺失），`messaging.d.ts` 通过模块扩充将 `canvas-hook-event`、`translate-request`、`translate-image`、`inject-main-world-hook` 注册到 `MessagesMetadata`，修复 `sendToBackground` 的 `name` 字段类型为 `never` 的问题
 - `src/types/aiModel.ts`：新增 `SystemLLMModel` 枚举（31 个成员，数值 0–30），对应系统模型后端的 LLM 模型 ID
 - `src/constants/model.ts`：补充 `SystemLLMModel` 导入，修复 `SYSTEM_LLM_MODEL_NAMES` 常量的类型引用
@@ -316,6 +342,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-19 — 新增插件 Logo 及 Prettier 自动格式化 hook
 
 **修改内容**：
+
 - `assets/icon.png`：替换为新设计的 mewCat 品牌 Logo——橙色圆角方形背景，扁平风格猫脸（奶油色头部、琥珀色眼睛、粉色鼻子、胡须、腮红），512×512 RGBA PNG，由 `scripts/gen-icon.js` 生成
 - `scripts/gen-icon.js`：新增图标生成脚本，使用纯 Node.js + zlib 实现抗锯齿像素绘制，无外部依赖
 - `.claude/settings.json`：新增 PostToolUse hook，在每次 Write/Edit `src/` 文件后自动执行 `pnpm format`
@@ -328,6 +355,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-21 — AI 模型配置：删除模型版本下拉、加官方/自定义切换、移除 SYSTEM 平台
 
 **修改内容**：
+
 - `src/types/aiModel.ts`：删除 `AiModel_Platform_Enum.SYSTEM` 枚举成员、`SystemLLMModel` 枚举、`BaseModel.isSystem` 字段、`BaseModel.params.modelVersion` 字段；`BaseModel.params.modelName` 改为 `string`（去掉 number 联合）、`BaseModel.params` 新增 `isOfficial?: boolean`
 - `src/constants/model.ts`：删除 `SYSTEM_LLM_MODEL_NAMES` 和 `THINKING_CAPABLE_MODELS` 常量；新增 `THINKING_CAPABLE_PLATFORMS`（按平台白名单：DEEPSEEK/MOONSHOT/BAILIAN/HUOSHAN/GEMINI/ZHIPU/HUNYUAN）和 `PLATFORM_OFFICIAL_BASE_URLS`（每个平台的官方默认请求地址）
 - `src/constants/translationServices.ts`：`platformNameMap` 移除 SYSTEM 项
@@ -347,6 +375,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-21 — 移除侧边栏的设置 tab 及其 UI
 
 **修改内容**：
+
 - `src/sidepanel/index.tsx`：移除 `SettingsPanel` 组件导入；删除 `TabBar` / `Tab` / `SettingsPane` 三个 styled-components；删除 `TabId` 类型与 `activeTab` 状态；移除「快捷翻译」「设置」tab 切换栏；移除 `{activeTab === "settings" && <SettingsPanel />}` 渲染分支；快捷翻译面板由原先的条件渲染改为常驻渲染
 - `src/background/config/hotlink-sites.generated.ts`：重新同步生成（与本次改动无关，`pnpm check:hotlink-rules` 检测到过期）
 
@@ -357,6 +386,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-21 — 修复 OpenAI 兼容代理缺少 `/v1` 路径段时调试不通过
 
 **修改内容**：
+
 - `src/translation/UniversalTranslator.ts`：抽出 `buildOpenAICompatibleUrl()` 方法，替换 `buildRequestUrl()` default 分支原本简单的 `${baseUrl}/chat/completions` 拼接。新逻辑按优先级处理三种用户输入：(1) 已是完整 `/chat/completions` 端点 → 原样返回；(2) baseUrl 已含版本路径段（正则 `/v\d+(\.\d+)?(/|$)` 匹配 `/v1`、`/v3`、`/api/v3`、`/paas/v4`、`/compatible-mode/v1` 等）→ 仅补 `/chat/completions`；(3) 仅填了域名（如 `https://api.freemodel.dev`）→ 补 `/v1/chat/completions`
 - `.cspell/custom-words.txt`：新增 `paas` 词条（注释中提到的智谱 `/api/paas/v4` 路径段）
 
@@ -367,6 +397,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-21 — 修复 DeepSeek / Moonshot 因错误注入 `thinking` 参数导致 API 拒绝
 
 **修改内容**：
+
 - `src/translation/UniversalTranslator.ts`：`buildThinkingConfig()` 的 `thinking: {type: ...}` 分支移除 `DEEPSEEK` 和 `MOONSHOT` case，二者落入 `default` 不再注入任何思考相关字段；HUOSHAN 保留（火山引擎 Ark API 原生支持 `thinking.type`）
 - `src/constants/model.ts`：`THINKING_CAPABLE_PLATFORMS` 移除 DEEPSEEK / MOONSHOT / ZHIPU / HUNYUAN，仅保留实际有 API 参数级思考开关的 BAILIAN / HUOSHAN / GEMINI
 
@@ -377,6 +408,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-05-21 — 官方模型 baseUrl 不再持久化，统一从 PLATFORM_OFFICIAL_BASE_URLS 取
 
 **修改内容**：
+
 - `src/translation/UniversalTranslator.ts`：删除 `getBaseUrl` 内部硬编码的 `baseUrls` 字面量（与 `PLATFORM_OFFICIAL_BASE_URLS` 重复），改为从 `@/constants/model` 导入；`customUrl` 改用 `trim()` 后非空判断，空字符串/纯空白也会回退到 `PLATFORM_OFFICIAL_BASE_URLS[provider]`
 - `src/options/TranslateServices.tsx`：`handleSourceChange` 切换到「自定义」时不再用 `PLATFORM_OFFICIAL_BASE_URLS[type]` 作为初始值塞入 `config.baseUrl`，直接留空让用户主动填；`resolveBaseUrl` 在 `isOfficial` 时返回空串（让 `UniversalTranslator` 内部 fallback）而不是手动查映射
 - `src/translation/TranslationServiceManager.ts`：移除 `PLATFORM_OFFICIAL_BASE_URLS` 导入；构造 `UniversalTranslator` 时 `isOfficial` 直接传 `undefined`，仅自定义模式传 `model.params.baseUrl`
@@ -390,6 +422,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 ### 2026-08-06 — 新增 GitHub Actions 自动构建发布流水线
 
 **修改内容**：
+
 - `.github/workflows/release.yml`：新增。push `main`（及手动 `workflow_dispatch`）触发，单 job 依次执行 `pnpm install --frozen-lockfile` → `pnpm check`（质量门禁，失败即中止）→ 读取 `package.json` 的 `version` 判断 tag `v{version}` 是否已存在 → 不存在则 `pnpm build` + `pnpm crx` → `gh release create` 创建 pre-release 并上传 `mewcat-v{version}.zip` 与 `mewcat-v{version}.crx`。声明 `permissions: contents: write`，用 `concurrency` 串行化同分支 push 防止并发创建同一 Release，私钥经 `if: always()` 步骤清理
 - `scripts/build-crx.js`：修复三处缺陷 —— (1) `sourceDir` 由不存在的 `build/chrome-mv3` 改为实际产物目录 `build/chrome-mv3-prod`，且目录缺失时报错退出；(2) 私钥改为 `CRX_PRIVATE_KEY` 环境变量优先、其次 `key.pem`，**两者都无时直接报错退出**，不再回退到自动生成随机密钥；(3) `.catch` 内补 `process.exit(1)`，失败不再返回 0。同时修正 `load()` 返回值被误当作 Buffer 写入的 bug（`crx` 的 `load()` 返回实例，需再调 `pack()` 才得到 Buffer），移除占位的 `appId` / `codebase`，输出路径改为 `release/mewcat-v{version}.crx`
 - `package.json`：`crx` 依赖 `3.0.1` → `5.0.1`
@@ -400,6 +433,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 **原因**：此前发版全靠人工在本地跑 `pnpm build` 再手动上传产物，容易漏跑质量检查，也没有可追溯的版本记录。
 
 几个设计选择的理由：
+
 - **发布判据用「tag 是否已存在」而非 diff `HEAD~1` 的 package.json**：前者对 squash merge、同版本多次 push、workflow 重跑都是幂等的，后者在这些场景下会误判
 - **crx 私钥必须固定且不能静默生成**：扩展 ID 由私钥推导，随机密钥意味着每次发布都是一个「新扩展」，已安装用户永远收不到更新。原脚本在无 `key.pem` 时静默生成随机密钥，属于会悄悄产出错误结果的缺陷，故改为硬失败
 - **私钥以 base64 存 Secret**：避免多行 PEM 在 secret 注入时被换行符处理影响
@@ -408,38 +442,41 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 
 **验证**：本地已验证 —— 构建产物解压抽查确认 JS 已混淆（`plasmo package` 不会覆盖 `obfuscate.js` 的就地修改）；crx 产出文件魔数为 `Cr24` + 版本字节 `03`（CRX3）；删除 `key.pem` 后 `pnpm crx` 报错且退出码为 1；base64 → 环境变量的 CI 路径打包成功；`git check-ignore` 确认 `key.pem` 不会被提交；`pnpm check` 通过。CI 端待用户配置好 Actions 写权限和 `CRX_PRIVATE_KEY_B64` Secret 后首次 push 验证。
 
-
-
 ---
 
 ### 2026-08-07 — UI 全面重设计：「宣纸朱印」
 
 **修改内容**：
 
-*Token 与基础样式*
+_Token 与基础样式_
+
 - `src/styles/theme.scss`：整体重写。**选择器由 `:root` 改为 `:root, :host`**；主题色由橙 `#f97316` 改为朱砂 `#b23a2e`，背景由白改纸（`--bg-primary: #f2ede1` / `--bg-secondary: #fbf8f0` / `--bg-tertiary: #eae3d4`），文字改墨（`#1a1714`），灰阶整体偏暖；圆角收到近方（`--radius-sm/md: 2px`、`lg: 4px`、`xl: 6px`，`full` 仅留给印章与帮助图标）；阴影全面减轻；成功色改石青 `#3e6b63`；新增 `--seal-wash` / `--seal-ring` / `--rule-strong` / `--paper-3` / `--jade` / `--font-display`（宋体族）/ `--font-mono`；新增 `--space-7: 28px`（原缺失，见下）；全部 mixin（`btn-*`、`input-base`、`card-*`、`list-item`）同步改写，新增 `seam`（骑缝线）mixin；删除文件末尾注释掉的深色模式死代码
 - `src/styles/options.scss`、`src/styles/popup.scss`：删除约 200 行引用不存在变量（`--gradient-header`、`--spacing-lg`、`--error-color`、`--border-radius-small` 等）的死代码，重写为纸底 + 细滚动条 + `prefers-reduced-motion` 降级；焦点样式由 `outline: none` 改为 `:focus-visible { outline: 2px solid var(--primary-color) }`
 
-*Options 结构*
+_Options 结构_
+
 - `src/components/OptionsSidebar/index.tsx`：横排列表 → 76px 书脊式竖排目录（`writing-mode: vertical-rl` + 宋体 + 当前项右侧 3px 朱砂竖条），顶部朱砂印 logo；≤900px 降级为横排可滚动 tab 条
 - `src/components/OptionsSection/index.tsx`：卡片 → 分节（朱砂小方块 + 宋体标题 + 向右延伸的 hairline），去掉背景/边框/hover
 - `src/components/FormRow/index.tsx`：堆叠 → 术语/注解双栏（左列 208px 放 label + 说明，右列放控件），行间 hairline 分隔；≤900px 堆叠
 - `src/components/OptionsContentHeader/index.tsx`：改为 masthead —— 宋体大标题「譯趣貓」+ 等宽版本号 + 右侧常驻状态摘要 + 骑缝线。props 由 `title/description` 改为 `title/version/status`
 - `src/options/index.tsx`：接入 `configAtom` 计算状态摘要（`英语 → 简体中文 · DeepSeek`）传给 masthead；标题不再随 tab 变化（当前页已由书脊朱砂竖条指示）
 
-*控件*
+_控件_
+
 - `src/components/Switch/index.tsx`：圆 pill → 方形木闸，开合由「滑块位置 + 滑块颜色」双重编码（非纯色彩），新增 `:focus-visible` 环
 - 8 处紫色残留 `rgba(119,72,249,…)` → `var(--seal-ring)` / `var(--seal-wash)`：`ApiKeyInput`、`NativeSelect`、`NumberInput`、`Select`、`UrlManager`、`sidepanel`、`SettingsPanel`、`popup`
 - `src/components/Select/index.tsx`、`src/options/TranslateServices.tsx`：选中项由「浅底变色」改为「`--seal-wash` 底 + `inset 3px 0` 朱砂左边」，不靠投影
 - `src/components/Button/index.tsx` 的 `#dc2626`、`InfoDisplay` 的 `rgba(25,118,210,.1)` 与三个不存在的变量、`StylePreview` 整块注释死代码、`SettingGroup` 的圆点指示器 → 一律换 token / 方块
 - `src/components/Tooltip/index.tsx`：黑底改墨底纸字、圆角收到 2px，并加 `width: max-content`
 
-*悬浮球与面板*
+_悬浮球与面板_
+
 - `src/contents/TranslationControlCenter.tsx`：圆形浅紫球 + `icon.png` → 54px 朱砂方印（8px 圆角、内嵌 1.5px 纸色描边、宋体白字「譯」、静止态 0.84 不透明）。新增两个状态层：翻译中外沿朱砂虚线环缓转 5s（研墨）、落定时墨渍一次性扩散 0.62s（落印），并保留石青方形「已译」角标作为动画结束后的持久标记；两者都在 `prefers-reduced-motion` 下停转但保留形态。齿轮按钮改近方。移除 `iconImg` 依赖。**顺带修了 tooltip 文案 bug**：原为 `loading ? "清理翻译" : "开启翻译"`，翻译完成后 `loading` 为 false 但 `isTranslate` 为 true，会错误显示「开启翻译」，改为 `loading || isTranslate`
 - `src/components/SettingsPanel/index.tsx` + `src/popup/index.tsx`：二者原为 95% 逐行重复的两份代码，**合并为 `SettingsPanel` 单一实现**，新增 `variant: "floating" | "embedded"` 区分「悬浮球弹出（自带纸面与投影）」和「popup 窗口内（不叠纸）」；popup 只保留取当前 tab URL 的逻辑。Logo 由 `icon.png` 改朱砂印，头部加骑缝线
 - `src/sidepanel/index.tsx`：跟随纸底 + 朱砂印 logo + 骑缝线，移除 `icon.png` 依赖
 
-*页面注入 UI*
+_页面注入 UI_
+
 - `src/utils/style.ts`：6 种译文样式全部由橙色系改朱砂系。HIGHLIGHT 改「米色底 + 左侧朱砂竖条」，UNDERLINE/BORDER/SHADOW 改为 `color: inherit`（不再强制染色，使其在深色网页上也可读），BACKGROUND 用淡朱砂底 + 细边。**`getStyleDescription` 文案同步改写**（原写「橙色下划线」「黄色背景」，改色后即为错误描述）
 - `src/types/translationStyle.ts`：枚举成员的 JSDoc 由「蓝色下划线」「淡蓝色背景」等改为实际描述（这些注释在改色前就已与代码不符）
 - `src/utils/dom.ts`：错误 UI 按钮 `#7748f9`/`#6b3fd9`/`#f0eaff` → 朱砂系；loading spinner `#3498db` → 朱砂；错误弹窗改纸底近方（遮罩、标题、详情区、关闭按钮全部换色）
@@ -447,11 +484,13 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 - `src/contents/selectionTranslate.tsx`：蓝色渐变 + 12px 圆角 → 纸底 + 4px 圆角 + 顶端朱砂封边
 - `src/components/TranslateTextPanel/index.tsx`、`src/components/ImageTranslateButton.tsx`：`#333`/`#666`/`#1976d2`/紫色渐变 → 朱砂与墨
 
-*图标*
+_图标_
+
 - `assets/icon.png`：橙色猫脸 → 朱砂印「譯」（512×512）。生成方式改为浏览器渲染 `design-preview/icon-source.html` 后截图直出
 - `scripts/gen-icon.js`：加文件头注释标注已停用（纯 Node + zlib 几何绘制画不出宋体字形），保留作历史参考
 
-*实机验证中发现并修复的 4 个缺陷*
+_实机验证中发现并修复的 4 个缺陷_
+
 1. **`--space-7` 不存在**：`MainContent` 的 `padding: var(--space-7) var(--space-8) var(--space-10)` 中一个分量无法解析，导致**整条 padding 声明被丢弃**，options 主区完全没有内边距。已在 theme.scss 补 `--space-7: 28px`
 2. **grid item 撑破列**：`OptionsSection` 的 `layout="grid"` 下右列内容溢出视口（控件被裁切）。grid item 默认 `min-width: auto`，已显式加 `> * { min-width: 0 }`
 3. **两列网格首行错位**：`FormRow` 的分隔线按纵向堆叠设计（只有 DOM 第一个不画线），两列网格下第二个也在首行却画了线并加了 padding-top，导致右列整体下沉。已在 grid 分支加 `&& > *:nth-child(-n + 2)` 抵消，窄屏堆叠时再恢复
@@ -462,6 +501,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 设计主张：**翻译是「落定文本」。设置页是典籍的目录与注解，悬浮球是一枚朱砂印 —— 开启翻译＝盖章。** 三条规则贯穿全部界面：(1) 朱砂是唯一强调色，石青只用于成功态；(2) 圆角近方，圆形只留给印章与帮助图标；(3) 人写的话用无衬线，机器给的值（模型名、URL、版本号）用等宽，标题用宋体。
 
 几个实现选择的理由：
+
 - **保留全部 CSS 变量名、只重写值**：`src/` 有 848 处 `var(--…)` 分布在 28 个文件，现有变量名都是通用语义（`--primary-color`、`--bg-primary`…），换成朱砂/纸/墨后语义依然成立。为命名洁癖去改 848 处引用是纯风险无收益
 - **`theme.scss` 必须 `:root, :host` 双选择器**：`TranslationControlCenter` / `selectionTranslate` / `imageTranslate` 都是 Plasmo CSUI，样式注入 Shadow DOM，而 **`:root` 在 shadow root 内不匹配**。这意味着改动前 `SCxSettingsIcon` 的 `var(--bg-primary)` / `var(--border-color)` 一直是失效的（齿轮按钮实际无背景、边框为黑）。实机已验证：注入 CSUI CSS 后 shadow root 内 `--primary-color` 解析为 `#b23a2e`，齿轮按钮拿到纸底 `#fbf8f0` 与 hairline `#d8d0be`
 - **合并 `SettingsPanel` 与 `popup`**：这是本次唯一超出纯视觉的结构调整。两份代码 95% 逐行相同，不合并就要把同一套新样式写两遍，且以后必然改一处忘一处
@@ -469,6 +509,7 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 - **图标放弃内嵌白框**：印面内框在 512px 下好看，但缩到 16px 工具栏尺寸时会吃掉约 20% 面积并产生与外轮廓竞争的第二道边，实测无内框版本在 16/24px 下明显更清晰
 
 **验证**：`pnpm check` 通过（typecheck + lint 0 error + format:check + cspell 0 issue + hotlink-rules）。`pnpm dev` 产物经本地静态服务器 + `chrome.*` API shim 在 Chrome 实机走查：
+
 - options 四个分类在 1280 / 768 / 375（设备模拟）三个宽度逐个切换，确认书脊导航正确降级、双栏正确堆叠、无横向溢出
 - 键盘 Tab 实测（非脚本 `.focus()`，后者不触发 `:focus-visible`）确认朱砂焦点环清晰可见
 - 悬浮球在真实页面的 Shadow DOM 内验证 token 解析、齿轮按钮样式、tooltip、点击切换翻译后进入「已落印」态（墨渍动画 + 石青角标）
@@ -476,3 +517,56 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 - 6 种译文样式在浅色与深色两种宿主页面上分别渲染，确认互相可区分且都可读
 
 **未验证**（如实记录）：划词翻译面板与图片翻译按钮的最终视觉、错误弹窗（`createTranslationErrorUI`）的最终视觉，这三处只做了颜色字面值替换并经代码检查，未在实机触发；真实 LLM 翻译链路未跑通（无可用 API Key），因此译文注入到真实网页后的效果未端到端验证。
+
+---
+
+### 2026-08-13 — 全局 UI 圆角统一
+
+**修改内容**：
+
+- `src/styles/theme.scss`：将圆角 token 统一为 `6 / 8 / 12 / 16px`，并保留 `9999px` 功能性圆形
+- 设置页、popup、侧边栏及网页注入 UI：按控件、卡片、浮层语义统一圆角，补齐状态标记、弹窗、Toast 和调试面板
+- 划词翻译与图片翻译的 Shadow DOM 入口显式引入主题；直接注入宿主网页的样式使用固定圆角值，避免受宿主 CSS 变量影响
+- 新增 `test/test-ui-radius.mjs` 静态契约测试，校验圆角尺度、Shadow DOM 主题引入和宿主页注入样式
+
+**原因**：将项目中的近方/直角视觉统一升级为适中圆角，同时保留 loading spinner、状态点和拼接控件内部接缝等必要形状。
+
+---
+
+### 2026-08-14 — 构建框架迁移到 WXT
+
+**修改内容**：
+
+- 将 Plasmo 入口、Manifest、Shadow DOM 内容脚本迁移为 WXT entrypoints
+- 消息层迁移到 `@webext-core/messaging`，Storage 适配迁移到 WXT Storage
+- 构建、打包、CRX、CI、环境变量、静态资源与项目文档改用 WXT 约定
+- 依赖升级到 WXT 0.21.4、Vite 8.2.1，并移除 Plasmo 依赖
+
+**验证**：`pnpm check`、消息/RPC 测试、完整生产构建和 CRX 打包均通过；生成的 MV3 Manifest 权限与迁移前一致。
+
+---
+
+### 2026-08-14 — 初始化默认使用 Google Translate
+
+**修改内容**：
+
+- 新安装默认选择 `google-translate`；保留现有可用 AI 模型选择，无可用模型时自动回退并持久化 Google Translate
+- 新增 Google Translate 后台表单请求、响应解析、最长 30 秒超时和统一中断支持
+- 设置页与 popup 将“翻译模型”统一为“翻译服务”，固定显示 Google Translate 和已配置可用的 AI 模型
+- 划词翻译读取配置的目标语言，不再固定翻译为中文
+- 新增 `pnpm test:google` 并纳入 `pnpm check`，覆盖默认选择、旧配置迁移持久化、请求参数、响应解析、HTTP 错误、超时/取消及管理器服务分类
+
+**注意**：默认通道使用 Google 网页端非公开接口，待翻译文本会发送到 Google；失败时明确报错，不静默切换服务。
+
+---
+
+### 2026-08-15 — 启动并修复划词翻译
+
+**修改内容**：
+
+- 移除划词组件入口的无条件空渲染，新安装默认选中文本后直接翻译，并恢复 options 中的完整划词设置入口
+- 使用事件 `composedPath()` 区分 Shadow DOM 内部交互与页面外点击，避免圆点、面板和关闭按钮被误关闭
+- 增加空选区、可选完成回调和视口边缘定位保护，窄屏面板宽度自动收缩
+- 新增 `pnpm test:selection` 并纳入 `pnpm check`，同时启用 ESLint `no-unreachable` 防止同类禁用回归
+
+**兼容性**：只改变新安装默认触发方式；已有用户持久化的划词触发配置保持不变。

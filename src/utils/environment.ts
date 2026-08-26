@@ -20,46 +20,23 @@ export enum Environment {
  * 基于多种环境变量和特征进行判断
  */
 export function getCurrentEnvironment(): Environment {
-    // 检查 Node.js 环境变量
-    if (typeof process !== "undefined" && process.env) {
-        const nodeEnv = process.env.NODE_ENV?.toLowerCase()
-        if (nodeEnv === "production") {
-            return Environment.PRODUCTION
-        }
-        if (nodeEnv === "development") {
-            return Environment.DEVELOPMENT
-        }
-        if (nodeEnv === "test") {
-            return Environment.TEST
-        }
-    }
-
     // 检查 Vite 环境变量
-    if (typeof import.meta !== "undefined" && "env" in import.meta) {
-        const metaObj = import.meta as unknown as {
-            env?: Record<string, unknown>
-        }
-        if (metaObj.env) {
-            const env = metaObj.env
-            const viteEnv = (env.MODE as string)?.toLowerCase()
-            if (viteEnv === "production") {
-                return Environment.PRODUCTION
-            }
-            if (viteEnv === "development") {
-                return Environment.DEVELOPMENT
-            }
-            if (viteEnv === "test") {
-                return Environment.TEST
-            }
-
-            // 检查 Vite 的生产模式标志
-            if (env.PROD) {
-                return Environment.PRODUCTION
-            }
-            if (env.DEV) {
-                return Environment.DEVELOPMENT
-            }
-        }
+    const viteEnv = import.meta.env
+    const viteMode = viteEnv?.MODE?.toLowerCase()
+    if (viteMode === "production") {
+        return Environment.PRODUCTION
+    }
+    if (viteMode === "development") {
+        return Environment.DEVELOPMENT
+    }
+    if (viteMode === "test") {
+        return Environment.TEST
+    }
+    if (viteEnv?.PROD) {
+        return Environment.PRODUCTION
+    }
+    if (viteEnv?.DEV) {
+        return Environment.DEVELOPMENT
     }
 
     // 检查浏览器环境特征

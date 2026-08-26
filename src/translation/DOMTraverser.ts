@@ -38,6 +38,12 @@ export interface TranslationNode {
     insertTagType?: "br" | "nbsp"
     /** franc 语言代码 */
     francCode?: string
+    /** 调试信息 */
+    debugInfo?: {
+        [key: string]: unknown
+        //
+        textNodeResultList?: FilterNodeResult[]
+    }
 }
 
 /**
@@ -77,6 +83,13 @@ interface FilterContext {
 
 export interface FilterNodeResult {
     action: NodeAction
+    reason: string
+    layer: string
+}
+
+interface MathchesResult {
+    mathches: boolean
+    matchedSelector?: string
 }
 
 enum NodeAction {
@@ -201,7 +214,7 @@ export class DOMTraverser {
 
             // 检查是否应该被排除
             perfStats.filterNodeCalls++
-            const filterResult = this.filterNode(element, { debug: false })
+            const filterResult = this.filterNode(element)
             // 提取 action（兼容调试模式返回的对象）
             const action =
                 typeof filterResult === "object"
@@ -229,6 +242,7 @@ export class DOMTraverser {
                 this.context.stats.stayOriginNodes++
                 // 🕐 性能优化：缓存 parentElement
                 const parentElement = element.parentElement
+
                 if (
                     lastTranslateNode &&
                     lastTranslateNode.container === parentElement &&
@@ -244,6 +258,9 @@ export class DOMTraverser {
                         type: "stayOriginal"
                     }
                     lastTranslateNode.textNodes.push(textNode)
+                    lastTranslateNode.debugInfo.textNodeResultList.push(
+                        filterResult
+                    )
                 }
 
                 lastNodeResult = action
@@ -254,17 +271,16 @@ export class DOMTraverser {
                 // 🕐 性能优化：缓存 parentElement
                 const parentElement = element.parentElement
 
-                // 避免重复处理
+                // 🕐 性能优化：检查 lastTranslateNode 是否存在且与当前 parentElement 相同
                 if (lastTranslateNode) {
-                    if (
-                        lastTranslateNode.container === parentElement &&
-                        (lastNodeResult === NodeAction.ACCEPT ||
-                            lastNodeResult === NodeAction.STAY_ORIGIN)
-                    ) {
+                    if (lastTranslateNode.container === parentElement) {
                         // 创建 TextNode 对象
                         lastNodeResult = action
                         const textNode = this.createTextNode(element)
                         lastTranslateNode.textNodes.push(textNode)
+                        lastTranslateNode.debugInfo.textNodeResultList.push(
+                            filterResult
+                        )
                         return
                     }
                 }
@@ -277,7 +293,10 @@ export class DOMTraverser {
                     id: nodeId,
                     container: parentElement,
                     textNodes: [textNode],
-                    insertPosition: InsertPosition.AFTER
+                    insertPosition: InsertPosition.AFTER,
+                    debugInfo: {
+                        textNodeResultList: [filterResult]
+                    }
                 }
 
                 this.context.stats.acceptedNodes++
@@ -496,7 +515,7 @@ export class DOMTraverser {
 
     private isExcludeNode(node: Node): boolean {
         const element = node as Element
-        if (this.matchesExcludeSelectors(element)) {
+        if (this.matchesExcludeSelectors(element).mathches) {
             return true
         }
         if (this.rule.excludeTags?.includes(element?.tagName)) {
@@ -597,18 +616,18 @@ export class DOMTraverser {
         }
 
         // 1. 检查是否是原子块选择器
-        if (this.matchesAtomicBlockSelectors(element)) {
+        if (this.matchesAtomicBlockSelectors(element).mathches) {
             this.blockElementCache.set(element, true)
             return true
         }
 
         // 2. 检查 extraInlineSelectors 和 extraBlockSelectors
-        if (this.matchesExtraInlineSelectors(element)) {
+        if (this.matchesExtraInlineSelectors(element).mathches) {
             this.blockElementCache.set(element, false)
             return false
         }
 
-        if (this.matchesExtraBlockSelectors(element)) {
+        if (this.matchesExtraBlockSelectors(element).mathches) {
             this.blockElementCache.set(element, true)
             return true
         }
@@ -722,7 +741,7 @@ export class DOMTraverser {
                 }
 
                 // 排除逻辑：如果匹配排除选择器，直接跳过该分支
-                if (this.matchesExcludeSelectors(child)) {
+                if (this.matchesExcludeSelectors(child).mathches) {
                     continue
                 }
 
@@ -760,15 +779,9 @@ export class DOMTraverser {
      * @param node 当前节点
      * @returns NodeAction (ACCEPT/REJECT/SKIP) 或带调试信息的对象
      */
-    private filterNode(
-        node: Node,
-        options?: {
-            debug: boolean
-        }
-    ): NodeAction | { action: NodeAction; reason: string; layer: string } {
+    private filterNode(node: Node): FilterNodeResult {
         const element = node as HTMLElement
         const tagName = element?.tagName?.toUpperCase()
-        const debug = options?.debug || false
 
         // 辅助函数：返回结果（带调试信息）
         const returnResult = (
@@ -776,14 +789,7 @@ export class DOMTraverser {
             reason: string,
             layer: string
         ) => {
-            if (debug) {
-                // console.log(
-                //     `[filterNode] ${action} - ${layer}: ${reason}`,
-                //     element
-                // )
-                return { action, reason, layer }
-            }
-            return action
+            return { action, reason, layer }
         }
 
         // 🕐 性能监控：记录总调用次数
@@ -866,11 +872,11 @@ export class DOMTraverser {
             this.context.filterNodeStats.layer1Time +=
                 performance.now() - layer1Start
         }
-        if (matchesExclude) {
+        if (matchesExclude.mathches) {
             this.context.stats.rejectedNodes++
             return returnResult(
                 NodeAction.REJECT,
-                `匹配 excludeSelectors (${tagName})`,
+                `匹配 excludeSelectors (${tagName}), 选择器: ${matchesExclude.matchedSelector})`,
                 "Layer 1"
             )
         }
@@ -884,11 +890,11 @@ export class DOMTraverser {
             this.context.filterNodeStats.layer2Time +=
                 performance.now() - layer2Start
         }
-        if (selectorCheckResult === "REJECT") {
+        if (selectorCheckResult.action === "REJECT") {
             this.context.stats.rejectedNodes++
             return returnResult(
                 NodeAction.REJECT,
-                `不在 selectors 白名单中 (${tagName})`,
+                `不在 selectors 白名单中 (${tagName}), 选择器: ${selectorCheckResult.matchedSelector})`,
                 "Layer 2"
             )
         }
@@ -906,7 +912,7 @@ export class DOMTraverser {
             this.context.stats.rejectedNodes++
             return returnResult(
                 NodeAction.REJECT,
-                `匹配 excludeTags (${tagName})`,
+                `匹配 excludeTags (${tagName}), 选择器: ${this.rule.excludeTags?.join(", ")}`,
                 "Layer 3"
             )
         }
@@ -920,11 +926,11 @@ export class DOMTraverser {
             this.context.filterNodeStats.layer4Time +=
                 performance.now() - layer4Start
         }
-        if (matchesStayOriginal) {
+        if (matchesStayOriginal.mathches) {
             this.context.stats.stayOriginNodes++
             return returnResult(
                 NodeAction.STAY_ORIGIN,
-                `匹配 stayOriginalSelectors (${tagName})`,
+                `匹配 stayOriginalSelectors (${tagName}), 选择器: ${matchesStayOriginal.matchedSelector})`,
                 "Layer 4"
             )
         }
@@ -943,7 +949,7 @@ export class DOMTraverser {
             this.context.stats.stayOriginNodes++
             return returnResult(
                 NodeAction.STAY_ORIGIN,
-                `匹配 stayOriginalTags (${tagName})`,
+                `匹配 stayOriginalTags (${tagName}), 选择器: ${this.rule.stayOriginalTags?.join(", ")})`,
                 "Layer 5"
             )
         }
@@ -963,7 +969,7 @@ export class DOMTraverser {
                     this.context.stats.rejectedNodes++
                     return returnResult(
                         NodeAction.REJECT,
-                        "ASIDE 标签特殊规则 (内容过多或无长段落)",
+                        `ASIDE 标签特殊规则 (内容过多或无长段落)`,
                         "Layer 5.5"
                     )
                 }
@@ -985,11 +991,11 @@ export class DOMTraverser {
             this.context.filterNodeStats.layer6Time +=
                 performance.now() - layer6Start
         }
-        if (matchesAtomicBlock) {
+        if (matchesAtomicBlock.mathches) {
             this.context.stats.acceptedNodes++
             return returnResult(
                 NodeAction.SKIP,
-                `匹配 atomicBlockSelectors (${tagName})`,
+                `匹配 atomicBlockSelectors (${tagName}), 选择器: ${matchesAtomicBlock.matchedSelector})`,
                 "Layer 6"
             )
         }
@@ -1396,7 +1402,7 @@ export class DOMTraverser {
      * @param element 元素节点
      * @returns 是否匹配排除选择器
      */
-    private matchesExcludeSelectors(element: Element): boolean {
+    private matchesExcludeSelectors(element: Element): MathchesResult {
         const excludeSelectors = [
             ...(this.rule.excludeSelectors || []),
             ...(this.rule.mutationExcludeSelectors || []),
@@ -1418,15 +1424,18 @@ export class DOMTraverser {
      * @param selectors 选择器数组
      * @returns 是否匹配
      */
-    private matchesAnySelector(element: Element, selectors: string[]): boolean {
+    private matchesAnySelector(
+        element: Element,
+        selectors: string[]
+    ): MathchesResult {
         // 提前返回：空选择器数组
         if (!selectors || selectors.length === 0) {
-            return false
+            return { mathches: false }
         }
 
         // 提前返回：无效元素
         if (!element || element.nodeType === Node.COMMENT_NODE) {
-            return false
+            return { mathches: false }
         }
 
         // 缓存数组长度，避免重复访问
@@ -1435,7 +1444,7 @@ export class DOMTraverser {
             const selector = selectors[i]
             try {
                 if (element.matches(selector)) {
-                    return true // 找到匹配，立即返回
+                    return { mathches: true, matchedSelector: selector } // 找到匹配，立即返回
                 }
             } catch (e) {
                 // 只在出错时打印警告，避免影响性能
@@ -1443,7 +1452,7 @@ export class DOMTraverser {
             }
         }
 
-        return false
+        return { mathches: false }
     }
     /**
      * 检查 selectors 白名单
@@ -1458,27 +1467,34 @@ export class DOMTraverser {
      * @param element 元素节点
      * @returns 'CONTINUE' | 'REJECT'
      */
-    private checkSelectors(element: Element): "CONTINUE" | "REJECT" {
+    private checkSelectors(element: Element): {
+        action: "CONTINUE" | "REJECT"
+        matchedSelector?: string
+    } {
         const selectors = this.rule.selectors || []
         // 情况1: selectors 为空，全页面模式
         if (selectors.length === 0) {
-            return "CONTINUE"
+            return { action: "CONTINUE" }
         }
 
         // 情况2: 检查缓存，是否在已匹配的容器内
         if (this.context.currentMatchedContainer) {
             if (this.context.currentMatchedContainer.contains(element)) {
-                return "CONTINUE" // 在容器内，直接通过
+                return { action: "CONTINUE" } // 在容器内，直接通过
             }
             // 已离开之前匹配的容器，重置缓存
             this.context.currentMatchedContainer = null
         }
 
         // 情况3: 检查当前节点是否匹配 selectors
-        if (this.matchesAnySelector(element, selectors)) {
+        const matches = this.matchesAnySelector(element, selectors)
+        if (matches.mathches) {
             // 更新匹配的容器缓存
             this.context.currentMatchedContainer = element
-            return "CONTINUE"
+            return {
+                action: "CONTINUE",
+                matchedSelector: matches.matchedSelector
+            }
         }
 
         // 情况4: 检查 additionalSelectors（补充选择器）
@@ -1488,21 +1504,21 @@ export class DOMTraverser {
                 this.rule.additionalSelectors || []
             )
         ) {
-            return "CONTINUE"
+            return { action: "CONTINUE" }
         }
 
         // 不匹配任何选择器，拒绝
-        return "REJECT"
+        return { action: "REJECT" }
     }
 
-    private matchesStayOriginalSelectors(element: Element): boolean {
+    private matchesStayOriginalSelectors(element: Element): MathchesResult {
         return this.matchesAnySelector(
             element,
             this.rule.stayOriginalSelectors || []
         )
     }
 
-    private matchesAtomicBlockSelectors(element: Element): boolean {
+    private matchesAtomicBlockSelectors(element: Element): MathchesResult {
         return this.matchesAnySelector(
             element,
             this.rule.atomicBlockSelectors || []
@@ -1514,7 +1530,7 @@ export class DOMTraverser {
      * @param element 元素节点
      * @returns 是否匹配额外内联选择器
      */
-    private matchesExtraInlineSelectors(element: Element): boolean {
+    private matchesExtraInlineSelectors(element: Element): MathchesResult {
         const extraInlineSelectors = [
             ...(this.rule.extraInlineSelectors || []),
             ...(this.rule["extraInlineSelectors.add"] || [])
@@ -1527,7 +1543,7 @@ export class DOMTraverser {
      * @param element 元素节点
      * @returns 是否匹配额外块级选择器
      */
-    private matchesExtraBlockSelectors(element: Element): boolean {
+    private matchesExtraBlockSelectors(element: Element): MathchesResult {
         return this.matchesAnySelector(
             element,
             this.rule.extraBlockSelectors || []
@@ -1608,7 +1624,7 @@ export class DOMTraverser {
             if (node.nodeType === Node.ELEMENT_NODE) {
                 const el = node as Element
                 // 跳过排除的元素
-                if (this.matchesExcludeSelectors(el)) {
+                if (this.matchesExcludeSelectors(el).mathches) {
                     return
                 }
                 if (this.rule.excludeTags?.includes(el.tagName)) {
@@ -1654,7 +1670,7 @@ export class DOMTraverser {
                 const tagName = el.tagName.toUpperCase()
 
                 // 跳过排除的元素
-                if (this.matchesExcludeSelectors(el)) {
+                if (this.matchesExcludeSelectors(el).mathches) {
                     return false
                 }
                 if (this.rule.excludeTags?.includes(tagName)) {

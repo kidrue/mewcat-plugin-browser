@@ -1,8 +1,8 @@
 const ENABLE_CANVAS_REBUILD =
-    (process.env.PLASMO_PUBLIC_ENABLE_CANVAS_REBUILD || "true") !== "false"
+    (import.meta.env.WXT_ENABLE_CANVAS_REBUILD || "true") !== "false"
 
 const GLOBAL_CANVAS_ROLLOUT_PERCENT = Number(
-    process.env.PLASMO_PUBLIC_CANVAS_ROLLOUT_PERCENT || "100"
+    import.meta.env.WXT_CANVAS_ROLLOUT_PERCENT || "100"
 )
 
 type CanvasSiteRule = {

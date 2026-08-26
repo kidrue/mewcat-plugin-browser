@@ -1,5 +1,9 @@
 import axios from "axios"
 import type { AxiosError } from "axios"
+import { createRequire } from "node:module"
+import { pathToFileURL } from "node:url"
+
+const require = createRequire(import.meta.url)
 
 /**
  * Token 刷新功能测试
@@ -335,7 +339,7 @@ async function runTests() {
 }
 
 // 运行测试
-if (require.main === module) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     runTests().catch(console.error)
 }
 

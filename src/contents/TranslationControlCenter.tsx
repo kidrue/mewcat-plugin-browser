@@ -1,5 +1,4 @@
 import { useAtom } from "jotai"
-import type { PlasmoGetInlineAnchor } from "plasmo"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useAsync, useAsyncFn, useClickAway, useLatest } from "react-use"
 import styled, { StyleSheetManager } from "styled-components"
@@ -14,8 +13,6 @@ import { ImmersiveTranslator } from "../translation/ImmersiveTranslator"
 import "@/styles/theme.scss"
 
 export const getShadowHostId = () => "translation-control-center-overlay"
-
-export const getInlineAnchor: PlasmoGetInlineAnchor = () => document.body
 
 const SCxContainer = styled.div.withConfig({
     shouldForwardProp: prop => !(prop === "isDragging")
@@ -33,7 +30,7 @@ const SCxFloatingButton = styled.div`
     position: relative;
     width: 54px;
     height: 54px;
-    border-radius: 8px;
+    border-radius: var(--radius-xl);
     background: var(--primary-color, #b23a2e);
     /* 内描边 —— 印面的留白边 */
     box-shadow:
@@ -75,7 +72,7 @@ const SCxGrindRing = styled.div<{ $active: boolean }>`
     position: absolute;
     inset: -7px;
     border: 1.5px dashed var(--primary-color, #b23a2e);
-    border-radius: 12px;
+    border-radius: calc(var(--radius-xl, 16px) + 4px);
     pointer-events: none;
     opacity: ${p => (p.$active ? 0.75 : 0)};
     transition: opacity var(--transition-base, 0.2s ease);
@@ -97,7 +94,7 @@ const SCxGrindRing = styled.div<{ $active: boolean }>`
 const SCxInkWash = styled.div<{ $active: boolean }>`
     position: absolute;
     inset: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-xl);
     background: var(--primary-color, #b23a2e);
     pointer-events: none;
     opacity: 0;
@@ -131,6 +128,7 @@ const SCxTickIcon = styled.div`
     align-items: center;
     justify-content: center;
     background: var(--jade, #3e6b63);
+    border-radius: var(--radius-sm);
     box-shadow: inset 0 0 0 1.5px rgba(251, 248, 240, 0.85);
 `
 
@@ -143,7 +141,7 @@ const SCxSettingsIcon = styled.div.withConfig({
     transform: translateX(-50%);
     width: 30px;
     height: 30px;
-    border-radius: 3px;
+    border-radius: var(--radius-md);
     background: var(--bg-secondary, #fbf8f0);
     border: 1px solid var(--border-color, #d8d0be);
     box-shadow: var(--shadow-sm, 0 1px 2px rgba(26, 23, 20, 0.05));

@@ -1,6 +1,6 @@
 // 已停用（2026-08-06）——本脚本用纯 Node + zlib 手绘几何图形，画的是旧版橙色猫脸图标。
 // 现行图标是「朱砂印 · 譯」，需要真实宋体字形，几何绘制做不到。
-// 生成方式改为：用浏览器渲染 design-preview/icon-source.html（512×512）后截图直出 assets/icon.png。
+// 生成方式改为：用浏览器渲染 design-preview/icon-source.html（512×512）后截图直出 src/assets/icon.png。
 // 保留此文件仅作历史参考，运行它会覆盖掉当前图标。
 const zlib = require('zlib');
 const fs = require('fs');
@@ -244,6 +244,6 @@ const compressed = zlib.deflateSync(raw, { level: 9 });
 const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const png = Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', compressed), chunk('IEND', Buffer.alloc(0))]);
 
-const outPath = path.join(__dirname, '../assets/icon.png');
+const outPath = path.join(__dirname, '../src/assets/icon.png');
 fs.writeFileSync(outPath, png);
 console.log('icon.png written:', png.length, 'bytes,', SIZE + 'x' + SIZE);

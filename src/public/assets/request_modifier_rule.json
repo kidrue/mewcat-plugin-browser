@@ -1,0 +1,306 @@
+[
+    {
+        "id": 301,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://www.pixiv.net/"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://i.pximg.net/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 302,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://newtoki341.com/"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://img1.newtoki21*.org/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 303,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://newtoki341.com/"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://img1.newtoki21.org/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 304,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://2.bp.blogspot.com"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://2.bp.blogspot.com/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 305,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://japanreader.com"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://japanreader.com/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 307,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://sl.mangafuna.xyz/"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://sl.mangafuna.xyz/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 308,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://toonily.me"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://s*.toonilycdnv2.xyz/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 309,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://readcomiconline.li"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://*.whatsnew*.net/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 310,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://yymanhua.com"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://image.yymanhua.com/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 311,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://klz9.com"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://*.(klimv1|jfimv2).xyz/images*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 312,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://manhwato.com"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://stcdn.manhwato.com/images/manga/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 313,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://www.comemh8.com"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://*.kingwar.cn/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 314,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://weibo.com/"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://*.sinaimg.cn/",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 317,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://jestful.net"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://*.jfimv2.xyz/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 318,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://viewer.championcross.jp"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://viewer.championcross.jp",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    },
+    {
+        "id": 319,
+        "priority": 1,
+        "action": {
+            "type": "modifyHeaders",
+            "requestHeaders": [
+                {
+                    "header": "referer",
+                    "operation": "set",
+                    "value": "https://viewer.comic-growl.com/"
+                }
+            ]
+        },
+        "condition": {
+            "urlFilter": "https://viewer.comic-growl.com/*",
+            "resourceTypes": ["xmlhttprequest"],
+            "domainType": "thirdParty"
+        }
+    }
+]

@@ -1,4 +1,4 @@
-import { plasmoShadowRootContainerId } from "../constants/dom"
+import { extensionShadowRootContainerId } from "../constants/dom"
 /**
  * 翻译样式相关工具函数
  * 根据配置提供不同的翻译文本显示样式
@@ -9,22 +9,33 @@ import {
     type TranslationStyleType
 } from "../types/translationStyle"
 
-function getPlasmoShadowRoot() {
-    return document.querySelector("plasmo-csui")?.shadowRoot
+const extensionUiHostIds = [
+    "translation-control-center-overlay",
+    "mewcat-overlay-selection",
+    "mewcat-image-translate"
+]
+
+function getExtensionShadowRoot() {
+    for (const id of extensionUiHostIds) {
+        const shadowRoot = document.getElementById(id)?.shadowRoot
+        if (shadowRoot) {
+            return shadowRoot
+        }
+    }
+    return null
 }
 
-export function getPlasmoShadowContainer() {
-    return getPlasmoShadowRoot()?.querySelector(
-        `#${plasmoShadowRootContainerId}`
+export function getExtensionShadowContainer() {
+    return getExtensionShadowRoot()?.querySelector(
+        `#${extensionShadowRootContainerId}`
     ) as HTMLElement
 }
 
-//see https://github.com/PlasmoHQ/plasmo/issues/652
 export function injectCssText(cssText: string) {
-    const plasmoCsui = getPlasmoShadowRoot()
+    const shadowRoot = getExtensionShadowRoot()
     const style = document.createElement("style")
     style.textContent = cssText
-    plasmoCsui?.appendChild(style)
+    shadowRoot?.appendChild(style)
 }
 
 // 为了向后兼容，保留原有的类型别名
@@ -44,7 +55,7 @@ export function getTranslationStyleCSS(
         font-style: normal;
         font-weight: normal;
         display: inline-block;
-        border-radius: 2px;
+        border-radius: 6px;
         transition: all 0.2s ease;
     `
 
@@ -105,7 +116,7 @@ export function getTranslationStyleCSS(
                 color: inherit;
                 background: transparent;
                 border: 1px solid #b23a2e;
-                border-radius: 2px;
+                border-radius: 6px;
                 padding: 2px 8px;
             `
             )

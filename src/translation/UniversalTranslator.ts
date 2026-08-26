@@ -1,7 +1,6 @@
 import axios from "axios"
 
-import { sendToBackground } from "@plasmohq/messaging"
-
+import { sendMessage } from "@/messaging"
 import type { AiRole } from "@/types"
 import {
     AiModel_Platform_Enum,
@@ -10,6 +9,8 @@ import {
 } from "@/types"
 import {
     RequestType,
+    type AiHttpRequestConfig,
+    type TranslationEngineRequestConfig,
     type UnifiedRequestBody,
     type UnifiedResponse
 } from "@/types/request"
@@ -207,7 +208,10 @@ export class UniversalTranslator {
     /**
      * 适配 AI 请求配置（处理不同提供商的格式差异）
      */
-    private buildAiRequestConfig(messages: Message[]): UnifiedRequestBody {
+    private buildAiRequestConfig(messages: Message[]): {
+        type: RequestType.AI_HTTP
+        config: AiHttpRequestConfig
+    } {
         const url = this.buildRequestUrl()
         const thinkingConfig = this.buildThinkingConfig()
 
@@ -259,7 +263,10 @@ export class UniversalTranslator {
     private buildTranslationEngineConfig(
         messages: Message[],
         targetLang: string
-    ): UnifiedRequestBody {
+    ): {
+        type: RequestType.TRANSLATION_ENGINE
+        config: TranslationEngineRequestConfig
+    } {
         const texts = messages
             .map(msg => msg.content)
             .filter(content => content && content.trim().length > 0)
@@ -404,10 +411,7 @@ export class UniversalTranslator {
     private async sendRequest(
         requestBody: UnifiedRequestBody
     ): Promise<UnifiedResponse> {
-        const response = await sendToBackground({
-            name: "translate-request" as const,
-            body: requestBody
-        })
+        const response = await sendMessage("translate-request", requestBody)
 
         const typedResponse = response as UnifiedResponse
 
@@ -578,13 +582,10 @@ export class UniversalTranslator {
      * 中断所有翻译请求
      */
     public abortAllTranslations(): void {
-        sendToBackground({
-            name: "translate-request" as const,
-            body: {
-                type: RequestType.ABORT,
-                config: null
-            }
-        })
+        void sendMessage("translate-request", {
+            type: RequestType.ABORT,
+            config: null
+        }).catch(() => {})
     }
 
     /**

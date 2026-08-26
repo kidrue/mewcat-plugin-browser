@@ -70,7 +70,7 @@ jobs:
           CRX_PRIVATE_KEY_B64: ${{ secrets.CRX_PRIVATE_KEY_B64 }}
         run: |
           if [ -z "$CRX_PRIVATE_KEY_B64" ]; then
-            echo "::error::缺少仓库 Secret CRX_PRIVATE_KEY_B64。请用 \`node scripts/gen-crx-key.js\` 生成后添加。"
+            echo "::error::缺少仓库 Secret CRX_PRIVATE_KEY_B64。请用 \`node scripts/gen-crx-key.cjs\` 生成后添加。"
             exit 1
           fi
 
@@ -83,7 +83,7 @@ jobs:
 
           # 校验落盘结果确实是一份完整私钥，避免带着损坏的 key 继续跑
           if ! grep -q "BEGIN RSA PRIVATE KEY" key.pem || ! grep -q "END RSA PRIVATE KEY" key.pem; then
-            echo "::error::Secret CRX_PRIVATE_KEY_B64 解析后不是合法的 RSA 私钥。请确认粘贴的是 gen-crx-key.js 输出的完整 base64 串（单行、无空格换行），或 key.pem 的完整原文。"
+            echo "::error::Secret CRX_PRIVATE_KEY_B64 解析后不是合法的 RSA 私钥。请确认粘贴的是 gen-crx-key.cjs 输出的完整 base64 串（单行、无空格换行），或 key.pem 的完整原文。"
             exit 1
           fi
 
@@ -100,9 +100,9 @@ jobs:
 
           # scripts/package-with-date.js 产出的文件名带日期后缀，
           # 这里统一改名为带版本号的形式再上传
-          ZIP="$(ls build/chrome-mv3-prod-*.zip 2>/dev/null | head -n 1)"
+          ZIP="$(ls .output/chrome-mv3-prod-*.zip 2>/dev/null | head -n 1)"
           if [ -z "$ZIP" ]; then
-            echo "::error::未找到构建产物 build/chrome-mv3-prod-*.zip"
+            echo "::error::未找到构建产物 .output/chrome-mv3-prod-*.zip"
             exit 1
           fi
           cp "$ZIP" "dist-assets/mewcat-v${VERSION}.zip"

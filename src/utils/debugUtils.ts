@@ -284,7 +284,7 @@ export function createDebugPanel(): HTMLElement {
         background: rgba(0, 0, 0, 0.9);
         color: white;
         border: 1px solid #333;
-        border-radius: 8px;
+        border-radius: 16px;
         font-family: monospace;
         font-size: 12px;
         z-index: 999999;
@@ -314,7 +314,7 @@ export function updateDebugPanel(
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: ${isCollapsed ? "0" : "15px"};">
                 <h3 style="margin: 0; color: #4CAF50; flex: 1;">🔍 ImmersiveTranslator Debug</h3>
                 <button id="debug-toggle-btn" 
-                        style="background: #666; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; margin-left: 10px;">
+                        style="background: #666; color: white; border: none; padding: 4px 8px; border-radius: 8px; cursor: pointer; font-size: 10px; margin-left: 10px;">
                     ${isCollapsed ? "▼ 展开" : "▲ 收起"}
                 </button>
             </div>
@@ -343,7 +343,7 @@ export function updateDebugPanel(
                         ${nodes
                             .map(
                                 (node, index) => `
-                            <div style="margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; cursor: pointer;" 
+                            <div style="margin-bottom: 10px; padding: 8px; background: rgba(255,255,255,0.1); border-radius: 12px; cursor: pointer;"
                                  onclick="window.immersiveTranslatorDebug?.highlightNode(${index})">
                                 <div><strong>${node.sourceElement.tagName.toLowerCase()}</strong> 
                                      ${node.isVisible ? "👁️" : "🙈"} 
@@ -374,11 +374,11 @@ export function updateDebugPanel(
                 
                 <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #333; text-align: center;">
                     <button onclick="window.immersiveTranslatorDebug?.closePanel()" 
-                            style="background: #f44336; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer;">
+                            style="background: #f44336; color: white; border: none; padding: 5px 15px; border-radius: 8px; cursor: pointer;">
                         关闭面板
                     </button>
                     <button onclick="window.immersiveTranslatorDebug?.exportDebugData()" 
-                            style="background: #4CAF50; color: white; border: none; padding: 5px 15px; border-radius: 4px; cursor: pointer; margin-left: 5px;">
+                            style="background: #4CAF50; color: white; border: none; padding: 5px 15px; border-radius: 8px; cursor: pointer; margin-left: 5px;">
                         导出数据
                     </button>
                 </div>

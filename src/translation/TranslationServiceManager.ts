@@ -1,12 +1,22 @@
 import { find } from "ramda"
 
-import { platformNameMap } from "@/constants"
-import { Toast, ToastType } from "@/utils/toast"
+import { GOOGLE_TRANSLATE_MODEL_ID, platformNameMap } from "@/constants"
+import { resolveTranslationServiceId } from "@/state/translationService"
 
-import type { AiModel_Platform_Enum } from "../types"
-import { type Message } from "../types"
+import {
+    AiModel_Platform_Enum,
+    type Message,
+    type TranslatorInterface
+} from "../types"
 import type { ExtensionConfig } from "../types/config"
+import { GoogleTranslator } from "./GoogleTranslator"
 import { UniversalTranslator } from "./UniversalTranslator"
+
+function showInitializationError(message: string): void {
+    void import("@/utils/toast").then(({ Toast, ToastType }) => {
+        Toast.show({ type: ToastType.ERROR, message })
+    })
+}
 
 /**
  * TranslationServiceManager 构造函数配置
@@ -40,11 +50,12 @@ export interface TranslationServiceManagerConfig {
  */
 export class TranslationServiceManager {
     private config: TranslationServiceManagerConfig
-    private translators: Map<AiModel_Platform_Enum, UniversalTranslator> =
-        new Map()
+    private currentServiceId: string
+    private translators: Map<string, TranslatorInterface> = new Map()
 
     constructor(config: TranslationServiceManagerConfig) {
         this.config = config
+        this.currentServiceId = resolveTranslationServiceId(config)
         this.initializeTranslators()
     }
 
@@ -53,27 +64,29 @@ export class TranslationServiceManager {
      */
     public updateConfig(newConfig: TranslationServiceManagerConfig) {
         this.config = newConfig
+        this.currentServiceId = resolveTranslationServiceId(newConfig)
         this.initializeTranslators()
     }
 
     /**
      * 初始化翻译器
      */
-    private async initializeTranslators() {
+    private initializeTranslators() {
         this.translators.clear()
+        if (this.currentServiceId === GOOGLE_TRANSLATE_MODEL_ID) {
+            this.translators.set(
+                GOOGLE_TRANSLATE_MODEL_ID,
+                new GoogleTranslator()
+            )
+            return
+        }
+
         const model = find(
-            model => model.id === this.config.currentModel,
+            model => model.id === this.currentServiceId,
             this.config.aiModelList
         )
 
         if (model) {
-            if (!model?.params?.apiKey?.trim()) {
-                Toast.show({
-                    type: ToastType.ERROR,
-                    message: `${model.name || platformNameMap[model.type]} 配置不完整，缺少：API Key，请在设置中填写后再使用。`
-                })
-                return
-            }
             try {
                 const isOfficial = model.params.isOfficial !== false
                 const baseUrl = isOfficial ? undefined : model.params.baseUrl
@@ -86,10 +99,9 @@ export class TranslationServiceManager {
                 })
                 this.translators.set(model.type, translator)
             } catch (error) {
-                Toast.show({
-                    type: ToastType.ERROR,
-                    message: `${model.name || platformNameMap[model.type]} 初始化失败：${error instanceof Error ? error.message : String(error)}`
-                })
+                showInitializationError(
+                    `${model.name || platformNameMap[model.type]} 初始化失败：${error instanceof Error ? error.message : String(error)}`
+                )
             }
         }
     }
@@ -105,14 +117,15 @@ export class TranslationServiceManager {
      * 获取首选翻译器
      * 按优先级返回第一个可用的翻译器（原有优先级 + 新增模型优先级）
      */
-    public getPreferredTranslator(): UniversalTranslator | null {
-        for (const model of this.config.aiModelList) {
-            if (this.translators.has(model.type)) {
-                return this.translators.get(model.type)!
-            }
+    public getPreferredTranslator(): TranslatorInterface | null {
+        if (this.currentServiceId === GOOGLE_TRANSLATE_MODEL_ID) {
+            return this.translators.get(GOOGLE_TRANSLATE_MODEL_ID) || null
         }
 
-        return null
+        const model = this.config.aiModelList.find(
+            item => item.id === this.currentServiceId
+        )
+        return model ? this.translators.get(model.type) || null : null
     }
 
     /**
@@ -120,7 +133,7 @@ export class TranslationServiceManager {
      */
     public getTranslator(
         name: AiModel_Platform_Enum
-    ): UniversalTranslator | null {
+    ): TranslatorInterface | null {
         return this.translators.get(name) || null
     }
 
@@ -186,7 +199,10 @@ export class TranslationServiceManager {
             enabledServices: {
                 ...aiModelServices,
                 // 传统翻译服务
-                google: this.config.enableGoogleTranslate || false,
+                google:
+                    this.currentServiceId === GOOGLE_TRANSLATE_MODEL_ID ||
+                    this.config.enableGoogleTranslate ||
+                    false,
                 microsoft: this.config.enableMicrosoftTranslate || false,
                 tencent: this.config.enableTencentTranslate || false
             }
@@ -197,10 +213,17 @@ export class TranslationServiceManager {
      * 是否启用了任何AI翻译服务
      */
     public hasAITranslationEnabled(): boolean {
-        return (
-            // 原有AI服务
-            this.config.aiModelList.some(model => model.enabled)
+        const selectedModel = this.config.aiModelList.find(
+            model => model.id === this.currentServiceId
         )
+        if (!selectedModel) {
+            return false
+        }
+
+        return ![
+            AiModel_Platform_Enum.DEEPL,
+            AiModel_Platform_Enum.DEEPLX
+        ].includes(selectedModel.type)
     }
 
     /**
@@ -208,6 +231,7 @@ export class TranslationServiceManager {
      */
     public hasTraditionalTranslationEnabled(): boolean {
         return (
+            this.currentServiceId === GOOGLE_TRANSLATE_MODEL_ID ||
             this.config.enableGoogleTranslate ||
             this.config.enableMicrosoftTranslate ||
             this.config.enableTencentTranslate ||
@@ -253,7 +277,7 @@ export class TranslationServiceManager {
         textContent: string
     ): Promise<string> {
         const model = find(
-            model => model.id === this.config.currentModel,
+            model => model.id === this.currentServiceId,
             this.config.aiModelList
         )
 
@@ -265,7 +289,7 @@ export class TranslationServiceManager {
         }
 
         const translator = this.translators.get(model.type)
-        if (!translator) {
+        if (!(translator instanceof UniversalTranslator)) {
             console.warn(
                 "[TranslationServiceManager] 翻译器未初始化，无法生成摘要"
             )

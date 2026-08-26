@@ -1,22 +1,11 @@
-import type { PlasmoMessaging } from "@plasmohq/messaging"
-
-import type { CanvasHookError } from "../../types/canvas-hook"
-
-export interface CanvasHookEventRequest {
-    type: "canvas-hook-error"
-    pageUrl?: string
-    error: CanvasHookError
-}
-
-export interface CanvasHookEventResponse {
-    success: boolean
-}
-
-const handler: PlasmoMessaging.MessageHandler<
+import type {
     CanvasHookEventRequest,
     CanvasHookEventResponse
-> = async (req, res) => {
-    const payload = req.body
+} from "@/messaging/protocol"
+
+export async function handleCanvasHookEvent(
+    payload: CanvasHookEventRequest
+): Promise<CanvasHookEventResponse> {
     let host = "unknown"
 
     if (payload.pageUrl) {
@@ -35,7 +24,7 @@ const handler: PlasmoMessaging.MessageHandler<
         requestId: payload.error.requestId
     })
 
-    res.send({ success: true })
+    return { success: true }
 }
 
-export default handler
+export type { CanvasHookEventRequest, CanvasHookEventResponse }

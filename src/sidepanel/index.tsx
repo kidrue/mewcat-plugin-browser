@@ -45,6 +45,7 @@ const Header = styled.div`
         width: 8px;
         height: 8px;
         background: var(--primary-color);
+        border-radius: var(--radius-sm);
     }
 `
 
@@ -53,7 +54,7 @@ const Seal = styled.div`
     width: 28px;
     height: 28px;
     flex: none;
-    border-radius: 4px;
+    border-radius: var(--radius-lg);
     background: var(--primary-color);
     color: var(--text-inverse);
     font-family: var(--font-display);
@@ -259,7 +260,7 @@ const Divider = styled.div`
 const ResultBox = styled.div`
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     min-height: 100px;
     padding: var(--space-3);
     position: relative;

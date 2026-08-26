@@ -183,7 +183,7 @@ export class DebugManager {
                     font-size: 12px;
                     font-weight: bold;
                     padding: 2px 6px;
-                    border-radius: 12px;
+                    border-radius: 9999px;
                     z-index: 10000;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                     pointer-events: none;

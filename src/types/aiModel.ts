@@ -20,6 +20,10 @@ export interface BaseModel {
     enabled: boolean
     /** 模型名称（必传） */
     name: string
+    /** 模型能力声明；显式声明会覆盖内置推断 */
+    capabilities?: {
+        vision?: boolean
+    }
     /** 模型配置 */
     params: {
         /** 实际发给 API 的模型标识符（如 gpt-3.5-turbo、deepseek-chat） */

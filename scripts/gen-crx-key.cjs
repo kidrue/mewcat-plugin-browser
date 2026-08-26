@@ -7,7 +7,7 @@
  * 已安装的用户将无法收到更新。
  *
  * 用法：
- *   node scripts/gen-crx-key.js
+ *   node scripts/gen-crx-key.cjs
  *
  * 产出：
  *   1. 项目根目录的 key.pem（已被 .gitignore 排除，请离线备份）

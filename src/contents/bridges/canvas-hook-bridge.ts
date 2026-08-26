@@ -1,14 +1,10 @@
-import { sendToBackground } from "@plasmohq/messaging"
-
 import { shouldEnableCanvasHook } from "../../background/config/canvas-sites"
+import { sendMessage } from "../../messaging"
 import type {
     CanvasHookEventRequest,
-    CanvasHookEventResponse
-} from "../../background/messages/canvas-hook-event"
-import type {
     InjectMainWorldHookRequest,
     InjectMainWorldHookResponse
-} from "../../background/messages/inject-main-world-hook"
+} from "../../messaging/protocol"
 import {
     CANVAS_HOOK_CHANNEL,
     type CanvasHookError,
@@ -52,14 +48,11 @@ async function reportCanvasHookError(error: CanvasHookError): Promise<void> {
         return
     }
 
-    await sendToBackground<CanvasHookEventRequest, CanvasHookEventResponse>({
-        name: "canvas-hook-event",
-        body: {
-            type: "canvas-hook-error",
-            pageUrl: window.location.href,
-            error
-        }
-    }).catch(reportErr => {
+    await sendMessage("canvas-hook-event", {
+        type: "canvas-hook-error",
+        pageUrl: window.location.href,
+        error
+    } satisfies CanvasHookEventRequest).catch(reportErr => {
         console.warn("[CanvasHookBridge] 错误上报失败:", reportErr)
     })
 }
@@ -149,15 +142,10 @@ export async function ensureCanvasHookInjected(
     startCanvasHookBridge()
     injectInFlight = (async () => {
         try {
-            const response = await sendToBackground<
-                InjectMainWorldHookRequest,
-                InjectMainWorldHookResponse
-            >({
-                name: "inject-main-world-hook",
-                body: {
-                    pageUrl
-                }
-            })
+            const response: InjectMainWorldHookResponse = await sendMessage(
+                "inject-main-world-hook",
+                { pageUrl } satisfies InjectMainWorldHookRequest
+            )
 
             if (!response.success) {
                 console.warn(

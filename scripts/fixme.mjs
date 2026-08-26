@@ -1,6 +1,6 @@
 #!/usr/bin/env zx
 
-const fixme = require("fixme")
+import fixme from "fixme"
 
 fixme({
     path: process.cwd(),

@@ -1,11 +1,16 @@
-import type { PlasmoMessaging } from "@plasmohq/messaging"
-
 import type {
     AiHttpRequestConfig,
+    GoogleTranslateRequestConfig,
     TranslationEngineRequestConfig,
     UnifiedRequestBody,
     UnifiedResponse
 } from "@/types/request"
+
+import {
+    createGoogleTranslateForm,
+    normalizeGoogleTranslateTimeout,
+    parseGoogleTranslateResponse
+} from "../lib/google-translate"
 
 // ============================================================================
 // 全局配置和工具
@@ -13,6 +18,7 @@ import type {
 
 /** 活动的 AbortController 集合 */
 const activeAbortControllers = new Set<AbortController>()
+const timedOutAbortControllers = new WeakSet<AbortController>()
 
 /** 创建带超时的 AbortController */
 function createAbortController(
@@ -22,7 +28,10 @@ function createAbortController(
     let timeoutId: NodeJS.Timeout | undefined
 
     if (timeout) {
-        timeoutId = setTimeout(() => controller.abort(), timeout)
+        timeoutId = setTimeout(() => {
+            timedOutAbortControllers.add(controller)
+            controller.abort()
+        }, timeout)
     }
 
     activeAbortControllers.add(controller)
@@ -42,26 +51,24 @@ function cleanupAbortController(
 
 /** 发送成功响应 */
 function sendSuccess(
-    res: PlasmoMessaging.Response,
     content: string | Record<string, unknown>,
     headers?: Record<string, string>
-): void {
-    res.send({ content, success: true, headers } as UnifiedResponse)
+): UnifiedResponse {
+    return { content, success: true, headers }
 }
 
 /** 发送错误响应 */
 function sendError(
-    res: PlasmoMessaging.Response,
     error: unknown,
     headers?: Record<string, string>
-): void {
+): UnifiedResponse {
     const errorMessage =
         error instanceof Error ? error.message : "Unknown error"
-    res.send({
+    return {
         error: errorMessage,
         success: false,
         headers
-    } as UnifiedResponse)
+    }
 }
 
 // ============================================================================
@@ -70,9 +77,8 @@ function sendError(
 
 /** 处理 AI 普通 HTTP 请求 */
 async function handleAiHttpRequest(
-    config: AiHttpRequestConfig,
-    res: PlasmoMessaging.Response
-): Promise<void> {
+    config: AiHttpRequestConfig
+): Promise<UnifiedResponse> {
     const { apiKey, baseUrl, headers = {}, timeout, ...requestBody } = config
 
     const [controller, timeoutId] = createAbortController(timeout)
@@ -104,7 +110,7 @@ async function handleAiHttpRequest(
         }
 
         const result = await response.json()
-        sendSuccess(res, result, responseHeaders)
+        return sendSuccess(result, responseHeaders)
     } catch (error) {
         if (controller.signal.aborted) {
             throw new Error("Request timeout")
@@ -114,8 +120,7 @@ async function handleAiHttpRequest(
             const errorWithHeaders = error as {
                 headers?: Record<string, string>
             }
-            sendError(res, error, errorWithHeaders.headers)
-            return
+            return sendError(error, errorWithHeaders.headers)
         }
         throw error
     } finally {
@@ -129,9 +134,8 @@ async function handleAiHttpRequest(
 
 /** 处理翻译引擎请求 */
 async function handleTranslationEngineRequest(
-    config: TranslationEngineRequestConfig,
-    res: PlasmoMessaging.Response
-): Promise<void> {
+    config: TranslationEngineRequestConfig
+): Promise<UnifiedResponse> {
     const { baseUrl, headers = {}, timeout, ...translationData } = config
 
     const [controller, timeoutId] = createAbortController(timeout)
@@ -161,7 +165,7 @@ async function handleTranslationEngineRequest(
         }
 
         const result = await response.json()
-        sendSuccess(res, result, responseHeaders)
+        return sendSuccess(result, responseHeaders)
     } catch (error) {
         if (controller.signal.aborted) {
             throw new Error("Request timeout")
@@ -170,8 +174,61 @@ async function handleTranslationEngineRequest(
             const errorWithHeaders = error as {
                 headers?: Record<string, string>
             }
-            sendError(res, error, errorWithHeaders.headers)
-            return
+            return sendError(error, errorWithHeaders.headers)
+        }
+        throw error
+    } finally {
+        cleanupAbortController(controller, timeoutId)
+    }
+}
+
+// ============================================================================
+// Google Translate 网页端请求处理器
+// ============================================================================
+
+const GOOGLE_TRANSLATE_ENDPOINT =
+    "https://translate.googleapis.com/translate_a/single"
+
+async function handleGoogleTranslateRequest(
+    config: GoogleTranslateRequestConfig
+): Promise<UnifiedResponse> {
+    const [controller, timeoutId] = createAbortController(
+        normalizeGoogleTranslateTimeout(config.timeout)
+    )
+
+    try {
+        const response = await fetch(GOOGLE_TRANSLATE_ENDPOINT, {
+            method: "POST",
+            headers: {
+                "Content-Type":
+                    "application/x-www-form-urlencoded;charset=UTF-8"
+            },
+            body: createGoogleTranslateForm({
+                text: config.text,
+                targetLanguage: config.targetLanguage,
+                sourceLanguage: config.sourceLanguage
+            }),
+            signal: controller.signal
+        })
+
+        if (!response.ok) {
+            throw new Error(`Google 翻译请求失败：HTTP ${response.status}`)
+        }
+
+        let result: unknown
+        try {
+            result = await response.json()
+        } catch {
+            throw new Error("Google 翻译返回了无法识别的响应")
+        }
+        return sendSuccess(parseGoogleTranslateResponse(result))
+    } catch (error) {
+        if (controller.signal.aborted) {
+            throw new Error(
+                timedOutAbortControllers.has(controller)
+                    ? "Google 翻译请求超时"
+                    : "Google 翻译请求已取消"
+            )
         }
         throw error
     } finally {
@@ -184,39 +241,36 @@ async function handleTranslationEngineRequest(
 // ============================================================================
 
 /** 中断所有活动请求 */
-function handleAbortRequest(res: PlasmoMessaging.Response): void {
+function handleAbortRequest(): UnifiedResponse {
     activeAbortControllers.forEach(controller => controller.abort())
     activeAbortControllers.clear()
-    sendSuccess(res, "All requests aborted")
+    return sendSuccess("All requests aborted")
 }
 
 // ============================================================================
 // 主处理器
 // ============================================================================
 
-const handle: PlasmoMessaging.PortHandler = async (req, res) => {
+export async function handleTranslateRequest(
+    body: UnifiedRequestBody
+): Promise<UnifiedResponse> {
     try {
-        const body = req.body as UnifiedRequestBody
-
         switch (body.type) {
             case "ai_http":
-                await handleAiHttpRequest(body.config, res)
-                break
+                return await handleAiHttpRequest(body.config)
             case "translation_engine":
-                await handleTranslationEngineRequest(body.config, res)
-                break
+                return await handleTranslationEngineRequest(body.config)
+            case "google_translate":
+                return await handleGoogleTranslateRequest(body.config)
             case "abort":
-                handleAbortRequest(res)
-                break
+                return handleAbortRequest()
             default:
-                throw new Error(`Unsupported request type: ${body.type}`)
+                throw new Error("Unsupported request type")
         }
     } catch (error) {
-        sendError(res, error)
+        return sendError(error)
     }
 }
-
-export default handle
 
 // 导出类型以便向后兼容
 export { RequestType } from "@/types/request"

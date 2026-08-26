@@ -6,15 +6,19 @@ import type { BaseModel } from "@/types"
 import { type DeepPartial, type ExtensionConfig } from "@/types/config"
 
 import { defaultExtensionConfig } from "./constants"
+import { createTranslationServiceStorageAdapter } from "./translationService"
 import { chromeStorageAdapter } from "./util"
 
 // import { chromeStorageAdapter } from "./util"
+
+const configStorageAdapter =
+    createTranslationServiceStorageAdapter(chromeStorageAdapter)
 
 // 配置原子
 export const configAtom = atomWithStorage<ExtensionConfig>(
     "extension-config",
     defaultExtensionConfig,
-    chromeStorageAdapter,
+    configStorageAdapter,
     {
         getOnInit: true
     }

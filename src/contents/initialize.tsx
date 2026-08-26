@@ -1,15 +1,12 @@
 import { franc } from "franc"
 import { useSetAtom } from "jotai"
-import type { PlasmoGetInlineAnchor } from "plasmo"
 import React, { useEffect } from "react"
 import { useAsyncRetry } from "react-use"
 
 import { updateConfigAtom } from "../state"
 import { getEnhancedLanguageCode } from "../utils/francLanguageMap"
 
-export const getShadowHostId = () => "plasmo-overlay-init"
-
-export const getInlineAnchor: PlasmoGetInlineAnchor = () => document.body
+export const getShadowHostId = () => "mewcat-overlay-init"
 
 /***
  * 此组件负责初始化配置以及接受配置更新的消息并处理

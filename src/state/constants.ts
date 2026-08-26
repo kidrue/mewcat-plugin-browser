@@ -1,5 +1,4 @@
-import { Storage } from "@plasmohq/storage"
-
+import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import { type BaseModel } from "@/types"
 import { AiRole, type ExtensionConfig } from "@/types/config"
 import { logEnvironmentInfo } from "@/utils/environment"
@@ -82,14 +81,14 @@ export const defaultExtensionConfig: ExtensionConfig = {
     aiModelList,
 
     // 划词翻译配置
-    selectionTriggerMode: "shift",
+    selectionTriggerMode: "direct",
     selectionInteractionMode: "click",
     selectionDisabledSites: [],
 
     // 扩展配置
     extensionEnabled: true,
     cacheEnabled: true,
-    currentModel: "",
+    currentModel: GOOGLE_TRANSLATE_MODEL_ID,
 
     // AI 思考能力配置
     enableThinking: false,
@@ -99,9 +98,6 @@ export const defaultExtensionConfig: ExtensionConfig = {
 
     // 图片翻译配置
     enableImageTranslateButton: false,
+    imageTranslationModelId: "",
     imageTranslateProvider: "系统"
 }
-
-export const storage = new Storage({
-    area: "local"
-})

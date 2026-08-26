@@ -1,9 +1,10 @@
 import { useAtom } from "jotai"
-import type { PlasmoGetInlineAnchor } from "plasmo"
 
 import "react"
 
 import styled, { StyleSheetManager } from "styled-components"
+
+import "@/styles/theme.scss"
 
 import Icon from "../components/Icon"
 import SelectionDot from "../components/SelectionDot"
@@ -13,33 +14,29 @@ import "../constants"
 
 import { useMemo } from "react"
 
-import {
-    INTERACTION_MODE_OPTIONS,
-    plasmoShadowRootContainerId,
-    TRIGGER_MODE_OPTIONS
-} from "../constants"
+import { INTERACTION_MODE_OPTIONS, TRIGGER_MODE_OPTIONS } from "../constants"
 import { useSelectionTranslate } from "../hooks/useSelectionTranslate"
 import { configAtom } from "../state"
+import { getSelectionPanelVisibility } from "../translation/selectionTranslation"
 
-export const getShadowHostId = () => "plasmo-overlay-selection"
+export const getShadowHostId = () => "mewcat-overlay-selection"
 
 const rootId = "selectionRoot"
-
-export const getInlineAnchor: PlasmoGetInlineAnchor = () => document.body
 
 const SCxContainer = styled.div.withConfig({
     shouldForwardProp: prop => !(prop === "isVisible")
 })<{ isVisible: boolean }>`
     position: fixed;
-    width: 338px;
+    width: min(338px, calc(100vw - 16px));
     min-height: 120px;
     /* max-height: 300px; */
     z-index: 99999;
     background: #fbf8f0;
-    border-radius: 4px;
+    border-radius: var(--radius-xl);
     box-shadow: 0 10px 34px rgba(26, 23, 20, 0.16);
     border: 1px solid #d8d0be;
     opacity: ${props => (props.isVisible ? 1 : 0)};
+    visibility: ${props => getSelectionPanelVisibility(props.isVisible)};
     transform: ${props =>
         props.isVisible
             ? "translateY(0) scale(1)"
@@ -59,6 +56,7 @@ const SCxContainer = styled.div.withConfig({
         right: 0;
         height: 3px;
         background: #b23a2e;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     }
 `
 
@@ -83,7 +81,7 @@ const SCxTitle = styled.div`
         width: 18px;
         height: 18px;
         background: #b23a2e;
-        border-radius: 3px;
+        border-radius: var(--radius-md);
         box-shadow: inset 0 0 0 1px rgba(251, 248, 240, 0.55);
         display: flex;
         align-items: center;
@@ -100,7 +98,7 @@ const SCxCloseButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 2px;
+    border-radius: var(--radius-md);
     color: #6e665c;
     font-size: 12px;
     transition: all 0.16s ease;
@@ -114,7 +112,6 @@ const SCxCloseButton = styled.button`
 const SCxContent = styled.div``
 
 const SelectionTranslate = () => {
-    return null
     const [config] = useAtom(configAtom)
 
     const getRootElement = () =>
@@ -129,7 +126,6 @@ const SelectionTranslate = () => {
         actions,
         config: selectionConfig
     } = useSelectionTranslate<HTMLDivElement>({
-        shadowId: plasmoShadowRootContainerId,
         config
     })
 

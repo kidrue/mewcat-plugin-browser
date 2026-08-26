@@ -14,9 +14,11 @@ export interface TranslatorConfig {
 }
 
 export interface TranslatorInterface {
+    readonly provider: string
     translateText(messages: Message[], targetLang: string): Promise<string>
     translateBatch(messages: Message[], targetLang: string): Promise<string>
-    checkConnection?(): Promise<boolean>
+    checkConnection(): Promise<boolean>
+    abortAllTranslations(): void
 }
 
 export interface Choice {

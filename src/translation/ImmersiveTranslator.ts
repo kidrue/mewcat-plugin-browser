@@ -15,7 +15,7 @@ import {
 } from "@/utils"
 import { isDevelopment } from "@/utils/environment"
 
-import { AiModel_Platform_Enum, type Message } from "../types"
+import { type Message } from "../types"
 import type { ExtensionConfig } from "../types/config"
 import {
     createDefaultCache,
@@ -991,18 +991,7 @@ export class ImmersiveTranslator {
      * @returns 是否使用 AI 模型
      */
     private isUsingAiModel(): boolean {
-        // 检查是否有可用的 AI 翻译器
-        const translateEngineMap = new Set([
-            AiModel_Platform_Enum.DEEPL,
-            AiModel_Platform_Enum.DEEPLX
-        ])
-
-        return (
-            this.translationServiceManager.hasAITranslationEnabled() &&
-            !translateEngineMap.has(
-                this.translationServiceManager.getPreferredTranslator().provider
-            )
-        )
+        return this.translationServiceManager.hasAITranslationEnabled()
     }
 
     /**

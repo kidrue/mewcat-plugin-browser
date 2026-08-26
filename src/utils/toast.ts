@@ -113,7 +113,7 @@ export class ToastController {
             min-width: 240px;
             max-width: 420px;
             padding: 12px 16px;
-            border-radius: 8px;
+            border-radius: 16px;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             font-weight: 500;
             color: #fff;

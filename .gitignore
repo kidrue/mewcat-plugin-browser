@@ -1,4 +1,6 @@
 .plasmo
+.wxt
+.output
 .deepseek
 node_modules/
 build/

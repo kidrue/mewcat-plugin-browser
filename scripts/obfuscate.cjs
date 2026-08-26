@@ -2,8 +2,8 @@ const fs = require("fs")
 const path = require("path")
 const { obfuscate } = require("javascript-obfuscator")
 
-// 要混淆的目录（Plasmo 构建输出目录）
-const buildDir = path.resolve(__dirname, "../build/chrome-mv3-prod")
+// 要混淆的目录（WXT 构建输出目录）
+const buildDir = path.resolve(__dirname, "../.output/chrome-mv3")
 
 // 混淆配置
 const obfuscateOptions = {

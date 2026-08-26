@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
-import { calculatePosition } from "@/utils"
+import {
+    calculatePosition,
+    getSelectionSnapshot,
+    hasSelectionChanged,
+    isSelectionUiEvent
+} from "@/utils/dom"
+import type { SelectionSnapshot } from "@/utils/dom"
 
 import type { ExtensionConfig } from "../types/config"
 
@@ -21,7 +27,6 @@ export interface SelectionState {
 
 export interface UseSelectionTranslateOptions {
     config: ExtensionConfig
-    shadowId: string
 }
 
 /**
@@ -29,12 +34,13 @@ export interface UseSelectionTranslateOptions {
  * 根据配置处理不同的触发模式和交互方式
  */
 export function useSelectionTranslate<T extends HTMLElement>({
-    config,
-    shadowId
+    config
 }: UseSelectionTranslateOptions) {
     const triggerMode = config.selectionTriggerMode
     const dotRef = useRef<T>(null)
     const containerRef = useRef<HTMLDivElement>(null)
+    const ignoreMouseUpRef = useRef(false)
+    const selectionAtMouseDownRef = useRef<SelectionSnapshot | null>(null)
     const [state, setState] = useState<SelectionState>({
         text: "",
         position: { top: 0, left: 0 },
@@ -82,17 +88,18 @@ export function useSelectionTranslate<T extends HTMLElement>({
         }
 
         return true
-    }, [config, isCurrentSiteDisabled])
+    }, [config.isSelectedTranslate, isCurrentSiteDisabled])
 
     // 计算位置
     const computeRect = useCallback(() => {
         setState(prev => {
-            if (!prev.textRect) {
+            const container = containerRef.current
+            if (!prev.textRect || !container) {
                 return prev
             }
             const position = calculatePosition(
                 prev.textRect,
-                containerRef.current.getBoundingClientRect()
+                container.getBoundingClientRect()
             )
             return {
                 ...prev,
@@ -101,23 +108,21 @@ export function useSelectionTranslate<T extends HTMLElement>({
         })
     }, [])
 
-    const settingSelection = useCallback(() => {
-        const selection = window.getSelection()
-        const selectedText = selection.toString().trim()
-        if (!selectedText) {
-            return
-        }
-        const rect = selection?.getRangeAt?.(0)?.getBoundingClientRect?.()
-        if (!rect || !containerRef.current) {
-            return null
-        }
-        setState(prev => ({
-            ...prev,
-            text: selectedText,
-            textRect: rect
-        }))
-        return selectedText
-    }, [])
+    const settingSelection = useCallback(
+        (snapshot?: SelectionSnapshot | null) => {
+            snapshot ??= getSelectionSnapshot(window.getSelection())
+            if (!snapshot || !containerRef.current) {
+                return null
+            }
+            setState(prev => ({
+                ...prev,
+                text: snapshot.text,
+                textRect: snapshot.rect
+            }))
+            return snapshot.text
+        },
+        []
+    )
 
     // 显示翻译面板
     const showTranslatePanel = useCallback(() => {
@@ -125,11 +130,16 @@ export function useSelectionTranslate<T extends HTMLElement>({
             return
         }
         computeRect()
-        setState(prev => ({
-            ...prev,
-            isVisible: true,
-            isDotVisible: false
-        }))
+        setState(prev => {
+            if (!prev.text || !prev.textRect) {
+                return prev
+            }
+            return {
+                ...prev,
+                isVisible: true,
+                isDotVisible: false
+            }
+        })
     }, [computeRect, shouldTrigger])
 
     // 显示触发点
@@ -150,7 +160,7 @@ export function useSelectionTranslate<T extends HTMLElement>({
             ...prev,
             text: "",
             textRect: undefined,
-            rect: { top: 0, left: 0 },
+            position: { top: 0, left: 0 },
             isVisible: false,
             isDotVisible: false,
             triggerDot: undefined
@@ -206,32 +216,39 @@ export function useSelectionTranslate<T extends HTMLElement>({
         if (!config.isSelectedTranslate) {
             return
         }
-        let isIgnore = false
-
         const handleMouseDown = (e: MouseEvent) => {
-            if (e.target instanceof HTMLElement) {
-                const shadowRoot = e.target.shadowRoot?.getElementById(shadowId)
-                const isIncludeShadow = shadowRoot?.contains(
-                    containerRef.current
-                )
-                if (isIncludeShadow) {
-                    isIgnore = true
-                    return
-                }
+            selectionAtMouseDownRef.current = getSelectionSnapshot(
+                window.getSelection()
+            )
+            if (isSelectionUiEvent(e, [containerRef.current, dotRef.current])) {
+                ignoreMouseUpRef.current = true
+                return
             }
-            isIgnore = false
+            ignoreMouseUpRef.current = false
 
             // 如果不是选择文本的操作，隐藏面板
             hideAll()
         }
 
         const handleMouseUp = (e: MouseEvent) => {
-            if (isIgnore) {
+            if (ignoreMouseUpRef.current) {
+                ignoreMouseUpRef.current = false
+                selectionAtMouseDownRef.current = null
                 return
             }
 
-            // 鼠标松手时计算位置
-            const selectedText = settingSelection()
+            const currentSelection = getSelectionSnapshot(window.getSelection())
+            const selectionChanged = hasSelectionChanged(
+                selectionAtMouseDownRef.current,
+                currentSelection
+            )
+            selectionAtMouseDownRef.current = null
+            if (!selectionChanged || !shouldTrigger()) {
+                return
+            }
+
+            // 仅在本次鼠标操作产生新选区时计算位置
+            const selectedText = settingSelection(currentSelection)
             if (selectedText) {
                 // 判断类型决定是否打开
                 triggerMode === "direct" && showTranslatePanel()
@@ -251,18 +268,31 @@ export function useSelectionTranslate<T extends HTMLElement>({
         showTranslatePanel,
         hideAll,
         settingSelection,
-        shadowId,
         showTriggerDot,
         triggerMode,
+        shouldTrigger,
         config.isSelectedTranslate
     ])
 
-    // 监听配置变化
+    // 监听配置变化，清理与新配置不兼容的临时 UI
     useEffect(() => {
-        if (!config.isSelectedTranslate) {
+        if (!shouldTrigger()) {
             hideAll()
+            return
         }
-    }, [config.isSelectedTranslate, hideAll])
+        if (triggerMode !== "dot") {
+            setState(prev => {
+                if (!prev.isDotVisible && !prev.triggerDot) {
+                    return prev
+                }
+                return {
+                    ...prev,
+                    isDotVisible: false,
+                    triggerDot: undefined
+                }
+            })
+        }
+    }, [hideAll, shouldTrigger, triggerMode])
 
     return {
         state,

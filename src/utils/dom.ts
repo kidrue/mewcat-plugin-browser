@@ -5,6 +5,70 @@
 
 import { getTranslationStyleCSS, type TranslationStyleUnion } from "./style"
 
+export function isSelectionUiEvent(
+    event: Pick<Event, "composedPath">,
+    elements: ReadonlyArray<EventTarget | null | undefined>
+): boolean {
+    const selectionUiElements = new Set(
+        elements.filter((element): element is EventTarget => Boolean(element))
+    )
+    return event
+        .composedPath()
+        .some(eventTarget => selectionUiElements.has(eventTarget))
+}
+
+export interface SelectionSnapshot {
+    text: string
+    rect: DOMRect
+    startContainer: Node
+    startOffset: number
+    endContainer: Node
+    endOffset: number
+}
+
+export function getSelectionSnapshot(
+    selection: Pick<Selection, "toString" | "rangeCount" | "getRangeAt"> | null
+): SelectionSnapshot | null {
+    if (!selection || selection.rangeCount === 0) {
+        return null
+    }
+
+    const text = selection.toString().trim()
+    if (!text) {
+        return null
+    }
+
+    const range = selection.getRangeAt(0)
+    return {
+        text,
+        rect: range.getBoundingClientRect(),
+        startContainer: range.startContainer,
+        startOffset: range.startOffset,
+        endContainer: range.endContainer,
+        endOffset: range.endOffset
+    }
+}
+
+export function hasSelectionChanged(
+    previous: SelectionSnapshot | null,
+    current: SelectionSnapshot | null
+): boolean {
+    if (!current) {
+        return false
+    }
+    if (!previous) {
+        return true
+    }
+
+    return (
+        current.text !== previous.text ||
+        current.startContainer !== previous.startContainer ||
+        current.startOffset !== previous.startOffset ||
+        current.endContainer !== previous.endContainer ||
+        current.endOffset !== previous.endOffset
+    )
+}
+
 /**
  * 检查元素是否被全局排除规则排除
  */
@@ -224,7 +288,7 @@ export function createTranslationErrorUI(
             gap: 2px;
             transition: all 0.15s ease;
             padding: 2px 4px;
-            border-radius: 2px;
+            border-radius: 6px;
         `
         button.setAttribute("title", title)
         button.appendChild(icon)
@@ -298,7 +362,7 @@ export function createTranslationErrorUI(
     errorModalContent.style.cssText = `
         background: #fbf8f0;
         padding: 24px;
-        border-radius: 4px;
+        border-radius: 16px;
         border: 1px solid #d8d0be;
         box-shadow: 0 10px 34px rgba(26, 23, 20, 0.18);
         max-width: 500px;
@@ -321,7 +385,7 @@ export function createTranslationErrorUI(
         cursor: pointer;
         color: #9a9188;
         padding: 4px 8px;
-        border-radius: 2px;
+        border-radius: 8px;
         transition: all 0.15s ease;
         line-height: 1;
     `
@@ -358,7 +422,7 @@ export function createTranslationErrorUI(
         overflow-y: auto;
         padding: 12px;
         background: #f2ede1;
-        border-radius: 2px;
+        border-radius: 12px;
         border: 1px solid #ded5c3;
     `
     errorDetailsContent.textContent = errorDetails
@@ -486,13 +550,26 @@ export function calculatePosition(
     // 如果超出，则让b的右侧紧贴窗口右侧
     const bRight = aRect.left + bRect.width
     if (bRight > windowWidth) {
-        left = aRect.left - bRect.width
+        left = windowWidth - bRect.width
     }
 
     if (offsetX || offsetY) {
         top = (isOverturn ? -offsetY : offsetY) + top || 0
         left += offsetX || 0
     }
+
+    const viewportMargin = 8
+    const maxLeft = Math.max(
+        viewportMargin,
+        windowWidth - bRect.width - viewportMargin
+    )
+    const maxTop = Math.max(
+        viewportMargin,
+        windowHeight - bRect.height - viewportMargin
+    )
+    left = Math.min(Math.max(left, viewportMargin), maxLeft)
+    top = Math.min(Math.max(top, viewportMargin), maxTop)
+
     return { top, left }
 }
 

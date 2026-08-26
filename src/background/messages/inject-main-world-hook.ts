@@ -1,4 +1,7 @@
-import type { PlasmoMessaging } from "@plasmohq/messaging"
+import type {
+    InjectMainWorldHookRequest,
+    InjectMainWorldHookResponse
+} from "@/messaging/protocol"
 
 import { installMewCatCanvasImageHook } from "../../contents/inject/canvas-image-hook"
 import {
@@ -7,42 +10,28 @@ import {
 } from "../../types/canvas-hook"
 import { getCanvasRolloutDecision } from "../config/canvas-sites"
 
-export interface InjectMainWorldHookRequest {
-    pageUrl?: string
-}
-
-export interface InjectMainWorldHookResponse {
-    success: boolean
-    injected?: boolean
-    skipped?: boolean
-    reason?: string
-    error?: string
-}
-
-const handler: PlasmoMessaging.MessageHandler<
-    InjectMainWorldHookRequest,
-    InjectMainWorldHookResponse
-> = async (req, res) => {
-    const tabId = req.sender?.tab?.id
-    const pageUrl = req.body?.pageUrl || req.sender?.tab?.url
+export async function handleInjectMainWorldHook(
+    request: InjectMainWorldHookRequest,
+    sender: chrome.runtime.MessageSender
+): Promise<InjectMainWorldHookResponse> {
+    const tabId = sender.tab?.id
+    const pageUrl = request.pageUrl || sender.tab?.url
 
     if (!tabId) {
-        res.send({
+        return {
             success: false,
             error: "缺少 tabId，无法注入 Main World hook"
-        })
-        return
+        }
     }
 
     const decision = getCanvasRolloutDecision(pageUrl)
     if (!decision.enabled) {
-        res.send({
+        return {
             success: true,
             injected: false,
             skipped: true,
             reason: `当前站点未开启 canvas hook: ${decision.reason}`
-        })
-        return
+        }
     }
 
     try {
@@ -53,18 +42,18 @@ const handler: PlasmoMessaging.MessageHandler<
             args: [CANVAS_HOOK_CHANNEL, CANVAS_HOOK_VERSION]
         })
 
-        res.send({
+        return {
             success: true,
             injected: true
-        })
+        }
     } catch (error) {
         console.error("[CanvasHook] Main World 注入失败:", error)
-        res.send({
+        return {
             success: false,
             error:
                 error instanceof Error ? error.message : "Main World 注入失败"
-        })
+        }
     }
 }
 
-export default handler
+export type { InjectMainWorldHookRequest, InjectMainWorldHookResponse }

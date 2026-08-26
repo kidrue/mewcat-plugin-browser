@@ -7,8 +7,9 @@
 
 import axios from "axios"
 import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios"
+import { pathToFileURL } from "node:url"
 
-// 模拟 @plasmohq/storage 的 Storage 类
+// 模拟扩展 Storage 适配器
 class MockStorage {
     private data: Map<string, string> = new Map()
 
@@ -446,7 +447,7 @@ async function runTests() {
 }
 
 // 运行测试
-if (require.main === module) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
     runTests()
         .then(success => {
             process.exit(success ? 0 : 1)

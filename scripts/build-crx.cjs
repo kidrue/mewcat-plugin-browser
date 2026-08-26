@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 /**
- * 把 Plasmo 生产构建产物打包成签名的 .crx
+ * 把 WXT 生产构建产物打包成签名的 .crx
  *
  * 前置条件：
- *   1. 先跑 `pnpm build`，产出 build/chrome-mv3-prod（已混淆）
+ *   1. 先跑 `pnpm build`，产出 .output/chrome-mv3
  *   2. 提供固定私钥，二选一：
  *      - 环境变量 CRX_PRIVATE_KEY（PEM 明文，CI 用）
- *      - 项目根目录 key.pem（本地用，由 scripts/gen-crx-key.js 生成）
+ *      - 项目根目录 key.pem（本地用，由 scripts/gen-crx-key.cjs 生成）
  *
  * 私钥必须固定：crx 的扩展 ID 由私钥推导，换密钥等于换扩展，已安装用户收不到更新。
  */
@@ -17,7 +17,7 @@ const path = require("path")
 const fs = require("fs")
 
 const ROOT_DIR = path.resolve(__dirname, "..")
-const SOURCE_DIR = path.join(ROOT_DIR, "build/chrome-mv3-prod")
+const SOURCE_DIR = path.join(ROOT_DIR, ".output/chrome-mv3")
 const OUTPUT_DIR = path.join(ROOT_DIR, "release")
 const PRIVATE_KEY_PATH = path.join(ROOT_DIR, "key.pem")
 
@@ -38,7 +38,7 @@ const readPrivateKey = () => {
     // 不再回退到「自动生成随机私钥」：那会让每次打包的扩展 ID 都不同
     throw new Error(
         "未找到签名私钥。请设置环境变量 CRX_PRIVATE_KEY，或在项目根目录放置 key.pem" +
-            "（可用 `node scripts/gen-crx-key.js` 生成）。"
+            "（可用 `node scripts/gen-crx-key.cjs` 生成）。"
     )
 }
 

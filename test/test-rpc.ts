@@ -6,8 +6,10 @@
 import { createClient } from "@connectrpc/connect"
 import { createConnectTransport } from "@connectrpc/connect-web"
 
-import { ChatService } from "../src/es/chat/v1/chat_pb"
-import { SystemLLMModel } from "../src/types"
+import {
+    ChatQueryModel,
+    ChatService
+} from "../src/es/chat/v1/chat_pb"
 
 // 创建 transport
 const transport = createConnectTransport({
@@ -40,7 +42,7 @@ async function testCommonCompletion() {
             {
                 messages: messages,
                 modelOption: {
-                    model: SystemLLMModel.LLM_MODEL_DOUBAO_1d5_PRO,
+                    model: ChatQueryModel.DOUBAO_1d5_PRO,
                     tryCnt: 1
                 },
                 temperature: 0.1
