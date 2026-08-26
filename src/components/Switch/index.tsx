@@ -7,6 +7,10 @@ interface SwitchProps {
     disabled?: boolean
     className?: string
     size?: "sm" | "md" | "lg"
+    id?: string
+    "aria-label"?: string
+    "aria-labelledby"?: string
+    "aria-describedby"?: string
 }
 
 const SIZES = {
@@ -23,7 +27,7 @@ const SwitchTrack = styled.span<{ $checked: boolean; $size: string }>`
     position: relative;
     width: 100%;
     height: 100%;
-    /* 方形木闸，不是胶囊 —— 圆形在这套语言里只留给印章 */
+    /* 适中圆角滑轨，保持紧凑而不做成胶囊 */
     border-radius: var(--radius-sm);
     background: ${p =>
         p.$checked ? "var(--primary-color)" : "var(--bg-tertiary)"};
@@ -41,7 +45,7 @@ const SwitchTrack = styled.span<{ $checked: boolean; $size: string }>`
         left: ${p => (sizeOf(p.$size).height - sizeOf(p.$size).knob) / 2}px;
         width: ${p => sizeOf(p.$size).knob}px;
         height: ${p => sizeOf(p.$size).knob}px;
-        border-radius: 1px;
+        border-radius: var(--radius-sm);
         /* 开合状态由「位置 + 闸块颜色」双重编码，不只靠颜色 */
         background: ${p =>
             p.$checked ? "var(--text-inverse)" : "var(--gray-400)"};
@@ -94,7 +98,11 @@ const Switch: React.FC<SwitchProps> = ({
     onChange,
     disabled = false,
     className,
-    size = "md"
+    size = "md",
+    id,
+    "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
+    "aria-describedby": ariaDescribedBy
 }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!disabled) {
@@ -109,12 +117,16 @@ const Switch: React.FC<SwitchProps> = ({
             className={className}
         >
             <SwitchInput
+                id={id}
                 type="checkbox"
                 checked={checked}
                 onChange={handleChange}
                 disabled={disabled}
                 role="switch"
                 aria-checked={checked}
+                aria-label={ariaLabel}
+                aria-labelledby={ariaLabelledBy}
+                aria-describedby={ariaDescribedBy}
             />
             <SwitchTrack $checked={checked} $size={size} />
         </SwitchContainer>

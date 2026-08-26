@@ -1,5 +1,22 @@
 # 图片翻译实施报告（当前工作区）
 
+## 2026-08-25：结构化视觉翻译与设置页
+
+图片翻译现在使用独立的视觉模型配置，不再跟随文本翻译模型。使用前请在“模型”设置中配置并启用模型；自定义模型还需显式开启“支持图片输入”，然后在“图片翻译”设置中选择该模型。没有可用或已选视觉模型时，快捷翻译按钮和能力测试保持禁用，避免界面显示为可用但运行时必然失败。
+
+设置页提供“测试视觉能力”：测试图片在点击时通过 Canvas 生成 data URL，不包含静态测试图片资源，并通过与页面图片翻译相同的严格 background 通道发送。页面设置代码只提交图片、目标语言和模型 ID，API Key 始终由 background 从扩展配置读取。
+
+能力测试及实际图片翻译会将图片发送给所选模型服务商，并可能产生服务商费用。测试页会展示加载、成功和稳定的中文失败信息；认证、限流、超时、无文字及格式错误仍由严格 background 通道统一映射。
+
+开发验证可运行：
+
+```powershell
+pnpm test:image
+pnpm typecheck
+```
+
+以下内容保留为 2026-02-10 捕获管道重构的历史审查记录。
+
 更新时间：2026-02-10 23:52 CST  
 工作区：`/Users/cc/learn/SideTranslateBrowserPlugin`
 
@@ -81,10 +98,10 @@
 
 - `src/background/messages/inject-main-world-hook.ts` 负责 `world: "MAIN"` 注入。
 - `src/contents/inject/canvas-image-hook.ts` hook：
-  - `HTMLCanvasElement.getContext`
-  - `CanvasRenderingContext2D.drawImage`
-  - `OffscreenCanvas.getContext`
-  - `OffscreenCanvasRenderingContext2D.drawImage`
+    - `HTMLCanvasElement.getContext`
+    - `CanvasRenderingContext2D.drawImage`
+    - `OffscreenCanvas.getContext`
+    - `OffscreenCanvasRenderingContext2D.drawImage`
 - `src/contents/bridges/canvas-hook-bridge.ts` 维护 `CANVAS_META_*` 协议与查询缓存。
 - `src/background/messages/canvas-hook-event.ts` 接收 Main World 错误上报。
 
@@ -110,11 +127,11 @@
 
 - `check` 增加 `check:hotlink-rules`。
 - 新增脚本：
-  - `sync:hotlink-rules`
-  - `check:hotlink-rules`
+    - `sync:hotlink-rules`
+    - `check:hotlink-rules`
 - Manifest 权限新增：
-  - `declarativeNetRequest`
-  - `declarativeNetRequestWithHostAccess`
+    - `declarativeNetRequest`
+    - `declarativeNetRequestWithHostAccess`
 
 ## 4.2 `src/background/messages/translate-image.ts`
 
@@ -125,17 +142,17 @@
 3. 增加 `pageUrl`、`canvasMeta`、`requestId` 支持。
 4. 增加 token 刷新（401 后刷新再重试一次）。
 5. 增加图片 MIME 处理策略：
-   - 仅 `png/jpeg` 原样透传。
-   - `webp/avif/gif/bmp/...` 等 `image/*` 自动转 `png` 后上送。
+    - 仅 `png/jpeg` 原样透传。
+    - `webp/avif/gif/bmp/...` 等 `image/*` 自动转 `png` 后上送。
 6. 支持同站点自动候选 `auto-page-origin`（无规则命中时补一个弱候选 referer）。
 7. 截图兜底支持：
-   - UI 隐藏/恢复
-   - `visualViewport` 偏移修正
-   - 大图（超视口）提前失败，避免无效裁剪
-   - img/canvas 目标双路径
+    - UI 隐藏/恢复
+    - `visualViewport` 偏移修正
+    - 大图（超视口）提前失败，避免无效裁剪
+    - img/canvas 目标双路径
 8. 新增双备份返回通道（除主 `res.send` 外）：
-   - `chrome.tabs.sendMessage`
-   - `chrome.storage.local`
+    - `chrome.tabs.sendMessage`
+    - `chrome.storage.local`
 
 ## 4.3 `src/services/imageTranslation.ts`
 
@@ -144,9 +161,9 @@
 - 新函数：`translateImageViaBackground`
 - 保留：`validateImage`（扩展到 `IMG/CANVAS`）
 - 响应通道采用三路容错：
-  - Plasmo 主通道
-  - tabs message
-  - storage 监听
+- WXT 扩展消息主通道
+    - tabs message
+    - storage 监听
 - 包含请求超时控制（90s）与资源清理（listener、storage key）。
 
 ## 4.4 `src/contents/imageTranslate.tsx`
@@ -156,22 +173,22 @@
 1. 交互对象从仅 `IMG` 扩展到 `IMG + CANVAS`。
 2. 删除 `ImageLoadingOverlay`，统一由按钮 loading 状态承载。
 3. 图片替换增强：
-   - `src/srcset` 保护
-   - 祖先 `background-image` 防回写保护
+    - `src/srcset` 保护
+    - 祖先 `background-image` 防回写保护
 4. Canvas 展示方案：
-   - 翻译结果作为 overlay 图层覆盖原 canvas
-   - 再次点击可恢复原图
+    - 翻译结果作为 overlay 图层覆盖原 canvas
+    - 再次点击可恢复原图
 5. 注入桥接：
-   - 页面激活时尝试 `ensureCanvasHookInjected`
-   - 点击 canvas 时查询 `queryCanvasMeta`
+    - 页面激活时尝试 `ensureCanvasHookInjected`
+    - 点击 canvas 时查询 `queryCanvasMeta`
 
 ## 4.5 `src/background/config/hotlink-sites.ts` & `*.generated.ts`
 
 - 构建“手工规则 + 自动规则”合并模型。
 - 新增 `pageHostAllowList`、`priority`、`override`。
 - 当前手工规则已补 `shonenjumpplus`：
-  - `cdn-ak-img.shonenjumpplus.com`
-  - `referer=https://shonenjumpplus.com/`
+    - `cdn-ak-img.shonenjumpplus.com`
+    - `referer=https://shonenjumpplus.com/`
 
 ## 4.6 `src/background/index.ts`
 
@@ -224,4 +241,3 @@
 2. 收敛调试日志并保留结构化关键字段（`site/fetchPath/failureType/errorCode/ruleHit/renderType`）。
 3. 将站点级问题（如特定 CDN 域名）沉淀到 `hotlink-sites.ts` 手工覆盖规则，避免临时 patch 漂移。
 4. 若稳定后准备合并，补充一份“运行手册”（如何从控制台快速判断当前命中路径和失败阶段）。
-

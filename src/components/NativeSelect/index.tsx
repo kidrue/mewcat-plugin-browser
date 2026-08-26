@@ -14,6 +14,10 @@ interface NativeSelectProps {
     disabled?: boolean
     className?: string
     size?: "sm" | "md" | "lg"
+    id?: string
+    "aria-label"?: string
+    "aria-labelledby"?: string
+    "aria-describedby"?: string
 }
 
 const SelectWrapper = styled.div`
@@ -104,7 +108,11 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
     placeholder = "请选择",
     disabled,
     className,
-    size = "md"
+    size = "md",
+    id,
+    "aria-label": ariaLabel,
+    "aria-labelledby": ariaLabelledBy,
+    "aria-describedby": ariaDescribedBy
 }) => {
     const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         onChange(e.target.value)
@@ -113,10 +121,14 @@ const NativeSelect: React.FC<NativeSelectProps> = ({
     return (
         <SelectWrapper className={className}>
             <StyledSelect
+                id={id}
                 value={String(value)}
                 onChange={handleChange}
                 disabled={disabled}
                 $size={size}
+                aria-label={ariaLabel}
+                aria-labelledby={ariaLabelledBy}
+                aria-describedby={ariaDescribedBy}
             >
                 {placeholder && !value && (
                     <option value="" disabled>

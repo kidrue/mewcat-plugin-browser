@@ -74,6 +74,7 @@ const FormRowComponent: React.FC<FormRowProps> = ({
     label,
     description,
     required,
+    controlId,
     children,
     className,
     style
@@ -81,8 +82,16 @@ const FormRowComponent: React.FC<FormRowProps> = ({
     return (
         <Row className={className} style={style}>
             <Term>
-                <Label $required={!!required}>{label}</Label>
-                {description && <Description>{description}</Description>}
+                <Label $required={!!required} htmlFor={controlId}>
+                    {label}
+                </Label>
+                {description && (
+                    <Description
+                        id={controlId ? `${controlId}-description` : undefined}
+                    >
+                        {description}
+                    </Description>
+                )}
             </Term>
             <Field>{children}</Field>
         </Row>
