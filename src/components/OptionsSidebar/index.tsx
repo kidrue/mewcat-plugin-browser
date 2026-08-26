@@ -48,7 +48,7 @@ const SpineSeal = styled.div`
     width: 40px;
     height: 40px;
     flex: none;
-    border-radius: 6px;
+    border-radius: var(--radius-xl);
     background: var(--primary-color);
     color: var(--text-inverse);
     font-family: var(--font-display);
@@ -94,7 +94,7 @@ const NavItem = styled.button<{ $active: boolean }>`
     padding: var(--space-4) var(--space-2) var(--space-4) var(--space-3);
     cursor: pointer;
     position: relative;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     transition:
         color var(--transition-fast),
         background var(--transition-fast);
@@ -118,6 +118,7 @@ const NavItem = styled.button<{ $active: boolean }>`
             bottom: 12%;
             width: 3px;
             background: var(--primary-color);
+            border-radius: var(--radius-full);
         }
     `}
 

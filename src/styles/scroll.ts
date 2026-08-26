@@ -16,13 +16,13 @@ export const tinyButtons = () => css`
 
     &::-webkit-scrollbar-thumb {
         color: #ccc;
-        border-radius: 5px;
+        border-radius: var(--radius-lg, 12px);
         background: #ccc;
         box-shadow: inset 0 0 1px rgba(0, 0, 0, 0.5);
     }
 
     &::-webkit-scrollbar-track {
-        border-radius: 5px;
+        border-radius: var(--radius-lg, 12px);
         background: #fff0;
     }
 

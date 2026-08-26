@@ -21,7 +21,7 @@ const SCxDot = styled.div<{ x: number; y: number }>`
     height: 24px;
     /* 一枚小朱砂印 —— 与页面悬浮球同形制 */
     background: #b23a2e;
-    border-radius: 4px;
+    border-radius: var(--radius-lg);
     box-shadow:
         inset 0 0 0 1px rgba(251, 248, 240, 0.55),
         0 2px 6px rgba(142, 42, 32, 0.24);
@@ -69,7 +69,7 @@ const SCxTooltip = styled.div.withConfig({
     background: #1a1714;
     color: #fbf8f0;
     padding: 4px 8px;
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
     font-size: 12px;
     font-weight: 500;
     white-space: nowrap;

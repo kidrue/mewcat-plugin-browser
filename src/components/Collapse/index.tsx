@@ -87,7 +87,7 @@ const collapseAnimation = keyframes`
 
 // 样式组件
 const SCxCollapseCard = styled.div<{ cardStyle?: CollapseProps["cardStyle"] }>`
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
     border: 1px solid
         ${props => props.cardStyle?.borderColor || "var(--border-color)"};

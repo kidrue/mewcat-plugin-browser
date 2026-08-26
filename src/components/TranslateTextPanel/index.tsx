@@ -4,6 +4,10 @@ import { useAsyncRetry } from "react-use"
 import styled from "styled-components"
 
 import { useConfig } from "@/state/config"
+import {
+    notifySelectionTranslationFinished,
+    translateSelectedText
+} from "@/translation/selectionTranslation"
 import { TranslationServiceManager } from "@/translation/TranslationServiceManager"
 
 import LoadingDots from "../LoadingDots"
@@ -74,21 +78,19 @@ export const TranslateTextPanel: React.FunctionComponent<
         const newConfig = clone(config)
 
         const translationManager = new TranslationServiceManager(newConfig)
-        const result = await translationManager.translateText(
-            [
-                {
-                    role: "user",
-                    content: data
-                }
-            ],
-            "zh-CN"
+        const result = await translateSelectedText(
+            translationManager,
+            data,
+            config
         )
 
         return result
     }, [data, config])
 
     useLayoutEffect(() => {
-        translateText && !loading && onFinished()
+        if (translateText && !loading) {
+            notifySelectionTranslationFinished(onFinished)
+        }
     }, [loading, onFinished, translateText])
 
     return (

@@ -38,7 +38,7 @@ const SCxTooltipContent = styled.div.withConfig({
     background: var(--gray-900, #1a1714);
     color: var(--text-inverse, #fbf8f0);
     padding: 6px 10px;
-    border-radius: 2px;
+    border-radius: var(--radius-md);
     font-size: 12px;
     line-height: 1.5;
     opacity: ${props => (props.show ? 1 : 0)};
@@ -63,6 +63,7 @@ const SCxTooltipArrow = styled.div`
     width: 10px;
     height: 10px;
     background: var(--gray-900, #1a1714);
+    border-radius: calc(var(--radius-sm) / 3);
     transform: rotate(45deg);
     z-index: -1;
 `

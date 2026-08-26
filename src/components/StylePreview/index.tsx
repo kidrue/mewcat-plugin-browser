@@ -15,7 +15,7 @@ const SCxPreviewContainer = styled.div`
     padding: var(--space-3) var(--space-4);
     background: var(--bg-tertiary);
     border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
     line-height: var(--line-height-relaxed);
 `

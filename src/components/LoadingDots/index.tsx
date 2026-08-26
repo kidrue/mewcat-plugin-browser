@@ -31,7 +31,7 @@ const SCxLoadingDot = styled.div<{
 }>`
     width: ${props => props.size}px;
     height: ${props => props.size}px;
-    border-radius: 50%;
+    border-radius: var(--radius-full);
     background: ${props => props.color};
     animation: pulse ${props => props.duration}s ease-in-out infinite;
     animation-delay: ${props => props.delay}s;

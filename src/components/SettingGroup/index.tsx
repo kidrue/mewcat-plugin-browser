@@ -32,12 +32,13 @@ const SCxGroupTitle = styled.h4`
     text-transform: uppercase;
     letter-spacing: 0.05em;
 
-    /* 方形指示器 —— 圆形只留给印章 */
+    /* 紧凑的圆角指示器 */
     &::before {
         content: "";
         width: 4px;
         height: 4px;
         background: var(--primary-color);
+        border-radius: var(--radius-sm);
         flex-shrink: 0;
     }
 `

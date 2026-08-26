@@ -72,6 +72,7 @@ const Seam = styled.div`
         width: 9px;
         height: 9px;
         background: var(--primary-color);
+        border-radius: var(--radius-sm);
     }
 `
 

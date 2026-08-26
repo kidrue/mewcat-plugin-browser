@@ -38,12 +38,13 @@ const SectionTitle = styled.h3`
     margin: 0;
     flex-shrink: 0;
 
-    /* 方块，不是圆点 —— 这套语言里圆形只留给印章 */
+    /* 圆角标记：与全局柔和的容器语言保持一致 */
     &::before {
         content: "";
         width: 7px;
         height: 7px;
         background: var(--primary-color);
+        border-radius: var(--radius-sm);
         flex-shrink: 0;
     }
 `

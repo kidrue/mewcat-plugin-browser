@@ -90,7 +90,7 @@ const Dropdown = styled.div<{ width: number }>`
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     box-shadow: var(--shadow-lg);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     z-index: var(--z-dropdown);
     width: ${({ width }) => width}px;
     max-height: 300px;
@@ -123,6 +123,7 @@ const Option = styled.div<{ isSelected: boolean }>`
 const Checkbox = styled.input`
     width: 14px;
     height: 14px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     accent-color: var(--primary-color);
 `

@@ -2,7 +2,11 @@ import { useAtom, useSetAtom } from "jotai"
 import styled from "styled-components"
 
 import { AUTO_DETECT_OPTION, languages } from "@/constants"
-import { configAtom, updateConfigAtom } from "@/state"
+import {
+    configAtom,
+    getTranslationServiceOptions,
+    updateConfigAtom
+} from "@/state"
 
 import NativeSelect from "../NativeSelect"
 import CustomToggle from "../Switch"
@@ -27,7 +31,7 @@ const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
     ${p =>
         p.$variant === "floating" &&
         `
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-xl);
         border: 1px solid var(--border-color);
         box-shadow: var(--shadow-xl);
     `}
@@ -51,6 +55,7 @@ const Header = styled.div`
         width: 8px;
         height: 8px;
         background: var(--primary-color);
+        border-radius: var(--radius-sm);
     }
 `
 
@@ -59,7 +64,7 @@ const Seal = styled.div`
     width: 40px;
     height: 40px;
     flex: none;
-    border-radius: 6px;
+    border-radius: var(--radius-xl);
     background: var(--primary-color);
     color: var(--text-inverse);
     font-family: var(--font-display);
@@ -166,7 +171,7 @@ const LanguageRow = styled.div`
     margin-bottom: var(--space-5);
     padding: var(--space-3);
     background: var(--seal-wash);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
 `
 
@@ -206,7 +211,7 @@ const SettingsButton = styled.button`
     padding: var(--space-3);
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
     color: var(--text-secondary);
@@ -264,13 +269,7 @@ function SettingsPanel({
         currentTabUrl?.hostname || ""
     )
 
-    const modelOptions =
-        config.aiModelList
-            ?.filter(model => model.enabled)
-            ?.map(model => ({
-                value: model.id,
-                label: model.name || "意外数据"
-            })) || []
+    const modelOptions = getTranslationServiceOptions(config.aiModelList || [])
 
     const handleToggleTranslation = (checked: boolean) => {
         updateConfig({ isSelectedTranslate: checked })
@@ -354,13 +353,13 @@ function SettingsPanel({
                     />
                 </ListItem>
                 <ListItem>
-                    <ListItemLabel>翻译模型</ListItemLabel>
+                    <ListItemLabel>翻译服务</ListItemLabel>
                     <ModelSelectWrapper>
                         <NativeSelect
                             value={String(config.currentModel)}
                             onChange={handleCurrentModelChange}
                             options={modelOptions}
-                            placeholder="选择模型"
+                            placeholder="选择服务"
                             size="sm"
                         />
                     </ModelSelectWrapper>

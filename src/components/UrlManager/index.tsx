@@ -6,7 +6,7 @@ import type { UrlManagerProps } from "./types"
 
 const SCxListContainer = styled.div`
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     max-height: 220px;
     overflow-y: auto;
     background: var(--bg-secondary);
@@ -18,12 +18,12 @@ const SCxListContainer = styled.div`
 
     &::-webkit-scrollbar-track {
         background: var(--gray-100);
-        border-radius: 3px;
+        border-radius: var(--radius-sm);
     }
 
     &::-webkit-scrollbar-thumb {
         background: var(--gray-300);
-        border-radius: 3px;
+        border-radius: var(--radius-sm);
 
         &:hover {
             background: var(--gray-400);

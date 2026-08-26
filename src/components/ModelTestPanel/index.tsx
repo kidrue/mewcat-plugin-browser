@@ -22,6 +22,7 @@ const SCxProgressFill = styled.div<{ progress: number }>`
     height: 100%;
     width: ${props => props.progress}%;
     background: var(--primary-color);
+    border-radius: var(--radius-full);
     transition: width var(--transition-base);
 `
 
@@ -37,7 +38,7 @@ const SCxSummary = styled.div`
     padding: var(--space-4);
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: var(--space-4);
@@ -74,7 +75,7 @@ const SCxResultsContainer = styled.div`
     max-height: 400px;
     overflow-y: auto;
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
 
     &::-webkit-scrollbar {
         width: 6px;
@@ -82,12 +83,12 @@ const SCxResultsContainer = styled.div`
 
     &::-webkit-scrollbar-track {
         background: var(--gray-100);
-        border-radius: 3px;
+        border-radius: var(--radius-sm);
     }
 
     &::-webkit-scrollbar-thumb {
         background: var(--gray-300);
-        border-radius: 3px;
+        border-radius: var(--radius-sm);
 
         &:hover {
             background: var(--gray-400);
