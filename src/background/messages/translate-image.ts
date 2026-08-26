@@ -1,36 +1,28 @@
-import type { PlasmoMessaging } from "@plasmohq/messaging"
-
+import { VisionProviderError } from "@/image-translation/errors"
+import type {
+    LegacyTranslateImageRequest,
+    LegacyTranslateImageResponse
+} from "@/messaging/protocol"
 import { getCachedTranslation } from "@/translation/PictureCache"
 
 import { resolveAllHotlinkHeaders } from "../config/hotlink-sites"
 import { withTemporaryHotlinkRule } from "../lib/hotlink-dnr"
 
-// --- Types ---
-
-export interface TranslateImageRequest {
-    imageUrl?: string
-    targetLanguage: string
-    devicePixelRatio?: number
-    pageUrl?: string
-    requestId?: string
-    canvasMeta?: {
-        canvasId?: string
-        sourceUrl?: string
-        renderType?: "canvas-2d" | "canvas-webgl" | "unknown"
-        sourceContextType?: string
-        targetContextType?: string
-    }
-}
-
-export interface TranslateImageResponse {
-    success: boolean
-    translatedImageUrl?: string
-    error?: string
-}
-
 // --- Constants ---
 
 const DOWNLOAD_TIMEOUT_MS = 15_000
+
+function safeCaptureLog(_metadata: {
+    capturePath?: FetchPath
+    bytes?: number
+    status?: number | null
+    requestIdSuffix?: string
+    cacheHit?: boolean
+}): void {
+    if (import.meta.env.DEV) {
+        void _metadata
+    }
+}
 
 // --- Helper Functions ---
 
@@ -57,6 +49,15 @@ type CaptureTarget =
           kind: "canvas"
           canvasId: string
       }
+
+function isTimeoutError(error: unknown): boolean {
+    return (
+        typeof error === "object" &&
+        error !== null &&
+        ((error as { name?: unknown }).name === "AbortError" ||
+            (error as { name?: unknown }).name === "TimeoutError")
+    )
+}
 
 class DownloadHttpError extends Error {
     status: number
@@ -221,6 +222,7 @@ async function downloadImageWithHotlinkRetry(
     allowScreenshotFallback: boolean
     failureType: DownloadFailureType | null
     errorCode: DownloadErrorCode
+    timedOut: boolean
 }> {
     let lastError: unknown = null
 
@@ -232,11 +234,12 @@ async function downloadImageWithHotlinkRetry(
             ruleHit: null,
             allowScreenshotFallback: false,
             failureType: null,
-            errorCode: null
+            errorCode: null,
+            timedOut: false
         }
     } catch (error) {
         lastError = error
-        console.warn("[TranslateImage] 直接下载失败:", error)
+        safeCaptureLog({ status: getDownloadErrorCode(error) })
     }
 
     const hotlinkCandidates = resolveAllHotlinkHeaders({ imageUrl, pageUrl })
@@ -260,7 +263,8 @@ async function downloadImageWithHotlinkRetry(
             ruleHit: null,
             allowScreenshotFallback: shouldAllowScreenshotFallback(lastError),
             failureType: getDownloadFailureType(lastError),
-            errorCode: getDownloadErrorCode(lastError)
+            errorCode: getDownloadErrorCode(lastError),
+            timedOut: isTimeoutError(lastError)
         }
     }
 
@@ -275,11 +279,9 @@ async function downloadImageWithHotlinkRetry(
                 () => downloadImage(imageUrl)
             )
 
-            console.log("[TranslateImage] DNR 防盗链重试成功:", {
-                ruleKey: candidate.ruleKey,
-                source: candidate.source,
-                mimeType: hotlinkData.mimeType,
-                size: hotlinkData.blob.size
+            safeCaptureLog({
+                capturePath: "anti-hotlink-fetch",
+                bytes: hotlinkData.blob.size
             })
             return {
                 imageData: hotlinkData,
@@ -287,15 +289,12 @@ async function downloadImageWithHotlinkRetry(
                 ruleHit: candidate.ruleKey,
                 allowScreenshotFallback: false,
                 failureType: null,
-                errorCode: null
+                errorCode: null,
+                timedOut: false
             }
         } catch (error) {
             lastError = error
-            console.warn("[TranslateImage] DNR 防盗链重试失败:", {
-                ruleKey: candidate.ruleKey,
-                source: candidate.source,
-                error
-            })
+            safeCaptureLog({ status: getDownloadErrorCode(error) })
         }
     }
 
@@ -305,12 +304,13 @@ async function downloadImageWithHotlinkRetry(
         ruleHit: null,
         allowScreenshotFallback: shouldAllowScreenshotFallback(lastError),
         failureType: getDownloadFailureType(lastError),
-        errorCode: getDownloadErrorCode(lastError)
+        errorCode: getDownloadErrorCode(lastError),
+        timedOut: isTimeoutError(lastError)
     }
 }
 
-const PLASMO_SELECTORS =
-    "#plasmo-image-translate, #plasmo-selection-translate, #plasmo-translation-control-center"
+const EXTENSION_UI_SELECTORS =
+    "#mewcat-image-translate, #mewcat-overlay-selection, #translation-control-center-overlay"
 
 /**
  * Fallback path: capture visible tab and crop to image bounds.
@@ -418,7 +418,7 @@ async function captureAndCropTarget(
                 savedScrollY
             }
         },
-        args: [target, PLASMO_SELECTORS]
+        args: [target, EXTENSION_UI_SELECTORS]
     })
 
     const prepData = prepResult?.[0]?.result
@@ -432,7 +432,7 @@ async function captureAndCropTarget(
                         ;(el as HTMLElement).style.display = ""
                     })
                 },
-                args: [PLASMO_SELECTORS]
+                args: [EXTENSION_UI_SELECTORS]
             })
             .catch(() => {})
         throw new Error("截图兜底失败：未找到目标元素")
@@ -455,7 +455,7 @@ async function captureAndCropTarget(
                 args: [
                     prepData.savedScrollX,
                     prepData.savedScrollY,
-                    PLASMO_SELECTORS
+                    EXTENSION_UI_SELECTORS
                 ]
             })
             .catch(() => {})
@@ -485,7 +485,7 @@ async function captureAndCropTarget(
                 args: [
                     prepData.savedScrollX,
                     prepData.savedScrollY,
-                    PLASMO_SELECTORS
+                    EXTENSION_UI_SELECTORS
                 ]
             })
             .catch(() => {})
@@ -543,33 +543,13 @@ async function captureAndCropTarget(
     return { blob: croppedBlob, mimeType: "image/png" }
 }
 
-// --- Main Handler ---
-
-const handler: PlasmoMessaging.MessageHandler<
-    TranslateImageRequest,
-    TranslateImageResponse
-> = async (req, res) => {
+export async function captureImageForTranslation(
+    request: LegacyTranslateImageRequest,
+    sender: chrome.runtime.MessageSender
+): Promise<{ blob: Blob; capturePath?: FetchPath }> {
     try {
-        const {
-            imageUrl,
-            targetLanguage,
-            devicePixelRatio,
-            pageUrl,
-            canvasMeta
-        } = req.body
+        const { imageUrl, devicePixelRatio, pageUrl, canvasMeta } = request
         const sourceImageUrl = imageUrl || canvasMeta?.sourceUrl || ""
-        let site = "unknown"
-        try {
-            site = new URL(sourceImageUrl || pageUrl || "").hostname
-        } catch {
-            // ignore invalid URL
-        }
-
-        if (!targetLanguage) {
-            res.send({ success: false, error: "缺少必要参数" })
-            return
-        }
-        // Step 1: Download image (with fallback)
         let imageData: { blob: Blob; mimeType: string } | null = null
         let fetchPath: FetchPath | null = null
         let downloadResult: {
@@ -579,6 +559,7 @@ const handler: PlasmoMessaging.MessageHandler<
             allowScreenshotFallback: boolean
             failureType: DownloadFailureType | null
             errorCode: DownloadErrorCode
+            timedOut: boolean
         }
 
         if (sourceImageUrl) {
@@ -593,42 +574,31 @@ const handler: PlasmoMessaging.MessageHandler<
                 ruleHit: null,
                 allowScreenshotFallback: true,
                 failureType: "unknown",
-                errorCode: null
+                errorCode: null,
+                timedOut: false
             }
         }
 
         imageData = downloadResult.imageData
         fetchPath = downloadResult.path
-
-        // Screenshot fallback is now restricted to anti-hotlink-like failures.
         if (!imageData) {
+            if (downloadResult.timedOut) {
+                throw new VisionProviderError(
+                    "REQUEST_TIMEOUT",
+                    "图片抓取超时，请稍后重试。"
+                )
+            }
             const allowScreenshotFallback =
                 downloadResult.allowScreenshotFallback || !!canvasMeta?.canvasId
-            console.warn("[TranslateImage] 主路径抓图失败:", {
-                site,
-                failureType: downloadResult.failureType,
-                errorCode: downloadResult.errorCode,
-                allowScreenshotFallback
-            })
-
             if (!allowScreenshotFallback) {
                 throw new Error("图片下载失败，且不满足截图兜底条件")
             }
-
-            console.warn("[TranslateImage] 尝试截图兜底")
-            const senderTabId = req.sender?.tab?.id
+            const senderTabId = sender.tab?.id
             const captureTarget: CaptureTarget | null = canvasMeta?.canvasId
-                ? {
-                      kind: "canvas",
-                      canvasId: canvasMeta.canvasId
-                  }
+                ? { kind: "canvas", canvasId: canvasMeta.canvasId }
                 : sourceImageUrl
-                  ? {
-                        kind: "img",
-                        imageUrl: sourceImageUrl
-                    }
+                  ? { kind: "img", imageUrl: sourceImageUrl }
                   : null
-
             if (senderTabId && devicePixelRatio && captureTarget) {
                 imageData = await captureAndCropTarget(
                     senderTabId,
@@ -644,21 +614,46 @@ const handler: PlasmoMessaging.MessageHandler<
         if (canvasMeta && fetchPath && fetchPath !== "screenshot-fallback") {
             fetchPath = "canvas-rebuild-fetch"
         }
+        return { blob: imageData.blob, capturePath: fetchPath ?? undefined }
+    } catch (error) {
+        if (error instanceof VisionProviderError) {
+            throw error
+        }
+        if (
+            typeof error === "object" &&
+            error !== null &&
+            ((error as { name?: unknown }).name === "AbortError" ||
+                (error as { name?: unknown }).name === "TimeoutError")
+        ) {
+            throw new VisionProviderError(
+                "REQUEST_TIMEOUT",
+                "图片抓取超时，请稍后重试。"
+            )
+        }
+        throw new VisionProviderError(
+            "UNSUPPORTED_IMAGE",
+            "无法处理该图片，请使用有效且不超过 10 MiB 的图片。"
+        )
+    }
+}
 
-        console.log("[TranslateImage] 抓图路径:", {
-            path: fetchPath,
-            site,
-            ruleHit: downloadResult.ruleHit,
-            errorCode: downloadResult.errorCode,
-            renderType: canvasMeta?.renderType || "img",
-            mimeType: imageData.mimeType,
-            size: imageData.blob.size
-        })
+// --- Main Handler ---
+
+export async function handleTranslateImage(
+    request: LegacyTranslateImageRequest,
+    sender: chrome.runtime.MessageSender
+): Promise<LegacyTranslateImageResponse> {
+    try {
+        const { targetLanguage } = request
+        if (!targetLanguage) {
+            return { success: false, error: "缺少必要参数" }
+        }
+        const captured = await captureImageForTranslation(request, sender)
 
         // Step 2: Check cache first
         const sourceLang = "auto" // 默认自动检测源语言
         const cachedUrl = await getCachedTranslation(
-            imageData.blob,
+            captured.blob,
             sourceLang,
             targetLanguage
         )
@@ -666,71 +661,54 @@ const handler: PlasmoMessaging.MessageHandler<
         let translatedImageUrl: string
 
         if (cachedUrl) {
-            console.log("[TranslateImage] 使用缓存结果")
+            safeCaptureLog({
+                requestIdSuffix: request.requestId?.slice(-6),
+                cacheHit: true
+            })
             translatedImageUrl = cachedUrl
         } else {
             // Image translation via third-party API is not yet implemented.
             throw new Error("图片翻译功能暂不可用，请等待后续版本支持")
         }
 
-        console.log("[TranslateImage] API 调用成功:", {
-            translatedImageUrl: translatedImageUrl.slice(0, 80)
-        })
-        const successResponse: TranslateImageResponse = {
+        const successResponse: LegacyTranslateImageResponse = {
             success: true,
             translatedImageUrl
         }
-        res.send(successResponse)
-        console.log("[TranslateImage] res.send 已调用")
-        sendBackupResponse(req, successResponse)
+        sendBackupResponse(sender, request, successResponse)
+        return successResponse
     } catch (error) {
-        console.error("[TranslateImage] 翻译失败:", error)
-        const errorResponse: TranslateImageResponse = {
+        void error
+        const errorResponse: LegacyTranslateImageResponse = {
             success: false,
             error: error instanceof Error ? error.message : "图片翻译失败"
         }
-        res.send(errorResponse)
-        sendBackupResponse(req, errorResponse)
+        sendBackupResponse(sender, request, errorResponse)
+        return errorResponse
     }
 }
 
 /**
  * Backup response channels to ensure the content script receives the result
- * even when Plasmo's sendResponse channel breaks (HMR / MV3 edge cases).
+ * even when the primary response channel breaks (HMR / MV3 edge cases).
  *
  * Channel 1: chrome.tabs.sendMessage — independent message to the tab
  * Channel 2: chrome.storage.local — completely bypasses messaging
  */
 function sendBackupResponse(
-    req: {
-        sender?: chrome.runtime.MessageSender
-        body?: TranslateImageRequest
-    },
-    response: TranslateImageResponse
+    sender: chrome.runtime.MessageSender,
+    request: LegacyTranslateImageRequest,
+    response: LegacyTranslateImageResponse
 ) {
-    const tabId = req.sender?.tab?.id
-    const requestId = req.body?.requestId
+    const tabId = sender.tab?.id
+    const requestId = request.requestId
     if (!requestId) {
-        console.warn("[TranslateImage] sendBackupResponse: 无 requestId，跳过")
         return
     }
 
-    console.log("[TranslateImage] 发送备用通道:", {
-        requestId,
-        tabId,
-        success: response.success
-    })
-
     // Storage channel: most reliable, no messaging dependency
     const storageKey = `__tr_result_${requestId}`
-    chrome.storage.local
-        .set({ [storageKey]: response })
-        .then(() =>
-            console.log("[TranslateImage] Storage 通道写入成功:", storageKey)
-        )
-        .catch(err =>
-            console.warn("[TranslateImage] Storage 通道写入失败:", err)
-        )
+    chrome.storage.local.set({ [storageKey]: response }).catch(() => {})
 
     // Tab message channel
     if (tabId) {
@@ -744,4 +722,4 @@ function sendBackupResponse(
     }
 }
 
-export default handler
+export type { LegacyTranslateImageRequest, LegacyTranslateImageResponse }

@@ -1,3 +1,5 @@
+import type { ImageTranslationResult } from "../messaging/protocol"
+
 /**
  * 图片翻译缓存管理器
  *
@@ -20,6 +22,41 @@ interface CacheMetadata {
     totalSize: number
     entries: Record<string, { timestamp: number; size: number }>
 }
+
+export interface ImageTranslationCacheStorage {
+    get(keys: string | string[] | null): Promise<Record<string, unknown>>
+    set(values: Record<string, unknown>): Promise<void>
+    remove(keys: string | string[]): Promise<void>
+}
+
+interface StructuredCacheEntry {
+    timestamp: number
+    result: ImageTranslationResult
+}
+
+interface StructuredCacheMetadata {
+    totalSize: number
+    entries: Record<string, { timestamp: number; size: number }>
+}
+
+export interface ImageTranslationCacheKeyInput {
+    imageHash: string
+    targetLanguage: string
+    modelId: string
+    schemaVersion?: number
+}
+
+export const IMAGE_TRANSLATION_CACHE_SCHEMA_VERSION = 1
+export const IMAGE_TRANSLATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000
+export const IMAGE_TRANSLATION_CACHE_MAX_BYTES = 8 * 1024 * 1024
+
+const STRUCTURED_CACHE_PREFIX = `img_translation_v${IMAGE_TRANSLATION_CACHE_SCHEMA_VERSION}_`
+const STRUCTURED_CACHE_METADATA_KEY = `${STRUCTURED_CACHE_PREFIX}metadata`
+
+let structuredCacheStorage: ImageTranslationCacheStorage | null = null
+let structuredCacheNow = () => Date.now()
+let structuredMutationQueue: Promise<void> = Promise.resolve()
+const pendingImageTranslations = new Map<string, Promise<unknown>>()
 
 // --- Constants ---
 
@@ -313,4 +350,243 @@ export async function clearAllCache(): Promise<void> {
 
     await chrome.storage.local.remove(CACHE_METADATA_KEY)
     console.log(`[PictureCache] 已清理所有缓存 (${allKeys.length} 个条目)`)
+}
+
+// --- Versioned structured image-translation cache ---
+
+function defaultStructuredCacheStorage(): ImageTranslationCacheStorage | null {
+    if (typeof chrome === "undefined" || !chrome.storage?.local) {
+        return null
+    }
+    return chrome.storage.local
+}
+
+function getStructuredCacheStorage(): ImageTranslationCacheStorage | null {
+    return structuredCacheStorage ?? defaultStructuredCacheStorage()
+}
+
+export function configureImageTranslationCache(
+    options: {
+        storage?: ImageTranslationCacheStorage | null
+        now?: () => number
+    } = {}
+): void {
+    structuredCacheStorage = options.storage ?? null
+    structuredCacheNow = options.now ?? (() => Date.now())
+    structuredMutationQueue = Promise.resolve()
+    pendingImageTranslations.clear()
+}
+
+export function createImageTranslationCacheKey({
+    imageHash,
+    targetLanguage,
+    modelId,
+    schemaVersion = IMAGE_TRANSLATION_CACHE_SCHEMA_VERSION
+}: ImageTranslationCacheKeyInput): string {
+    const fields = JSON.stringify([
+        schemaVersion,
+        imageHash,
+        targetLanguage,
+        modelId
+    ])
+    return `img_translation_v${schemaVersion}_${encodeURIComponent(fields)}`
+}
+
+function cloneResult(
+    result: ImageTranslationResult,
+    cacheHit: boolean
+): ImageTranslationResult {
+    return {
+        ...result,
+        cacheHit,
+        blocks: result.blocks.map(block => ({
+            ...block,
+            box: [...block.box] as typeof block.box
+        }))
+    }
+}
+
+function serializedSize(value: unknown): number {
+    return new TextEncoder().encode(JSON.stringify(value)).byteLength
+}
+
+function isStructuredCacheEntry(value: unknown): value is StructuredCacheEntry {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        typeof (value as StructuredCacheEntry).timestamp === "number" &&
+        typeof (value as StructuredCacheEntry).result === "object" &&
+        (value as StructuredCacheEntry).result !== null
+    )
+}
+
+async function loadStructuredEntries(
+    storage: ImageTranslationCacheStorage
+): Promise<Map<string, StructuredCacheEntry>> {
+    const values = await storage.get(null)
+    const entries = new Map<string, StructuredCacheEntry>()
+    for (const [key, value] of Object.entries(values)) {
+        if (
+            key.startsWith(STRUCTURED_CACHE_PREFIX) &&
+            key !== STRUCTURED_CACHE_METADATA_KEY &&
+            isStructuredCacheEntry(value)
+        ) {
+            entries.set(key, value)
+        }
+    }
+    return entries
+}
+
+function metadataForEntries(
+    entries: Map<string, StructuredCacheEntry>
+): StructuredCacheMetadata {
+    const metadata: StructuredCacheMetadata = { totalSize: 0, entries: {} }
+    for (const [key, entry] of entries) {
+        const size = serializedSize(entry)
+        metadata.entries[key] = { timestamp: entry.timestamp, size }
+        metadata.totalSize += size
+    }
+    return metadata
+}
+
+function expiredKeys(
+    entries: Map<string, StructuredCacheEntry>,
+    now: number
+): string[] {
+    return [...entries.entries()]
+        .filter(
+            ([, entry]) =>
+                now - entry.timestamp >= IMAGE_TRANSLATION_CACHE_TTL_MS
+        )
+        .map(([key]) => key)
+}
+
+function oldestKeysToEvict(metadata: StructuredCacheMetadata): string[] {
+    const keys: string[] = []
+    let retainedSize = metadata.totalSize
+    for (const [key, entry] of Object.entries(metadata.entries).sort(
+        ([firstKey, first], [secondKey, second]) =>
+            first.timestamp - second.timestamp ||
+            firstKey.localeCompare(secondKey)
+    )) {
+        if (retainedSize <= IMAGE_TRANSLATION_CACHE_MAX_BYTES) {
+            break
+        }
+        keys.push(key)
+        retainedSize -= entry.size
+    }
+    return keys
+}
+
+function enqueueStructuredMutation<T>(mutation: () => Promise<T>): Promise<T> {
+    const operation = structuredMutationQueue.then(mutation, mutation)
+    structuredMutationQueue = operation.then(
+        () => undefined,
+        () => undefined
+    )
+    return operation
+}
+
+export async function getCachedImageTranslation(
+    input: ImageTranslationCacheKeyInput
+): Promise<ImageTranslationResult | null> {
+    const storage = getStructuredCacheStorage()
+    if (!storage) {
+        return null
+    }
+    const key = createImageTranslationCacheKey(input)
+    try {
+        const entry = (await storage.get(key))[key] as
+            | StructuredCacheEntry
+            | undefined
+        if (!entry || !entry.result) {
+            return null
+        }
+        const now = structuredCacheNow()
+        if (now - entry.timestamp < IMAGE_TRANSLATION_CACHE_TTL_MS) {
+            return cloneResult(entry.result, true)
+        }
+        await enqueueStructuredMutation(async () => {
+            const entries = await loadStructuredEntries(storage)
+            const current = entries.get(key)
+            if (
+                !current ||
+                now - current.timestamp < IMAGE_TRANSLATION_CACHE_TTL_MS
+            ) {
+                return
+            }
+            entries.delete(key)
+            await storage.remove(key)
+            await storage.set({
+                [STRUCTURED_CACHE_METADATA_KEY]: metadataForEntries(entries)
+            })
+        })
+        return null
+    } catch {
+        return null
+    }
+}
+
+export async function setCachedImageTranslation(
+    input: ImageTranslationCacheKeyInput,
+    result: ImageTranslationResult
+): Promise<void> {
+    if (result.blocks.length === 0) {
+        return
+    }
+    const storage = getStructuredCacheStorage()
+    if (!storage) {
+        return
+    }
+    const key = createImageTranslationCacheKey(input)
+    try {
+        await enqueueStructuredMutation(async () => {
+            const now = structuredCacheNow()
+            const entries = await loadStructuredEntries(storage)
+            const keysToRemove = expiredKeys(entries, now)
+            for (const expiredKey of keysToRemove) {
+                entries.delete(expiredKey)
+            }
+
+            const entry: StructuredCacheEntry = {
+                timestamp: now,
+                result: {
+                    ...cloneResult(result, false),
+                    modelId: input.modelId
+                }
+            }
+            entries.set(key, entry)
+            const metadata = metadataForEntries(entries)
+            for (const oldestKey of oldestKeysToEvict(metadata)) {
+                keysToRemove.push(oldestKey)
+                entries.delete(oldestKey)
+            }
+            const finalMetadata = metadataForEntries(entries)
+            if (keysToRemove.length > 0) {
+                await storage.remove([...new Set(keysToRemove)])
+            }
+            const values: Record<string, unknown> = {
+                [STRUCTURED_CACHE_METADATA_KEY]: finalMetadata
+            }
+            if (entries.has(key)) {
+                values[key] = entry
+            }
+            await storage.set(values)
+        })
+    } catch {
+        // Cache failures are deliberately transparent to image translation.
+    }
+}
+
+export function withImageTranslationDeduplication<T>(
+    key: string,
+    fn: () => Promise<T>
+): Promise<T> {
+    const pending = pendingImageTranslations.get(key) as Promise<T> | undefined
+    if (pending) {
+        return pending
+    }
+    const promise = Promise.resolve().then(fn)
+    pendingImageTranslations.set(key, promise)
+    return promise.finally(() => pendingImageTranslations.delete(key))
 }

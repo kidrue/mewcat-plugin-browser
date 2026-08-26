@@ -1,0 +1,12 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true
+    },
+    "include": [
+        "../.wxt/wxt.d.ts",
+        "../src/messaging/protocol.ts",
+        "./image-translation-contracts.types.ts"
+    ],
+    "exclude": []
+}

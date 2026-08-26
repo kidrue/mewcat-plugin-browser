@@ -1,25 +1,12 @@
-// 创建右键菜单项
-chrome.runtime.onInstalled.addListener(() => {
-    // 创建沉浸式翻译菜单项
-    chrome.contextMenus.create({
-        id: "immersive-translate",
-        title: "开始翻译",
-        contexts: ["page"]
-    })
-})
+import { onMessage } from "@/messaging"
 
-// 处理右键菜单点击事件
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (!tab?.id) {
-        return
-    }
+import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
+import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
+import { handleStructuredTranslateImage } from "./messages/structured-image-translation"
+import { handleTranslateImage } from "./messages/translate-image"
+import { handleTranslateRequest } from "./messages/translate-request"
 
-    try {
-        await handleToggleImmersiveTranslate(tab.id)
-    } catch (error) {
-        console.error("右键菜单处理失败:", error)
-    }
-})
+const CONTEXT_MENU_ID = "immersive-translate"
 
 function safeSendMessage(tabId: number, payload: unknown) {
     chrome.tabs.sendMessage(tabId, payload, () => {
@@ -30,22 +17,17 @@ function safeSendMessage(tabId: number, payload: unknown) {
     })
 }
 
-// 处理开启/关闭沉浸式翻译
 async function handleToggleImmersiveTranslate(tabId: number) {
     try {
-        // 向content script发送切换沉浸式翻译的消息，并等待状态返回
         chrome.tabs.sendMessage(
             tabId,
-            {
-                type: "TOGGLE_IMMERSIVE_TRANSLATE"
-            },
+            { type: "TOGGLE_IMMERSIVE_TRANSLATE" },
             response => {
                 if (chrome.runtime.lastError) {
                     return
                 }
-                // 根据返回的状态更新菜单文本
                 if (response && typeof response.isTranslate === "boolean") {
-                    chrome.contextMenus.update("immersive-translate", {
+                    chrome.contextMenus.update(CONTEXT_MENU_ID, {
                         title: response.isTranslate ? "开启翻译" : "关闭翻译"
                     })
                 }
@@ -56,52 +38,101 @@ async function handleToggleImmersiveTranslate(tabId: number) {
     }
 }
 
-//切换页面时更新配置识别网页的语言
-chrome.tabs.onActivated.addListener(tabInfo => {
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        const currentTab = tabs[0]
-        if (currentTab) {
-            const url = currentTab.url // 通过 tabId 获取标签页详细信息（如 URL、标题等）
-            safeSendMessage(tabInfo.tabId, {
-                type: "TOGGLE_ACTIVATED",
-                tabId: tabInfo.tabId,
-                url
-            })
-        }
-
-        chrome.tabs.sendMessage(
-            tabInfo.tabId,
-            {
-                type: "GET_TRANSLATE_STATE"
-            },
-            response => {
-                if (chrome.runtime.lastError) {
-                    return
-                }
-                if (response && typeof response.isTranslate === "boolean") {
-                    chrome.contextMenus.update("immersive-translate", {
-                        title: response.isTranslate ? "关闭翻译" : "开启翻译"
-                    })
-                }
-            }
+export function registerExtensionMessages(register = onMessage) {
+    register("canvas-hook-event", message =>
+        handleCanvasHookEvent(message.data)
+    )
+    register("inject-main-world-hook", message =>
+        handleInjectMainWorldHook(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
         )
-    })
-})
+    )
+    register("translate-image", message =>
+        handleStructuredTranslateImage(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
+        )
+    )
+    register("translate-image-legacy", message =>
+        handleTranslateImage(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
+        )
+    )
+    register("translate-request", message =>
+        handleTranslateRequest(message.data)
+    )
+}
 
-chrome.runtime.onMessage.addListener(
-    (message: { type: string; isTranslate: boolean }) => {
-        if (message.type === "TRANSLATE_END") {
-            chrome.contextMenus.update("immersive-translate", {
-                title: message.isTranslate ? "关闭翻译" : "开启翻译"
-            })
+export function registerBackgroundListeners() {
+    registerExtensionMessages()
+
+    chrome.runtime.onInstalled.addListener(() => {
+        chrome.contextMenus.create({
+            id: CONTEXT_MENU_ID,
+            title: "开始翻译",
+            contexts: ["page"]
+        })
+    })
+
+    chrome.contextMenus.onClicked.addListener(async (_info, tab) => {
+        if (!tab?.id) {
+            return
         }
-    }
-)
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-    safeSendMessage(tabId, {
-        type: "TAB_UPDATED",
-        tabId: tabId,
-        url: changeInfo.url
+        try {
+            await handleToggleImmersiveTranslate(tab.id)
+        } catch (error) {
+            console.error("右键菜单处理失败:", error)
+        }
     })
-})
+
+    chrome.tabs.onActivated.addListener(tabInfo => {
+        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+            const currentTab = tabs[0]
+            if (currentTab) {
+                safeSendMessage(tabInfo.tabId, {
+                    type: "TOGGLE_ACTIVATED",
+                    tabId: tabInfo.tabId,
+                    url: currentTab.url
+                })
+            }
+
+            chrome.tabs.sendMessage(
+                tabInfo.tabId,
+                { type: "GET_TRANSLATE_STATE" },
+                response => {
+                    if (chrome.runtime.lastError) {
+                        return
+                    }
+                    if (response && typeof response.isTranslate === "boolean") {
+                        chrome.contextMenus.update(CONTEXT_MENU_ID, {
+                            title: response.isTranslate
+                                ? "关闭翻译"
+                                : "开启翻译"
+                        })
+                    }
+                }
+            )
+        })
+    })
+
+    chrome.runtime.onMessage.addListener(
+        (message: { type: string; isTranslate: boolean }) => {
+            if (message.type === "TRANSLATE_END") {
+                chrome.contextMenus.update(CONTEXT_MENU_ID, {
+                    title: message.isTranslate ? "关闭翻译" : "开启翻译"
+                })
+            }
+        }
+    )
+
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+        safeSendMessage(tabId, {
+            type: "TAB_UPDATED",
+            tabId,
+            url: changeInfo.url
+        })
+    })
+}
