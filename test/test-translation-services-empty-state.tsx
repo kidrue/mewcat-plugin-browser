@@ -1,11 +1,19 @@
 import assert from "node:assert/strict"
 import { JSDOM } from "jsdom"
+import { createStore, Provider } from "jotai"
 import React from "react"
 import { createRoot } from "react-dom/client"
 
 import { AI_TRANSLATION_SERVICES } from "../src/constants/translationServices"
 import { AddModel } from "../src/components/AddModel"
 import { AIModelEmptyState } from "../src/components/AIModelEmptyState"
+import { defaultExtensionConfig } from "../src/state/constants"
+import { configAtom } from "../src/state/config"
+import {
+    hasConfiguredAiModels,
+    TranslateServices
+} from "../src/options/TranslateServices"
+import type { BaseModel } from "../src/types"
 
 const act = (
     React as typeof React & {
@@ -161,6 +169,61 @@ assert.equal(document.querySelectorAll("img").length, 0)
 
 await act(async () => {
     root.unmount()
+})
+
+const model: BaseModel = {
+    id: "first-model",
+    type: AI_TRANSLATION_SERVICES[0].type,
+    enabled: true,
+    name: AI_TRANSLATION_SERVICES[0].name,
+    params: {
+        modelName: "test-model",
+        isOfficial: true,
+        apiKey: "test-key",
+        baseUrl: "",
+        endpoint: ""
+    }
+}
+
+assert.equal(hasConfiguredAiModels(undefined), false)
+assert.equal(hasConfiguredAiModels([]), false)
+assert.equal(hasConfiguredAiModels([model]), true)
+
+const servicesStore = createStore()
+const emptyConfig = { ...defaultExtensionConfig, aiModelList: [] }
+servicesStore.set(configAtom, emptyConfig)
+
+const servicesRoot = createRoot(host)
+await act(async () => {
+    servicesRoot.render(
+        <Provider store={servicesStore}>
+            <TranslateServices />
+        </Provider>
+    )
+})
+
+assert.ok(getByRole("button", { name: "添加 AI 模型" }))
+assert.equal(document.body.textContent?.includes("模型测试"), false)
+
+await act(async () => {
+    servicesStore.set(configAtom, {
+        ...emptyConfig,
+        aiModelList: [model]
+    })
+})
+
+assert.ok(document.body.textContent?.includes(model.name))
+assert.ok(getByRole("heading", { name: "模型测试" }))
+
+await act(async () => {
+    servicesStore.set(configAtom, emptyConfig)
+})
+
+assert.ok(getByRole("button", { name: "添加 AI 模型" }))
+assert.equal(document.body.textContent?.includes("模型测试"), false)
+
+await act(async () => {
+    servicesRoot.unmount()
 })
 dom.window.close()
 

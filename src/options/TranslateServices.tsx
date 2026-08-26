@@ -18,7 +18,7 @@ import { nanoid } from "nanoid"
 import { move } from "ramda"
 import * as React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import styled from "styled-components"
+import { styled } from "styled-components"
 
 import {
     ApiKeyInput,
@@ -31,16 +31,24 @@ import {
     Switch
 } from "@/components"
 import { AddModel } from "@/components/AddModel"
+import { AIModelEmptyState } from "@/components/AIModelEmptyState"
 import { DEFAULT_VALUES, platformNameMap } from "@/constants"
 import { AiRoleOptions, AiRoleSystemPrompts } from "@/constants/aiRole"
 import { PLATFORM_OFFICIAL_BASE_URLS } from "@/constants/model"
-import { configAtom, updateAiModelConfigAtom, updateConfigAtom } from "@/state"
+import {
+    configAtom,
+    getTranslationServiceOptions,
+    resolveTranslationServiceId,
+    updateAiModelConfigAtom,
+    updateConfigAtom
+} from "@/state"
 import { hideScrollBar } from "@/styles/scroll"
 import { ApiKeyValidator } from "@/translation/ApiKeyValidator"
 import type { AiModel_Platform_Enum } from "@/types"
 import { AiRole, type BaseModel } from "@/types"
 import { getModelByModelList, isModelThinkingCapable } from "@/utils/llmModel"
 import { Toast, ToastType } from "@/utils/toast"
+import { isVisionCapableModel } from "@/utils/visionModels"
 
 import { AI_MODEL_UI_LIST } from "./constants"
 
@@ -70,7 +78,7 @@ const ModelList = styled.div`
     gap: var(--space-2);
     max-height: 100%;
     overflow: auto;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     ${hideScrollBar}
 
     @media (max-width: 900px) {
@@ -78,7 +86,7 @@ const ModelList = styled.div`
         max-height: 240px;
         border-right: none;
         border-bottom: 1px solid var(--border-color);
-        border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     }
 `
 
@@ -168,7 +176,7 @@ const SourceToggleButton = styled.button<{ $active: boolean }>`
 
 const ModelItem = styled.div<{ $selected: boolean }>`
     padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -224,6 +232,7 @@ const StatusDot = styled.div<{ $enabled: boolean }>`
     height: 6px;
     background: ${props =>
         props.$enabled ? "var(--jade)" : "var(--gray-300)"};
+    border-radius: var(--radius-full);
     flex-shrink: 0;
 `
 
@@ -239,7 +248,7 @@ const LoadingSpinner = styled.div`
     width: 14px;
     height: 14px;
     border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
+    border-radius: var(--radius-full);
     border-top-color: white;
     animation: spin 0.6s linear infinite;
 
@@ -254,7 +263,7 @@ const TestSection = styled.div`
     margin-bottom: var(--space-5);
     padding: var(--space-4);
     background: var(--bg-tertiary);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
 `
 
@@ -334,12 +343,18 @@ function LeftPanelItem({
     )
 }
 
+export function hasConfiguredAiModels(aiModelList?: BaseModel[]): boolean {
+    return Boolean(aiModelList?.length)
+}
+
 export const TranslateServices: React.FunctionComponent = () => {
     const [config] = useAtom(configAtom)
     const updateConfig = useSetAtom(updateConfigAtom)
     const updateAiModelConfig = useSetAtom(updateAiModelConfigAtom)
     const [dragId, setDragId] = useState<string | null>(null)
-    const [activeId, setActiveId] = useState<string>(config?.aiModelList[0]?.id)
+    const [activeId, setActiveId] = useState<string>(
+        config?.aiModelList?.[0]?.id
+    )
 
     const [testStatus, setTestStatus] = useState<{
         [key: string]: "idle" | "loading" | "success" | "error"
@@ -690,13 +705,7 @@ export const TranslateServices: React.FunctionComponent = () => {
     )
 
     const currentModelOptions = React.useMemo(
-        () =>
-            config?.aiModelList
-                ?.filter(model => model.enabled)
-                ?.map(model => ({
-                    value: model.id,
-                    label: model.name || "未命名模型"
-                })) || [],
+        () => getTranslationServiceOptions(config?.aiModelList || []),
         [config?.aiModelList]
     )
 
@@ -719,31 +728,24 @@ export const TranslateServices: React.FunctionComponent = () => {
     )
 
     useEffect(() => {
-        const currentModel = config?.currentModel
-        const modelExists = config?.aiModelList?.some(
-            model => model.id === currentModel && model.enabled
-        )
+        const resolvedServiceId = resolveTranslationServiceId({
+            currentModel: config?.currentModel,
+            aiModelList: config?.aiModelList || []
+        })
 
-        if (!modelExists && config?.aiModelList?.length > 0) {
-            const firstEnabledModel = config.aiModelList.find(
-                model => model.enabled
-            )
-            if (firstEnabledModel) {
-                if (!isModelThinkingCapable(firstEnabledModel)) {
-                    updateConfig({
-                        currentModel: firstEnabledModel.id,
-                        enableThinking: false
-                    })
-                } else {
-                    updateConfig({ currentModel: firstEnabledModel.id })
-                }
-            }
+        if (resolvedServiceId !== config?.currentModel) {
+            updateConfig({ currentModel: resolvedServiceId })
         }
     }, [config?.aiModelList, config?.currentModel, updateConfig])
 
     useEffect(() => {
-        if (!activeId && config?.aiModelList?.length) {
-            setActiveId(config.aiModelList[0].id)
+        const firstModelId = config?.aiModelList?.[0]?.id
+        const activeModelStillExists = config?.aiModelList?.some(
+            model => model.id === activeId
+        )
+
+        if (firstModelId && !activeModelStillExists) {
+            setActiveId(firstModelId)
         }
     }, [activeId, config?.aiModelList])
 
@@ -754,12 +756,14 @@ export const TranslateServices: React.FunctionComponent = () => {
         return isModelThinkingCapable(currentModel)
     }, [activeId, config?.aiModelList])
 
+    const hasModels = hasConfiguredAiModels(config?.aiModelList)
+
     return (
         <>
             <OptionsSection title="模型">
                 <FormRow
-                    label="当前ai模型"
-                    description="选择当前用于翻译的AI模型"
+                    label="当前翻译服务"
+                    description="选择当前用于翻译的服务"
                 >
                     <CustomSelect
                         value={String(config.currentModel)}
@@ -768,15 +772,18 @@ export const TranslateServices: React.FunctionComponent = () => {
                             handleCurrentModelChange(value)
                         }
                         options={currentModelOptions}
-                        placeholder="选择模型"
+                        placeholder="选择服务"
                     />
                 </FormRow>
             </OptionsSection>
             <OptionsSection
                 title="AI模型"
-                rightSection={<AddModel onItemClick={handleAddModel} />}
+                rightSection={
+                    hasModels ? <AddModel onItemClick={handleAddModel} /> : undefined
+                }
             >
-                <ModelListContainer>
+                {hasModels ? (
+                    <ModelListContainer>
                     <DndContext
                         onDragEnd={onDragEnd}
                         onDragStart={onDragStart}
@@ -921,6 +928,30 @@ export const TranslateServices: React.FunctionComponent = () => {
                                             }
                                         />
                                     </FormRow>
+                                    {!isOfficial && (
+                                        <FormRow
+                                            label="支持图片输入"
+                                            description="自定义模型需显式声明视觉能力，开启后可用于图片翻译"
+                                            controlId="custom-model-vision-capability"
+                                        >
+                                            <Switch
+                                                id="custom-model-vision-capability"
+                                                aria-describedby="custom-model-vision-capability-description"
+                                                checked={isVisionCapableModel(
+                                                    currentModelData
+                                                )}
+                                                onChange={vision =>
+                                                    updateAiModelConfig({
+                                                        id: currentModelData.id,
+                                                        capabilities: {
+                                                            ...currentModelData.capabilities,
+                                                            vision
+                                                        }
+                                                    })
+                                                }
+                                            />
+                                        </FormRow>
+                                    )}
                                     {currentModelConfig?.items?.map(item => {
                                         const fieldConfig =
                                             currentModelConfig.fields[item]
@@ -979,23 +1010,28 @@ export const TranslateServices: React.FunctionComponent = () => {
                             </>
                         )}
                     </ModelConfigContainer>
-                </ModelListContainer>
+                    </ModelListContainer>
+                ) : (
+                    <AIModelEmptyState onItemClick={handleAddModel} />
+                )}
             </OptionsSection>
 
             <OptionsSection title="配置">
-                <TestSection>
-                    <TestHeader>
-                        <TestTitle>模型测试</TestTitle>
-                        <TestDescription>
-                            测试所有可用模型的翻译能力
-                        </TestDescription>
-                    </TestHeader>
-                    <ModelTestPanel
-                        modelList={config.aiModelList}
-                        testText="Hello, world!"
-                        targetLang={config.targetLanguage}
-                    />
-                </TestSection>
+                {hasModels && (
+                    <TestSection>
+                        <TestHeader>
+                            <TestTitle>模型测试</TestTitle>
+                            <TestDescription>
+                                测试所有可用模型的翻译能力
+                            </TestDescription>
+                        </TestHeader>
+                        <ModelTestPanel
+                            modelList={config.aiModelList}
+                            testText="Hello, world!"
+                            targetLang={config.targetLanguage}
+                        />
+                    </TestSection>
+                )}
                 {currentModelSupportsThinking && (
                     <FormRow
                         label="启用思考能力"
