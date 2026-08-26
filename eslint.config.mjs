@@ -15,6 +15,7 @@ export default [
             "react-hooks/exhaustive-deps": "warn",
             "no-console": "off",
             "no-undef": "off",
+            "no-unreachable": "error",
             "@typescript-eslint/no-empty-interface": "warn",
             "@typescript-eslint/no-empty-object-type": "warn",
             "@typescript-eslint/ban-ts-comment": [
@@ -45,6 +46,16 @@ export default [
             // 可选：强制 if 加花括号（避免单行 if 语法歧义）
             curly: ["warn", "all"]
         },
-        ignores: ["**/node_modules/**", ".plasmo/**/*", "**/dist/**", "**/build/**/*", "**/assets/**", "**/*.config.js", "**/*.config.mjs", "**/scripts/**", "**/test/**"]
+        ignores: [
+            "**/node_modules/**",
+            ".plasmo/**/*",
+            "**/dist/**",
+            "**/build/**/*",
+            "**/assets/**",
+            "**/*.config.js",
+            "**/*.config.mjs",
+            "**/scripts/**",
+            "**/test/**"
+        ]
     }
 ]

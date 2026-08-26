@@ -12,7 +12,7 @@ export interface NavigationItem {
 export const NAVIGATION_ITEMS: NavigationItem[] = [
     { id: "basic", label: "基本配置", description: "语言和网址设置" },
     { id: "translation", label: "翻译服务", description: "翻译模型配置" },
-    // { id: "selection", label: "划词翻译", description: "划词翻译设置" },
+    { id: "selection", label: "划词翻译", description: "划词翻译设置" },
     { id: "image", label: "图片", description: "图片翻译设置" },
     { id: "about", label: "关于", description: "扩展信息和缓存设置" }
 ]

@@ -2,6 +2,8 @@
 
 import { AiModel_Platform_Enum } from "@/types"
 
+export const GOOGLE_TRANSLATE_MODEL_ID = "google-translate"
+
 export interface TranslationService {
     key: string
     name: string

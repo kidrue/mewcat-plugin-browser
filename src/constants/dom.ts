@@ -1,1 +1,1 @@
-export const plasmoShadowRootContainerId = "plasmo-shadow-container"
+export const extensionShadowRootContainerId = "mewcat-shadow-container"
