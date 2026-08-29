@@ -62,7 +62,7 @@ describe("vision model capabilities", () => {
                         "vision",
                         AiModel_Platform_Enum.OPENAI,
                         "gpt-5",
-                        { isOfficial: true }
+                        { isOfficial: true, vision: true }
                     )
                 ]
             })
@@ -142,14 +142,14 @@ describe("vision model capabilities", () => {
                         "vision",
                         AiModel_Platform_Enum.OPENAI,
                         "gpt-5",
-                        { isOfficial: true }
+                        { isOfficial: true, vision: true }
                     )
                 ]
             })
         ).toBe(true)
     })
 
-    it("infers built-in vision support and lets explicit capability override it", () => {
+    it("uses discovered or explicitly persisted capability without model-name inference", () => {
         expect(
             isVisionCapableModel(
                 createModel(
@@ -158,14 +158,14 @@ describe("vision model capabilities", () => {
                     "gemini-2.5-flash"
                 )
             )
-        ).toBe(true)
+        ).toBe(false)
         expect(
             isVisionCapableModel(
                 createModel("openai", AiModel_Platform_Enum.OPENAI, "gpt-5", {
                     isOfficial: true
                 })
             )
-        ).toBe(true)
+        ).toBe(false)
         expect(
             isVisionCapableModel(
                 createModel(
@@ -184,7 +184,7 @@ describe("vision model capabilities", () => {
                     "glm-4v-flash"
                 )
             )
-        ).toBe(true)
+        ).toBe(false)
         expect(
             isVisionCapableModel(
                 createModel(
@@ -193,7 +193,7 @@ describe("vision model capabilities", () => {
                     "doubao-vision-pro"
                 )
             )
-        ).toBe(true)
+        ).toBe(false)
         expect(
             isVisionCapableModel(
                 createModel(
@@ -220,12 +220,14 @@ describe("vision model capabilities", () => {
         const usable = createModel(
             "usable",
             AiModel_Platform_Enum.GEMINI,
-            "gemini-2.5-flash"
+            "gemini-2.5-flash",
+            { vision: true }
         )
         const secondUsable = createModel(
             "second-usable",
             AiModel_Platform_Enum.ZHIPU,
-            "glm-4v-plus"
+            "glm-4v-plus",
+            { vision: true }
         )
         const models = [
             createModel(

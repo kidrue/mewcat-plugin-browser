@@ -48,6 +48,7 @@
 │   │   └── messages/        # 消息处理
 │   ├── components/          # React组件
 │   │   ├── ApiKeyInput/     # API密钥输入
+│   │   ├── ModelDiscoveryField/ # 自动模型发现与能力选择
 │   │   ├── CustomSelect/    # 自定义选择器
 │   │   ├── CustomToggle/    # 开关组件
 │   │   ├── Icon/            # 图标组件
@@ -62,11 +63,9 @@
 │   ├── translation/         # 翻译核心模块
 │   │   ├── ImmersiveTranslator.ts    # 沉浸式翻译器
 │   │   ├── HtmlStandardTranslator.ts # HTML标准翻译器
-│   │   ├── UniversalTranslator.ts    # 通用翻译器
-│   │   └── ApiKeyValidator.ts        # API密钥验证
-│   ├── services/            # 服务层
-│   │   ├── TranslationServiceManager.ts # 翻译服务管理
-│   │   └── request.ts       # 网络请求封装
+│   │   ├── translationService.ts     # 函数式翻译路由
+│   │   └── modelTranslation.ts       # 模型提示词与网关客户端
+│   ├── model-management/    # 供应商注册、模型发现与配置迁移
 │   ├── state/               # 状态管理
 │   │   ├── config.ts        # 配置状态
 │   │   └── user.ts          # 用户状态
@@ -164,11 +163,13 @@ pnpm package
 - 保持原有页面布局
 - 支持增量更新
 
-### 翻译服务管理器 (TranslationServiceManager)
+### 统一模型网关
 
 - 默认使用 Google Translate，并支持切换已配置的 AI 模型
 - 保留现有用户的可用模型选择；无可用模型时回退到 Google Translate
-- 提供超时、中断和明确的请求错误提示，不在失败时静默切换服务
+- 使用 xsAI 统一文本、结构化图片输出和 OpenAI-compatible 调用
+- API Key 填写后自动获取模型列表，并持久化文本/图片能力元数据
+- DeepL 与 DeepLX 继续使用固定翻译接口，不伪装为大语言模型
 
 ### 安全管理器 (SecurityManager)
 

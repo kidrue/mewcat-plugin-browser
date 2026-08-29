@@ -2,6 +2,7 @@ import { onMessage } from "@/messaging"
 
 import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
+import { handleModelGatewayRequest } from "./messages/model-gateway"
 import { handleStructuredTranslateImage } from "./messages/structured-image-translation"
 import { handleTranslateImage } from "./messages/translate-image"
 import { handleTranslateRequest } from "./messages/translate-request"
@@ -62,6 +63,9 @@ export function registerExtensionMessages(register = onMessage) {
     )
     register("translate-request", message =>
         handleTranslateRequest(message.data)
+    )
+    register("model-gateway", message =>
+        handleModelGatewayRequest(message.data)
     )
 }
 

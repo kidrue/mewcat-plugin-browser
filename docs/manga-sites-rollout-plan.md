@@ -273,7 +273,7 @@ Phase B DoD（PoC）：
 
 回滚策略：
 
-- 通过环境开关关闭 canvas hook：`PLASMO_PUBLIC_ENABLE_CANVAS_REBUILD=false`
+- 通过环境开关关闭 canvas hook：`WXT_ENABLE_CANVAS_REBUILD=false`
 - 保留 anti-hotlink 主路径与截图兜底，确保功能不回退到不可用。
 
 ---
@@ -290,8 +290,8 @@ PoC 不通过，则不进入大规模 canvas 接入，仅继续迭代规则覆�
 - Phase A：已完成（规则同步、多候选 anti-hotlink、截图兜底收敛）。
 - Phase B：已完成 PoC（Main World hook、跨 world 协议、canvas 元数据查询、错误通道）。
 - Phase C：已完成首版落地：
-  - 站点级灰度：按 host 稳定分桶，支持全局灰度百分比 `PLASMO_PUBLIC_CANVAS_ROLLOUT_PERCENT`。
-  - 回滚开关：`PLASMO_PUBLIC_ENABLE_CANVAS_REBUILD=false` 可一键关闭 canvas 路径。
+- 站点级灰度：按 host 稳定分桶，支持全局灰度百分比 `WXT_CANVAS_ROLLOUT_PERCENT`。
+- 回滚开关：`WXT_ENABLE_CANVAS_REBUILD=false` 可一键关闭 canvas 路径。
   - UI 体验：canvas 翻译结果改为原位 overlay 覆盖，再次点击可恢复原图。
 
 ### 9.1 默认开启站点

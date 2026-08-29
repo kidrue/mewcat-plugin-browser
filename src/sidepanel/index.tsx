@@ -7,7 +7,7 @@ import "@/styles/theme.scss"
 
 import { AUTO_DETECT_OPTION, languages } from "@/constants"
 import { useConfig } from "@/state/config"
-import { TranslationServiceManager } from "@/translation/TranslationServiceManager"
+import { translateText } from "@/translation/translationService"
 
 import LoadingDots from "../components/LoadingDots"
 import NativeSelect from "../components/NativeSelect"
@@ -369,8 +369,8 @@ const SlidePanel: React.FunctionComponent = () => {
                 newConfig.detectedLanguage = sourceLang
             }
 
-            const manager = new TranslationServiceManager(newConfig)
-            const translated = await manager.translateText(
+            const translated = await translateText(
+                newConfig,
                 [{ role: "user", content: text }],
                 targetLang
             )

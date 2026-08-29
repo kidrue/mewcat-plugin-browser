@@ -29,6 +29,15 @@ importers:
       '@webext-core/messaging':
         specifier: 4.0.0
         version: 4.0.0(@types/chrome@0.0.263)
+      '@xsai/generate-object':
+        specifier: 0.4.4
+        version: 0.4.4(zod@4.0.15)
+      '@xsai/generate-text':
+        specifier: 0.4.4
+        version: 0.4.4
+      '@xsai/model':
+        specifier: 0.4.4
+        version: 0.4.4
       axios:
         specifier: 1.11.0
         version: 1.11.0
@@ -1792,6 +1801,21 @@ packages:
 
   '@xobotyi/scrollbar-width@1.9.5':
     resolution: {integrity: sha512-N8tkAACJx2ww8vFMneJmaAgmjAG1tnVBZJRLRcx061tmsLRZHSEZSLuGWnwPtunsSLvSqXQ2wfp7Mgqg1I+2dQ==}
+
+  '@xsai/generate-object@0.4.4':
+    resolution: {integrity: sha512-fKG+p/c/dWTiYIQYPdzMlwf/iEnf3wY2TDYDptjLuhxC9drSrmmMNBQUIYxkbB+/hG8FZdE3vGiff/AW44Zf2A==}
+
+  '@xsai/generate-text@0.4.4':
+    resolution: {integrity: sha512-eDLeRaaeY3SyjrICeIfPXksqfk36oXLTcjinDNLrsiFHqmNvxfbq3WRccy6hjZy4aOWhkV+qPFZnB3ZIyTfs8w==}
+
+  '@xsai/model@0.4.4':
+    resolution: {integrity: sha512-7hjWAOpvv+T7rjbiLw1bKmqdJ78n/iYEcBYh/4wqT2IXDH5TlPw12DgyD5MYonVwA0KxvOtUBejtUroSgsFjMA==}
+
+  '@xsai/shared-chat@0.4.4':
+    resolution: {integrity: sha512-R/lJDt6SnENVaJcUCO1USVuO/G6qtCbJqopPqARF1n20KWDbchLwW/nvkuZH1TM9vMxaywVNmO9sNJ+uoWJEPA==}
+
+  '@xsai/shared@0.4.4':
+    resolution: {integrity: sha512-ZrOeRJ0fqV8YRDwyQbYJx1N8Fe2UTl2psjV7ucYJ+gMr3oWzrmNfTX9zrpV9zwzBMUe6VvqhK/iJzz8p4jYlsw==}
 
   '@yarnpkg/lockfile@1.1.0':
     resolution: {integrity: sha512-GpSwvyXOcOOlV70vbnzjj4fW5xW/FdUF6nQEt1ENy7m4ZCczi1+/buVUPAqmGfqznsORNFzUMjctTIp8a9tuCQ==}
@@ -4296,6 +4320,29 @@ packages:
   xmlchars@2.2.0:
     resolution: {integrity: sha512-JZnDKK8B0RCDw84FNdDAIpZK+JuJw+s7Lz8nksI7SIuU3UXJJslUthsi+uWBUYOwPFwW7W7PRLRfUKpxjtjFCw==}
 
+  xsschema@0.4.4:
+    resolution: {integrity: sha512-TMhbk8AhxO+YuDOn3rXBjGXQ+Vja3T13UPQkHx/FemhusaOzRfCSj2seykt0mdnFPsOtO9l3ANf4adcp+4NRGw==}
+    peerDependencies:
+      '@valibot/to-json-schema': ^1.0.0
+      arktype: ^2.1.20
+      effect: ^3.16.0
+      sury: ^10.0.0
+      zod: ^3.25.0 || ^4.0.0
+      zod-to-json-schema: ^3.25.0
+    peerDependenciesMeta:
+      '@valibot/to-json-schema':
+        optional: true
+      arktype:
+        optional: true
+      effect:
+        optional: true
+      sury:
+        optional: true
+      zod:
+        optional: true
+      zod-to-json-schema:
+        optional: true
+
   y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
@@ -5733,6 +5780,33 @@ snapshots:
       superlock: 1.3.5
 
   '@xobotyi/scrollbar-width@1.9.5': {}
+
+  '@xsai/generate-object@0.4.4(zod@4.0.15)':
+    dependencies:
+      '@xsai/generate-text': 0.4.4
+      xsschema: 0.4.4(zod@4.0.15)
+    transitivePeerDependencies:
+      - '@valibot/to-json-schema'
+      - arktype
+      - effect
+      - sury
+      - zod
+      - zod-to-json-schema
+
+  '@xsai/generate-text@0.4.4':
+    dependencies:
+      '@xsai/shared': 0.4.4
+      '@xsai/shared-chat': 0.4.4
+
+  '@xsai/model@0.4.4':
+    dependencies:
+      '@xsai/shared': 0.4.4
+
+  '@xsai/shared-chat@0.4.4':
+    dependencies:
+      '@xsai/shared': 0.4.4
+
+  '@xsai/shared@0.4.4': {}
 
   '@yarnpkg/lockfile@1.1.0': {}
 
@@ -8356,6 +8430,10 @@ snapshots:
   xml-name-validator@5.0.0: {}
 
   xmlchars@2.2.0: {}
+
+  xsschema@0.4.4(zod@4.0.15):
+    optionalDependencies:
+      zod: 4.0.15
 
   y18n@5.0.8: {}
 

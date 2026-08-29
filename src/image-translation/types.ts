@@ -26,8 +26,3 @@ export interface VisionTranslationResult {
     sourceHeight: number
     blocks: VisionTranslationBlock[]
 }
-
-export interface VisionRequest {
-    url: string
-    init: RequestInit
-}

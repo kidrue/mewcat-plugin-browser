@@ -31,8 +31,7 @@ export const ExtensionConfigSchema = z.object({
         apiKey: z.string(),
         modelName: z.string(),
         baseUrl: z.string().optional(),
-        enabled: z.boolean(),
-        endpoint: z.string()
+        enabled: z.boolean()
     }),
     aliBaiConfig: z.object({
         apiKey: z.string(),

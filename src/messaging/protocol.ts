@@ -2,6 +2,10 @@ import type { CanvasHookError } from "@/types/canvas-hook"
 import type { UnifiedRequestBody, UnifiedResponse } from "@/types/request"
 
 import type { ImageTranslationErrorCode } from "./imageTranslationContracts"
+import type {
+    ModelGatewayRequest,
+    ModelGatewayResponse
+} from "./modelGatewayContracts"
 
 export interface CanvasHookEventRequest {
     type: "canvas-hook-error"
@@ -125,4 +129,5 @@ export interface ExtensionProtocolMap {
         data: LegacyTranslateImageRequest
     ): LegacyTranslateImageResponse
     "translate-request"(data: UnifiedRequestBody): UnifiedResponse
+    "model-gateway"(data: ModelGatewayRequest): ModelGatewayResponse
 }

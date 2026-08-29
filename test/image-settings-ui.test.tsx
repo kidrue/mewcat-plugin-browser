@@ -92,10 +92,7 @@ function createModel(
         type: options.type ?? AiModel_Platform_Enum.OPENAI,
         enabled: options.enabled ?? true,
         name: `${id} label`,
-        capabilities:
-            options.vision === undefined
-                ? undefined
-                : { vision: options.vision },
+        capabilities: { vision: options.vision ?? true },
         params: {
             apiKey: options.apiKey ?? "configured-key",
             isOfficial: options.isOfficial ?? true,
@@ -258,7 +255,8 @@ describe("image translation settings", () => {
                 vision,
                 createModel("text-only", {
                     type: AiModel_Platform_Enum.DEEPSEEK,
-                    modelName: "deepseek-chat"
+                    modelName: "deepseek-chat",
+                    vision: false
                 }),
                 createModel("disabled-vision", { enabled: false }),
                 createModel("missing-key", { apiKey: " " })

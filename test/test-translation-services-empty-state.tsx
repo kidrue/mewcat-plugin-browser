@@ -1,18 +1,18 @@
 import assert from "node:assert/strict"
-import { JSDOM } from "jsdom"
 import { createStore, Provider } from "jotai"
+import { JSDOM } from "jsdom"
 import React from "react"
 import { createRoot } from "react-dom/client"
 
-import { AI_TRANSLATION_SERVICES } from "../src/constants/translationServices"
 import { AddModel } from "../src/components/AddModel"
 import { AIModelEmptyState } from "../src/components/AIModelEmptyState"
-import { defaultExtensionConfig } from "../src/state/constants"
-import { configAtom } from "../src/state/config"
+import { AI_TRANSLATION_SERVICES } from "../src/constants/translationServices"
 import {
     hasConfiguredAiModels,
     TranslateServices
 } from "../src/options/TranslateServices"
+import { configAtom } from "../src/state/config"
+import { defaultExtensionConfig } from "../src/state/constants"
 import type { BaseModel } from "../src/types"
 
 const act = (
@@ -21,9 +21,12 @@ const act = (
     }
 ).unstable_act
 
-const dom = new JSDOM("<!doctype html><html><body><div id=host></div></body></html>", {
-    url: "https://example.com/options"
-})
+const dom = new JSDOM(
+    "<!doctype html><html><body><div id=host></div></body></html>",
+    {
+        url: "https://example.com/options"
+    }
+)
 
 Object.defineProperties(globalThis, {
     window: { configurable: true, value: dom.window },
@@ -122,7 +125,9 @@ function hasRole(element: HTMLElement, role: "button" | "heading"): boolean {
 }
 
 function getByRole(role: "button" | "heading", options: { name: string }) {
-    const elements = Array.from(document.body.querySelectorAll<HTMLElement>("*"))
+    const elements = Array.from(
+        document.body.querySelectorAll<HTMLElement>("*")
+    )
     const matching = elements.filter(
         element =>
             !isHiddenFromAccessibility(element) &&
@@ -137,10 +142,7 @@ function getByRole(role: "button" | "heading", options: { name: string }) {
     return matching[0]
 }
 
-assert.equal(
-    getByRole("button", { name: "添加模型" }).textContent,
-    "添加模型"
-)
+assert.equal(getByRole("button", { name: "添加模型" }).textContent, "添加模型")
 const emptyStateTrigger = getByRole("button", { name: "添加 AI 模型" })
 assert.equal(emptyStateTrigger.textContent, "添加 AI 模型")
 
@@ -155,10 +157,7 @@ for (const service of AI_TRANSLATION_SERVICES) {
 }
 
 assert.ok(getByRole("heading", { name: "添加你的第一个 AI 模型" }))
-assert.match(
-    document.body.textContent ?? "",
-    /未添加时仍会使用 Google 翻译/
-)
+assert.match(document.body.textContent ?? "", /未添加时仍会使用 Google 翻译/)
 assert.ok(getByRole("button", { name: "添加 AI 模型" }))
 assert.equal(
     document.querySelectorAll('[aria-hidden="true"]').length,
@@ -180,8 +179,7 @@ const model: BaseModel = {
         modelName: "test-model",
         isOfficial: true,
         apiKey: "test-key",
-        baseUrl: "",
-        endpoint: ""
+        baseUrl: ""
     }
 }
 

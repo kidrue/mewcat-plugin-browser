@@ -32,9 +32,13 @@ import {
 } from "@/components"
 import { AddModel } from "@/components/AddModel"
 import { AIModelEmptyState } from "@/components/AIModelEmptyState"
+import { ModelDiscoveryField } from "@/components/ModelDiscoveryField"
 import { DEFAULT_VALUES, platformNameMap } from "@/constants"
 import { AiRoleOptions, AiRoleSystemPrompts } from "@/constants/aiRole"
-import { PLATFORM_OFFICIAL_BASE_URLS } from "@/constants/model"
+import {
+    getGenerationBaseUrl,
+    PROVIDER_REGISTRY
+} from "@/model-management/providers"
 import {
     configAtom,
     getTranslationServiceOptions,
@@ -43,7 +47,7 @@ import {
     updateConfigAtom
 } from "@/state"
 import { hideScrollBar } from "@/styles/scroll"
-import { ApiKeyValidator } from "@/translation/ApiKeyValidator"
+import { testConfiguredModel } from "@/translation/translationService"
 import type { AiModel_Platform_Enum } from "@/types"
 import { AiRole, type BaseModel } from "@/types"
 import { getModelByModelList, isModelThinkingCapable } from "@/utils/llmModel"
@@ -376,37 +380,19 @@ export const TranslateServices: React.FunctionComponent = () => {
     )
     const isOfficial = currentModelData?.params?.isOfficial !== false
     const officialBaseUrl = currentModelData
-        ? PLATFORM_OFFICIAL_BASE_URLS[currentModelData.type]
+        ? getGenerationBaseUrl(currentModelData.type, true)
         : ""
 
-    const resolveBaseUrl = useCallback((model: BaseModel | undefined) => {
-        if (!model) {
-            return ""
-        }
-        if (model.params.isOfficial === false) {
-            return model.params.baseUrl || ""
-        }
-        return ""
-    }, [])
-
     const handleTestModel = useCallback(() => {
-        const apiKey = currentModelData.params?.apiKey || ""
-        const testParams = {
-            apiKey,
-            type: currentModelData.type,
-            baseUrl: resolveBaseUrl(currentModelData),
-            model: currentModelData?.params?.modelName || "",
-            endpoint: currentModelData.params?.endpoint
+        if (!currentModelData.params.apiKey.trim()) {
+            return Promise.reject(new Error("请先填写 API Key"))
         }
-        const validatorMethod =
-            ApiKeyValidator[currentModelConfig.testValidator]
-        if (typeof validatorMethod !== "function") {
-            throw new Error(`未找到${currentModelData.name}的API Key验证方法`)
-        }
-        return testParams.apiKey
-            ? validatorMethod(testParams)
-            : Promise.reject(new Error("请先填写完整的配置信息"))
-    }, [currentModelConfig?.testValidator, currentModelData, resolveBaseUrl])
+        return testConfiguredModel(
+            currentModelData,
+            config.targetLanguage,
+            AiRole.DEFAULT
+        ).then(result => result.trim().length > 0)
+    }, [config.targetLanguage, currentModelData])
 
     const handleTestSingleModel = useCallback(
         async (modelId: string) => {
@@ -430,28 +416,10 @@ export const TranslateServices: React.FunctionComponent = () => {
             const startTime = Date.now()
 
             try {
-                const { UniversalTranslator } = await import(
-                    "@/translation/UniversalTranslator"
-                )
-                const { AiRole } = await import("@/types")
-                const translator = new UniversalTranslator(model.type, {
-                    apiKey: model.params.apiKey,
-                    baseUrl: resolveBaseUrl(model),
-                    model: model.params.modelName,
-                    aiRole: AiRole.DEFAULT,
-                    endpoint: model.params.endpoint
-                })
-
-                const testMessage = [
-                    {
-                        role: "user" as const,
-                        content: "Hello, world!"
-                    }
-                ]
-
-                const translatedText = await translator.translateBatch(
-                    testMessage,
-                    config.targetLanguage
+                const translatedText = await testConfiguredModel(
+                    model,
+                    config.targetLanguage,
+                    AiRole.DEFAULT
                 )
 
                 const duration = Date.now() - startTime
@@ -546,12 +514,7 @@ export const TranslateServices: React.FunctionComponent = () => {
                 setTestTimers(prev => ({ ...prev, [modelId]: timer }))
             }
         },
-        [
-            config?.aiModelList,
-            config?.targetLanguage,
-            testTimers,
-            resolveBaseUrl
-        ]
+        [config?.aiModelList, config?.targetLanguage, testTimers]
     )
 
     useEffect(() => {
@@ -657,11 +620,6 @@ export const TranslateServices: React.FunctionComponent = () => {
 
     const handleAddModel = useCallback(
         (platform: AiModel_Platform_Enum) => {
-            const platformConfig = AI_MODEL_UI_LIST.find(
-                m => m.type === platform
-            )
-            const defaultModelName =
-                platformConfig?.fields?.modelName?.defaultValue || ""
             updateConfig({
                 aiModelList: [
                     ...(config?.aiModelList || []),
@@ -671,11 +629,10 @@ export const TranslateServices: React.FunctionComponent = () => {
                         enabled: true,
                         name: platformNameMap[platform],
                         params: {
-                            modelName: defaultModelName,
+                            modelName: "",
                             isOfficial: true,
                             apiKey: "",
-                            baseUrl: "",
-                            endpoint: ""
+                            baseUrl: ""
                         }
                     }
                 ]
@@ -693,7 +650,7 @@ export const TranslateServices: React.FunctionComponent = () => {
                 id: currentModelData.id,
                 params: {
                     isOfficial: nextIsOfficial,
-                    // 官方模式不持久化 baseUrl（运行时通过 PLATFORM_OFFICIAL_BASE_URLS 映射）；
+                    // 官方模式不持久化 baseUrl（运行时通过统一供应商注册表映射）；
                     // 切到自定义时仅保留用户已填的值，留空让用户主动填写
                     baseUrl: nextIsOfficial
                         ? ""
@@ -779,237 +736,295 @@ export const TranslateServices: React.FunctionComponent = () => {
             <OptionsSection
                 title="AI模型"
                 rightSection={
-                    hasModels ? <AddModel onItemClick={handleAddModel} /> : undefined
+                    hasModels ? (
+                        <AddModel onItemClick={handleAddModel} />
+                    ) : undefined
                 }
             >
                 {hasModels ? (
                     <ModelListContainer>
-                    <DndContext
-                        onDragEnd={onDragEnd}
-                        onDragStart={onDragStart}
-                        modifiers={[restrictToVerticalAxis]}
-                        sensors={sensors}
-                    >
-                        <SortableContext
-                            items={
-                                config?.aiModelList.map(model => model.id) || []
-                            }
-                            strategy={verticalListSortingStrategy}
+                        <DndContext
+                            onDragEnd={onDragEnd}
+                            onDragStart={onDragStart}
+                            modifiers={[restrictToVerticalAxis]}
+                            sensors={sensors}
                         >
-                            <ModelList>
-                                {config?.aiModelList?.map(model => (
-                                    <LeftPanelItem
-                                        key={model.id}
-                                        id={model.id}
-                                        model={model}
-                                        isDragging={
-                                            dragId === model.id.toString()
-                                        }
-                                        isEnabled={model.enabled}
-                                        isSelected={activeId === model.id}
-                                        onClick={() => setActiveId(model.id)}
-                                        onToggleEnabled={enabled =>
-                                            updateAiModelConfig({
-                                                id: model.id,
-                                                enabled
-                                            })
-                                        }
-                                    />
-                                ))}
-                            </ModelList>
-                        </SortableContext>
-                    </DndContext>
-                    <ModelConfigContainer>
-                        {currentModelData && (
-                            <>
-                                <ModelHeader>
-                                    <ModelHeaderContent>
-                                        <ModelTitle>
-                                            {currentModelData.name}
-                                        </ModelTitle>
-                                        <ModelDescription>
-                                            {currentModelConfig?.description}
-                                        </ModelDescription>
-                                    </ModelHeaderContent>
-                                    <ModelHeaderActions>
-                                        <Button
-                                            type="primary"
-                                            size="sm"
+                            <SortableContext
+                                items={
+                                    config?.aiModelList.map(
+                                        model => model.id
+                                    ) || []
+                                }
+                                strategy={verticalListSortingStrategy}
+                            >
+                                <ModelList>
+                                    {config?.aiModelList?.map(model => (
+                                        <LeftPanelItem
+                                            key={model.id}
+                                            id={model.id}
+                                            model={model}
+                                            isDragging={
+                                                dragId === model.id.toString()
+                                            }
+                                            isEnabled={model.enabled}
+                                            isSelected={activeId === model.id}
                                             onClick={() =>
-                                                handleTestSingleModel(
-                                                    currentModelData.id
-                                                )
+                                                setActiveId(model.id)
                                             }
-                                            disabled={
-                                                testStatus[
-                                                    currentModelData.id
-                                                ] === "loading" ||
-                                                testStatus[
-                                                    currentModelData.id
-                                                ] === "success" ||
-                                                testStatus[
-                                                    currentModelData.id
-                                                ] === "error"
-                                            }
-                                        >
-                                            {getTestButtonText(
-                                                currentModelData.id
-                                            )}
-                                        </Button>
-
-                                        <Button
-                                            type="secondary"
-                                            size="sm"
-                                            onClick={() =>
-                                                onRemoveModel(
-                                                    currentModelData.id
-                                                )
-                                            }
-                                        >
-                                            删除模型
-                                        </Button>
-                                    </ModelHeaderActions>
-                                </ModelHeader>
-                                <ConfigForm>
-                                    <FormRow
-                                        label="模型类型"
-                                        description="官方模型使用平台默认请求地址；选择自定义可填写代理或私有部署地址"
-                                    >
-                                        <SourceToggleGroup>
-                                            <SourceToggleButton
-                                                type="button"
-                                                $active={isOfficial}
-                                                onClick={() =>
-                                                    handleSourceChange(true)
-                                                }
-                                            >
-                                                官方模型
-                                            </SourceToggleButton>
-                                            <SourceToggleButton
-                                                type="button"
-                                                $active={!isOfficial}
-                                                onClick={() =>
-                                                    handleSourceChange(false)
-                                                }
-                                            >
-                                                自定义
-                                            </SourceToggleButton>
-                                        </SourceToggleGroup>
-                                    </FormRow>
-                                    <FormRow
-                                        label="请求地址"
-                                        required={!isOfficial}
-                                    >
-                                        <ApiKeyInput
-                                            label="请求地址"
-                                            value={
-                                                isOfficial
-                                                    ? officialBaseUrl
-                                                    : currentModelData.params
-                                                          .baseUrl || ""
-                                            }
-                                            disabledVisitable={true}
-                                            disabled={isOfficial}
-                                            onChange={value =>
+                                            onToggleEnabled={enabled =>
                                                 updateAiModelConfig({
-                                                    id: currentModelData.id,
-                                                    params: { baseUrl: value }
+                                                    id: model.id,
+                                                    enabled
                                                 })
                                             }
-                                            placeholder={
-                                                isOfficial
-                                                    ? officialBaseUrl
-                                                    : "请输入自定义请求地址（如代理或私有部署）"
-                                            }
-                                            helperText={
-                                                isOfficial
-                                                    ? "已选择官方模型，使用平台默认地址"
-                                                    : "自定义请求地址生效，请确保地址可用"
-                                            }
                                         />
-                                    </FormRow>
-                                    {!isOfficial && (
-                                        <FormRow
-                                            label="支持图片输入"
-                                            description="自定义模型需显式声明视觉能力，开启后可用于图片翻译"
-                                            controlId="custom-model-vision-capability"
-                                        >
-                                            <Switch
-                                                id="custom-model-vision-capability"
-                                                aria-describedby="custom-model-vision-capability-description"
-                                                checked={isVisionCapableModel(
-                                                    currentModelData
+                                    ))}
+                                </ModelList>
+                            </SortableContext>
+                        </DndContext>
+                        <ModelConfigContainer>
+                            {currentModelData && (
+                                <>
+                                    <ModelHeader>
+                                        <ModelHeaderContent>
+                                            <ModelTitle>
+                                                {currentModelData.name}
+                                            </ModelTitle>
+                                            <ModelDescription>
+                                                {
+                                                    currentModelConfig?.description
+                                                }
+                                            </ModelDescription>
+                                        </ModelHeaderContent>
+                                        <ModelHeaderActions>
+                                            <Button
+                                                type="primary"
+                                                size="sm"
+                                                onClick={() =>
+                                                    handleTestSingleModel(
+                                                        currentModelData.id
+                                                    )
+                                                }
+                                                disabled={
+                                                    testStatus[
+                                                        currentModelData.id
+                                                    ] === "loading" ||
+                                                    testStatus[
+                                                        currentModelData.id
+                                                    ] === "success" ||
+                                                    testStatus[
+                                                        currentModelData.id
+                                                    ] === "error"
+                                                }
+                                            >
+                                                {getTestButtonText(
+                                                    currentModelData.id
                                                 )}
-                                                onChange={vision =>
+                                            </Button>
+
+                                            <Button
+                                                type="secondary"
+                                                size="sm"
+                                                onClick={() =>
+                                                    onRemoveModel(
+                                                        currentModelData.id
+                                                    )
+                                                }
+                                            >
+                                                删除模型
+                                            </Button>
+                                        </ModelHeaderActions>
+                                    </ModelHeader>
+                                    <ConfigForm>
+                                        <FormRow
+                                            label="模型类型"
+                                            description="官方模型使用平台默认请求地址；选择自定义可填写代理或私有部署地址"
+                                        >
+                                            <SourceToggleGroup>
+                                                <SourceToggleButton
+                                                    type="button"
+                                                    $active={isOfficial}
+                                                    onClick={() =>
+                                                        handleSourceChange(true)
+                                                    }
+                                                >
+                                                    官方模型
+                                                </SourceToggleButton>
+                                                <SourceToggleButton
+                                                    type="button"
+                                                    $active={!isOfficial}
+                                                    onClick={() =>
+                                                        handleSourceChange(
+                                                            false
+                                                        )
+                                                    }
+                                                >
+                                                    自定义
+                                                </SourceToggleButton>
+                                            </SourceToggleGroup>
+                                        </FormRow>
+                                        <FormRow
+                                            label="请求地址"
+                                            required={!isOfficial}
+                                        >
+                                            <ApiKeyInput
+                                                label="请求地址"
+                                                value={
+                                                    isOfficial
+                                                        ? officialBaseUrl
+                                                        : currentModelData
+                                                              .params.baseUrl ||
+                                                          ""
+                                                }
+                                                disabledVisitable={true}
+                                                disabled={isOfficial}
+                                                onChange={value =>
                                                     updateAiModelConfig({
                                                         id: currentModelData.id,
-                                                        capabilities: {
-                                                            ...currentModelData.capabilities,
-                                                            vision
+                                                        params: {
+                                                            baseUrl: value
                                                         }
                                                     })
                                                 }
+                                                placeholder={
+                                                    isOfficial
+                                                        ? officialBaseUrl
+                                                        : "请输入自定义请求地址（如代理或私有部署）"
+                                                }
+                                                helperText={
+                                                    isOfficial
+                                                        ? "已选择官方模型，使用平台默认地址"
+                                                        : "自定义请求地址生效，请确保地址可用"
+                                                }
                                             />
                                         </FormRow>
-                                    )}
-                                    {currentModelConfig?.items?.map(item => {
-                                        const fieldConfig =
-                                            currentModelConfig.fields[item]
-                                        if (!fieldConfig) {
-                                            return null
-                                        }
-                                        return (
+                                        {!isOfficial && (
                                             <FormRow
-                                                key={item}
-                                                label={fieldConfig.label}
-                                                required={fieldConfig.required}
+                                                label="支持图片输入"
+                                                description="自定义模型需显式声明视觉能力，开启后可用于图片翻译"
+                                                controlId="custom-model-vision-capability"
                                             >
-                                                <ApiKeyInput
-                                                    label={fieldConfig.label}
-                                                    value={
+                                                <Switch
+                                                    id="custom-model-vision-capability"
+                                                    aria-describedby="custom-model-vision-capability-description"
+                                                    checked={isVisionCapableModel(
                                                         currentModelData
-                                                            ?.params?.[item]
-                                                            ? String(
-                                                                  currentModelData
-                                                                      ?.params?.[
-                                                                      item
-                                                                  ]
-                                                              )
-                                                            : ""
-                                                    }
-                                                    disabledVisitable={
-                                                        item !== "apiKey"
-                                                    }
-                                                    onChange={value => {
+                                                    )}
+                                                    onChange={vision =>
                                                         updateAiModelConfig({
                                                             id: currentModelData.id,
-                                                            params: {
-                                                                [item]: value
+                                                            capabilities: {
+                                                                ...currentModelData.capabilities,
+                                                                vision
                                                             }
                                                         })
-                                                    }}
-                                                    placeholder={
-                                                        fieldConfig.placeholder
-                                                    }
-                                                    helperText={
-                                                        fieldConfig.helperText
-                                                    }
-                                                    helperLink={
-                                                        fieldConfig.helperLink
-                                                    }
-                                                    onTest={
-                                                        item === "apiKey"
-                                                            ? handleTestModel
-                                                            : undefined
                                                     }
                                                 />
                                             </FormRow>
-                                        )
-                                    })}
-                                </ConfigForm>
-                            </>
-                        )}
-                    </ModelConfigContainer>
+                                        )}
+                                        {PROVIDER_REGISTRY[
+                                            currentModelData.type
+                                        ].discovery !== "none" && (
+                                            <FormRow
+                                                label="模型名称"
+                                                required
+                                                description="自动获取当前账号或接口可用的模型，并标记图片输入能力"
+                                                controlId={`model-name-${currentModelData.id}`}
+                                            >
+                                                <ModelDiscoveryField
+                                                    model={currentModelData}
+                                                    onChange={(
+                                                        modelName,
+                                                        capabilities
+                                                    ) =>
+                                                        updateAiModelConfig({
+                                                            id: currentModelData.id,
+                                                            params: {
+                                                                modelName
+                                                            },
+                                                            capabilities: {
+                                                                ...currentModelData.capabilities,
+                                                                vision: capabilities?.vision
+                                                            }
+                                                        })
+                                                    }
+                                                />
+                                            </FormRow>
+                                        )}
+                                        {currentModelConfig?.items?.map(
+                                            item => {
+                                                const fieldConfig =
+                                                    currentModelConfig.fields[
+                                                        item
+                                                    ]
+                                                if (!fieldConfig) {
+                                                    return null
+                                                }
+                                                return (
+                                                    <FormRow
+                                                        key={item}
+                                                        label={
+                                                            fieldConfig.label
+                                                        }
+                                                        required={
+                                                            fieldConfig.required
+                                                        }
+                                                    >
+                                                        <ApiKeyInput
+                                                            label={
+                                                                fieldConfig.label
+                                                            }
+                                                            value={
+                                                                currentModelData
+                                                                    ?.params?.[
+                                                                    item
+                                                                ]
+                                                                    ? String(
+                                                                          currentModelData
+                                                                              ?.params?.[
+                                                                              item
+                                                                          ]
+                                                                      )
+                                                                    : ""
+                                                            }
+                                                            disabledVisitable={
+                                                                item !==
+                                                                "apiKey"
+                                                            }
+                                                            onChange={value => {
+                                                                updateAiModelConfig(
+                                                                    {
+                                                                        id: currentModelData.id,
+                                                                        params: {
+                                                                            [item]: value
+                                                                        }
+                                                                    }
+                                                                )
+                                                            }}
+                                                            placeholder={
+                                                                fieldConfig.placeholder
+                                                            }
+                                                            helperText={
+                                                                fieldConfig.helperText
+                                                            }
+                                                            helperLink={
+                                                                fieldConfig.helperLink
+                                                            }
+                                                            onTest={
+                                                                item ===
+                                                                "apiKey"
+                                                                    ? handleTestModel
+                                                                    : undefined
+                                                            }
+                                                        />
+                                                    </FormRow>
+                                                )
+                                            }
+                                        )}
+                                    </ConfigForm>
+                                </>
+                            )}
+                        </ModelConfigContainer>
                     </ModelListContainer>
                 ) : (
                     <AIModelEmptyState onItemClick={handleAddModel} />

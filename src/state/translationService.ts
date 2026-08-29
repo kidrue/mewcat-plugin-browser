@@ -1,4 +1,5 @@
 import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import { migrateLegacyModel } from "@/model-management/catalog"
 import type { BaseModel } from "@/types"
 import type { ExtensionConfig } from "@/types/config"
 
@@ -59,16 +60,31 @@ export function normalizeTranslationServiceSelection<
     return { ...config, currentModel }
 }
 
+export function migrateTranslationServiceModels<
+    T extends TranslationServiceSelectionConfig
+>(config: T): T {
+    const aiModelList = config.aiModelList.map(migrateLegacyModel)
+    return aiModelList.every(
+        (model, index) => model === config.aiModelList[index]
+    )
+        ? config
+        : ({ ...config, aiModelList } as T)
+}
+
+const normalizeStoredConfig = (config: ExtensionConfig): ExtensionConfig =>
+    normalizeTranslationServiceSelection(
+        migrateTranslationServiceModels(config)
+    )
+
 export function createTranslationServiceStorageAdapter(
     storageAdapter: TranslationServiceStorageAdapter
 ): TranslationServiceStorageAdapter {
     return {
         async getItem(key, initialValue) {
             const storedConfig = await storageAdapter.getItem(key, initialValue)
-            const normalizedConfig =
-                normalizeTranslationServiceSelection(storedConfig)
+            const normalizedConfig = normalizeStoredConfig(storedConfig)
 
-            if (normalizedConfig.currentModel !== storedConfig.currentModel) {
+            if (normalizedConfig !== storedConfig) {
                 await storageAdapter.setItem(key, normalizedConfig)
             }
 
@@ -83,7 +99,7 @@ export function createTranslationServiceStorageAdapter(
         subscribe(key, callback, initialValue) {
             return storageAdapter.subscribe(
                 key,
-                value => callback(normalizeTranslationServiceSelection(value)),
+                value => callback(normalizeStoredConfig(value)),
                 initialValue
             )
         }

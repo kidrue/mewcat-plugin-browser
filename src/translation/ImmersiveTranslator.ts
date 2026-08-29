@@ -27,7 +27,13 @@ import { DomSelector } from "./DomSelector"
 import { type TranslationNode } from "./DOMTraverser"
 import type { MutationObserverManager } from "./MutationObserverManager"
 import { PerformanceMonitor } from "./PerformanceMonitor"
-import { TranslationServiceManager } from "./TranslationServiceManager"
+import {
+    abortAllTranslations,
+    buildAiSummary,
+    hasAITranslationEnabled,
+    translateBatch as translateWithService,
+    type TranslationRuntimeConfig
+} from "./translationService"
 
 /**
  * ImmersiveTranslator 构造函数配置
@@ -107,8 +113,8 @@ export class ImmersiveTranslator {
     /** 同一时间最大并行翻译请求数，避免过多并发导致服务器压力 */
     private MAX_CONCURRENT_REQUESTS = 3
 
-    /** 翻译服务管理器 */
-    private translationServiceManager: TranslationServiceManager
+    /** 当前翻译服务运行配置 */
+    private translationRuntimeConfig: TranslationRuntimeConfig
 
     /** DOM 选择器 */
     private domSelector: DomSelector
@@ -173,16 +179,12 @@ export class ImmersiveTranslator {
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
         this.translationStyle = config.translationStyle ?? "highlight"
         this.enableContext = config.enableContext ?? false
-        this.translationServiceManager = new TranslationServiceManager({
-            // currentModel: config.currentModel === 72 ? 700006 : config.currentModel,
+        this.translationRuntimeConfig = {
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
             aiRole: config.aiRole,
-            maxRequestsPerSecond: config.maxRequestsPerSecond,
-            maxTextLengthPerRequest: config.maxTextLengthPerRequest,
-            targetLanguage: config.targetLanguage,
             enableThinking: config.enableThinking
-        })
+        }
         this.minVisibleNodesThreshold = config.minVisibleNodesThreshold ?? 20
         this.prioritizeVisibleArea = config.prioritizeVisibleArea ?? true
         this.neverTranslateLanguages = config.neverTranslateLanguages ?? []
@@ -274,15 +276,12 @@ export class ImmersiveTranslator {
         this.translationStyle = config.translationStyle ?? "highlight"
         this.neverTranslateLanguages = config.neverTranslateLanguages ?? []
         this.neverTranslateUrls = config.neverTranslateUrls ?? []
-        this.translationServiceManager.updateConfig({
+        this.translationRuntimeConfig = {
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
             aiRole: config.aiRole,
-            maxRequestsPerSecond: config.maxRequestsPerSecond,
-            maxTextLengthPerRequest: config.maxTextLengthPerRequest,
-            targetLanguage: config.targetLanguage,
             enableThinking: config.enableThinking
-        })
+        }
     }
 
     /**
@@ -905,7 +904,7 @@ export class ImmersiveTranslator {
         this.isProcessingRenderQueue = false
 
         // 🔴 中断所有正在进行的翻译请求
-        this.translationServiceManager.abortAllTranslations()
+        void abortAllTranslations()
 
         // 停止 body 监听器
         this.stopBodyObserver()
@@ -991,7 +990,7 @@ export class ImmersiveTranslator {
      * @returns 是否使用 AI 模型
      */
     private isUsingAiModel(): boolean {
-        return this.translationServiceManager.hasAITranslationEnabled()
+        return hasAITranslationEnabled(this.translationRuntimeConfig)
     }
 
     /**
@@ -1044,8 +1043,8 @@ export class ImmersiveTranslator {
         }
 
         try {
-            // 调用翻译服务管理器生成摘要
-            const summary = await this.translationServiceManager.buildAiSummary(
+            const summary = await buildAiSummary(
+                this.translationRuntimeConfig,
                 title,
                 textContent
             )
@@ -1228,11 +1227,12 @@ export class ImmersiveTranslator {
 
                 // 📊 记录接口调用开始时间
                 const apiStartTime = performance.now()
-                const translationResults =
-                    await this.translationServiceManager.translateBatch(
-                        [{ role: "user", content: requestMessageContent }],
-                        this.targetLanguage
-                    )
+                const translationResults = await translateWithService(
+                    this.translationRuntimeConfig,
+                    [{ role: "user", content: requestMessageContent }],
+                    this.targetLanguage,
+                    { pageTitle: document.title }
+                )
                 const apiEndTime = performance.now()
 
                 // 累计接口响应时间

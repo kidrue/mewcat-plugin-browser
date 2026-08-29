@@ -226,11 +226,11 @@ export const defaultExtensionConfig: ExtensionConfig = {
     ↓
 ImmersiveTranslator
     ↓
-TranslationServiceManager
+translationService / modelTranslation
     ↓
-UniversalTranslator
+后台统一模型网关（xsAI）
     ↓
-API 请求 (AiStreamRequestConfig / AiHttpRequestConfig)
+供应商 API 请求
 ```
 
 ## 📝 使用说明
@@ -324,15 +324,16 @@ API 请求 (AiStreamRequestConfig / AiHttpRequestConfig)
 
 ## 🔗 相关文件
 
-- `src/constants/model.ts` - 模型定义和思考能力集合
+- `src/constants/model.ts` - 思考能力平台集合
+- `src/model-management/providers.ts` - 供应商注册与官方请求地址
 - `src/utils/llmModel.ts` - 模型工具函数
 - `src/types/config.ts` - 配置类型定义
 - `src/types/request.ts` - 请求类型定义
 - `src/state/constants.ts` - 默认配置
 - `src/options/TranslateServices.tsx` - UI 配置界面
 - `src/translation/ImmersiveTranslator.ts` - 翻译管理器
-- `src/translation/TranslationServiceManager.ts` - 服务管理器
-- `src/translation/UniversalTranslator.ts` - 通用翻译器
+- `src/translation/translationService.ts` - 函数式翻译路由
+- `src/background/messages/model-gateway.ts` - xsAI 统一模型网关
 
 ## 💡 未来改进
 

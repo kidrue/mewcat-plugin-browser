@@ -1,4 +1,3 @@
-export { resolveVisionEndpoint } from "./endpoint"
 export { VisionProviderError } from "./errors"
 export type { VisionPixelBuffer } from "./colors"
 export {
@@ -12,16 +11,11 @@ export {
 } from "./preprocess"
 export type { DecodedVisionBitmap, VisionImageCodec } from "./preprocess"
 export { decorateBlocksWithColors } from "./colors"
-export {
-    buildGeminiVisionRequest,
-    buildOpenAiVisionRequest,
-    translateWithVisionModel
-} from "./providers"
+export { translateWithVisionModel } from "./providers"
 export { parseVisionResponse, visionTranslationSchema } from "./schema"
 export { visionTranslationPrompt } from "./prompt"
 export type {
     PreparedVisionImage,
-    VisionRequest,
     VisionTranslationBlock,
     VisionTranslationResult
 } from "./types"

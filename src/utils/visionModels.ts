@@ -1,4 +1,4 @@
-import { AiModel_Platform_Enum, type BaseModel } from "../types/aiModel"
+import type { BaseModel } from "../types/aiModel"
 
 export interface VisionModelOption {
     label: string
@@ -11,49 +11,10 @@ export interface ImageTranslationEnableConfig {
     aiModelList?: BaseModel[]
 }
 
-const officialOpenAiVisionModelNames = new Set([
-    "gpt-5",
-    "gpt-5-chat",
-    "gpt-5-mini",
-    "gpt-5-nano",
-    "gpt-5.2-2025-12-11"
-])
-
 export function isVisionCapableModel(
     model: BaseModel | undefined | null
 ): boolean {
-    if (!model) {
-        return false
-    }
-
-    if (typeof model.capabilities?.vision === "boolean") {
-        return model.capabilities.vision
-    }
-
-    if (model.type === AiModel_Platform_Enum.GEMINI) {
-        return true
-    }
-
-    if (
-        model.type === AiModel_Platform_Enum.OPENAI &&
-        model.params.isOfficial === true &&
-        officialOpenAiVisionModelNames.has(model.params.modelName)
-    ) {
-        return true
-    }
-
-    if (
-        model.type === AiModel_Platform_Enum.ZHIPU &&
-        model.params.modelName.toLowerCase().includes("glm-4v")
-    ) {
-        return true
-    }
-
-    return (
-        (model.type === AiModel_Platform_Enum.HUOSHAN ||
-            model.type === AiModel_Platform_Enum.BAILIAN) &&
-        model.params.modelName.toLowerCase().includes("vision")
-    )
+    return model?.capabilities?.vision === true
 }
 
 const isUsableVisionModel = (model: BaseModel): boolean =>

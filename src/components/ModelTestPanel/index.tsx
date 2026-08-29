@@ -2,7 +2,7 @@ import React from "react"
 import styled from "styled-components"
 
 import { Button } from "@/components"
-import { UniversalTranslator } from "@/translation/UniversalTranslator"
+import { translateModelBatch } from "@/translation/modelTranslation"
 import { AiRole, type BaseModel } from "@/types"
 
 const SCxContainer = styled.div`
@@ -224,57 +224,35 @@ const ModelTestPanel: React.FC<ModelTestPanelProps> = ({
             for (let i = 0; i < modelList.length; i++) {
                 const model = modelList[i]
                 const startTime = Date.now()
-
-                const isOfficial = model.params.isOfficial !== false
-                const baseUrl = isOfficial ? undefined : model.params.baseUrl
-
-                const translator = new UniversalTranslator(model.type, {
-                    apiKey: model.params.apiKey,
-                    baseUrl,
-                    model: model.params.modelName,
-                    aiRole: AiRole.DEFAULT,
-                    endpoint: model.params.endpoint
-                })
-                const testMessage = [
-                    {
-                        role: "user" as const,
-                        content: "Hello, world!"
-                    }
-                ]
+                let result: ModelTestResult
                 try {
-                    const translatedText = await translator.translateBatch(
-                        testMessage,
-                        "zh-CN"
+                    const translatedText = await translateModelBatch(
+                        model,
+                        [{ role: "user", content: text }],
+                        targetLang,
+                        { aiRole: AiRole.DEFAULT }
                     )
-                    const duration = Date.now() - startTime
-
-                    setResults(prev => [
-                        ...prev,
-                        {
-                            model: model.params.modelName,
-                            modelName: model.name,
-                            success: true,
-                            translatedText,
-                            duration
-                        }
-                    ])
+                    result = {
+                        model: model.params.modelName,
+                        modelName: model.name,
+                        success: true,
+                        translatedText,
+                        duration: Date.now() - startTime
+                    }
                 } catch (error) {
-                    const duration = Date.now() - startTime
-                    setResults(prev => [
-                        ...prev,
-                        {
-                            model: model.params.modelName,
-                            modelName: model.name,
-                            success: false,
-                            error:
-                                error instanceof Error
-                                    ? error.message
-                                    : "未知错误",
-                            duration
-                        }
-                    ])
+                    result = {
+                        model: model.params.modelName,
+                        modelName: model.name,
+                        success: false,
+                        error:
+                            error instanceof Error ? error.message : "未知错误",
+                        duration: Date.now() - startTime
+                    }
                 }
+                testResults.push(result)
+                onProgress(result, i + 1, modelList.length)
             }
+            return testResults
         }
 
         return []

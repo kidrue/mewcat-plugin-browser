@@ -16,7 +16,7 @@ import {
 } from "../src/state/translationService"
 import { GoogleTranslator } from "../src/translation/GoogleTranslator"
 import { translateSelectedText } from "../src/translation/selectionTranslation"
-import { TranslationServiceManager } from "../src/translation/TranslationServiceManager"
+import { hasAITranslationEnabled } from "../src/translation/translationService"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
 import {
     RequestType,
@@ -101,7 +101,7 @@ assert.equal(
     "Normalizing stored configuration must not mutate the original value"
 )
 
-const persistedConfigs: typeof defaultExtensionConfig[] = []
+const persistedConfigs: (typeof defaultExtensionConfig)[] = []
 const staleStoredConfig = {
     ...defaultExtensionConfig,
     currentModel: "missing-model",
@@ -384,25 +384,20 @@ await assert.rejects(
     /Google 翻译请求失败：HTTP 429/
 )
 
-const googleManager = new TranslationServiceManager({
+const googleRuntimeConfig = {
     currentModel: GOOGLE_TRANSLATE_MODEL_ID,
     aiModelList: [configuredModel],
     aiRole: AiRole.DEFAULT
-})
+}
 assert.equal(
-    googleManager.getPreferredTranslator()?.provider,
-    GOOGLE_TRANSLATE_MODEL_ID,
-    "Google must be initialized as the preferred translator when selected"
-)
-assert.equal(
-    googleManager.hasAITranslationEnabled(),
+    hasAITranslationEnabled(googleRuntimeConfig),
     false,
     "Google selection must not enable AI-only context behavior"
 )
 assert.equal(
-    googleManager.hasTraditionalTranslationEnabled(),
-    true,
-    "Google selection must count as a traditional translation service"
+    resolveTranslationServiceId(googleRuntimeConfig),
+    GOOGLE_TRANSLATE_MODEL_ID,
+    "Google selection must stay on the traditional translation route"
 )
 
 console.log("Google Translate configuration and parser tests passed")

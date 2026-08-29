@@ -13,6 +13,7 @@ const usableVisionModel = {
     name: "Vision model",
     type: AiModel_Platform_Enum.OPENAI,
     enabled: true,
+    capabilities: { vision: true },
     params: {
         apiKey: "configured-key",
         isOfficial: true,
@@ -194,6 +195,7 @@ describe("ImageTranslate content integration", () => {
                 {
                     ...usableVisionModel,
                     type: AiModel_Platform_Enum.DEEPSEEK,
+                    capabilities: { vision: false },
                     params: {
                         ...usableVisionModel.params,
                         modelName: "deepseek-chat"

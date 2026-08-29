@@ -387,7 +387,7 @@ translator.clearAllTranslations();
 
 ## 依赖关系
 
-- `TranslationServiceManager`: 翻译服务管理
+- `translationService`: 函数式翻译路由与统一模型网关客户端
 - `TranslationRule`: 翻译规则定义
 - `ExtensionConfig`: 配置类型定义  
 - `debugUtils`: 调试工具函数

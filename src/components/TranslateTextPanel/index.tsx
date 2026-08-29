@@ -1,4 +1,3 @@
-import { clone } from "ramda"
 import React, { useLayoutEffect } from "react"
 import { useAsyncRetry } from "react-use"
 import styled from "styled-components"
@@ -8,7 +7,7 @@ import {
     notifySelectionTranslationFinished,
     translateSelectedText
 } from "@/translation/selectionTranslation"
-import { TranslationServiceManager } from "@/translation/TranslationServiceManager"
+import { translateText as translateWithService } from "@/translation/translationService"
 
 import LoadingDots from "../LoadingDots"
 
@@ -75,11 +74,11 @@ export const TranslateTextPanel: React.FunctionComponent<
         if (!data) {
             return
         }
-        const newConfig = clone(config)
-
-        const translationManager = new TranslationServiceManager(newConfig)
         const result = await translateSelectedText(
-            translationManager,
+            {
+                translateText: (messages, targetLanguage) =>
+                    translateWithService(config, messages, targetLanguage)
+            },
             data,
             config
         )

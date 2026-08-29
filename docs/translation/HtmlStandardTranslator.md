@@ -32,7 +32,7 @@ class HtmlStandardTranslator {
     private targetLanguage: string = "zh-CN"
     private MAX_CONCURRENT_REQUESTS = 3
     private enabledCategories: Set<string>
-    private translationServiceManager: TranslationServiceManager
+    private translationRuntimeConfig: TranslationRuntimeConfig
 }
 ```
 
