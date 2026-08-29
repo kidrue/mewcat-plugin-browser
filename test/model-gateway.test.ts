@@ -65,7 +65,7 @@ describe("background model gateway", () => {
         let received: Record<string, unknown> | undefined
 
         await handleModelGatewayRequest(
-            generateRequest(createModel(AiModel_Platform_Enum.DEEPSEEK), true),
+            generateRequest(createModel(AiModel_Platform_Enum.HUOSHAN), true),
             {
                 generateText: async options => {
                     received = options
@@ -75,6 +75,26 @@ describe("background model gateway", () => {
         )
 
         expect(received).toMatchObject({ thinking: { type: "enabled" } })
+    })
+
+    it("does not inject Huoshan thinking fields into DeepSeek or Moonshot", async () => {
+        for (const provider of [
+            AiModel_Platform_Enum.DEEPSEEK,
+            AiModel_Platform_Enum.MOONSHOT
+        ]) {
+            let received: Record<string, unknown> | undefined
+            await handleModelGatewayRequest(
+                generateRequest(createModel(provider), true),
+                {
+                    generateText: async options => {
+                        received = options
+                        return { text: "ok" }
+                    }
+                }
+            )
+
+            expect(received).not.toHaveProperty("thinking")
+        }
     })
 
     it("maps provider authentication failures to a stable error code", async () => {

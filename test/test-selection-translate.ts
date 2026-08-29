@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { JSDOM } from "jsdom"
 
 import { NAVIGATION_ITEMS } from "../src/constants/options"
 import { defaultExtensionConfig } from "../src/state/constants"
@@ -107,6 +108,90 @@ assert.equal(
     null,
     "A selection without a range must not call getRangeAt"
 )
+
+const getSelectionContext = (
+    domUtils as typeof domUtils & {
+        getSelectionContext?: (
+            snapshot: domUtils.SelectionSnapshot,
+            maxLength?: number
+        ) => string
+    }
+).getSelectionContext
+assert.equal(
+    typeof getSelectionContext,
+    "function",
+    "Concept explanation needs a testable nearby-context boundary"
+)
+
+const contextDom = new JSDOM(
+    "<article><p>Before   <strong>Treaty of Versailles</strong> reshaped Europe.</p></article>"
+)
+const selectedTextNode =
+    contextDom.window.document.querySelector("strong")?.firstChild
+assert.ok(selectedTextNode)
+assert.equal(
+    getSelectionContext?.({
+        text: "Treaty of Versailles",
+        rect: anchorRect,
+        startContainer: selectedTextNode,
+        startOffset: 0,
+        endContainer: selectedTextNode,
+        endOffset: selectedTextNode.textContent?.length ?? 0
+    }),
+    "Before Treaty of Versailles reshaped Europe.",
+    "Nearby context must use the closest readable block and normalize whitespace"
+)
+const truncatedContext = getSelectionContext?.(
+    {
+        text: "Treaty of Versailles",
+        rect: anchorRect,
+        startContainer: selectedTextNode,
+        startOffset: 0,
+        endContainer: selectedTextNode,
+        endOffset: selectedTextNode.textContent?.length ?? 0
+    },
+    24
+)
+assert.equal(
+    truncatedContext?.length,
+    24,
+    "Nearby context must respect its privacy and request-size limit"
+)
+assert.match(
+    truncatedContext ?? "",
+    /Treaty of Versailles/,
+    "Truncated nearby context must retain the selected concept"
+)
+contextDom.window.close()
+
+const repeatedContextDom = new JSDOM(
+    `<p>Term FIRST_MARKER ${"a".repeat(180)} SECOND_MARKER <strong>Term</strong> AFTER_MARKER</p>`
+)
+const repeatedSelectedTextNode =
+    repeatedContextDom.window.document.querySelector("strong")?.firstChild
+assert.ok(repeatedSelectedTextNode)
+const repeatedContext = getSelectionContext?.(
+    {
+        text: "Term",
+        rect: anchorRect,
+        startContainer: repeatedSelectedTextNode,
+        startOffset: 0,
+        endContainer: repeatedSelectedTextNode,
+        endOffset: repeatedSelectedTextNode.textContent?.length ?? 0
+    },
+    80
+)
+assert.match(
+    repeatedContext ?? "",
+    /SECOND_MARKER/,
+    "Repeated concepts must use the context around the actual selected occurrence"
+)
+assert.doesNotMatch(
+    repeatedContext ?? "",
+    /FIRST_MARKER/,
+    "Repeated concepts must not fall back to the first textual occurrence"
+)
+repeatedContextDom.window.close()
 
 const notifySelectionTranslationFinished = (
     selectionTranslation as typeof selectionTranslation & {

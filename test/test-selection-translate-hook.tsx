@@ -138,6 +138,11 @@ await dragSelect(0, sourceTextNode.textContent?.length ?? 0)
 
 assert.equal(latestHook!.state.isVisible, true)
 assert.equal(latestHook!.state.text, "Selection translation works")
+assert.equal(
+    latestHook!.state.context,
+    "Selection translation works",
+    "The selection hook must retain bounded nearby context for concept explanation"
+)
 
 const panel = shadowRoot.querySelector<HTMLElement>("[data-testid=panel]")
 assert.ok(panel)

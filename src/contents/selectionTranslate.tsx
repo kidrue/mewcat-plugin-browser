@@ -201,7 +201,10 @@ const SelectionTranslate = () => {
 
                     <SCxContent>
                         <TranslateTextPanel
+                            key={state.text}
                             data={state.text}
+                            pageTitle={document.title}
+                            context={state.context}
                             onFinished={actions.onComputeRect}
                         />
                     </SCxContent>

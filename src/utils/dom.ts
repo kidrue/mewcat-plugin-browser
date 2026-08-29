@@ -49,6 +49,64 @@ export function getSelectionSnapshot(
     }
 }
 
+const SELECTION_CONTEXT_SELECTOR =
+    "p, li, blockquote, figcaption, td, th, article, section, main, div"
+
+const normalizeSelectionContext = (value: string): string =>
+    value.replace(/\s+/g, " ").trim()
+
+const getSelectionStartIndex = (
+    snapshot: SelectionSnapshot,
+    contextElement: Element,
+    context: string
+): number | undefined => {
+    try {
+        const prefixRange = contextElement.ownerDocument.createRange()
+        prefixRange.selectNodeContents(contextElement)
+        prefixRange.setEnd(snapshot.startContainer, snapshot.startOffset)
+        const normalizedPrefix = prefixRange
+            .toString()
+            .replace(/\s+/g, " ")
+            .trimStart()
+        return Math.min(normalizedPrefix.length, context.length)
+    } catch {
+        return undefined
+    }
+}
+
+export function getSelectionContext(
+    snapshot: SelectionSnapshot,
+    maxLength = 500
+): string {
+    const startElement =
+        snapshot.startContainer.nodeType === 1
+            ? (snapshot.startContainer as Element)
+            : snapshot.startContainer.parentElement
+    const contextElement =
+        startElement?.closest(SELECTION_CONTEXT_SELECTOR) ?? startElement
+    const context = normalizeSelectionContext(
+        contextElement?.textContent ?? snapshot.text
+    )
+
+    if (context.length <= maxLength) {
+        return context
+    }
+
+    const selectedText = normalizeSelectionContext(snapshot.text)
+    const selectedIndex =
+        (contextElement &&
+            getSelectionStartIndex(snapshot, contextElement, context)) ??
+        context.indexOf(selectedText)
+    if (selectedIndex < 0 || selectedText.length >= maxLength) {
+        return context.slice(0, maxLength)
+    }
+
+    const surroundingLength = maxLength - selectedText.length
+    let start = Math.max(0, selectedIndex - Math.floor(surroundingLength / 2))
+    start = Math.min(start, context.length - maxLength)
+    return context.slice(start, start + maxLength)
+}
+
 export function hasSelectionChanged(
     previous: SelectionSnapshot | null,
     current: SelectionSnapshot | null

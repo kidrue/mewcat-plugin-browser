@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import {
     calculatePosition,
+    getSelectionContext,
     getSelectionSnapshot,
     hasSelectionChanged,
     isSelectionUiEvent
@@ -12,6 +13,7 @@ import type { ExtensionConfig } from "../types/config"
 
 export interface SelectionState {
     text: string
+    context: string
     position: {
         top: number
         left: number
@@ -43,6 +45,7 @@ export function useSelectionTranslate<T extends HTMLElement>({
     const selectionAtMouseDownRef = useRef<SelectionSnapshot | null>(null)
     const [state, setState] = useState<SelectionState>({
         text: "",
+        context: "",
         position: { top: 0, left: 0 },
         isVisible: false,
         isDotVisible: false
@@ -117,6 +120,7 @@ export function useSelectionTranslate<T extends HTMLElement>({
             setState(prev => ({
                 ...prev,
                 text: snapshot.text,
+                context: getSelectionContext(snapshot),
                 textRect: snapshot.rect
             }))
             return snapshot.text
@@ -159,6 +163,7 @@ export function useSelectionTranslate<T extends HTMLElement>({
         setState(prev => ({
             ...prev,
             text: "",
+            context: "",
             textRect: undefined,
             position: { top: 0, left: 0 },
             isVisible: false,

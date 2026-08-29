@@ -570,3 +570,20 @@ _实机验证中发现并修复的 4 个缺陷_
 - 新增 `pnpm test:selection` 并纳入 `pnpm check`，同时启用 ESLint `no-unreachable` 防止同类禁用回归
 
 **兼容性**：只改变新安装默认触发方式；已有用户持久化的划词触发配置保持不变。
+
+---
+
+### 2026-08-29 — 划词翻译新增 AI 概念解释
+
+**修改内容**：
+
+- `src/components/TranslateTextPanel/index.tsx`、`src/contents/selectionTranslate.tsx`：划词翻译面板新增按需触发的“解释概念”操作；翻译结果始终保留，解释区域提供独立的加载、失败、重新解释状态，并标注“AI 生成，未联网核验”；加载、成功和失败状态变化时会重新计算面板位置，底层异常统一转换为安全提示
+- `src/utils/dom.ts`、`src/hooks/useSelectionTranslate.ts`：从选区最近的可读块提取邻近语境，通过真实 DOM Range 定位本次选中的同名词位置，规范化空白并围绕该位置截断到最多 500 字，用于区分同名人物和多义专有名词
+- `src/translation/modelTranslation.ts`、`src/translation/translationService.ts`：新增概念解释提示词和模型路由；优先使用当前有效的生成式 AI 模型，当前为 Google Translate、DeepL 或 DeepLX 时回退到第一个已启用且配置完整的 LLM；候选扫描会安全跳过历史遗留的未知 provider 与运行时字段异常的配置；没有可用模型时返回明确错误，并在请求发送边界再次将语境限制为 500 字
+- 解释提示词将选中文本、页面标题和邻近语境作为转义后的 XML 数据传入，要求按“类别、简释、背景、语境”输出，遇到歧义或信息不足时明确说明
+- `src/background/messages/model-gateway.ts`：同步修正 DeepSeek 和 Moonshot 的请求兼容性，不再注入火山引擎专属的 `thinking` 参数；Huoshan 原有能力保持不变
+- `test/translation-service.test.ts`、`test/model-gateway.test.ts`、`test/test-selection-translate.ts`、`test/test-selection-translate-hook.tsx`、`test/selection-explanation-panel.test.tsx`：新增模型选择与有效性、不可用模型、提示词边界、上下文截断与同名词定位、provider 参数兼容性和面板完整状态流测试，并纳入 `pnpm test:selection`
+
+**原因**：用户希望划词选中历史事件、人物或专有名词时，不仅能获得翻译，还能按需查看简洁的背景解释；显式点击可避免普通划词产生额外 AI 请求、延迟和费用。
+
+**验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词交互脚本、22 项划词服务/网关测试、4 项面板测试及 175 项图片翻译测试）。
