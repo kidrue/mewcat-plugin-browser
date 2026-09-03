@@ -9,6 +9,7 @@ import Tooltip from "../components/Tooltip"
 import { useDrag } from "../hooks/useDrag"
 import { configAtom } from "../state"
 import { ImmersiveTranslator } from "../translation/ImmersiveTranslator"
+import { Toast, ToastType } from "../utils/toast"
 
 import "@/styles/theme.scss"
 
@@ -174,6 +175,50 @@ const SCxSettingsIcon = styled.div.withConfig({
     }
 `
 
+const SCxRefreshIcon = styled.button<{ $visible: boolean }>`
+    position: absolute;
+    top: -44px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary, #fbf8f0);
+    border: 1px solid var(--border-color, #d8d0be);
+    box-shadow: var(--shadow-sm, 0 1px 2px rgba(26, 23, 20, 0.05));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition:
+        opacity var(--transition-base, 0.2s ease),
+        border-color var(--transition-base, 0.2s ease),
+        background var(--transition-base, 0.2s ease);
+    opacity: ${props => (props.$visible ? 1 : 0)};
+    visibility: ${props => (props.$visible ? "visible" : "hidden")};
+    pointer-events: ${props => (props.$visible ? "auto" : "none")};
+
+    &:hover:not(:disabled) {
+        background: var(--primary-light, #f7efe6);
+        border-color: var(--primary-color, #b23a2e);
+
+        svg {
+            color: var(--primary-color, #b23a2e);
+        }
+    }
+
+    &:disabled {
+        cursor: wait;
+        opacity: 0.6;
+    }
+
+    svg {
+        color: var(--text-tertiary, #6e665c);
+        transition: color var(--transition-base, 0.2s ease);
+    }
+`
+
 const SCxSettingsPanel = styled.div.withConfig({
     shouldForwardProp: prop =>
         !["visible", "alignRight", "alignBottom"].includes(prop)
@@ -207,6 +252,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
 
     const immersiveTranslatorRef = useRef<ImmersiveTranslator | null>(null)
     const [isTranslate, setIsTranslate] = React.useState(false)
+    const [refreshing, setRefreshing] = useState(false)
     const [showSettingsIcon, setShowSettingsIcon] = useState(false)
     const [showSettingsPanel, setShowSettingsPanel] = useState(false)
     const [currentTabUrl, setCurrentTabUrl] = useState<URL | undefined>()
@@ -323,7 +369,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     }, [])
 
     const onToggleTranslate = useCallback(async () => {
-        if (isDragged.current) {
+        if (isDragged.current || refreshing) {
             return
         }
         if (loading || isTranslate) {
@@ -332,7 +378,55 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         }
 
         return doTranslate()
-    }, [doTranslate, isDragged, isTranslate, loading, onClearTranslate])
+    }, [
+        doTranslate,
+        isDragged,
+        isTranslate,
+        loading,
+        onClearTranslate,
+        refreshing
+    ])
+
+    const onRefreshTranslate = useCallback(
+        async (event: React.MouseEvent<HTMLButtonElement>) => {
+            event.stopPropagation()
+            const immersiveTranslator = immersiveTranslatorRef.current
+            if (!immersiveTranslator || refreshing) {
+                return
+            }
+
+            setRefreshing(true)
+            try {
+                await immersiveTranslator.clearCurrentPageTranslationCache()
+                immersiveTranslator.clearAllTranslations()
+                setIsTranslate(false)
+
+                const translated = await doTranslate()
+                if (!translated) {
+                    setIsTranslate(false)
+                    Toast.show({
+                        type: ToastType.ERROR,
+                        message: "刷新翻译失败，请稍后重试"
+                    })
+                    return
+                }
+
+                Toast.show({
+                    type: ToastType.SUCCESS,
+                    message: "已刷新当前页面翻译"
+                })
+            } catch (error) {
+                console.error("刷新当前页面翻译失败:", error)
+                Toast.show({
+                    type: ToastType.ERROR,
+                    message: "刷新翻译失败，请稍后重试"
+                })
+            } finally {
+                setRefreshing(false)
+            }
+        },
+        [doTranslate, refreshing]
+    )
 
     const onToggleTranslateRef = useLatest(onToggleTranslate)
 
@@ -487,8 +581,32 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
             >
+                {(loading || isTranslate) && (
+                    <SCxRefreshIcon
+                        type="button"
+                        $visible={showSettingsIcon}
+                        disabled={refreshing}
+                        aria-label="清除当前页缓存并重新翻译"
+                        title={
+                            refreshing
+                                ? "正在刷新翻译"
+                                : "清除当前页缓存并重新翻译"
+                        }
+                        onClick={onRefreshTranslate}
+                        onMouseEnter={handleSettingsIconMouseEnter}
+                    >
+                        <Icon name="refresh" size={16} />
+                    </SCxRefreshIcon>
+                )}
+
                 <Tooltip
-                    content={loading || isTranslate ? "清理翻译" : "开启翻译"}
+                    content={
+                        refreshing
+                            ? "正在刷新翻译"
+                            : loading || isTranslate
+                              ? "清理翻译"
+                              : "开启翻译"
+                    }
                     position="left"
                     trigger="hover"
                     disabled={isDragging}

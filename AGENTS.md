@@ -642,3 +642,18 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：用户希望每次升级 `package.json.version` 并推送到 `main` 后，自动上传 Chrome Web Store、提交审核并在审核通过后更新扩展，同时确保公开仓库不暴露发布凭据或因重跑产生同版本不同安装包。
 
 **验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 179 项图片/存储测试）；独立代码复核未发现 Critical 或 Important 问题。公开仓库扫描未发现真实私钥或常见令牌特征，`.env.local` 历史仅 1 个版本且没有凭据值。
+
+---
+
+### 2026-09-03 — 翻译按钮新增当前页缓存刷新
+
+**修改内容**：
+
+- `src/contents/TranslationControlCenter.tsx`：页面翻译完成或进行中时，悬停翻译按钮显示刷新入口；点击后按“终止任务、精确清除当前页缓存、移除旧译文、重新翻译”的顺序执行，并提供成功或失败提示
+- `src/translation/ImmersiveTranslator.ts`：新增当前页面翻译缓存清理接口，按当前源语言、目标语言、模型和 AI 角色生成唯一缓存键，并在删除前等待翻译请求终止
+- `src/translation/cache/TieredTranslationCache.ts`：新增批量精确删除能力，同时清理 L1 内存缓存与 L2 IndexedDB 缓存
+- `test/page-translation-cache-refresh.test.ts`、`test/page-translation-cache-refresh-ui.test.tsx`：新增缓存范围、活动模型/角色、操作顺序、删除失败及重翻无结果等回归测试；同步扩展 `test/page-translation-cache-role.test.ts` 的清理路径约束，并纳入 `test:image`
+
+**原因**：方便用户在页面译文过期或翻译配置变化时，一键绕过当前页旧缓存并重新获取译文，同时避免误清空其他文本、模型或 AI 角色的缓存。
+
+**验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 191 项页面/图片/存储测试）。

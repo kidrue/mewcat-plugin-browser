@@ -199,6 +199,14 @@ export class TieredTranslationCache {
     }
 
     /**
+     * 批量删除指定缓存
+     * @param paramsList 缓存键参数列表
+     */
+    async batchDelete(paramsList: CacheKeyParams[]): Promise<void> {
+        await Promise.all(paramsList.map(params => this.delete(params)))
+    }
+
+    /**
      * 检查缓存是否存在
      * @param params 缓存键参数
      * @returns 是否存在

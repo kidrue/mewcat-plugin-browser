@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs"
 import { describe, expect, it } from "vitest"
 
 describe("page translation cache dimensions", () => {
-    it("uses the active AI role and model for cache reads and writes", () => {
+    it("uses the active AI role and model for cache reads, writes, and page clearing", () => {
         const source = readFileSync(
             new URL(
                 "../src/translation/ImmersiveTranslator.ts",
@@ -17,8 +17,8 @@ describe("page translation cache dimensions", () => {
             /modelId: this\.currentModel/g
         )
 
-        expect(activeRoleReferences).toHaveLength(2)
-        expect(activeModelReferences).toHaveLength(2)
+        expect(activeRoleReferences).toHaveLength(3)
+        expect(activeModelReferences).toHaveLength(3)
         expect(source).not.toContain('aiRole: "translator"')
     })
 })

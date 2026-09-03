@@ -960,6 +960,33 @@ export class ImmersiveTranslator {
     }
 
     /**
+     * 清除当前页面文本在当前翻译配置下的缓存
+     * @returns 实际提交删除的唯一缓存条目数
+     */
+    public async clearCurrentPageTranslationCache(): Promise<number> {
+        const uniqueTexts = new Set(
+            this.sourceTextNodes.map(node => node.originText)
+        )
+        const cacheParams = Array.from(uniqueTexts, text => ({
+            text,
+            sourceLang: this.detectedLanguage,
+            targetLang: this.targetLanguage,
+            modelId: this.currentModel,
+            aiRole: this.translationRuntimeConfig.aiRole
+        }))
+
+        this.isTranslationAborted = true
+        await abortAllTranslations()
+
+        if (!this.translationCache || cacheParams.length === 0) {
+            return 0
+        }
+
+        await this.translationCache.batchDelete(cacheParams)
+        return cacheParams.length
+    }
+
+    /**
      * 清理过期缓存
      * 可以手动调用以释放存储空间
      */
