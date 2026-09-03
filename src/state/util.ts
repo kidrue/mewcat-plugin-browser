@@ -1,6 +1,6 @@
 import { storage } from "#imports"
 
-import { STORAGE_NAMES, toWxtLocalStorageKey } from "@/constants/storage"
+import { STORAGE_NAMES, toWxtLocalStorageKey, toWxtSyncStorageKey } from "@/constants/storage"
 
 const PERSISTED_ATOM_KEYS: Readonly<Record<string, string>> = {
     "extension-config": STORAGE_NAMES.extensionConfig,
@@ -11,10 +11,14 @@ const PERSISTED_ATOM_KEYS: Readonly<Record<string, string>> = {
 const toLocalStorageKey = (key: string): `local:${string}` =>
     toWxtLocalStorageKey(PERSISTED_ATOM_KEYS[key] ?? key)
 
+const toSyncStorageKey = (key: string): `sync:${string}` =>
+    toWxtSyncStorageKey(PERSISTED_ATOM_KEYS[key] ?? key)
+
+
 // Chrome Storage 适配器 for Jotai
 export const chromeStorageAdapter = {
     async getItem<T>(key: string, initialValue: T): Promise<T> {
-        const value = await storage.getItem<T>(toLocalStorageKey(key))
+        const value = await storage.getItem<T>(toSyncStorageKey(key))
         if (value == null) {
             return initialValue
         }
@@ -27,13 +31,13 @@ export const chromeStorageAdapter = {
         return value as T
     },
     async setItem<T>(key: string, value: T): Promise<void> {
-        await storage.setItem(toLocalStorageKey(key), value)
+        await storage.setItem(toSyncStorageKey(key), value)
     },
     removeItem: async (key: string): Promise<void> => {
-        await storage.removeItem(toLocalStorageKey(key))
+        await storage.removeItem(toSyncStorageKey(key))
     },
     subscribe<T>(key: string, callback: (value: T) => void, initialValue: T) {
-        return storage.watch<T>(toLocalStorageKey(key), newValue => {
+        return storage.watch<T>(toSyncStorageKey(key), newValue => {
             callback((newValue ?? initialValue) as T)
         })
     }

@@ -39,3 +39,7 @@ export function createStructuredImageCachePrefix(
 export function toWxtLocalStorageKey(key: string): `local:${string}` {
     return `local:${key}`
 }
+
+export function toWxtSyncStorageKey(key: string): `sync:${string}` {
+    return `sync:${key}`
+}
