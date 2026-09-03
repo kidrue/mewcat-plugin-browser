@@ -5,6 +5,9 @@
 node_modules/
 build/
 
+# 本地环境变量和发布凭据 —— 绝不能提交
+.env.local
+
 # crx 签名私钥 —— 绝不能提交
 key.pem
 *.pem

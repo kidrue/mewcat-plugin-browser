@@ -3,6 +3,8 @@
  * 提供跨页面、跨会话的持久化缓存
  */
 
+import { STORAGE_NAMES } from "@/constants/storage"
+
 import { generateCacheKey } from "./cacheKeyGenerator"
 import type { CacheEntry, CacheKeyParams, CacheStats } from "./types"
 
@@ -30,7 +32,7 @@ export class L2PersistentCache {
     private initPromise: Promise<void> | null = null
 
     constructor(config: L2CacheConfig = {}) {
-        this.dbName = config.dbName ?? "translation-cache-db"
+        this.dbName = config.dbName ?? STORAGE_NAMES.translationCacheDatabase
         this.storeName = config.storeName ?? "translations"
         this.version = config.version ?? 1
     }

@@ -1,5 +1,6 @@
 import { listModels } from "@xsai/model"
 
+import { STORAGE_NAMES } from "@/constants/storage"
 import type { AiModel_Platform_Enum } from "@/types/aiModel"
 
 import {
@@ -50,14 +51,20 @@ export function extractModelsDevCatalog(
     response: unknown,
     providerIds: string[]
 ): CatalogModel[] {
-    if (!isRecord(response)) {return []}
+    if (!isRecord(response)) {
+        return []
+    }
 
     return providerIds.flatMap(providerId => {
         const provider = response[providerId] as ModelsDevProvider | undefined
-        if (!isRecord(provider) || !isRecord(provider.models)) {return []}
+        if (!isRecord(provider) || !isRecord(provider.models)) {
+            return []
+        }
 
         return Object.entries(provider.models).flatMap(([id, value]) => {
-            if (!isRecord(value)) {return []}
+            if (!isRecord(value)) {
+                return []
+            }
             const model = value as ModelsDevModel
             const input = model.modalities?.input
             return [
@@ -85,10 +92,14 @@ interface GeminiModelResource {
 }
 
 export function parseGeminiModelResponse(response: unknown): RemoteModel[] {
-    if (!isRecord(response) || !Array.isArray(response.models)) {return []}
+    if (!isRecord(response) || !Array.isArray(response.models)) {
+        return []
+    }
 
     return response.models.flatMap(value => {
-        if (!isRecord(value)) {return []}
+        if (!isRecord(value)) {
+            return []
+        }
         const model = value as GeminiModelResource
         if (
             typeof model.name !== "string" ||
@@ -110,7 +121,7 @@ export function parseGeminiModelResponse(response: unknown): RemoteModel[] {
 }
 
 const CATALOG_CACHE_TTL_MS = 24 * 60 * 60 * 1000
-const CATALOG_CACHE_KEY_PREFIX = "model-catalog:"
+const CATALOG_CACHE_KEY_PREFIX = STORAGE_NAMES.modelCatalogCachePrefix
 
 interface CatalogCacheEntry {
     fetchedAt: number
@@ -122,11 +133,14 @@ const memoryCatalogCache = new Map<string, CatalogCacheEntry>()
 const readStoredCatalog = async (
     key: string
 ): Promise<CatalogCacheEntry | undefined> => {
-    if (typeof chrome === "undefined" || !chrome.storage?.local)
-        {return undefined}
+    if (typeof chrome === "undefined" || !chrome.storage?.local) {
+        return undefined
+    }
     const result = await chrome.storage.local.get(key)
     const entry = result[key]
-    if (!isRecord(entry) || !Array.isArray(entry.models)) {return undefined}
+    if (!isRecord(entry) || !Array.isArray(entry.models)) {
+        return undefined
+    }
     return entry as unknown as CatalogCacheEntry
 }
 
@@ -134,7 +148,9 @@ const writeStoredCatalog = async (
     key: string,
     entry: CatalogCacheEntry
 ): Promise<void> => {
-    if (typeof chrome === "undefined" || !chrome.storage?.local) {return}
+    if (typeof chrome === "undefined" || !chrome.storage?.local) {
+        return
+    }
     await chrome.storage.local.set({ [key]: entry })
 }
 
@@ -207,7 +223,9 @@ export async function discoverModels(
     signal?: AbortSignal
 ): Promise<DiscoveredModel[]> {
     const definition = PROVIDER_REGISTRY[connection.provider]
-    if (definition.discovery === "none") {return []}
+    if (definition.discovery === "none") {
+        return []
+    }
 
     const fetchImpl = dependencies.fetchImpl ?? fetch
     const loadCatalog =
@@ -237,8 +255,12 @@ export async function discoverModels(
             )
         }
         const catalog = await catalogPromise
-        if (catalog.length > 0) {return mergeDiscoveredModels(null, catalog)}
-        if (error instanceof ModelDiscoveryError) {throw error}
+        if (catalog.length > 0) {
+            return mergeDiscoveredModels(null, catalog)
+        }
+        if (error instanceof ModelDiscoveryError) {
+            throw error
+        }
         throw new ModelDiscoveryError(
             "NETWORK_FAILURE",
             "无法获取模型列表，请检查 API Key 和网络连接"

@@ -206,14 +206,16 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 
 `.github/workflows/release.yml`：push 到 `main` 时自动执行。
 
-**流程**：`pnpm install --frozen-lockfile` → **`pnpm check`（门禁，失败即中止）** → 读取 `package.json` 的 `version` → 若 tag `v{version}` 不存在则 `pnpm build` + `pnpm crx` → `gh release create` 创建 pre-release 并上传 `mewcat-v{version}.zip` 和 `mewcat-v{version}.crx`。
+**流程**：`pnpm install --frozen-lockfile` → **`pnpm check`（门禁，失败即中止）** → 读取 `package.json` 的 `version` → 新版本执行 `pnpm build` + `pnpm crx` 并将固定产物保存为 draft GitHub Release → 通过 GitHub OIDC 获取 Chrome Web Store 短期令牌 → 校验并上传同一份 ZIP，以 `DEFAULT_PUBLISH` 提交审核 → 将 draft 转为 pre-release。商店审核通过后自动发布扩展。
 
-**发版方式**：手动 bump `package.json` 的 `version` 并推到 `main`。不改 version 的 push 只跑检查和构建校验，不产出 Release。发布判据是「tag 是否已存在」，因此对 squash merge、重复 push、workflow 重跑都是幂等的。
+**发版方式**：手动 bump `package.json` 的 `version` 并推到 `main`。已完成的 Release 会幂等跳过；未完成的 draft 只允许原提交重跑，并复用其中的原始 ZIP/CRX；后续提交若未升级 version 会失败，避免商店包与 GitHub Release 出现同版本不同产物。
 
 **依赖的仓库配置**：
 
 - Settings → Actions → General → Workflow permissions 设为 **Read and write permissions**
-- Secret `CRX_PRIVATE_KEY_B64`：crx 签名私钥的 base64，由 `node scripts/gen-crx-key.js` 生成
+- Secret `CRX_PRIVATE_KEY_B64`：crx 签名私钥的 base64，由 `node scripts/gen-crx-key.cjs` 生成
+- Actions Variables `CWS_WORKLOAD_IDENTITY_PROVIDER`、`CWS_SERVICE_ACCOUNT`、`CWS_PUBLISHER_ID`、`CWS_EXTENSION_ID`：Chrome Web Store OIDC 和扩展标识配置；不保存 Google JSON 私钥，完整配置见 `docs/chrome-web-store-automation.md`
+- Workflow 内所有第三方 Actions 固定到完整 commit SHA，避免可变 tag 被替换
 
 **关于 crx 私钥**：扩展 ID 由私钥推导，必须固定。`key.pem` 已被 `.gitignore` 排除，丢失后无法恢复，已通过 crx 安装的用户将收不到更新。
 
@@ -587,3 +589,45 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：用户希望划词选中历史事件、人物或专有名词时，不仅能获得翻译，还能按需查看简洁的背景解释；显式点击可避免普通划词产生额外 AI 请求、延迟和费用。
 
 **验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词交互脚本、22 项划词服务/网关测试、4 项面板测试及 175 项图片翻译测试）。
+
+### 2026-09-02 — 开发与生产环境持久化存储隔离
+
+**修改内容**：
+
+- `src/constants/storage.ts`：新增集中式持久化命名规则，development 构建统一追加 `-dev`，production 与 test 保持原名
+- `src/state/util.ts`、`src/background/messages/structured-image-translation.ts`：隔离扩展配置、access token 与 refresh token 的 Chrome local storage 键
+- `src/translation/cache/L2PersistentCache.ts`、`src/translation/cache/TranslationCacheFactory.ts`：development 构建使用 `translation-cache-db-dev` IndexedDB 数据库
+- `src/translation/PictureCache.ts`、`src/model-management/discovery.ts`：隔离图片翻译缓存及模型目录缓存命名空间
+- `test/storage-names.test.ts`：新增 development、production、test 模式命名回归测试，并纳入 `test:image` 门禁
+- `scripts/sync-hotlink-sites-from-immersive.cjs`：修正生成文本与 Prettier 的稳定格式差异，避免格式化后 `check:hotlink-rules` 误判生成文件过期
+
+**原因**：避免本地开发版与正式发布版在同一浏览器配置中共享 IndexedDB、扩展配置、令牌及持久化缓存，防止开发调试数据污染正式环境。
+
+---
+
+### 2026-09-03 — extension-config 增加 Zod 字段级修复
+
+**修改内容**：
+
+- `src/types/extensionConfigSchema.ts`：按当前 `ExtensionConfig` 与 `BaseModel` 结构重建 Zod schema；新增字段级配置修复和模型列表逐条过滤，未知字段会被剥离，异常字段回退默认值
+- `src/state/translationService.ts`：在配置读取、写入和订阅边界统一执行校验、旧模型迁移及当前模型归一化；修复后的配置自动写回 Chrome local storage
+- `src/background/messages/structured-image-translation.ts`：图片翻译后台直接读取配置时校验 `aiModelList`，防止损坏模型数据进入执行流程
+- `test/extension-config-validation.test.ts`、`test/background-image-translation.test.ts`：新增损坏字段、非对象配置、异常模型、写回修复、写入防护及旧 `endpoint` 迁移兼容性测试，并纳入 `test:image`
+
+**原因**：防止 Chrome local storage 中的缺失字段、错误类型、非法枚举或损坏模型配置导致插件初始化及翻译流程异常，同时尽可能保留合法用户设置和 API Key。
+
+---
+
+### 2026-09-02 — Chrome Web Store OIDC 自动发布
+
+**修改内容**：
+
+- `.github/workflows/release.yml`：现有 `main` 发版流水线新增 GitHub OIDC 认证，通过 `google-github-actions/auth` 获取 15 分钟短期 access token；所有第三方 Actions 固定到完整 commit SHA。新版本先将 ZIP、CRX、`SHA256SUMS` 封装为单一 recovery bundle 保存到 draft GitHub Release，再上传同一 ZIP 到 Chrome Web Store；中途失败时仅允许原提交复用并校验 bundle，商店提交成功后才发布 GitHub pre-release
+- `scripts/chrome-web-store.cjs`：新增 Chrome Web Store API V2 发布客户端，支持 ZIP 根目录 manifest 版本校验、Chrome 版本比较、多渠道高版本保护、异步上传轮询、30 秒请求超时、重复发布幂等处理、STAGED 发布恢复、发布结果状态校验以及下架/警告失败关闭
+- `test/chrome-web-store-publish.test.cjs`、`package.json`、`pnpm-lock.yaml`：新增 26 项发布客户端、工作流、安全边界和恢复流程测试，通过 `pnpm test:chrome-web-store` 运行并纳入 `pnpm check`；新增 `fflate` 用于读取 ZIP manifest
+- `docs/chrome-web-store-automation.md`：新增 Chrome Web Store Service Account、Google Cloud Workload Identity Federation、不可变 GitHub repository/owner 数字 ID、所需 API、GitHub Actions Variables 和故障恢复配置说明
+- `.gitignore`、`.env.local`：新增 `.env.local` 忽略规则并停止 Git 跟踪，本机文件继续保留；发布认证不使用 Google JSON 私钥
+
+**原因**：用户希望每次升级 `package.json.version` 并推送到 `main` 后，自动上传 Chrome Web Store、提交审核并在审核通过后更新扩展，同时确保公开仓库不暴露发布凭据或因重跑产生同版本不同安装包。
+
+**验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 179 项图片/存储测试）；独立代码复核未发现 Critical 或 Important 问题。公开仓库扫描未发现真实私钥或常见令牌特征，`.env.local` 历史仅 1 个版本且没有凭据值。

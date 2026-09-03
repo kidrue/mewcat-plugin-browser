@@ -67,16 +67,24 @@ export interface ModelSelectionOption {
 export function getVisionCapabilityLabel(
     vision: DiscoveredModel["vision"]
 ): string {
-    if (vision === "supported") {return "支持图片"}
-    if (vision === "unsupported") {return "仅文本"}
+    if (vision === "supported") {
+        return "支持图片"
+    }
+    if (vision === "unsupported") {
+        return "仅文本"
+    }
     return "图片能力未知"
 }
 
 export function toModelCapabilityPatch(
     vision: DiscoveredModel["vision"]
 ): BaseModel["capabilities"] | undefined {
-    if (vision === "supported") {return { vision: true }}
-    if (vision === "unsupported") {return { vision: false }}
+    if (vision === "supported") {
+        return { vision: true }
+    }
+    if (vision === "unsupported") {
+        return { vision: false }
+    }
     return undefined
 }
 
@@ -136,7 +144,9 @@ export function ModelDiscoveryField({
         setModels([])
         setErrorMessage("")
         setManualEntry(false)
-        if (definition.discovery === "none" || !apiKey) {return}
+        if (definition.discovery === "none" || !apiKey) {
+            return
+        }
 
         const controller = new AbortController()
         const timer = window.setTimeout(() => {
@@ -152,10 +162,14 @@ export function ModelDiscoveryField({
                 controller.signal
             )
                 .then(discovered => {
-                    if (!controller.signal.aborted) {setModels(discovered)}
+                    if (!controller.signal.aborted) {
+                        setModels(discovered)
+                    }
                 })
                 .catch(error => {
-                    if (controller.signal.aborted) {return}
+                    if (controller.signal.aborted) {
+                        return
+                    }
                     const message =
                         error instanceof Error
                             ? error.message
@@ -170,7 +184,9 @@ export function ModelDiscoveryField({
                     }
                 })
                 .finally(() => {
-                    if (!controller.signal.aborted) {setIsLoading(false)}
+                    if (!controller.signal.aborted) {
+                        setIsLoading(false)
+                    }
                 })
         }, 400)
 
@@ -197,7 +213,9 @@ export function ModelDiscoveryField({
     const vision = selectedModel?.vision ?? "unknown"
 
     useEffect(() => {
-        if (!selectedModel) {return}
+        if (!selectedModel) {
+            return
+        }
         const capabilities = toModelCapabilityPatch(selectedModel.vision)
         if (
             capabilities &&
@@ -207,7 +225,9 @@ export function ModelDiscoveryField({
         }
     }, [model.capabilities?.vision, model.params.modelName, selectedModel])
 
-    if (definition.discovery === "none") {return null}
+    if (definition.discovery === "none") {
+        return null
+    }
 
     if (manualEntry) {
         return (

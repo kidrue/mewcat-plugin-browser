@@ -120,7 +120,7 @@ function serializeGeneratedFile(generatedRules, meta) {
     lines.push("")
     lines.push("export const GENERATED_HOTLINK_SITE_RULES: GeneratedHotlinkSiteRule[] = [")
 
-    generatedRules.forEach(rule => {
+    generatedRules.forEach((rule, index) => {
         lines.push("    {")
         lines.push(`        ruleKey: ${JSON.stringify(rule.ruleKey)},`)
         lines.push(
@@ -131,14 +131,15 @@ function serializeGeneratedFile(generatedRules, meta) {
             lines.push(`        origin: ${JSON.stringify(rule.origin)},`)
         }
         lines.push(`        priority: ${rule.priority}`)
-        lines.push("    },")
+        lines.push(index === generatedRules.length - 1 ? "    }" : "    },")
     })
 
     lines.push("]")
     lines.push("")
     lines.push("export const GENERATED_HOTLINK_SITE_RULES_META = {")
     lines.push(`    sourcePath: ${JSON.stringify(meta.sourcePath)},`)
-    lines.push(`    sourceHash: ${JSON.stringify(meta.sourceHash)},`)
+    lines.push("    sourceHash:")
+    lines.push(`        ${JSON.stringify(meta.sourceHash)},`)
     lines.push(`    totalInputRules: ${meta.totalInputRules},`)
     lines.push(`    totalOutputRules: ${meta.totalOutputRules},`)
     lines.push(`    skippedRules: ${meta.skippedRules}`)

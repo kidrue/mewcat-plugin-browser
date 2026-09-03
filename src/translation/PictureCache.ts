@@ -1,3 +1,8 @@
+import {
+    createStructuredImageCachePrefix,
+    STORAGE_NAMES
+} from "@/constants/storage"
+
 import type { ImageTranslationResult } from "../messaging/protocol"
 
 /**
@@ -50,7 +55,9 @@ export const IMAGE_TRANSLATION_CACHE_SCHEMA_VERSION = 1
 export const IMAGE_TRANSLATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 export const IMAGE_TRANSLATION_CACHE_MAX_BYTES = 8 * 1024 * 1024
 
-const STRUCTURED_CACHE_PREFIX = `img_translation_v${IMAGE_TRANSLATION_CACHE_SCHEMA_VERSION}_`
+const STRUCTURED_CACHE_PREFIX = createStructuredImageCachePrefix(
+    IMAGE_TRANSLATION_CACHE_SCHEMA_VERSION
+)
 const STRUCTURED_CACHE_METADATA_KEY = `${STRUCTURED_CACHE_PREFIX}metadata`
 
 let structuredCacheStorage: ImageTranslationCacheStorage | null = null
@@ -60,8 +67,8 @@ const pendingImageTranslations = new Map<string, Promise<unknown>>()
 
 // --- Constants ---
 
-const CACHE_PREFIX = "img_cache_"
-const CACHE_METADATA_KEY = "img_cache_metadata"
+const CACHE_PREFIX = STORAGE_NAMES.legacyImageCachePrefix
+const CACHE_METADATA_KEY = STORAGE_NAMES.legacyImageCacheMetadata
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000 // 1 天
 const MAX_STORAGE_USAGE_RATIO = 0.8 // 80% 存储空间上限
 const STORAGE_QUOTA_BYTES = 10 * 1024 * 1024 // chrome.storage.local 默认约 10MB
@@ -389,7 +396,7 @@ export function createImageTranslationCacheKey({
         targetLanguage,
         modelId
     ])
-    return `img_translation_v${schemaVersion}_${encodeURIComponent(fields)}`
+    return `${createStructuredImageCachePrefix(schemaVersion)}${encodeURIComponent(fields)}`
 }
 
 function cloneResult(

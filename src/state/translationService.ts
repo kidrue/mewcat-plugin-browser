@@ -2,6 +2,9 @@ import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import { migrateLegacyModel } from "@/model-management/catalog"
 import type { BaseModel } from "@/types"
 import type { ExtensionConfig } from "@/types/config"
+import { repairExtensionConfig } from "@/types/extensionConfigSchema"
+
+import { defaultExtensionConfig } from "./constants"
 
 export interface TranslationServiceSelectionConfig {
     currentModel?: string
@@ -71,10 +74,21 @@ export function migrateTranslationServiceModels<
         : ({ ...config, aiModelList } as T)
 }
 
-const normalizeStoredConfig = (config: ExtensionConfig): ExtensionConfig =>
+const normalizeStoredConfig = (
+    config: unknown,
+    defaults: ExtensionConfig
+): ExtensionConfig =>
     normalizeTranslationServiceSelection(
-        migrateTranslationServiceModels(config)
+        migrateTranslationServiceModels(repairExtensionConfig(config, defaults))
     )
+
+const configsEqual = (left: unknown, right: ExtensionConfig): boolean => {
+    try {
+        return JSON.stringify(left) === JSON.stringify(right)
+    } catch {
+        return false
+    }
+}
 
 export function createTranslationServiceStorageAdapter(
     storageAdapter: TranslationServiceStorageAdapter
@@ -82,16 +96,22 @@ export function createTranslationServiceStorageAdapter(
     return {
         async getItem(key, initialValue) {
             const storedConfig = await storageAdapter.getItem(key, initialValue)
-            const normalizedConfig = normalizeStoredConfig(storedConfig)
+            const normalizedConfig = normalizeStoredConfig(
+                storedConfig,
+                initialValue
+            )
 
-            if (normalizedConfig !== storedConfig) {
+            if (!configsEqual(storedConfig, normalizedConfig)) {
                 await storageAdapter.setItem(key, normalizedConfig)
             }
 
             return normalizedConfig
         },
         setItem(key, value) {
-            return storageAdapter.setItem(key, value)
+            return storageAdapter.setItem(
+                key,
+                normalizeStoredConfig(value, defaultExtensionConfig)
+            )
         },
         removeItem(key) {
             return storageAdapter.removeItem(key)
@@ -99,7 +119,16 @@ export function createTranslationServiceStorageAdapter(
         subscribe(key, callback, initialValue) {
             return storageAdapter.subscribe(
                 key,
-                value => callback(normalizeStoredConfig(value)),
+                value => {
+                    const normalizedConfig = normalizeStoredConfig(
+                        value,
+                        initialValue
+                    )
+                    if (!configsEqual(value, normalizedConfig)) {
+                        void storageAdapter.setItem(key, normalizedConfig)
+                    }
+                    callback(normalizedConfig)
+                },
                 initialValue
             )
         }

@@ -3,6 +3,8 @@
  * 提供便捷的缓存实例创建方法
  */
 
+import { STORAGE_NAMES } from "@/constants/storage"
+
 import {
     TieredTranslationCache,
     type TieredCacheConfig
@@ -24,7 +26,7 @@ const PRESET_CONFIGS: Record<CachePreset, TieredCacheConfig> = {
             defaultTTL: 24 * 60 * 60 * 1000 // 24小时
         },
         l2Config: {
-            dbName: "translation-cache-db",
+            dbName: STORAGE_NAMES.translationCacheDatabase,
             storeName: "translations",
             version: 1
         },
@@ -46,7 +48,7 @@ const PRESET_CONFIGS: Record<CachePreset, TieredCacheConfig> = {
             defaultTTL: 12 * 60 * 60 * 1000 // 12小时
         },
         l2Config: {
-            dbName: "translation-cache-db",
+            dbName: STORAGE_NAMES.translationCacheDatabase,
             storeName: "translations",
             version: 1
         },
@@ -68,7 +70,7 @@ const PRESET_CONFIGS: Record<CachePreset, TieredCacheConfig> = {
             defaultTTL: 48 * 60 * 60 * 1000 // 48小时
         },
         l2Config: {
-            dbName: "translation-cache-db",
+            dbName: STORAGE_NAMES.translationCacheDatabase,
             storeName: "translations",
             version: 1
         },

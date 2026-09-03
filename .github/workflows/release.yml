@@ -3,12 +3,13 @@ name: Release
 on:
   push:
     branches: [main]
-  # 允许在 Actions 页面手动触发（同样遵守「tag 已存在则跳过发布」的规则）
+  # 允许在 Actions 页面手动触发（同样遵守 Release/draft 幂等规则）
   workflow_dispatch:
 
-# 创建 tag 和 Release 需要写权限
+# 创建 tag/Release 需要 contents 写权限；OIDC 换取短期 Google 令牌需要 id-token 写权限
 permissions:
   contents: write
+  id-token: write
 
 # 同一分支上的多次 push 串行执行，避免并发创建同一个 Release
 concurrency:
@@ -18,20 +19,21 @@ concurrency:
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           # Release notes 自动生成需要完整的提交历史和 tag
           fetch-depth: 0
 
       - name: Setup pnpm
         # 不指定 version，自动读取 package.json 的 packageManager 字段
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
@@ -46,26 +48,55 @@ jobs:
 
       - name: Resolve version and decide whether to release
         id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION="$(node -p "require('./package.json').version")"
+          TAG="v${VERSION}"
+          BUNDLE="mewcat-v${VERSION}-recovery.tar.gz"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          # 以「tag 是否已存在」作为判据，而非 diff HEAD~1 的 package.json。
-          # 这样对 squash merge、同版本多次 push、workflow 重跑都是幂等的。
-          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null 2>&1; then
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::tag v$VERSION 已存在，跳过发布。要发新版请先 bump package.json 的 version。"
+          # 已完成的 Release 直接跳过；未完成的 draft 只允许原提交恢复，
+          # 并复用 draft 中的原始产物，防止同版本对应两份不同的 ZIP。
+          if RELEASE_INFO="$(gh release view "$TAG" --json isDraft,targetCommitish,assets --jq '[.isDraft, .targetCommitish, ([.assets[].name] | join(","))] | @tsv' 2>/dev/null)"; then
+            IFS=$'\t' read -r IS_DRAFT TARGET_COMMIT ASSET_NAMES <<< "$RELEASE_INFO"
+            if [ "$IS_DRAFT" != "true" ]; then
+              echo "should_release=false" >> "$GITHUB_OUTPUT"
+              echo "reuse_draft=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::Release $TAG 已完成，跳过发布。要发新版请先 bump package.json 的 version。"
+              exit 0
+            fi
+            if [ "$TARGET_COMMIT" != "$GITHUB_SHA" ]; then
+              echo "::error::draft Release $TAG 属于提交 $TARGET_COMMIT，当前提交为 $GITHUB_SHA。请升级 package.json version，禁止同版本跨提交覆盖。"
+              exit 1
+            fi
+            if [[ ",${ASSET_NAMES}," == *",${BUNDLE},"* ]]; then
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "reuse_draft=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::恢复 draft Release $TAG，并复用原始产物"
+            else
+              # recovery bundle 尚未上传成功时，CWS 步骤不可能已执行；
+              # 可安全删除这个不完整 draft 并从同一提交重新构建。
+              gh release delete "$TAG" --yes
+              echo "should_release=true" >> "$GITHUB_OUTPUT"
+              echo "reuse_draft=false" >> "$GITHUB_OUTPUT"
+              echo "::notice::已清理缺少 recovery bundle 的不完整 draft，将重新构建 $TAG"
+            fi
+          elif git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "::error::tag $TAG 已存在但没有对应 Release，拒绝覆盖。请升级 package.json version。"
+            exit 1
           else
             echo "should_release=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::将发布 v$VERSION"
+            echo "reuse_draft=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::将发布 $TAG"
           fi
 
       - name: Build
-        if: steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true' && steps.version.outputs.reuse_draft != 'true'
         run: pnpm build
 
       - name: Write crx signing key
-        if: steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true' && steps.version.outputs.reuse_draft != 'true'
         env:
           CRX_PRIVATE_KEY_B64: ${{ secrets.CRX_PRIVATE_KEY_B64 }}
         run: |
@@ -88,11 +119,11 @@ jobs:
           fi
 
       - name: Pack crx
-        if: steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true' && steps.version.outputs.reuse_draft != 'true'
         run: pnpm crx
 
       - name: Collect release assets
-        if: steps.version.outputs.should_release == 'true'
+        if: steps.version.outputs.should_release == 'true' && steps.version.outputs.reuse_draft != 'true'
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -108,10 +139,21 @@ jobs:
           cp "$ZIP" "dist-assets/mewcat-v${VERSION}.zip"
           cp "release/mewcat-v${VERSION}.crx" "dist-assets/mewcat-v${VERSION}.crx"
 
+          (
+            cd dist-assets
+            sha256sum \
+              "mewcat-v${VERSION}.zip" \
+              "mewcat-v${VERSION}.crx" > SHA256SUMS
+            tar -czf "mewcat-v${VERSION}-recovery.tar.gz" \
+              "mewcat-v${VERSION}.zip" \
+              "mewcat-v${VERSION}.crx" \
+              SHA256SUMS
+          )
+
           ls -lh dist-assets
 
-      - name: Create GitHub Release
-        if: steps.version.outputs.should_release == 'true'
+      - name: Create draft GitHub Release
+        if: steps.version.outputs.should_release == 'true' && steps.version.outputs.reuse_draft != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
@@ -120,9 +162,93 @@ jobs:
             --title "v${VERSION}" \
             --generate-notes \
             --prerelease \
+            --draft \
             --target "${GITHUB_SHA}" \
+            "dist-assets/mewcat-v${VERSION}-recovery.tar.gz"
+
+      - name: Download draft release assets
+        if: steps.version.outputs.should_release == 'true' && steps.version.outputs.reuse_draft == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mkdir -p dist-assets
+          gh release download "v${VERSION}" \
+            --dir dist-assets \
+            --pattern "mewcat-v${VERSION}-recovery.tar.gz"
+
+          tar -xzf "dist-assets/mewcat-v${VERSION}-recovery.tar.gz" \
+            -C dist-assets
+
+          (
+            cd dist-assets
+            sha256sum -c SHA256SUMS
+          )
+
+          test -s "dist-assets/mewcat-v${VERSION}.zip"
+          test -s "dist-assets/mewcat-v${VERSION}.crx"
+
+      - name: Sync GitHub Release assets
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release upload "v${VERSION}" --clobber \
             "dist-assets/mewcat-v${VERSION}.zip" \
-            "dist-assets/mewcat-v${VERSION}.crx"
+            "dist-assets/mewcat-v${VERSION}.crx" \
+            "dist-assets/SHA256SUMS"
+
+      # Chrome Web Store 标识符不是密钥，统一放在 GitHub Actions Variables。
+      # 认证使用 OIDC 短期令牌，不在公开仓库或 GitHub Secrets 中保存 Google JSON 私钥。
+      - name: Validate Chrome Web Store configuration
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          CWS_WORKLOAD_IDENTITY_PROVIDER: ${{ vars.CWS_WORKLOAD_IDENTITY_PROVIDER }}
+          CWS_SERVICE_ACCOUNT: ${{ vars.CWS_SERVICE_ACCOUNT }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+        run: |
+          for name in \
+            CWS_WORKLOAD_IDENTITY_PROVIDER \
+            CWS_SERVICE_ACCOUNT \
+            CWS_PUBLISHER_ID \
+            CWS_EXTENSION_ID; do
+            if [ -z "${!name}" ]; then
+              echo "::error::缺少 GitHub Actions Variable ${name}"
+              exit 1
+            fi
+          done
+
+      - name: Authenticate to Google Cloud
+        id: google-auth
+        if: steps.version.outputs.should_release == 'true'
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          token_format: access_token
+          workload_identity_provider: ${{ vars.CWS_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CWS_SERVICE_ACCOUNT }}
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+          access_token_lifetime: 900s
+          create_credentials_file: false
+
+      - name: Publish to Chrome Web Store
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          CWS_ACCESS_TOKEN: ${{ steps.google-auth.outputs.access_token }}
+          CWS_PUBLISHER_ID: ${{ vars.CWS_PUBLISHER_ID }}
+          CWS_EXTENSION_ID: ${{ vars.CWS_EXTENSION_ID }}
+          CWS_EXPECTED_VERSION: ${{ steps.version.outputs.version }}
+          CWS_ZIP_PATH: dist-assets/mewcat-v${{ steps.version.outputs.version }}.zip
+        run: node scripts/chrome-web-store.cjs
+
+      - name: Finalize GitHub Release
+        if: steps.version.outputs.should_release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release edit "v${VERSION}" --draft=false --prerelease
 
       # 无论成功失败都清掉私钥，避免残留在 runner 工作区
       - name: Remove signing key

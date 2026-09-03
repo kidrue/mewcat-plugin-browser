@@ -1,5 +1,6 @@
 import { storage } from "wxt/utils/storage"
 
+import { STORAGE_NAMES, toWxtLocalStorageKey } from "@/constants/storage"
 import {
     decorateBlocksWithColors,
     type VisionPixelBuffer
@@ -28,6 +29,7 @@ import {
 } from "@/translation/PictureCache"
 import type { BaseModel } from "@/types/aiModel"
 import type { ExtensionConfig } from "@/types/config"
+import { repairAiModelList } from "@/types/extensionConfigSchema"
 import { isVisionCapableModel } from "@/utils/visionModels"
 
 import { captureImageForTranslation } from "./translate-image"
@@ -302,12 +304,23 @@ export async function createBrowserVisionPixelBuffer(
 }
 
 export function createBrowserConfigLoader(
-    getItem: (
-        key: "local:extension-config"
-    ) => Promise<ImageTranslationConfig | null> = key =>
-        storage.getItem<ImageTranslationConfig>(key)
+    getItem: (key: `local:${string}`) => Promise<unknown> = key =>
+        storage.getItem<unknown>(key)
 ): () => Promise<ImageTranslationConfig | null> {
-    return () => getItem("local:extension-config")
+    return async () => {
+        const value = await getItem(
+            toWxtLocalStorageKey(STORAGE_NAMES.extensionConfig)
+        )
+        if (typeof value !== "object" || value === null) {
+            return null
+        }
+
+        return {
+            aiModelList: repairAiModelList(
+                (value as { aiModelList?: unknown }).aiModelList
+            )
+        }
+    }
 }
 
 export async function sendStrictBackup(

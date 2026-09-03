@@ -27,7 +27,9 @@ const getVisionCapability = (
     model: CatalogModel | undefined
 ): DiscoveredModel["vision"] => {
     const input = model?.modalities?.input
-    if (!input) {return "unknown"}
+    if (!input) {
+        return "unknown"
+    }
     return input.includes("image") ? "supported" : "unsupported"
 }
 

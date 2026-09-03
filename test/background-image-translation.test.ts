@@ -453,6 +453,16 @@ describe("structured background image translation", () => {
         expect(getItem).toHaveBeenCalledWith("local:extension-config")
     })
 
+    it("filters corrupted models at the production loader boundary", async () => {
+        const getItem = vi.fn(async () => ({
+            aiModelList: [model, { id: "broken-model" }]
+        }))
+
+        await expect(createBrowserConfigLoader(getItem)()).resolves.toEqual({
+            aiModelList: [model]
+        })
+    })
+
     it("writes response-identical strict backups only for request-scoped calls", async () => {
         const set = vi.fn(async () => {})
         const sendMessage = vi.fn(async () => {})
