@@ -257,6 +257,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     const [showSettingsPanel, setShowSettingsPanel] = useState(false)
     const [currentTabUrl, setCurrentTabUrl] = useState<URL | undefined>()
     const hideIconTimerRef = useRef<NodeJS.Timeout | null>(null)
+    const isTranslateRef = useLatest(isTranslate)
 
     // 获取当前标签页 URL
     useEffect(() => {
@@ -372,20 +373,13 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         if (isDragged.current || refreshing) {
             return
         }
-        if (loading || isTranslate) {
+        if (loading || isTranslateRef.current) {
             onClearTranslate()
             return
         }
 
         return doTranslate()
-    }, [
-        doTranslate,
-        isDragged,
-        isTranslate,
-        loading,
-        onClearTranslate,
-        refreshing
-    ])
+    }, [doTranslate, isDragged, isTranslateRef, loading, onClearTranslate, refreshing])
 
     const onRefreshTranslate = useCallback(
         async (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -503,13 +497,12 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             })
 
             // 如果模型切换且当前正在翻译，清空翻译并重新翻译
-            if (modelChanged && isTranslate) {
+            if (modelChanged && isTranslateRef.current) {
                 console.log(
                     "🔄 [TranslationControlCenter] 检测到模型切换，重新翻译页面"
                 )
                 // 先清空当前翻译
                 immersiveTranslatorRef.current.clearAllTranslations()
-                setIsTranslate(false)
 
                 // 延迟一小段时间后重新翻译，确保清理完成
                 setTimeout(async () => {
@@ -517,7 +510,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 }, 300)
             }
         }
-    }, [config, isTranslate, doTranslate])
+    }, [config, doTranslate])
 
     //自动翻译 -- start
     useEffect(() => {
