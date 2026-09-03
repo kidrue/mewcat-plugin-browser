@@ -638,7 +638,7 @@ export class ImmersiveTranslator {
                     sourceLang: this.detectedLanguage,
                     targetLang: this.targetLanguage,
                     modelId: this.currentModel,
-                    aiRole: "translator"
+                    aiRole: this.translationRuntimeConfig.aiRole
                 }
 
                 return {
@@ -1096,7 +1096,7 @@ export class ImmersiveTranslator {
                         sourceLang: this.detectedLanguage,
                         targetLang: this.targetLanguage,
                         modelId: this.currentModel,
-                        aiRole: "translator"
+                        aiRole: this.translationRuntimeConfig.aiRole
                     }
 
                     // 从分层缓存系统获取

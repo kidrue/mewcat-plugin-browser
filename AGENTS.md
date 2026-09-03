@@ -618,6 +618,17 @@ _实机验证中发现并修复的 4 个缺陷_
 
 ---
 
+### 2026-09-03 — 页面翻译缓存绑定角色与模型
+
+**修改内容**：
+
+- `src/translation/ImmersiveTranslator.ts`：页面翻译缓存读取与写入不再使用固定角色 `"translator"`，改为使用当前 `translationRuntimeConfig.aiRole`；模型维度继续使用当前 `currentModel`
+- `test/page-translation-cache-role.test.ts`：新增缓存维度回归测试，确保读写两端同时绑定当前 AI 角色和模型，并纳入 `test:image`
+
+**原因**：相同文本在不同 AI 角色或不同模型下可能产生不同译文，缓存键必须同时包含当前角色与模型，避免切换配置后复用不匹配的页面翻译结果。
+
+---
+
 ### 2026-09-02 — Chrome Web Store OIDC 自动发布
 
 **修改内容**：
