@@ -4,6 +4,8 @@ import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 import {
     getImageTranslationConfigRepair,
     getVisionModelOptions,
+    getVisionPlatformOptions,
+    getVisionPlatformSelection,
     isImageTranslationEnabled,
     isVisionCapableModel,
     normalizeImageTranslationModelSelection
@@ -262,5 +264,83 @@ describe("vision model capabilities", () => {
             normalizeImageTranslationModelSelection("text-only", models)
         ).toBe("usable")
         expect(normalizeImageTranslationModelSelection("missing", [])).toBe("")
+    })
+
+    it("filters usable vision models by the selected platform", () => {
+        const models = [
+            createModel(
+                "openai-vision",
+                AiModel_Platform_Enum.OPENAI,
+                "gpt-5",
+                { vision: true }
+            ),
+            createModel(
+                "gemini-vision",
+                AiModel_Platform_Enum.GEMINI,
+                "gemini-2.5-flash",
+                { vision: true }
+            )
+        ]
+
+        expect(
+            getVisionModelOptions(models, AiModel_Platform_Enum.GEMINI)
+        ).toEqual([{ label: "gemini-vision label", value: "gemini-vision" }])
+    })
+
+    it("lists only platforms that contain usable vision models", () => {
+        const models = [
+            createModel(
+                "openai-first",
+                AiModel_Platform_Enum.OPENAI,
+                "gpt-5",
+                { vision: true }
+            ),
+            createModel(
+                "openai-second",
+                AiModel_Platform_Enum.OPENAI,
+                "gpt-4.1",
+                { vision: true }
+            ),
+            createModel(
+                "disabled-gemini",
+                AiModel_Platform_Enum.GEMINI,
+                "gemini-2.5-flash",
+                { enabled: false, vision: true }
+            ),
+            createModel(
+                "zhipu-vision",
+                AiModel_Platform_Enum.ZHIPU,
+                "glm-4v-plus",
+                { vision: true }
+            )
+        ]
+        expect(getVisionPlatformOptions(models)).toEqual([
+            { label: "ChatGPT", value: AiModel_Platform_Enum.OPENAI },
+            { label: "智谱", value: AiModel_Platform_Enum.ZHIPU }
+        ])
+    })
+
+    it("derives the platform only from a usable selected vision model", () => {
+        const models = [
+            createModel(
+                "openai-vision",
+                AiModel_Platform_Enum.OPENAI,
+                "gpt-5",
+                { vision: true }
+            ),
+            createModel(
+                "disabled-gemini",
+                AiModel_Platform_Enum.GEMINI,
+                "gemini-2.5-flash",
+                { enabled: false, vision: true }
+            )
+        ]
+        expect(getVisionPlatformSelection("openai-vision", models)).toBe(
+            AiModel_Platform_Enum.OPENAI
+        )
+        expect(getVisionPlatformSelection("disabled-gemini", models)).toBe(
+            ""
+        )
+        expect(getVisionPlatformSelection("missing", models)).toBe("")
     })
 })

@@ -1,4 +1,10 @@
-import type { BaseModel } from "../types/aiModel"
+import { platformNameMap } from "../constants/translationServices"
+import type { AiModel_Platform_Enum, BaseModel } from "../types/aiModel"
+
+export interface VisionPlatformOption {
+    label: string
+    value: AiModel_Platform_Enum
+}
 
 export interface VisionModelOption {
     label: string
@@ -23,12 +29,45 @@ const isUsableVisionModel = (model: BaseModel): boolean =>
     isVisionCapableModel(model)
 
 export function getVisionModelOptions(
-    models: BaseModel[]
+    models: BaseModel[],
+    platform?: AiModel_Platform_Enum
 ): VisionModelOption[] {
-    return models.filter(isUsableVisionModel).map(model => ({
-        label: model.name,
-        value: model.id
-    }))
+    return models
+        .filter(
+            model =>
+                isUsableVisionModel(model) &&
+                (!platform || model.type === platform)
+        )
+        .map(model => ({
+            label: model.name,
+            value: model.id
+        }))
+}
+
+export function getVisionPlatformOptions(
+    models: BaseModel[]
+): VisionPlatformOption[] {
+    const platforms = new Set<AiModel_Platform_Enum>()
+
+    return models.filter(isUsableVisionModel).flatMap(model => {
+        if (platforms.has(model.type)) {
+            return []
+        }
+
+        platforms.add(model.type)
+        return [{ label: platformNameMap[model.type], value: model.type }]
+    })
+}
+
+export function getVisionPlatformSelection(
+    selectedModelId: string | undefined,
+    models: BaseModel[]
+): AiModel_Platform_Enum | "" {
+    return (
+        models.find(
+            model => model.id === selectedModelId && isUsableVisionModel(model)
+        )?.type ?? ""
+    )
 }
 
 export function isImageTranslationEnabled({
