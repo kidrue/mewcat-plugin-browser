@@ -13,7 +13,9 @@ import { translateStructuredImageViaBackground } from "@/services/imageTranslati
 import { configAtom, updateConfigAtom } from "@/state"
 import {
     getImageTranslationConfigRepair,
-    getVisionModelOptions
+    getVisionModelOptions,
+    getVisionPlatformOptions,
+    getVisionPlatformSelection
 } from "@/utils/visionModels"
 
 const Guidance = styled.p`
@@ -78,9 +80,21 @@ export const Image: React.FunctionComponent = () => {
     const mountedRef = React.useRef(false)
     const capabilityRequestIdRef = React.useRef(0)
     const selectedModelIdRef = React.useRef("")
+    const aiModelList = config.aiModelList
+    const visionPlatformOptions = React.useMemo(
+        () => getVisionPlatformOptions(aiModelList),
+        [aiModelList]
+    )
+    const selectedPlatform = getVisionPlatformSelection(
+        config.imageTranslationModelId,
+        aiModelList
+    )
     const visionModelOptions = React.useMemo(
-        () => getVisionModelOptions(config.aiModelList || []),
-        [config.aiModelList]
+        () =>
+            selectedPlatform
+                ? getVisionModelOptions(aiModelList, selectedPlatform)
+                : [],
+        [aiModelList, selectedPlatform]
     )
     const selectedModelId = visionModelOptions.some(
         option => option.value === config.imageTranslationModelId
@@ -109,6 +123,20 @@ export const Image: React.FunctionComponent = () => {
             void updateConfig(repair)
         }
     }, [config, updateConfig])
+
+    const handlePlatformChange = React.useCallback(
+        (platformValue: string) => {
+            const platform = visionPlatformOptions.find(
+                option => option.value === platformValue
+            )?.value
+            const imageTranslationModelId = platform
+                ? (getVisionModelOptions(aiModelList, platform)[0]?.value ?? "")
+                : ""
+
+            void updateConfig({ imageTranslationModelId })
+        },
+        [aiModelList, updateConfig, visionPlatformOptions]
+    )
 
     const handleCapabilityTest = React.useCallback(async () => {
         if (!selectedModelId || testStatus.state === "loading") {
@@ -186,6 +214,22 @@ export const Image: React.FunctionComponent = () => {
                 </FormRow>
 
                 <FormRow
+                    label="模型平台"
+                    description="单独选择图片翻译使用的 AI 模型平台"
+                    controlId="image-translation-platform"
+                >
+                    <NativeSelect
+                        id="image-translation-platform"
+                        aria-describedby="image-translation-platform-description"
+                        value={selectedPlatform}
+                        onChange={handlePlatformChange}
+                        disabled={visionPlatformOptions.length === 0}
+                        options={visionPlatformOptions}
+                        placeholder="请选择模型平台"
+                    />
+                </FormRow>
+
+                <FormRow
                     label="视觉模型"
                     description="图片翻译使用独立模型，不会更改当前文本翻译服务"
                     controlId="image-translation-model"
@@ -197,14 +241,18 @@ export const Image: React.FunctionComponent = () => {
                         onChange={imageTranslationModelId =>
                             updateConfig({ imageTranslationModelId })
                         }
-                        disabled={visionModelOptions.length === 0}
+                        disabled={
+                            !selectedPlatform || visionModelOptions.length === 0
+                        }
                         options={visionModelOptions}
                         placeholder="请选择支持图片输入的模型"
                     />
                     {!hasSelectedModel && (
                         <Guidance>
                             {visionModelOptions.length === 0
-                                ? "请先在“模型”设置中配置并启用支持图片输入的模型。"
+                                ? visionPlatformOptions.length === 0
+                                    ? "请先在“模型”设置中配置并启用支持图片输入的模型。"
+                                    : "请先选择模型平台，再选择用于图片翻译的视觉模型。"
                                 : "请选择视觉模型后再启用图片翻译或运行能力测试。"}
                         </Guidance>
                     )}

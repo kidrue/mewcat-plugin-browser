@@ -206,6 +206,16 @@ async function click(element: Element) {
     })
 }
 
+async function changeSelect(select: HTMLSelectElement, value: string) {
+    await act(async () => {
+        Object.getOwnPropertyDescriptor(
+            window.HTMLSelectElement.prototype,
+            "value"
+        )?.set?.call(select, value)
+        select.dispatchEvent(new window.Event("change", { bubbles: true }))
+    })
+}
+
 function deferred<T>() {
     let resolve!: (value: T) => void
     let reject!: (reason: unknown) => void
@@ -248,11 +258,16 @@ afterEach(async () => {
 })
 
 describe("image translation settings", () => {
-    it("filters visual models and persists the image selection independently", async () => {
-        const vision = createModel("vision")
+    it("derives the image platform and filters its models without changing Google Translate", async () => {
         mocks.config = createConfig({
+            currentModel: "google-translate",
             aiModelList: [
-                vision,
+                createModel("openai-first"),
+                createModel("openai-second"),
+                createModel("gemini-vision", {
+                    type: AiModel_Platform_Enum.GEMINI,
+                    modelName: "gemini-2.5-flash"
+                }),
                 createModel("text-only", {
                     type: AiModel_Platform_Enum.DEEPSEEK,
                     modelName: "deepseek-chat",
@@ -260,7 +275,8 @@ describe("image translation settings", () => {
                 }),
                 createModel("disabled-vision", { enabled: false }),
                 createModel("missing-key", { apiKey: " " })
-            ]
+            ],
+            imageTranslationModelId: "openai-second"
         })
         mocks.updateConfig.mockImplementation(updates => {
             mocks.config = { ...mocks.config!, ...updates }
@@ -268,27 +284,32 @@ describe("image translation settings", () => {
         const { Image } = await import("../src/options/Image")
         root = await render(<Image />)
 
-        const selector = rowByLabel("视觉模型").querySelector("select")
-        expect(selector).toBeInstanceOf(HTMLSelectElement)
-        expect(selector!.labels?.[0]?.textContent).toBe("视觉模型")
+        const platformSelector = rowByLabel("模型平台").querySelector("select")
+        expect(platformSelector).toBeInstanceOf(HTMLSelectElement)
+        expect(platformSelector!.labels?.[0]?.textContent).toBe("模型平台")
+        expect(platformSelector!.value).toBe(AiModel_Platform_Enum.OPENAI)
         expect(
-            Array.from(selector!.querySelectorAll("option")).map(option =>
+            Array.from(platformSelector!.querySelectorAll("option")).map(
+                option => option.getAttribute("value")
+            )
+        ).toEqual([
+            AiModel_Platform_Enum.OPENAI,
+            AiModel_Platform_Enum.GEMINI
+        ])
+
+        const modelSelector = rowByLabel("视觉模型").querySelector("select")
+        expect(modelSelector).toBeInstanceOf(HTMLSelectElement)
+        expect(modelSelector!.value).toBe("openai-second")
+        expect(
+            Array.from(modelSelector!.querySelectorAll("option")).map(option =>
                 option.getAttribute("value")
             )
-        ).toEqual(["", "vision"])
+        ).toEqual(["openai-first", "openai-second"])
 
-        await act(async () => {
-            Object.getOwnPropertyDescriptor(
-                window.HTMLSelectElement.prototype,
-                "value"
-            )?.set?.call(selector, "vision")
-            selector!.dispatchEvent(
-                new window.Event("change", { bubbles: true })
-            )
-        })
+        await changeSelect(modelSelector!, "openai-first")
 
         expect(mocks.updateConfig).toHaveBeenCalledWith({
-            imageTranslationModelId: "vision"
+            imageTranslationModelId: "openai-first"
         })
         expect(mocks.updateConfig).not.toHaveBeenCalledWith(
             expect.objectContaining({ currentModel: expect.anything() })
@@ -299,9 +320,61 @@ describe("image translation settings", () => {
         expect(
             rowByLabel("视觉模型").querySelector<HTMLSelectElement>("select")
                 ?.value
-        ).toBe("vision")
-        expect(mocks.config.imageTranslationModelId).toBe("vision")
-        expect(mocks.config.currentModel).toBe("text-model")
+        ).toBe("openai-first")
+        expect(mocks.config.imageTranslationModelId).toBe("openai-first")
+        expect(mocks.config.currentModel).toBe("google-translate")
+    })
+
+    it("selects the first usable vision model when the image platform changes", async () => {
+        mocks.config = createConfig({
+            currentModel: "google-translate",
+            aiModelList: [
+                createModel("openai-vision"),
+                createModel("gemini-first", {
+                    type: AiModel_Platform_Enum.GEMINI,
+                    modelName: "gemini-2.5-flash"
+                }),
+                createModel("gemini-second", {
+                    type: AiModel_Platform_Enum.GEMINI,
+                    modelName: "gemini-2.5-pro"
+                })
+            ],
+            imageTranslationModelId: "openai-vision"
+        })
+        mocks.updateConfig.mockImplementation(updates => {
+            mocks.config = { ...mocks.config!, ...updates }
+        })
+        const { Image } = await import("../src/options/Image")
+        root = await render(<Image />)
+
+        const platformSelector = rowByLabel("模型平台").querySelector(
+            "select"
+        ) as HTMLSelectElement
+        await changeSelect(platformSelector, AiModel_Platform_Enum.GEMINI)
+
+        expect(mocks.updateConfig).toHaveBeenCalledWith({
+            imageTranslationModelId: "gemini-first"
+        })
+        expect(mocks.updateConfig).not.toHaveBeenCalledWith(
+            expect.objectContaining({ currentModel: expect.anything() })
+        )
+
+        await act(async () => root?.render(<Image />))
+
+        expect(
+            rowByLabel("模型平台").querySelector<HTMLSelectElement>("select")
+                ?.value
+        ).toBe(AiModel_Platform_Enum.GEMINI)
+        const modelSelector = rowByLabel("视觉模型").querySelector(
+            "select"
+        ) as HTMLSelectElement
+        expect(modelSelector.value).toBe("gemini-first")
+        expect(
+            Array.from(modelSelector.querySelectorAll("option")).map(option =>
+                option.getAttribute("value")
+            )
+        ).toEqual(["gemini-first", "gemini-second"])
+        expect(mocks.config.currentModel).toBe("google-translate")
     })
 
     it("shows empty guidance and guards image controls until a model is selected", async () => {
@@ -314,8 +387,16 @@ describe("image translation settings", () => {
         root = await render(<Image />)
 
         expect(document.body.textContent).toContain(
-            "请选择视觉模型后再启用图片翻译或运行能力测试"
+            "请先选择模型平台，再选择用于图片翻译的视觉模型"
         )
+        expect(
+            rowByLabel("模型平台").querySelector<HTMLSelectElement>("select")
+                ?.disabled
+        ).toBe(false)
+        expect(
+            rowByLabel("视觉模型").querySelector<HTMLSelectElement>("select")
+                ?.disabled
+        ).toBe(true)
         const shortcut = rowByLabel("图片上显示快捷翻译按钮").querySelector(
             '[role="switch"]'
         ) as HTMLInputElement
@@ -329,6 +410,29 @@ describe("image translation settings", () => {
         expect(testButton!.disabled).toBe(true)
         expect(document.body.textContent).toContain("发送给所选模型服务商")
         expect(document.body.textContent).toContain("可能产生服务商费用")
+    })
+
+    it("disables both selectors when no usable vision model is configured", async () => {
+        mocks.config = createConfig({
+            aiModelList: [
+                createModel("text-only", { vision: false }),
+                createModel("disabled-vision", { enabled: false })
+            ]
+        })
+        const { Image } = await import("../src/options/Image")
+        root = await render(<Image />)
+
+        expect(
+            rowByLabel("模型平台").querySelector<HTMLSelectElement>("select")
+                ?.disabled
+        ).toBe(true)
+        expect(
+            rowByLabel("视觉模型").querySelector<HTMLSelectElement>("select")
+                ?.disabled
+        ).toBe(true)
+        expect(document.body.textContent).toContain(
+            "请先在“模型”设置中配置并启用支持图片输入的模型"
+        )
     })
 
     it("persists a disabled shortcut flag when the selected vision model becomes invalid", async () => {
@@ -640,7 +744,7 @@ describe("config persistence contract", () => {
         })
 
         expect(setItem).toHaveBeenCalledWith(
-            "local:extension-config",
+            "sync:extension-config",
             expect.objectContaining({
                 imageTranslationModelId: "vision",
                 currentModel: "text-model"
