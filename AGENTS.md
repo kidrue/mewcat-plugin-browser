@@ -657,3 +657,19 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：方便用户在页面译文过期或翻译配置变化时，一键绕过当前页旧缓存并重新获取译文，同时避免误清空其他文本、模型或 AI 角色的缓存。
 
 **验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 191 项页面/图片/存储测试）。
+
+---
+
+### 2026-09-07 — 图片翻译支持独立选择模型平台与模型
+
+**修改内容**：
+
+- `src/utils/visionModels.ts`：新增可用视觉模型平台去重、平台内模型过滤和当前平台推导；仍只接受已启用、API Key 非空且声明视觉能力的模型
+- `src/options/Image.tsx`：图片翻译设置新增“模型平台”与“视觉模型”级联选择；切换平台时自动选择该平台第一个可用视觉模型，已有图片模型可反推出对应平台
+- 图片翻译继续仅持久化 `imageTranslationModelId`，不新增平台配置字段，也不修改文本翻译的 `currentModel`、图片翻译消息协议或后台调用链
+- `test/vision-models.test.ts`、`test/image-settings-ui.test.tsx`：新增平台过滤、平台推导、Google Translate 文本服务独立性、平台切换和空状态回归测试；同步将配置持久化测试的旧 `local:` 断言更新为当前 `sync:` 契约
+- `docs/superpowers/specs/2026-09-07-image-translation-model-platform-design.md`、`docs/superpowers/plans/2026-09-07-image-translation-model-platform.md`：记录确认后的设计和 TDD 实施步骤
+
+**原因**：图片翻译需要独立于网页文本翻译服务选择模型平台和对应视觉模型，尤其是在文本使用 Google Translate 时仍可调用用户配置的多模态 AI 模型。
+
+**验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 196 项页面/图片/存储测试）。
