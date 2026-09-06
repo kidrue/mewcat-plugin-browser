@@ -149,6 +149,7 @@ export function explainModelConcept(
         {
             type: "generate",
             model,
+            feature: "concept-explanation",
             messages: buildConceptExplanationMessages(input, targetLanguage),
             enableThinking: options.enableThinking
         },
@@ -182,6 +183,7 @@ const translateWithModel = (
         {
             type: "generate",
             model,
+            feature: batch ? "page-translation" : "selection-translation",
             messages: buildTranslationMessages(
                 messages,
                 targetLanguage,
@@ -256,6 +258,7 @@ ${truncatedContent}`
             {
                 type: "generate",
                 model,
+                feature: "page-summary",
                 messages: [{ role: "user", content: prompt }],
                 enableThinking: options.enableThinking
             },

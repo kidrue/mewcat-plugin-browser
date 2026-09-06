@@ -14,6 +14,7 @@ export function createStorageNames(mode: StorageBuildMode) {
         extensionConfig: withEnvironmentSuffix("extension-config", mode),
         accessToken: withEnvironmentSuffix("accessToken", mode),
         refreshToken: withEnvironmentSuffix("refreshToken", mode),
+        tokenUsage: withEnvironmentSuffix("token-usage", mode),
         translationCacheDatabase: withEnvironmentSuffix(
             "translation-cache-db",
             mode

@@ -11,6 +11,7 @@ import {
     translateModelBatch
 } from "../src/translation/modelTranslation"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
+import type { TokenUsageEvent } from "../src/token-usage/types"
 
 const createModel = (
     type: AiModel_Platform_Enum,
@@ -35,10 +36,60 @@ const generateRequest = (
     type: "generate",
     model,
     messages: [{ role: "user", content: "hello" }],
+    feature: "page-translation",
     enableThinking
 })
 
 describe("background model gateway", () => {
+    it("records provider-reported usage with model and feature dimensions", async () => {
+        let recorded: TokenUsageEvent | undefined
+        const response = await handleModelGatewayRequest(
+            generateRequest(createModel(AiModel_Platform_Enum.OPENAI)),
+            {
+                generateText: async () => ({
+                    text: "你好",
+                    usage: {
+                        inputTokens: 12,
+                        outputTokens: 5,
+                        totalTokens: 17
+                    }
+                }),
+                recordUsage: async event => {
+                    recorded = event
+                }
+            }
+        )
+
+        expect(response).toEqual({ success: true, text: "你好" })
+        expect(recorded).toEqual({
+            modelId: "configured-model",
+            modelName: "Configured model",
+            feature: "page-translation",
+            source: "reported",
+            counts: { inputTokens: 12, outputTokens: 5, totalTokens: 17 }
+        })
+    })
+
+    it("estimates usage when the provider omits it and ignores metrics failures", async () => {
+        let recorded: TokenUsageEvent | undefined
+        const response = await handleModelGatewayRequest(
+            generateRequest(createModel(AiModel_Platform_Enum.OPENAI)),
+            {
+                generateText: async () => ({ text: "你好" }),
+                recordUsage: async event => {
+                    recorded = event
+                    throw new Error("storage unavailable")
+                }
+            }
+        )
+
+        expect(response).toEqual({ success: true, text: "你好" })
+        expect(recorded).toMatchObject({
+            source: "estimated",
+            counts: { outputTokens: 2 }
+        })
+    })
+
     it("runs an official OpenAI-compatible model through xsAI", async () => {
         let received: Record<string, unknown> | undefined
 

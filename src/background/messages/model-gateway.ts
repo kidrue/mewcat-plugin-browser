@@ -13,6 +13,9 @@ import type {
     ModelGatewayTranslateEngineRequest
 } from "@/messaging/modelGatewayContracts"
 import { getGenerationBaseUrl } from "@/model-management/providers"
+import { estimateUsage, normalizeReportedUsage } from "@/token-usage/estimate"
+import { recordTokenUsage } from "@/token-usage/storage"
+import type { TokenUsageEvent } from "@/token-usage/types"
 import { AiModel_Platform_Enum } from "@/types/aiModel"
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
@@ -21,16 +24,38 @@ const timedOutControllers = new WeakSet<AbortController>()
 
 type GenerateTextLike = (
     options: Record<string, unknown>
-) => Promise<{ text?: string }>
+) => Promise<{ text?: string; usage?: unknown }>
 
 type GenerateObjectLike = (
     options: Record<string, unknown>
-) => Promise<{ object?: unknown }>
+) => Promise<{ object?: unknown; usage?: unknown }>
 
 export interface ModelGatewayDependencies {
     generateText?: GenerateTextLike
     generateObject?: GenerateObjectLike
     fetch?: typeof fetch
+    recordUsage?: (event: TokenUsageEvent) => Promise<void>
+}
+
+const recordSuccessfulUsage = async (
+    request: ModelGatewayGenerateRequest | ModelGatewayGenerateVisionRequest,
+    result: { usage?: unknown },
+    input: string,
+    output: string,
+    dependencies: ModelGatewayDependencies
+) => {
+    const reported = normalizeReportedUsage(result.usage)
+    try {
+        await (dependencies.recordUsage ?? recordTokenUsage)({
+            modelId: request.model.id,
+            modelName: request.model.name,
+            feature: request.feature,
+            source: reported ? "reported" : "estimated",
+            counts: reported ?? estimateUsage(input, output)
+        })
+    } catch {
+        // Metrics are best-effort and must never interrupt translation.
+    }
 }
 
 const getThinkingOptions = (
@@ -142,23 +167,32 @@ async function handleGenerate(
                 generateText(
                     options as Parameters<typeof generateText>[0]
                 ) as Promise<{ text?: string }>)
-        const text = (
-            await runGenerateText({
-                apiKey: request.model.params.apiKey,
-                baseURL: getGenerationBaseUrl(
-                    request.model.type,
-                    request.model.params.isOfficial !== false,
-                    request.model.params.baseUrl
-                ),
-                model: request.model.params.modelName,
-                messages: request.messages,
-                abortSignal: controller.signal,
-                ...getThinkingOptions(
-                    request.model.type,
-                    request.enableThinking ?? false
-                )
-            })
-        ).text?.trim()
+        const result = await runGenerateText({
+            apiKey: request.model.params.apiKey,
+            baseURL: getGenerationBaseUrl(
+                request.model.type,
+                request.model.params.isOfficial !== false,
+                request.model.params.baseUrl
+            ),
+            model: request.model.params.modelName,
+            messages: request.messages,
+            abortSignal: controller.signal,
+            ...getThinkingOptions(
+                request.model.type,
+                request.enableThinking ?? false
+            )
+        })
+        const text = result.text?.trim()
+
+        if (text) {
+            await recordSuccessfulUsage(
+                request,
+                result,
+                request.messages.map(message => message.content).join("\n"),
+                text,
+                dependencies
+            )
+        }
 
         return text
             ? { success: true, text }
@@ -221,9 +255,18 @@ async function handleGenerateVision(
             output: "object",
             strict: true
         })
-        return result.object === undefined
-            ? failure("INVALID_RESPONSE", "视觉模型未返回有效结构化结果")
-            : { success: true, text: JSON.stringify(result.object) }
+        if (result.object === undefined) {
+            return failure("INVALID_RESPONSE", "视觉模型未返回有效结构化结果")
+        }
+        const text = JSON.stringify(result.object)
+        await recordSuccessfulUsage(
+            request,
+            result,
+            `${visionTranslationPrompt}\n目标语言：${request.image.targetLanguage}`,
+            text,
+            dependencies
+        )
+        return { success: true, text }
     } catch (error) {
         const status = getHttpStatus(error)
         if (status === 400 || status === 422) {
@@ -234,7 +277,17 @@ async function handleGenerateVision(
                         generateText(
                             options as Parameters<typeof generateText>[0]
                         ) as Promise<{ text?: string }>)
-                const text = (await runGenerateText(commonOptions)).text?.trim()
+                const result = await runGenerateText(commonOptions)
+                const text = result.text?.trim()
+                if (text) {
+                    await recordSuccessfulUsage(
+                        request,
+                        result,
+                        `${visionTranslationPrompt}\n目标语言：${request.image.targetLanguage}`,
+                        text,
+                        dependencies
+                    )
+                }
                 return text
                     ? { success: true, text }
                     : failure(

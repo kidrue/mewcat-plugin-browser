@@ -247,6 +247,19 @@ pnpm crx          # 打包签名 .crx（需 key.pem 或 CRX_PRIVATE_KEY）
 
 ## 修改记录
 
+### 2026-09-07 — Options 新增生成式 AI Token 用量统计
+
+**修改内容**：
+
+- `src/token-usage/`：新增 token 用量类型、混合中英文估算、常见 API usage 字段归一化，以及基于 Zod 字段级修复的每日聚合存储；仅保留最近 30 天数据，并支持安全清空
+- `src/background/messages/model-gateway.ts`、`src/messaging/modelGatewayContracts.ts`：模型网关接入统一用量采集，优先使用 xsAI 返回的真实 usage，缺失时本地估算；统计写入失败不会影响翻译结果
+- `src/translation/modelTranslation.ts`、`src/image-translation/providers.ts`：按网页翻译、划词翻译、概念解释、页面摘要、图片翻译标记调用来源；Google Translate、DeepL、DeepLX 不进入 token 统计
+- `src/constants/storage.ts`：新增环境隔离的 `token-usage` / `token-usage-dev` 存储键
+- `src/options/TokenUsage.tsx`、`src/options/index.tsx`、`src/constants/options.ts`：options 新增“统计”页面，展示今日、近 7 天、近 30 天总量以及按日期、模型、功能和真实/估算来源拆分的明细，并提供二次确认清空
+- `test/token-usage.test.ts`、`test/token-usage-ui.test.tsx`：新增估算、usage 归一化、异常数据修复、聚合清理和 options 展示测试，并纳入 `pnpm check`
+
+**原因**：为开发者提供不包含原文、译文、prompt、图片或 API Key 的本地 token 消耗数据，便于后续按模型和功能定位优化重点，同时保证统计数据异常不会影响插件执行。
+
 > **格式**：每次修改后在此追加，格式如下：
 >
 > ```
