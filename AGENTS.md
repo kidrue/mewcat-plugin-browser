@@ -682,6 +682,7 @@ _实机验证中发现并修复的 4 个缺陷_
 
 - `src/constants/options.ts`：`EXTENSION_INFO.version` 不再硬编码，改为读取 `package.json.version` 并保留界面展示用的 `v` 前缀
 - `test/extension-version.test.ts`、`package.json`：新增产品版本单一来源回归测试并纳入 `pnpm test:image`，后续升级 `package.json.version` 时会同步校验设置页展示版本
+- `README.md`、`design-preview/theme-*.html`：移除容易过期的静态产品版本号，改为指向 `package.json.version` 或明确标注 `package.json` 版本来源
 - Canvas Hook 协议、IndexedDB 和图片缓存 schema 等内部兼容版本保持独立，不随扩展产品版本自动变化
 
 **原因**：消除设置页版本号与发布版本不一致的问题，使扩展产品版本只需在 `package.json` 中维护一次。

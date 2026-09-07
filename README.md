@@ -208,7 +208,7 @@ pnpm package
 
 ## 版本
 
-v0.0.1
+当前版本以 `package.json` 的 `version` 字段为准。
 
 ## 联系方式
 
