@@ -673,3 +673,17 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：图片翻译需要独立于网页文本翻译服务选择模型平台和对应视觉模型，尤其是在文本使用 Google Translate 时仍可调用用户配置的多模态 AI 模型。
 
 **验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 196 项页面/图片/存储测试）。
+
+---
+
+### 2026-09-07 — 扩展产品版本统一读取 package.json
+
+**修改内容**：
+
+- `src/constants/options.ts`：`EXTENSION_INFO.version` 不再硬编码，改为读取 `package.json.version` 并保留界面展示用的 `v` 前缀
+- `test/extension-version.test.ts`、`package.json`：新增产品版本单一来源回归测试并纳入 `pnpm test:image`，后续升级 `package.json.version` 时会同步校验设置页展示版本
+- Canvas Hook 协议、IndexedDB 和图片缓存 schema 等内部兼容版本保持独立，不随扩展产品版本自动变化
+
+**原因**：消除设置页版本号与发布版本不一致的问题，使扩展产品版本只需在 `package.json` 中维护一次。
+
+**验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 197 项页面/图片/存储/版本测试）。
