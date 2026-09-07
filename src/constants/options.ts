@@ -1,5 +1,6 @@
 // Options页面相关常量
 
+import packageMetadata from "../../package.json"
 import { TranslationStyle } from "../types/translationStyle"
 
 export interface NavigationItem {
@@ -57,7 +58,7 @@ export const DISABLED_SITES_OPTIONS = [
 
 // 扩展信息
 export const EXTENSION_INFO = {
-    version: "v0.0.1",
+    version: `v${packageMetadata.version}`,
     author: "kidrue",
     description: "智能网页翻译助手，支持多种翻译引擎和划词翻译"
 }
