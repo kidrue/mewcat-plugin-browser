@@ -43,6 +43,15 @@ const createModel = (isOfficial: boolean): BaseModel => ({
     }
 })
 
+const createTokenPlanModel = (): BaseModel => ({
+    ...createModel(true),
+    type: AiModel_Platform_Enum.BAILIAN,
+    params: {
+        ...createModel(true).params,
+        officialEndpointId: "token-plan-cn"
+    }
+})
+
 let root: Root | undefined
 
 afterEach(async () => {
@@ -209,5 +218,80 @@ describe("model discovery field", () => {
         expect(document.body.textContent).toContain(
             "该接口不支持自动获取模型列表，已切换为手动填写"
         )
+    })
+
+    it("switches an official Token Plan endpoint to manual entry when discovery is unsupported", async () => {
+        vi.useFakeTimers()
+        mocks.discoverModels.mockRejectedValue(
+            new ModelDiscoveryError(
+                "DISCOVERY_UNSUPPORTED",
+                "当前 Token Plan 通道不支持自动获取模型列表，请手动填写模型名称"
+            )
+        )
+        const host = document.createElement("div")
+        document.body.append(host)
+        root = createRoot(host)
+        await act(async () =>
+            root?.render(
+                <ModelDiscoveryField
+                    model={createTokenPlanModel()}
+                    onChange={() => undefined}
+                />
+            )
+        )
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(400)
+        })
+
+        expect(mocks.discoverModels).toHaveBeenCalledWith(
+            expect.objectContaining({ officialEndpointId: "token-plan-cn" }),
+            {},
+            expect.any(AbortSignal)
+        )
+        expect(
+            document.querySelector(
+                'input[placeholder="请输入自定义接口的模型名称"]'
+            )
+        ).not.toBeNull()
+    })
+
+    it("rediscovers models when the selected official endpoint changes", async () => {
+        vi.useFakeTimers()
+        mocks.discoverModels.mockResolvedValue([])
+        const host = document.createElement("div")
+        document.body.append(host)
+        root = createRoot(host)
+        const model = createTokenPlanModel()
+        await act(async () =>
+            root?.render(
+                <ModelDiscoveryField model={model} onChange={() => undefined} />
+            )
+        )
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(400)
+        })
+
+        const changedModel: BaseModel = {
+            ...model,
+            params: { ...model.params, officialEndpointId: "token-plan-intl" }
+        }
+        await act(async () =>
+            root?.render(
+                <ModelDiscoveryField
+                    model={changedModel}
+                    onChange={() => undefined}
+                />
+            )
+        )
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(400)
+        })
+
+        expect(mocks.discoverModels).toHaveBeenLastCalledWith(
+            expect.objectContaining({ officialEndpointId: "token-plan-intl" }),
+            {},
+            expect.any(AbortSignal)
+        )
+        expect(mocks.discoverModels).toHaveBeenCalledTimes(2)
     })
 })

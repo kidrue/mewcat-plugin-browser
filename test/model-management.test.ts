@@ -308,6 +308,92 @@ describe("model discovery metadata", () => {
             )
         )
     })
+
+    it("does not return public catalog candidates when Token Plan discovery is unsupported", async () => {
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-cn"
+                },
+                {
+                    listOpenAiModels: async () => {
+                        throw { status: 404 }
+                    },
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).rejects.toEqual(
+            new ModelDiscoveryError(
+                "DISCOVERY_UNSUPPORTED",
+                "当前 Token Plan 通道不支持自动获取模型列表，请手动填写模型名称"
+            )
+        )
+    })
+
+    it("passes the selected Token Plan endpoint ID to remote discovery without adding catalog models", async () => {
+        const listOpenAiModels = async (options: {
+            apiKey: string
+            baseURL: string
+            officialEndpointId?: string
+        }) => {
+            expect(options).toMatchObject({
+                officialEndpointId: "token-plan-intl",
+                baseURL:
+                    "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/"
+            })
+            return [{ id: "token-model", name: "Token model" }]
+        }
+
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-intl"
+                },
+                {
+                    listOpenAiModels,
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).resolves.toEqual([
+            {
+                id: "token-model",
+                name: "Token model",
+                availability: "verified",
+                vision: "unknown"
+            }
+        ])
+    })
+
+    it("reports Token Plan authentication failures without falling back to catalog", async () => {
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-cn"
+                },
+                {
+                    listOpenAiModels: async () => {
+                        throw { response: { status: 401 } }
+                    },
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).rejects.toMatchObject({ code: "AUTHENTICATION_FAILED" })
+    })
 })
 
 describe("legacy model migration", () => {

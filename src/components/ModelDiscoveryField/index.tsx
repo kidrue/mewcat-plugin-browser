@@ -177,7 +177,6 @@ export function ModelDiscoveryField({
                             : "无法获取模型列表"
                     setErrorMessage(message)
                     if (
-                        !isOfficial &&
                         error instanceof ModelDiscoveryError &&
                         error.code === "DISCOVERY_UNSUPPORTED"
                     ) {
@@ -200,6 +199,7 @@ export function ModelDiscoveryField({
         baseUrl,
         definition.discovery,
         isOfficial,
+        model.params.officialEndpointId,
         model.type,
         refreshVersion
     ])
