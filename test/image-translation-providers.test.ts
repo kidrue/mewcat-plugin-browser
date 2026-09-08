@@ -80,6 +80,7 @@ describe("vision model gateway client", () => {
         ["AUTHENTICATION_FAILED", "AUTHENTICATION_FAILED"],
         ["RATE_LIMITED", "RATE_LIMITED"],
         ["TIMEOUT_OR_ABORTED", "REQUEST_TIMEOUT"],
+        ["INVALID_CONFIGURATION", "MODEL_UNAVAILABLE"],
         ["NETWORK_FAILURE", "PROVIDER_FAILURE"]
     ] as const)("maps gateway error %s to %s", async (gatewayCode, code) => {
         await expect(

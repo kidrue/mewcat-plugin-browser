@@ -84,6 +84,28 @@ describe("background model gateway", () => {
         })
     })
 
+    it("routes Bailian generation through the selected Token Plan endpoint", async () => {
+        let received: Record<string, unknown> | undefined
+        await handleModelGatewayRequest(
+            generateRequest(
+                createModel(AiModel_Platform_Enum.BAILIAN, {
+                    officialEndpointId: "token-plan-intl"
+                })
+            ),
+            {
+                generateText: async options => {
+                    received = options
+                    return { text: "ok" }
+                }
+            }
+        )
+
+        expect(received).toMatchObject({
+            baseURL:
+                "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/"
+        })
+    })
+
     it("passes provider-specific thinking controls without rebuilding request bodies", async () => {
         let received: Record<string, unknown> | undefined
 
@@ -142,6 +164,63 @@ describe("background model gateway", () => {
                 status: 401
             }
         } satisfies ModelGatewayResponse)
+    })
+
+    it.each([
+        [
+            401,
+            "AUTHENTICATION_FAILED",
+            "Token Plan 认证失败，请检查当前区域的 sk-sp- 专属 API Key"
+        ],
+        [
+            404,
+            "MODEL_NOT_FOUND",
+            "模型不在当前 Token Plan 套餐或地区支持范围内"
+        ],
+        [429, "RATE_LIMITED", "请求过于频繁或 Token Plan Credits 已用尽"]
+    ] as const)(
+        "adds Token Plan context when the provider returns %i",
+        async (status, code, message) => {
+            const providerError = Object.assign(new Error(`HTTP ${status}`), {
+                response: new Response(null, { status })
+            })
+
+            const response = await handleModelGatewayRequest(
+                generateRequest(
+                    createModel(AiModel_Platform_Enum.BAILIAN, {
+                        officialEndpointId: "token-plan-intl"
+                    })
+                ),
+                {
+                    generateText: async () => {
+                        throw providerError
+                    }
+                }
+            )
+
+            expect(response).toEqual({
+                success: false,
+                error: { code, message, status }
+            })
+        }
+    )
+
+    it("reports an unknown endpoint as invalid configuration", async () => {
+        const response = await handleModelGatewayRequest(
+            generateRequest(
+                createModel(AiModel_Platform_Enum.BAILIAN, {
+                    officialEndpointId: "not-a-real-endpoint"
+                })
+            )
+        )
+
+        expect(response).toEqual({
+            success: false,
+            error: {
+                code: "INVALID_CONFIGURATION",
+                message: "Unknown official endpoint: not-a-real-endpoint"
+            }
+        })
     })
 
     it("uses the DeepL translation endpoint without pretending it is an LLM", async () => {
@@ -230,6 +309,56 @@ describe("background model gateway", () => {
                 ]
             }
         ])
+    })
+
+    it("routes visual Bailian requests through the selected Token Plan endpoint", async () => {
+        let received: Record<string, unknown> | undefined
+        await handleModelGatewayRequest(
+            {
+                type: "generate-vision",
+                model: createModel(AiModel_Platform_Enum.BAILIAN, {
+                    officialEndpointId: "token-plan-intl"
+                }),
+                image: {
+                    mimeType: "image/webp",
+                    base64: "encoded-image",
+                    targetLanguage: "zh-CN"
+                }
+            },
+            {
+                generateObject: async options => {
+                    received = options
+                    return { object: { blocks: [] } }
+                }
+            }
+        )
+
+        expect(received).toMatchObject({
+            baseURL:
+                "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/"
+        })
+    })
+
+    it("returns invalid configuration for an unknown visual endpoint", async () => {
+        const response = await handleModelGatewayRequest({
+            type: "generate-vision",
+            model: createModel(AiModel_Platform_Enum.BAILIAN, {
+                officialEndpointId: "not-a-real-endpoint"
+            }),
+            image: {
+                mimeType: "image/webp",
+                base64: "encoded-image",
+                targetLanguage: "zh-CN"
+            }
+        })
+
+        expect(response).toEqual({
+            success: false,
+            error: {
+                code: "INVALID_CONFIGURATION",
+                message: "Unknown official endpoint: not-a-real-endpoint"
+            }
+        })
     })
 
     it("falls back to xsAI generateText when a compatible endpoint rejects structured output", async () => {

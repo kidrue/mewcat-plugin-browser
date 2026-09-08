@@ -12,8 +12,12 @@ import type {
     ModelGatewayResponse,
     ModelGatewayTranslateEngineRequest
 } from "@/messaging/modelGatewayContracts"
-import { getGenerationBaseUrl } from "@/model-management/providers"
-import { AiModel_Platform_Enum } from "@/types/aiModel"
+import {
+    getGenerationBaseUrl,
+    isTokenPlanEndpoint,
+    ProviderConfigurationError
+} from "@/model-management/providers"
+import { AiModel_Platform_Enum, type BaseModel } from "@/types/aiModel"
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
 const activeControllers = new Set<AbortController>()
@@ -93,22 +97,45 @@ const failure = (
     error: { code, message, ...(status === undefined ? {} : { status }) }
 })
 
+const getEndpointSelection = (model: BaseModel) => ({
+    provider: model.type,
+    isOfficial: model.params.isOfficial !== false,
+    customBaseUrl: model.params.baseUrl,
+    officialEndpointId: model.params.officialEndpointId
+})
+
 const mapGatewayError = (
     error: unknown,
-    controller: AbortController
+    controller: AbortController,
+    model: BaseModel
 ): ModelGatewayFailureResponse => {
+    if (error instanceof ProviderConfigurationError) {
+        return failure("INVALID_CONFIGURATION", error.message)
+    }
     const status = getHttpStatus(error)
+    const tokenPlan = isTokenPlanEndpoint(getEndpointSelection(model))
     if (status === 401 || status === 403) {
         return failure(
             "AUTHENTICATION_FAILED",
-            "模型认证失败，请检查 API Key",
+            tokenPlan
+                ? "Token Plan 认证失败，请检查当前区域的 sk-sp- 专属 API Key"
+                : "模型认证失败，请检查 API Key",
             status
         )
     }
     if (status === 404) {
         return failure(
             "MODEL_NOT_FOUND",
-            "所选模型不存在或当前账号无权访问",
+            tokenPlan
+                ? "模型不在当前 Token Plan 套餐或地区支持范围内"
+                : "所选模型不存在或当前账号无权访问",
+            status
+        )
+    }
+    if (status === 429 && tokenPlan) {
+        return failure(
+            "RATE_LIMITED",
+            "请求过于频繁或 Token Plan Credits 已用尽",
             status
         )
     }
@@ -145,12 +172,9 @@ async function handleGenerate(
         const text = (
             await runGenerateText({
                 apiKey: request.model.params.apiKey,
-                baseURL: getGenerationBaseUrl({
-                    provider: request.model.type,
-                    isOfficial: request.model.params.isOfficial !== false,
-                    customBaseUrl: request.model.params.baseUrl,
-                    officialEndpointId: request.model.params.officialEndpointId
-                }),
+                baseURL: getGenerationBaseUrl(
+                    getEndpointSelection(request.model)
+                ),
                 model: request.model.params.modelName,
                 messages: request.messages,
                 abortSignal: controller.signal,
@@ -165,7 +189,7 @@ async function handleGenerate(
             ? { success: true, text }
             : failure("INVALID_RESPONSE", "模型未返回有效文本")
     } catch (error) {
-        return mapGatewayError(error, controller)
+        return mapGatewayError(error, controller, request.model)
     } finally {
         cleanupController(controller, timeoutId)
     }
@@ -196,19 +220,15 @@ async function handleGenerateVision(
     const { controller, timeoutId } = createController(
         request.timeoutMs ?? 90_000
     )
-    const commonOptions = {
-        apiKey: request.model.params.apiKey,
-        baseURL: getGenerationBaseUrl({
-            provider: request.model.type,
-            isOfficial: request.model.params.isOfficial !== false,
-            customBaseUrl: request.model.params.baseUrl,
-            officialEndpointId: request.model.params.officialEndpointId
-        }),
-        model: request.model.params.modelName,
-        messages: getVisionMessages(request),
-        abortSignal: controller.signal
-    }
+    let commonOptions: Record<string, unknown> | undefined
     try {
+        commonOptions = {
+            apiKey: request.model.params.apiKey,
+            baseURL: getGenerationBaseUrl(getEndpointSelection(request.model)),
+            model: request.model.params.modelName,
+            messages: getVisionMessages(request),
+            abortSignal: controller.signal
+        }
         const runGenerateObject: GenerateObjectLike =
             dependencies.generateObject ??
             (options =>
@@ -236,7 +256,9 @@ async function handleGenerateVision(
                         generateText(
                             options as Parameters<typeof generateText>[0]
                         ) as Promise<{ text?: string }>)
-                const text = (await runGenerateText(commonOptions)).text?.trim()
+                const text = (
+                    await runGenerateText(commonOptions ?? {})
+                ).text?.trim()
                 return text
                     ? { success: true, text }
                     : failure(
@@ -244,10 +266,10 @@ async function handleGenerateVision(
                           "视觉模型未返回有效结构化结果"
                       )
             } catch (fallbackError) {
-                return mapGatewayError(fallbackError, controller)
+                return mapGatewayError(fallbackError, controller, request.model)
             }
         }
-        return mapGatewayError(error, controller)
+        return mapGatewayError(error, controller, request.model)
     } finally {
         cleanupController(controller, timeoutId)
     }
@@ -274,19 +296,15 @@ async function handleTranslationEngine(
     const { controller, timeoutId } = createController(request.timeoutMs)
     const fetchImpl = dependencies.fetch ?? fetch
     const isDeepLX = request.model.type === AiModel_Platform_Enum.DEEPLX
-    const baseUrl = getGenerationBaseUrl({
-        provider: request.model.type,
-        isOfficial: request.model.params.isOfficial !== false,
-        customBaseUrl: request.model.params.baseUrl,
-        officialEndpointId: request.model.params.officialEndpointId
-    }).replace(/\/$/, "")
-    const url = isDeepLX
-        ? baseUrl.includes("/translate")
-            ? baseUrl
-            : `${baseUrl}/${request.model.params.apiKey}/translate`
-        : `${baseUrl}/translate`
-
     try {
+        const baseUrl = getGenerationBaseUrl(
+            getEndpointSelection(request.model)
+        ).replace(/\/$/, "")
+        const url = isDeepLX
+            ? baseUrl.includes("/translate")
+                ? baseUrl
+                : `${baseUrl}/${request.model.params.apiKey}/translate`
+            : `${baseUrl}/translate`
         const response = await fetchImpl(url, {
             method: "POST",
             headers: {
@@ -339,7 +357,7 @@ async function handleTranslationEngine(
             ? { success: true, text }
             : failure("INVALID_RESPONSE", "翻译引擎未返回有效文本")
     } catch (error) {
-        return mapGatewayError(error, controller)
+        return mapGatewayError(error, controller, request.model)
     } finally {
         cleanupController(controller, timeoutId)
     }

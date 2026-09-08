@@ -32,6 +32,12 @@ const mapGatewayFailure = (
                 "视觉模型请求过于频繁，请稍后重试",
                 response.error.status
             )
+        case "INVALID_CONFIGURATION":
+            return new VisionProviderError(
+                "MODEL_UNAVAILABLE",
+                "视觉模型当前不可用，请检查模型配置",
+                response.error.status
+            )
         case "TIMEOUT_OR_ABORTED":
             return new VisionProviderError(
                 "REQUEST_TIMEOUT",
