@@ -16,20 +16,36 @@ export type VisionGatewaySender = (
 const sendToModelGateway: VisionGatewaySender = request =>
     handleModelGatewayRequest(request)
 
+const hasTokenPlanContext = (message: string): boolean =>
+    message.includes("Token Plan")
+
 const mapGatewayFailure = (
     response: Extract<ModelGatewayResponse, { success: false }>
 ): VisionProviderError => {
+    const tokenPlan = hasTokenPlanContext(response.error.message)
     switch (response.error.code) {
         case "AUTHENTICATION_FAILED":
             return new VisionProviderError(
                 "AUTHENTICATION_FAILED",
-                "视觉模型认证失败，请检查 API Key",
+                tokenPlan
+                    ? "Token Plan 视觉模型认证失败，请检查当前区域的 sk-sp- 专属 API Key"
+                    : "视觉模型认证失败，请检查 API Key",
+                response.error.status
+            )
+        case "MODEL_NOT_FOUND":
+            return new VisionProviderError(
+                "MODEL_NOT_FOUND",
+                tokenPlan
+                    ? "模型不在当前 Token Plan 套餐或地区支持范围内"
+                    : "所选视觉模型不存在或当前账号无权访问",
                 response.error.status
             )
         case "RATE_LIMITED":
             return new VisionProviderError(
                 "RATE_LIMITED",
-                "视觉模型请求过于频繁，请稍后重试",
+                tokenPlan
+                    ? "Token Plan 视觉模型请求过于频繁或 Credits 已用尽"
+                    : "视觉模型请求过于频繁，请稍后重试",
                 response.error.status
             )
         case "INVALID_CONFIGURATION":

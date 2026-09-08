@@ -79,6 +79,7 @@ describe("vision model gateway client", () => {
     it.each([
         ["AUTHENTICATION_FAILED", "AUTHENTICATION_FAILED"],
         ["RATE_LIMITED", "RATE_LIMITED"],
+        ["MODEL_NOT_FOUND", "MODEL_NOT_FOUND"],
         ["TIMEOUT_OR_ABORTED", "REQUEST_TIMEOUT"],
         ["INVALID_CONFIGURATION", "MODEL_UNAVAILABLE"],
         ["NETWORK_FAILURE", "PROVIDER_FAILURE"]
@@ -90,6 +91,40 @@ describe("vision model gateway client", () => {
             }))
         ).rejects.toMatchObject({ code })
     })
+
+    it.each([
+        [
+            "AUTHENTICATION_FAILED",
+            "Token Plan 认证失败，请检查当前区域的 sk-sp- 专属 API Key",
+            "AUTHENTICATION_FAILED",
+            "Token Plan 视觉模型认证失败，请检查当前区域的 sk-sp- 专属 API Key"
+        ],
+        [
+            "MODEL_NOT_FOUND",
+            "模型不在当前 Token Plan 套餐或地区支持范围内",
+            "MODEL_NOT_FOUND",
+            "模型不在当前 Token Plan 套餐或地区支持范围内"
+        ],
+        [
+            "RATE_LIMITED",
+            "请求过于频繁或 Token Plan Credits 已用尽",
+            "RATE_LIMITED",
+            "Token Plan 视觉模型请求过于频繁或 Credits 已用尽"
+        ]
+    ] as const)(
+        "keeps Token Plan context for %s without exposing a supplied API key",
+        async (gatewayCode, gatewayMessage, code, message) => {
+            await expect(
+                translateWithVisionModel(image, model, async () => ({
+                    success: false,
+                    error: {
+                        code: gatewayCode,
+                        message: `${gatewayMessage} secret-api-key`
+                    }
+                }))
+            ).rejects.toMatchObject({ code, message })
+        }
+    )
 
     it("keeps malformed provider output behind the stable vision error", async () => {
         await expect(
