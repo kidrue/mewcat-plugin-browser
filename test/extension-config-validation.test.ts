@@ -19,6 +19,38 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it("keeps legacy models without an official endpoint ID valid", () => {
+        const repaired = repairExtensionConfig(
+            {
+                ...defaultExtensionConfig,
+                aiModelList: [validModel]
+            },
+            defaultExtensionConfig
+        )
+
+        expect(repaired.aiModelList).toEqual([validModel])
+    })
+
+    it("preserves a stored official endpoint ID during repair", () => {
+        const modelWithEndpoint = {
+            ...validModel,
+            type: AiModel_Platform_Enum.BAILIAN,
+            params: {
+                ...validModel.params,
+                officialEndpointId: "token-plan-intl"
+            }
+        }
+        const repaired = repairExtensionConfig(
+            {
+                ...defaultExtensionConfig,
+                aiModelList: [modelWithEndpoint]
+            },
+            defaultExtensionConfig
+        )
+
+        expect(repaired.aiModelList).toEqual([modelWithEndpoint])
+    })
+
     it("repairs invalid fields without discarding valid user settings", () => {
         const repaired = repairExtensionConfig(
             {

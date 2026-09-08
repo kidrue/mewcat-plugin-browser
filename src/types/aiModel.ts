@@ -30,6 +30,8 @@ export interface BaseModel {
         modelName: string
         /** 是否使用官方默认地址（true=官方且不可编辑 baseUrl，false=自定义可编辑 baseUrl） */
         isOfficial?: boolean
+        /** 官方端点档案 ID（未设置时使用平台默认官方地址） */
+        officialEndpointId?: string
         /** 基础URL（可选） */
         baseUrl?: string
         /** API密钥（必传） */

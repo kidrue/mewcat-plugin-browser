@@ -11,22 +11,85 @@ import {
     parseGeminiModelResponse
 } from "../src/model-management/discovery"
 import {
+    canFallbackToCatalog,
     getGenerationBaseUrl,
-    normalizeBaseUrl
+    normalizeBaseUrl,
+    ProviderConfigurationError
 } from "../src/model-management/providers"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 
 describe("model provider configuration", () => {
     it("uses the Gemini OpenAI-compatible endpoint for generation", () => {
-        expect(getGenerationBaseUrl(AiModel_Platform_Enum.GEMINI, true)).toBe(
-            "https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.GEMINI,
+                isOfficial: true
+            })
+        ).toBe("https://generativelanguage.googleapis.com/v1beta/openai/")
     })
 
     it("normalizes custom base URLs to one trailing slash", () => {
         expect(normalizeBaseUrl(" https://proxy.example.test/v1/// ")).toBe(
             "https://proxy.example.test/v1/"
         )
+    })
+
+    it("resolves Bailian Token Plan China and international endpoints", () => {
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "token-plan-cn"
+            })
+        ).toBe(
+            "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/"
+        )
+
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "token-plan-intl"
+            })
+        ).toBe(
+            "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/"
+        )
+    })
+
+    it("keeps legacy official providers and custom URLs compatible", () => {
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.OPENAI,
+                isOfficial: true
+            })
+        ).toBe("https://api.openai.com/v1/")
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: false,
+                customBaseUrl: " https://proxy.test/v1/// "
+            })
+        ).toBe("https://proxy.test/v1/")
+    })
+
+    it("rejects an unknown official endpoint instead of silently using pay-as-you-go", () => {
+        expect(() =>
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "wrong-channel"
+            })
+        ).toThrow(ProviderConfigurationError)
+    })
+
+    it("disables public catalog fallback for Token Plan", () => {
+        expect(
+            canFallbackToCatalog({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "token-plan-cn"
+            })
+        ).toBe(false)
     })
 })
 
