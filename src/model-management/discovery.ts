@@ -270,6 +270,12 @@ export async function discoverModels(
                       officialEndpointId: connection.officialEndpointId,
                       abortSignal: signal
                   })
+        if (!Array.isArray(remoteModels)) {
+            throw new ModelDiscoveryError(
+                "NETWORK_FAILURE",
+                "模型服务返回的模型列表格式无效"
+            )
+        }
         return mergeDiscoveredModels(remoteModels, await catalogPromise)
     } catch (error) {
         const status = getErrorStatus(error)

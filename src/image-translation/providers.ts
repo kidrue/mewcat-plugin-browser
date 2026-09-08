@@ -3,6 +3,7 @@ import type {
     ModelGatewayGenerateVisionRequest,
     ModelGatewayResponse
 } from "@/messaging/modelGatewayContracts"
+import { isTokenPlanEndpoint } from "@/model-management/providers"
 import type { BaseModel } from "@/types/aiModel"
 
 import { VisionProviderError } from "./errors"
@@ -16,13 +17,24 @@ export type VisionGatewaySender = (
 const sendToModelGateway: VisionGatewaySender = request =>
     handleModelGatewayRequest(request)
 
-const hasTokenPlanContext = (message: string): boolean =>
-    message.includes("Token Plan")
+const isTokenPlanModel = (model: BaseModel): boolean => {
+    try {
+        return isTokenPlanEndpoint({
+            provider: model.type,
+            isOfficial: model.params.isOfficial !== false,
+            customBaseUrl: model.params.baseUrl,
+            officialEndpointId: model.params.officialEndpointId
+        })
+    } catch {
+        return false
+    }
+}
 
 const mapGatewayFailure = (
-    response: Extract<ModelGatewayResponse, { success: false }>
+    response: Extract<ModelGatewayResponse, { success: false }>,
+    model: BaseModel
 ): VisionProviderError => {
-    const tokenPlan = hasTokenPlanContext(response.error.message)
+    const tokenPlan = isTokenPlanModel(model)
     switch (response.error.code) {
         case "AUTHENTICATION_FAILED":
             return new VisionProviderError(
@@ -90,7 +102,7 @@ export async function translateWithVisionModel(
         }
     })
     if (response.success === false) {
-        throw mapGatewayFailure(response)
+        throw mapGatewayFailure(response, model)
     }
     return parseVisionResponse(response.text, image)
 }

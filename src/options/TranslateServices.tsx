@@ -383,13 +383,30 @@ export const TranslateServices: React.FunctionComponent = () => {
         m => m.type === currentModelData?.type
     )
     const isOfficial = currentModelData?.params?.isOfficial !== false
-    const officialBaseUrl = currentModelData
-        ? getGenerationBaseUrl({
-              provider: currentModelData.type,
-              isOfficial: true,
-              officialEndpointId: currentModelData.params.officialEndpointId
-          })
-        : ""
+    const officialBaseUrlState = (() => {
+        if (!currentModelData || !isOfficial) {
+            return { baseUrl: "", configurationError: undefined }
+        }
+
+        try {
+            return {
+                baseUrl: getGenerationBaseUrl({
+                    provider: currentModelData.type,
+                    isOfficial: true,
+                    officialEndpointId:
+                        currentModelData.params.officialEndpointId
+                }),
+                configurationError: undefined
+            }
+        } catch {
+            return {
+                baseUrl: "",
+                configurationError:
+                    "当前官方通道配置无效，请重新选择官方通道或切换为自定义地址"
+            }
+        }
+    })()
+    const officialBaseUrl = officialBaseUrlState.baseUrl
     const isTokenPlan = currentModelData
         ? canExplicitlyConfigureVision(currentModelData) && isOfficial
         : false
@@ -923,7 +940,8 @@ export const TranslateServices: React.FunctionComponent = () => {
                                                 }
                                                 helperText={
                                                     isOfficial
-                                                        ? "已选择官方模型，使用平台默认地址"
+                                                        ? (officialBaseUrlState.configurationError ??
+                                                          "已选择官方模型，使用平台默认地址")
                                                         : "自定义请求地址生效，请确保地址可用"
                                                 }
                                             />

@@ -22,6 +22,12 @@ const TokenPlanNote = styled.div`
     }
 `
 
+const ConfigurationError = styled.div`
+    color: var(--error);
+    font-size: var(--font-size-xs);
+    line-height: var(--line-height-normal);
+`
+
 interface BailianOfficialEndpointFieldsProps {
     model: BaseModel
     onEndpointChange: (officialEndpointId: string) => void
@@ -29,14 +35,19 @@ interface BailianOfficialEndpointFieldsProps {
 
 export function canExplicitlyConfigureVision(model: BaseModel): boolean {
     const isOfficial = model.params.isOfficial !== false
-    return (
-        !isOfficial ||
-        isTokenPlanEndpoint({
+    if (!isOfficial) {
+        return true
+    }
+
+    try {
+        return isTokenPlanEndpoint({
             provider: model.type,
             isOfficial,
             officialEndpointId: model.params.officialEndpointId
         })
-    )
+    } catch {
+        return false
+    }
 }
 
 export function BailianOfficialEndpointFields({
@@ -50,11 +61,9 @@ export function BailianOfficialEndpointFields({
 
     const options = getOfficialEndpointOptions(AiModel_Platform_Enum.BAILIAN)
     const endpointId = model.params.officialEndpointId ?? "pay-as-you-go-cn"
-    const isTokenPlan = isTokenPlanEndpoint({
-        provider: model.type,
-        isOfficial,
-        officialEndpointId: model.params.officialEndpointId
-    })
+    const selectedEndpoint = options.find(option => option.id === endpointId)
+    const hasInvalidEndpoint = !selectedEndpoint
+    const isTokenPlan = selectedEndpoint?.mode === "token-plan"
 
     return (
         <>
@@ -74,10 +83,17 @@ export function BailianOfficialEndpointFields({
                     placeholder=""
                 />
             </FormRow>
+            {hasInvalidEndpoint && (
+                <ConfigurationError role="alert">
+                    当前官方通道配置无效，请重新选择官方通道或切换为自定义地址。
+                </ConfigurationError>
+            )}
             {isTokenPlan && (
                 <TokenPlanNote role="note">
-                    Token Plan 仅适用于阿里云公布的使用范围。请使用当前地区的
-                    sk-sp- 专属 API Key；切换通道后请重新检测连接。{" "}
+                    Token Plan
+                    仅适用于阿里云公布的使用范围。浏览器翻译扩展可能属于不支持的自定义应用程序，存在订阅被暂停或
+                    API Key 被封禁的风险。请使用当前地区的 sk-sp- 专属 API
+                    Key；切换通道后请重新检测连接。{" "}
                     <a
                         href="https://help.aliyun.com/zh/model-studio/more-tools"
                         target="_blank"

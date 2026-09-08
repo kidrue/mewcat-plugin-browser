@@ -335,6 +335,45 @@ describe("model discovery metadata", () => {
         )
     })
 
+    it("rejects a malformed successful Token Plan discovery response without returning catalog models", async () => {
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-cn"
+                },
+                {
+                    listOpenAiModels: async () =>
+                        null as unknown as Array<{ id: string }> ,
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).rejects.toMatchObject({ code: "NETWORK_FAILURE" })
+    })
+
+    it("keeps an empty successful Token Plan discovery response empty", async () => {
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-intl"
+                },
+                {
+                    listOpenAiModels: async () => [],
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).resolves.toEqual([])
+    })
+
     it("passes the selected Token Plan endpoint ID to remote discovery without adding catalog models", async () => {
         const listOpenAiModels = async (options: {
             apiKey: string
