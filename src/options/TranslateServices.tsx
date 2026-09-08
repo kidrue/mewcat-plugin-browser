@@ -380,7 +380,11 @@ export const TranslateServices: React.FunctionComponent = () => {
     )
     const isOfficial = currentModelData?.params?.isOfficial !== false
     const officialBaseUrl = currentModelData
-        ? getGenerationBaseUrl(currentModelData.type, true)
+        ? getGenerationBaseUrl({
+              provider: currentModelData.type,
+              isOfficial: true,
+              officialEndpointId: currentModelData.params.officialEndpointId
+          })
         : ""
 
     const handleTestModel = useCallback(() => {

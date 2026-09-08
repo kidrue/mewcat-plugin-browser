@@ -13,6 +13,8 @@ import {
 import {
     canFallbackToCatalog,
     getGenerationBaseUrl,
+    getOfficialEndpointOptions,
+    isTokenPlanEndpoint,
     normalizeBaseUrl,
     ProviderConfigurationError
 } from "../src/model-management/providers"
@@ -56,6 +58,64 @@ describe("model provider configuration", () => {
         )
     })
 
+    it("exposes Bailian official endpoint options", () => {
+        expect(getOfficialEndpointOptions(AiModel_Platform_Enum.BAILIAN)).toEqual(
+            [
+                {
+                    id: "pay-as-you-go-cn",
+                    label: "按量付费（中国站）",
+                    baseUrl:
+                        "https://dashscope.aliyuncs.com/compatible-mode/v1/",
+                    mode: "pay-as-you-go",
+                    catalogFallback: "catalog"
+                },
+                {
+                    id: "token-plan-cn",
+                    label: "Token Plan（中国站·北京）",
+                    baseUrl:
+                        "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/",
+                    mode: "token-plan",
+                    catalogFallback: "manual"
+                },
+                {
+                    id: "token-plan-intl",
+                    label: "Token Plan（国际站·新加坡）",
+                    baseUrl:
+                        "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/",
+                    mode: "token-plan",
+                    catalogFallback: "manual"
+                }
+            ]
+        )
+    })
+
+    it("resolves the explicit Bailian pay-as-you-go endpoint", () => {
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "pay-as-you-go-cn"
+            })
+        ).toBe("https://dashscope.aliyuncs.com/compatible-mode/v1/")
+    })
+
+    it("identifies Token Plan endpoints", () => {
+        expect(
+            isTokenPlanEndpoint({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "token-plan-cn"
+            })
+        ).toBe(true)
+        expect(
+            isTokenPlanEndpoint({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "pay-as-you-go-cn"
+            })
+        ).toBe(false)
+    })
+
     it("keeps legacy official providers and custom URLs compatible", () => {
         expect(
             getGenerationBaseUrl({
@@ -78,6 +138,16 @@ describe("model provider configuration", () => {
                 provider: AiModel_Platform_Enum.BAILIAN,
                 isOfficial: true,
                 officialEndpointId: "wrong-channel"
+            })
+        ).toThrow(ProviderConfigurationError)
+    })
+
+    it("rejects an empty official endpoint ID instead of treating it as legacy config", () => {
+        expect(() =>
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: ""
             })
         ).toThrow(ProviderConfigurationError)
     })

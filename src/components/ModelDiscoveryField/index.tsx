@@ -156,7 +156,8 @@ export function ModelDiscoveryField({
                     provider: model.type,
                     apiKey,
                     isOfficial,
-                    baseUrl
+                    baseUrl,
+                    officialEndpointId: model.params.officialEndpointId
                 },
                 {},
                 controller.signal

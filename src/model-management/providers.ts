@@ -165,7 +165,7 @@ export function getOfficialEndpointOptions(
 const getSelectedOfficialEndpoint = (
     selection: ProviderEndpointSelection
 ): OfficialEndpointDefinition | undefined => {
-    if (!selection.officialEndpointId) {
+    if (selection.officialEndpointId === undefined) {
         return undefined
     }
 

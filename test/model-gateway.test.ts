@@ -61,6 +61,29 @@ describe("background model gateway", () => {
         })
     })
 
+    it("uses the selected official Bailian endpoint through xsAI", async () => {
+        let received: Record<string, unknown> | undefined
+
+        await handleModelGatewayRequest(
+            generateRequest(
+                createModel(AiModel_Platform_Enum.BAILIAN, {
+                    officialEndpointId: "token-plan-cn"
+                })
+            ),
+            {
+                generateText: async options => {
+                    received = options
+                    return { text: "你好" }
+                }
+            }
+        )
+
+        expect(received).toMatchObject({
+            baseURL:
+                "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/"
+        })
+    })
+
     it("passes provider-specific thinking controls without rebuilding request bodies", async () => {
         let received: Record<string, unknown> | undefined
 

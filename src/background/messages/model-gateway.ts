@@ -145,11 +145,12 @@ async function handleGenerate(
         const text = (
             await runGenerateText({
                 apiKey: request.model.params.apiKey,
-                baseURL: getGenerationBaseUrl(
-                    request.model.type,
-                    request.model.params.isOfficial !== false,
-                    request.model.params.baseUrl
-                ),
+                baseURL: getGenerationBaseUrl({
+                    provider: request.model.type,
+                    isOfficial: request.model.params.isOfficial !== false,
+                    customBaseUrl: request.model.params.baseUrl,
+                    officialEndpointId: request.model.params.officialEndpointId
+                }),
                 model: request.model.params.modelName,
                 messages: request.messages,
                 abortSignal: controller.signal,
@@ -197,11 +198,12 @@ async function handleGenerateVision(
     )
     const commonOptions = {
         apiKey: request.model.params.apiKey,
-        baseURL: getGenerationBaseUrl(
-            request.model.type,
-            request.model.params.isOfficial !== false,
-            request.model.params.baseUrl
-        ),
+        baseURL: getGenerationBaseUrl({
+            provider: request.model.type,
+            isOfficial: request.model.params.isOfficial !== false,
+            customBaseUrl: request.model.params.baseUrl,
+            officialEndpointId: request.model.params.officialEndpointId
+        }),
         model: request.model.params.modelName,
         messages: getVisionMessages(request),
         abortSignal: controller.signal
@@ -272,11 +274,12 @@ async function handleTranslationEngine(
     const { controller, timeoutId } = createController(request.timeoutMs)
     const fetchImpl = dependencies.fetch ?? fetch
     const isDeepLX = request.model.type === AiModel_Platform_Enum.DEEPLX
-    const baseUrl = getGenerationBaseUrl(
-        request.model.type,
-        request.model.params.isOfficial !== false,
-        request.model.params.baseUrl
-    ).replace(/\/$/, "")
+    const baseUrl = getGenerationBaseUrl({
+        provider: request.model.type,
+        isOfficial: request.model.params.isOfficial !== false,
+        customBaseUrl: request.model.params.baseUrl,
+        officialEndpointId: request.model.params.officialEndpointId
+    }).replace(/\/$/, "")
     const url = isDeepLX
         ? baseUrl.includes("/translate")
             ? baseUrl

@@ -16,6 +16,7 @@ export interface ProviderConnection {
     apiKey: string
     isOfficial: boolean
     baseUrl?: string
+    officialEndpointId?: string
 }
 
 export type ModelDiscoveryErrorCode =
@@ -239,11 +240,12 @@ export async function discoverModels(
                 ? await listGeminiModels(connection.apiKey, signal, fetchImpl)
                 : await (dependencies.listOpenAiModels ?? listModels)({
                       apiKey: connection.apiKey,
-                      baseURL: getGenerationBaseUrl(
-                          connection.provider,
-                          connection.isOfficial,
-                          connection.baseUrl
-                      ),
+                      baseURL: getGenerationBaseUrl({
+                          provider: connection.provider,
+                          isOfficial: connection.isOfficial,
+                          customBaseUrl: connection.baseUrl,
+                          officialEndpointId: connection.officialEndpointId
+                      }),
                       abortSignal: signal
                   })
         return mergeDiscoveredModels(remoteModels, await catalogPromise)
