@@ -688,3 +688,16 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：消除设置页版本号与发布版本不一致的问题，使扩展产品版本只需在 `package.json` 中维护一次。
 
 **验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 197 项页面/图片/存储/版本测试）。
+
+---
+
+### 2026-09-08 — 支持阿里百炼 Token Plan
+
+**修改内容**：
+
+- `src/model-management/providers.ts`、`src/types/aiModel.ts`、`src/types/extensionConfigSchema.ts`：增加官方端点档案和存储字段，兼容按量付费、Token Plan 中国站/国际站及自定义地址
+- `src/model-management/discovery.ts`、`src/background/messages/model-gateway.ts`：统一按通道路由模型发现、文本和视觉请求，Token Plan 发现失败不回退按量付费公共目录
+- `src/options/BailianOfficialEndpointFields.tsx`、`src/options/TranslateServices.tsx`：增加官方通道选择、区域 URL 展示、Key 提示、视觉能力声明和使用范围提示
+- 相关测试：覆盖端点解析、配置兼容、模型发现、网关错误和设置页交互
+
+**原因**：阿里百炼 Token Plan 使用独立 API Key 和 Base URL，需要同时支持中国站与国际站，并避免与按量付费通道错配。
