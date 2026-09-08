@@ -8,8 +8,10 @@ import {
     getVisionPlatformSelection,
     isImageTranslationEnabled,
     isVisionCapableModel,
+    normalizeImageTranslationSelection,
     normalizeImageTranslationModelSelection
 } from "../src/utils/visionModels"
+import { defaultExtensionConfig } from "../src/state/constants"
 
 const createModel = (
     id: string,
@@ -36,6 +38,54 @@ const createModel = (
 })
 
 describe("vision model capabilities", () => {
+    it("clears image selection when its service is unavailable", () => {
+        const result = normalizeImageTranslationSelection({
+            ...defaultExtensionConfig,
+            currentModel: "text-service",
+            enableImageTranslateButton: true,
+            imageTranslationModelId: "disabled",
+            imageTranslationModelName: "qwen-vl-plus",
+            aiModelList: [
+                createModel(
+                    "disabled",
+                    AiModel_Platform_Enum.BAILIAN,
+                    "qwen-plus",
+                    { enabled: false }
+                )
+            ]
+        })
+
+        expect(result).toMatchObject({
+            imageTranslationModelId: "",
+            imageTranslationModelName: "",
+            enableImageTranslateButton: false,
+            currentModel: "text-service"
+        })
+        expect(result.aiModelList[0]?.params.modelName).toBe("qwen-plus")
+    })
+
+    it("clears image selection for a non-LLM service", () => {
+        const result = normalizeImageTranslationSelection({
+            ...defaultExtensionConfig,
+            enableImageTranslateButton: true,
+            imageTranslationModelId: "deepl-service",
+            imageTranslationModelName: "vision-model",
+            aiModelList: [
+                createModel(
+                    "deepl-service",
+                    AiModel_Platform_Enum.DEEPL,
+                    "deepl"
+                )
+            ]
+        })
+
+        expect(result).toMatchObject({
+            imageTranslationModelId: "",
+            imageTranslationModelName: "",
+            enableImageTranslateButton: false
+        })
+    })
+
     it("returns the persisted disable repair without changing text selection", () => {
         const config = {
             enableImageTranslateButton: true,

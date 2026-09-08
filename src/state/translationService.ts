@@ -3,6 +3,7 @@ import { migrateLegacyModel } from "@/model-management/catalog"
 import type { BaseModel } from "@/types"
 import type { ExtensionConfig } from "@/types/config"
 import { repairExtensionConfig } from "@/types/extensionConfigSchema"
+import { normalizeImageTranslationSelection } from "@/utils/visionModels"
 
 import { defaultExtensionConfig } from "./constants"
 
@@ -78,8 +79,12 @@ const normalizeStoredConfig = (
     config: unknown,
     defaults: ExtensionConfig
 ): ExtensionConfig =>
-    normalizeTranslationServiceSelection(
-        migrateTranslationServiceModels(repairExtensionConfig(config, defaults))
+    normalizeImageTranslationSelection(
+        normalizeTranslationServiceSelection(
+            migrateTranslationServiceModels(
+                repairExtensionConfig(config, defaults)
+            )
+        )
     )
 
 const configsEqual = (left: unknown, right: ExtensionConfig): boolean => {

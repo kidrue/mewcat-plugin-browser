@@ -1,5 +1,7 @@
 import { platformNameMap } from "../constants/translationServices"
+import { PROVIDER_REGISTRY } from "../model-management/providers"
 import type { AiModel_Platform_Enum, BaseModel } from "../types/aiModel"
+import type { ExtensionConfig } from "../types/config"
 
 export interface VisionPlatformOption {
     label: string
@@ -21,6 +23,36 @@ export function isVisionCapableModel(
     model: BaseModel | undefined | null
 ): boolean {
     return model?.capabilities?.vision === true
+}
+
+export function normalizeImageTranslationSelection(
+    config: ExtensionConfig
+): ExtensionConfig {
+    const imageTranslationModelId = config.imageTranslationModelId?.trim()
+    const service = config.aiModelList.find(
+        model => model.id === imageTranslationModelId
+    )
+    const isUsableService =
+        service?.enabled === true &&
+        service.params.apiKey.trim() !== "" &&
+        PROVIDER_REGISTRY[service.type]?.kind === "llm"
+
+    if (!service || !isUsableService) {
+        return {
+            ...config,
+            enableImageTranslateButton: false,
+            imageTranslationModelId: "",
+            imageTranslationModelName: ""
+        }
+    }
+
+    return {
+        ...config,
+        imageTranslationModelId,
+        imageTranslationModelName:
+            config.imageTranslationModelName?.trim() ||
+            service.params.modelName.trim()
+    }
 }
 
 const isUsableVisionModel = (model: BaseModel): boolean =>

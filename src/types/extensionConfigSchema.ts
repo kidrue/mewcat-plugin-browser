@@ -57,6 +57,7 @@ const extensionConfigShape = {
     enableContext: z.boolean().optional(),
     enableImageTranslateButton: z.boolean().optional(),
     imageTranslationModelId: z.string().optional(),
+    imageTranslationModelName: z.string().optional(),
     imageTranslateProvider: z.string().optional()
 } satisfies z.ZodRawShape
 
