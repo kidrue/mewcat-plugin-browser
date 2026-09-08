@@ -120,10 +120,7 @@ export const Image: React.FunctionComponent = () => {
             ),
         [config.imageTranslationModelName, models]
     )
-    const selectedModelName =
-        config.imageTranslationModelName?.trim() ||
-        selectedService?.params.modelName.trim() ||
-        ""
+    const selectedModelName = config.imageTranslationModelName?.trim() || ""
     const hasSelectedModel = Boolean(selectedService && selectedModelName)
     const selectedSelectionKey = selectedService
         ? `${selectedService.id}\u0000${selectedModelName}`

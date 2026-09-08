@@ -23,3 +23,8 @@
 
 - No hotlink files or unrelated source were changed.
 - The single failing test is an existing WXT test-environment alias issue, not a feature assertion failure.
+
+## Review follow-up
+
+- Reviewer identified that falling back to the text model name after a service switch could make an empty visual selection appear enabled, and that the old `capabilities.vision` repair guard rejected valid independent selections.
+- Fixed by requiring the persisted visual model name for UI enablement and validating image enablement against the selected usable LLM service plus non-empty visual model name.

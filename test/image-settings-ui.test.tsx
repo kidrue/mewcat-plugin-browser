@@ -119,7 +119,7 @@ function createModel(
 function createConfig(
     overrides: Partial<ExtensionConfig> = {}
 ): ExtensionConfig {
-    return {
+    const config = {
         isSelectedTranslate: true,
         targetLanguage: "zh-CN",
         detectedLanguage: "auto",
@@ -133,6 +133,13 @@ function createConfig(
         imageTranslationModelName: "",
         ...overrides
     }
+    if (!config.imageTranslationModelName && config.imageTranslationModelId) {
+        config.imageTranslationModelName =
+            config.aiModelList.find(
+                model => model.id === config.imageTranslationModelId
+            )?.params.modelName ?? ""
+    }
+    return config
 }
 
 function setUpDom() {
@@ -487,12 +494,12 @@ describe("image translation settings", () => {
 
         const modelSelector = rowByLabel("视觉模型").querySelector("select")
         expect(modelSelector).toBeInstanceOf(HTMLSelectElement)
-        expect(modelSelector!.value).toBe("")
+        expect(modelSelector!.value).toBe("gpt-5")
         expect(
             Array.from(modelSelector!.querySelectorAll("option")).map(option =>
                 option.getAttribute("value")
             )
-        ).toEqual([])
+        ).toEqual(["gpt-5"])
 
         await changeSelect(serviceSelector!, "openai-first")
 

@@ -28,6 +28,7 @@ export interface VisionServiceOption {
 export interface ImageTranslationEnableConfig {
     enableImageTranslateButton?: boolean
     imageTranslationModelId?: string
+    imageTranslationModelName?: string
     aiModelList?: BaseModel[]
 }
 
@@ -214,14 +215,20 @@ export function getVisionPlatformSelection(
 export function isImageTranslationEnabled({
     enableImageTranslateButton,
     imageTranslationModelId,
+    imageTranslationModelName,
     aiModelList = []
 }: ImageTranslationEnableConfig): boolean {
-    if (!enableImageTranslateButton || !imageTranslationModelId?.trim()) {
+    if (
+        !enableImageTranslateButton ||
+        !imageTranslationModelId?.trim() ||
+        !imageTranslationModelName?.trim()
+    ) {
         return false
     }
 
-    return getConfiguredVisionModelOptions(aiModelList).some(
-        option => option.value === imageTranslationModelId
+    return aiModelList.some(
+        model =>
+            model.id === imageTranslationModelId && isUsableVisionService(model)
     )
 }
 
