@@ -14,6 +14,7 @@ export const BaseModelSchema = z.object({
     params: z.object({
         modelName: z.string(),
         isOfficial: z.boolean().optional(),
+        officialEndpointId: z.string().optional(),
         baseUrl: z.string().optional(),
         endpoint: z.string().optional(),
         apiKey: z.string()

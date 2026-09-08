@@ -9,13 +9,19 @@ import {
     type DiscoveredModel,
     type RemoteModel
 } from "./catalog"
-import { getGenerationBaseUrl, PROVIDER_REGISTRY } from "./providers"
+import {
+    canFallbackToCatalog,
+    getGenerationBaseUrl,
+    isTokenPlanEndpoint,
+    PROVIDER_REGISTRY
+} from "./providers"
 
 export interface ProviderConnection {
     provider: AiModel_Platform_Enum
     apiKey: string
     isOfficial: boolean
     baseUrl?: string
+    officialEndpointId?: string
 }
 
 export type ModelDiscoveryErrorCode =
@@ -183,6 +189,7 @@ async function loadModelsDevCatalog(
 type ListOpenAiModels = (options: {
     apiKey: string
     baseURL: string
+    officialEndpointId?: string
     abortSignal?: AbortSignal
 }) => Promise<RemoteModel[]>
 
@@ -217,6 +224,19 @@ const listGeminiModels = async (
     return parseGeminiModelResponse(await response.json())
 }
 
+const getErrorStatus = (error: unknown): number | undefined => {
+    if (!isRecord(error)) {
+        return undefined
+    }
+    if (typeof error.status === "number") {
+        return error.status
+    }
+    if (isRecord(error.response) && typeof error.response.status === "number") {
+        return error.response.status
+    }
+    return undefined
+}
+
 export async function discoverModels(
     connection: ProviderConnection,
     dependencies: DiscoveryDependencies = {},
@@ -232,6 +252,13 @@ export async function discoverModels(
         dependencies.loadCatalog ??
         (() => loadModelsDevCatalog(connection.provider, fetchImpl))
     const catalogPromise = loadCatalog().catch(() => [] as CatalogModel[])
+    const selection = {
+        provider: connection.provider,
+        isOfficial: connection.isOfficial,
+        customBaseUrl: connection.baseUrl,
+        officialEndpointId: connection.officialEndpointId
+    }
+    const tokenPlan = isTokenPlanEndpoint(selection)
 
     try {
         const remoteModels =
@@ -239,24 +266,48 @@ export async function discoverModels(
                 ? await listGeminiModels(connection.apiKey, signal, fetchImpl)
                 : await (dependencies.listOpenAiModels ?? listModels)({
                       apiKey: connection.apiKey,
-                      baseURL: getGenerationBaseUrl(
-                          connection.provider,
-                          connection.isOfficial,
-                          connection.baseUrl
-                      ),
+                      baseURL: getGenerationBaseUrl(selection),
+                      officialEndpointId: connection.officialEndpointId,
                       abortSignal: signal
                   })
+        if (!Array.isArray(remoteModels)) {
+            throw new ModelDiscoveryError(
+                "NETWORK_FAILURE",
+                "模型服务返回的模型列表格式无效"
+            )
+        }
         return mergeDiscoveredModels(remoteModels, await catalogPromise)
     } catch (error) {
+        const status = getErrorStatus(error)
+        if (tokenPlan) {
+            if (status === 401 || status === 403) {
+                throw new ModelDiscoveryError(
+                    "AUTHENTICATION_FAILED",
+                    "Token Plan 认证失败，请检查当前区域的 sk-sp- 专属 API Key"
+                )
+            }
+            if (status === 404 || status === 405) {
+                throw new ModelDiscoveryError(
+                    "DISCOVERY_UNSUPPORTED",
+                    "当前 Token Plan 通道不支持自动获取模型列表，请手动填写模型名称"
+                )
+            }
+            throw new ModelDiscoveryError(
+                "NETWORK_FAILURE",
+                "无法获取 Token Plan 模型列表，请检查 API Key 和网络连接"
+            )
+        }
         if (!connection.isOfficial) {
             throw new ModelDiscoveryError(
                 "DISCOVERY_UNSUPPORTED",
                 "当前自定义接口不支持自动获取模型列表"
             )
         }
-        const catalog = await catalogPromise
-        if (catalog.length > 0) {
-            return mergeDiscoveredModels(null, catalog)
+        if (canFallbackToCatalog(selection)) {
+            const catalog = await catalogPromise
+            if (catalog.length > 0) {
+                return mergeDiscoveredModels(null, catalog)
+            }
         }
         if (error instanceof ModelDiscoveryError) {
             throw error

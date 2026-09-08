@@ -44,6 +44,7 @@ export type ModelGatewayRequest =
 
 export type ModelGatewayErrorCode =
     | "AUTHENTICATION_FAILED"
+    | "INVALID_CONFIGURATION"
     | "RATE_LIMITED"
     | "MODEL_NOT_FOUND"
     | "TIMEOUT_OR_ABORTED"

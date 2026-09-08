@@ -688,3 +688,35 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：消除设置页版本号与发布版本不一致的问题，使扩展产品版本只需在 `package.json` 中维护一次。
 
 **验证**：`pnpm check` 通过（typecheck、lint 0 error、format:check、hotlink-rules、cspell、Google、划词测试、26 项 Chrome Web Store 自动发布测试及 197 项页面/图片/存储/版本测试）。
+
+---
+
+### 2026-09-08 — 支持阿里百炼 Token Plan
+
+**修改内容**：
+
+- `src/model-management/providers.ts`、`src/types/aiModel.ts`、`src/types/extensionConfigSchema.ts`：增加官方端点档案和存储字段，兼容按量付费、Token Plan 中国站/国际站及自定义地址
+- `src/model-management/discovery.ts`、`src/background/messages/model-gateway.ts`：统一按通道路由模型发现、文本和视觉请求，Token Plan 发现失败不回退按量付费公共目录
+- `src/options/BailianOfficialEndpointFields.tsx`、`src/options/TranslateServices.tsx`：增加官方通道选择、区域 URL 展示、Key 提示、视觉能力声明和使用范围提示
+- 相关测试：覆盖端点解析、配置兼容、模型发现、网关错误和设置页交互
+
+**原因**：阿里百炼 Token Plan 使用独立 API Key 和 Base URL，需要同时支持中国站与国际站，并避免与按量付费通道错配。
+
+---
+
+### 2026-09-08 — 加固 Token Plan 发现与设置页恢复能力
+
+**修改内容**：
+
+- `src/model-management/discovery.ts`：远程模型发现结果在合并前校验为数组；Token Plan 收到缺失或畸形成功响应时作为失败处理，绝不展示按量付费公共目录；合法空列表保持为空
+- `src/options/BailianOfficialEndpointFields.tsx`、`src/options/TranslateServices.tsx`：未知官方通道不再导致设置页崩溃，改为显示安全配置错误并保留重新选择通道或切换自定义地址的能力；自定义模式忽略残留无效官方通道 ID
+- `src/image-translation/providers.ts`：视觉错误提示改为根据模型端点选择判断 Token Plan，不再相信服务端错误文案中的通道词；Token Plan 风险提示补充浏览器翻译扩展可能属于不支持的自定义应用、订阅暂停或 Key 封禁风险
+- `test/`：新增畸形发现响应、空列表、无效通道恢复、父级配置更新、地址切换与 Key/模型名保留、错误文案不可信等回归覆盖
+
+**原因**：避免异常服务端响应、旧配置残留或不可信错误文本导致 Token Plan 错误回退、设置页不可恢复或通道提示被误判。
+
+### 2026-09-09 — 合并百炼 Token Plan 支持到 main
+
+**修改内容**：将 `codex/bailian-token-plan` 分支合并到 `main`，包含官方通道选择、文本与视觉路由、严格模型发现和异常配置恢复。
+
+**原因**：让主工作目录包含已验证的 Token Plan 功能。合并后的 `pnpm check` 通过；原有未提交改动保留。

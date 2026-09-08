@@ -11,22 +11,155 @@ import {
     parseGeminiModelResponse
 } from "../src/model-management/discovery"
 import {
+    canFallbackToCatalog,
     getGenerationBaseUrl,
-    normalizeBaseUrl
+    getOfficialEndpointOptions,
+    isTokenPlanEndpoint,
+    normalizeBaseUrl,
+    ProviderConfigurationError
 } from "../src/model-management/providers"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 
 describe("model provider configuration", () => {
     it("uses the Gemini OpenAI-compatible endpoint for generation", () => {
-        expect(getGenerationBaseUrl(AiModel_Platform_Enum.GEMINI, true)).toBe(
-            "https://generativelanguage.googleapis.com/v1beta/openai/"
-        )
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.GEMINI,
+                isOfficial: true
+            })
+        ).toBe("https://generativelanguage.googleapis.com/v1beta/openai/")
     })
 
     it("normalizes custom base URLs to one trailing slash", () => {
         expect(normalizeBaseUrl(" https://proxy.example.test/v1/// ")).toBe(
             "https://proxy.example.test/v1/"
         )
+    })
+
+    it("resolves Bailian Token Plan China and international endpoints", () => {
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "token-plan-cn"
+            })
+        ).toBe(
+            "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/"
+        )
+
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "token-plan-intl"
+            })
+        ).toBe(
+            "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/"
+        )
+    })
+
+    it("exposes Bailian official endpoint options", () => {
+        expect(getOfficialEndpointOptions(AiModel_Platform_Enum.BAILIAN)).toEqual(
+            [
+                {
+                    id: "pay-as-you-go-cn",
+                    label: "按量付费（中国站）",
+                    baseUrl:
+                        "https://dashscope.aliyuncs.com/compatible-mode/v1/",
+                    mode: "pay-as-you-go",
+                    catalogFallback: "catalog"
+                },
+                {
+                    id: "token-plan-cn",
+                    label: "Token Plan（中国站·北京）",
+                    baseUrl:
+                        "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/",
+                    mode: "token-plan",
+                    catalogFallback: "manual"
+                },
+                {
+                    id: "token-plan-intl",
+                    label: "Token Plan（国际站·新加坡）",
+                    baseUrl:
+                        "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/",
+                    mode: "token-plan",
+                    catalogFallback: "manual"
+                }
+            ]
+        )
+    })
+
+    it("resolves the explicit Bailian pay-as-you-go endpoint", () => {
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "pay-as-you-go-cn"
+            })
+        ).toBe("https://dashscope.aliyuncs.com/compatible-mode/v1/")
+    })
+
+    it("identifies Token Plan endpoints", () => {
+        expect(
+            isTokenPlanEndpoint({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "token-plan-cn"
+            })
+        ).toBe(true)
+        expect(
+            isTokenPlanEndpoint({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "pay-as-you-go-cn"
+            })
+        ).toBe(false)
+    })
+
+    it("keeps legacy official providers and custom URLs compatible", () => {
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.OPENAI,
+                isOfficial: true
+            })
+        ).toBe("https://api.openai.com/v1/")
+        expect(
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: false,
+                customBaseUrl: " https://proxy.test/v1/// "
+            })
+        ).toBe("https://proxy.test/v1/")
+    })
+
+    it("rejects an unknown official endpoint instead of silently using pay-as-you-go", () => {
+        expect(() =>
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "wrong-channel"
+            })
+        ).toThrow(ProviderConfigurationError)
+    })
+
+    it("rejects an empty official endpoint ID instead of treating it as legacy config", () => {
+        expect(() =>
+            getGenerationBaseUrl({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: ""
+            })
+        ).toThrow(ProviderConfigurationError)
+    })
+
+    it("disables public catalog fallback for Token Plan", () => {
+        expect(
+            canFallbackToCatalog({
+                provider: AiModel_Platform_Enum.BAILIAN,
+                isOfficial: true,
+                officialEndpointId: "token-plan-cn"
+            })
+        ).toBe(false)
     })
 })
 
@@ -174,6 +307,131 @@ describe("model discovery metadata", () => {
                 "当前自定义接口不支持自动获取模型列表"
             )
         )
+    })
+
+    it("does not return public catalog candidates when Token Plan discovery is unsupported", async () => {
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-cn"
+                },
+                {
+                    listOpenAiModels: async () => {
+                        throw { status: 404 }
+                    },
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).rejects.toEqual(
+            new ModelDiscoveryError(
+                "DISCOVERY_UNSUPPORTED",
+                "当前 Token Plan 通道不支持自动获取模型列表，请手动填写模型名称"
+            )
+        )
+    })
+
+    it("rejects a malformed successful Token Plan discovery response without returning catalog models", async () => {
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-cn"
+                },
+                {
+                    listOpenAiModels: async () =>
+                        null as unknown as Array<{ id: string }> ,
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).rejects.toMatchObject({ code: "NETWORK_FAILURE" })
+    })
+
+    it("keeps an empty successful Token Plan discovery response empty", async () => {
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-intl"
+                },
+                {
+                    listOpenAiModels: async () => [],
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).resolves.toEqual([])
+    })
+
+    it("passes the selected Token Plan endpoint ID to remote discovery without adding catalog models", async () => {
+        const listOpenAiModels = async (options: {
+            apiKey: string
+            baseURL: string
+            officialEndpointId?: string
+        }) => {
+            expect(options).toMatchObject({
+                officialEndpointId: "token-plan-intl",
+                baseURL:
+                    "https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1/"
+            })
+            return [{ id: "token-model", name: "Token model" }]
+        }
+
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-intl"
+                },
+                {
+                    listOpenAiModels,
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).resolves.toEqual([
+            {
+                id: "token-model",
+                name: "Token model",
+                availability: "verified",
+                vision: "unknown"
+            }
+        ])
+    })
+
+    it("reports Token Plan authentication failures without falling back to catalog", async () => {
+        await expect(
+            discoverModels(
+                {
+                    provider: AiModel_Platform_Enum.BAILIAN,
+                    apiKey: "secret",
+                    isOfficial: true,
+                    officialEndpointId: "token-plan-cn"
+                },
+                {
+                    listOpenAiModels: async () => {
+                        throw { response: { status: 401 } }
+                    },
+                    loadCatalog: async () => [
+                        { id: "payg-only", name: "Payg only" }
+                    ]
+                }
+            )
+        ).rejects.toMatchObject({ code: "AUTHENTICATION_FAILED" })
     })
 })
 
