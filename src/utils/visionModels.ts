@@ -1,4 +1,5 @@
 import { platformNameMap } from "../constants/translationServices"
+import type { DiscoveredModel } from "../model-management/catalog"
 import { PROVIDER_REGISTRY } from "../model-management/providers"
 import type { AiModel_Platform_Enum, BaseModel } from "../types/aiModel"
 import type { ExtensionConfig } from "../types/config"
@@ -11,6 +12,17 @@ export interface VisionPlatformOption {
 export interface VisionModelOption {
     label: string
     value: string
+}
+
+export interface ModelSelectionOption {
+    label: string
+    value: string
+}
+
+export interface VisionServiceOption {
+    value: string
+    label: string
+    service: BaseModel
 }
 
 export interface ImageTranslationEnableConfig {
@@ -60,11 +72,66 @@ const isUsableVisionModel = (model: BaseModel): boolean =>
     model.params.apiKey.trim().length > 0 &&
     isVisionCapableModel(model)
 
-export function getVisionModelOptions(
+const isUsableVisionService = (model: BaseModel): boolean =>
+    model.enabled &&
+    model.params.apiKey.trim().length > 0 &&
+    PROVIDER_REGISTRY[model.type]?.kind === "llm"
+
+export function buildVisionServiceLabel(
+    model: BaseModel,
+    duplicateIndex?: number
+): string {
+    const modelName = model.params.modelName.trim() || "未配置模型"
+    const source = model.params.isOfficial === false ? "自定义" : "官方"
+    const duplicateSuffix =
+        duplicateIndex && duplicateIndex > 1 ? `（${duplicateIndex}）` : ""
+
+    return `${platformNameMap[model.type]} · ${modelName} · ${source}${duplicateSuffix}`
+}
+
+export function getVisionServiceOptions(
+    models: BaseModel[]
+): VisionServiceOption[] {
+    const labelCounts = new Map<string, number>()
+
+    return models.filter(isUsableVisionService).map(service => {
+        const label = buildVisionServiceLabel(service)
+        const duplicateIndex = (labelCounts.get(label) ?? 0) + 1
+        labelCounts.set(label, duplicateIndex)
+
+        return {
+            value: service.id,
+            label: buildVisionServiceLabel(service, duplicateIndex),
+            service
+        }
+    })
+}
+
+const getDiscoveredModelLabel = (model: DiscoveredModel): string => {
+    const name =
+        model.name === model.id ? model.name : `${model.name} · ${model.id}`
+    const capability =
+        model.vision === "supported" ? "支持图片" : "图片能力未知"
+    const catalog = model.availability === "catalog" ? " · 目录" : ""
+
+    return `${name} · ${capability}${catalog}`
+}
+
+const getRemoteVisionModelOptions = (
+    models: DiscoveredModel[]
+): ModelSelectionOption[] =>
+    models
+        .filter(model => model.vision !== "unsupported")
+        .map(model => ({
+            value: model.id,
+            label: getDiscoveredModelLabel(model)
+        }))
+
+const getConfiguredVisionModelOptions = (
     models: BaseModel[],
     platform?: AiModel_Platform_Enum
-): VisionModelOption[] {
-    return models
+): VisionModelOption[] =>
+    models
         .filter(
             model =>
                 isUsableVisionModel(model) &&
@@ -74,6 +141,25 @@ export function getVisionModelOptions(
             label: model.name,
             value: model.id
         }))
+
+export function getVisionModelOptions(
+    models: DiscoveredModel[]
+): ModelSelectionOption[]
+export function getVisionModelOptions(
+    models: BaseModel[],
+    platform?: AiModel_Platform_Enum
+): VisionModelOption[]
+export function getVisionModelOptions(
+    models: DiscoveredModel[] | BaseModel[],
+    platform?: AiModel_Platform_Enum
+): ModelSelectionOption[] | VisionModelOption[] {
+    if (models.length === 0 || "availability" in models[0]) {
+        return getRemoteVisionModelOptions(
+            models as unknown as DiscoveredModel[]
+        )
+    }
+
+    return getConfiguredVisionModelOptions(models as BaseModel[], platform)
 }
 
 export function getVisionPlatformOptions(
@@ -111,7 +197,7 @@ export function isImageTranslationEnabled({
         return false
     }
 
-    return getVisionModelOptions(aiModelList).some(
+    return getConfiguredVisionModelOptions(aiModelList).some(
         option => option.value === imageTranslationModelId
     )
 }
@@ -129,7 +215,7 @@ export function normalizeImageTranslationModelSelection(
     selectedModelId: string | undefined,
     models: BaseModel[]
 ): string {
-    const options = getVisionModelOptions(models)
+    const options = getConfiguredVisionModelOptions(models)
     return options.some(option => option.value === selectedModelId)
         ? selectedModelId!
         : (options[0]?.value ?? "")

@@ -1,11 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef } from "react"
 import styled from "styled-components"
 
+import { useModelDiscovery } from "@/hooks/useModelDiscovery"
 import type { DiscoveredModel } from "@/model-management/catalog"
-import {
-    discoverModels,
-    ModelDiscoveryError
-} from "@/model-management/discovery"
 import { PROVIDER_REGISTRY } from "@/model-management/providers"
 import type { BaseModel } from "@/types/aiModel"
 
@@ -125,83 +122,15 @@ export function ModelDiscoveryField({
     model,
     onChange
 }: ModelDiscoveryFieldProps): React.ReactElement | null {
-    const [models, setModels] = useState<DiscoveredModel[]>([])
-    const [isLoading, setIsLoading] = useState(false)
-    const [errorMessage, setErrorMessage] = useState("")
-    const [manualEntry, setManualEntry] = useState(false)
-    const [refreshVersion, setRefreshVersion] = useState(0)
     const onChangeRef = useRef(onChange)
     const definition = PROVIDER_REGISTRY[model.type]
+    const { models, isLoading, errorMessage, manualEntry, refresh } =
+        useModelDiscovery(model)
     const apiKey = model.params.apiKey.trim()
-    const isOfficial = model.params.isOfficial !== false
-    const baseUrl = model.params.baseUrl?.trim() || ""
 
     useEffect(() => {
         onChangeRef.current = onChange
     }, [onChange])
-
-    useEffect(() => {
-        setModels([])
-        setErrorMessage("")
-        setManualEntry(false)
-        if (definition.discovery === "none" || !apiKey) {
-            return
-        }
-
-        const controller = new AbortController()
-        const timer = window.setTimeout(() => {
-            setIsLoading(true)
-            void discoverModels(
-                {
-                    provider: model.type,
-                    apiKey,
-                    isOfficial,
-                    baseUrl
-                },
-                {},
-                controller.signal
-            )
-                .then(discovered => {
-                    if (!controller.signal.aborted) {
-                        setModels(discovered)
-                    }
-                })
-                .catch(error => {
-                    if (controller.signal.aborted) {
-                        return
-                    }
-                    const message =
-                        error instanceof Error
-                            ? error.message
-                            : "无法获取模型列表"
-                    setErrorMessage(message)
-                    if (
-                        !isOfficial &&
-                        error instanceof ModelDiscoveryError &&
-                        error.code === "DISCOVERY_UNSUPPORTED"
-                    ) {
-                        setManualEntry(true)
-                    }
-                })
-                .finally(() => {
-                    if (!controller.signal.aborted) {
-                        setIsLoading(false)
-                    }
-                })
-        }, 400)
-
-        return () => {
-            window.clearTimeout(timer)
-            controller.abort()
-        }
-    }, [
-        apiKey,
-        baseUrl,
-        definition.discovery,
-        isOfficial,
-        model.type,
-        refreshVersion
-    ])
 
     const options = useMemo(
         () => buildModelSelectionOptions(models, model.params.modelName),
@@ -279,7 +208,7 @@ export function ModelDiscoveryField({
                 <RefreshButton
                     type="button"
                     disabled={!apiKey || isLoading}
-                    onClick={() => setRefreshVersion(version => version + 1)}
+                    onClick={refresh}
                 >
                     {isLoading ? "获取中…" : "刷新模型列表"}
                 </RefreshButton>
