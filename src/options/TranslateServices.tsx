@@ -54,6 +54,10 @@ import { getModelByModelList, isModelThinkingCapable } from "@/utils/llmModel"
 import { Toast, ToastType } from "@/utils/toast"
 import { isVisionCapableModel } from "@/utils/visionModels"
 
+import {
+    BailianOfficialEndpointFields,
+    canExplicitlyConfigureVision
+} from "./BailianOfficialEndpointFields"
 import { AI_MODEL_UI_LIST } from "./constants"
 
 const ModelListContainer = styled.div`
@@ -386,6 +390,9 @@ export const TranslateServices: React.FunctionComponent = () => {
               officialEndpointId: currentModelData.params.officialEndpointId
           })
         : ""
+    const isTokenPlan = currentModelData
+        ? canExplicitlyConfigureVision(currentModelData) && isOfficial
+        : false
 
     const handleTestModel = useCallback(() => {
         if (!currentModelData.params.apiKey.trim()) {
@@ -665,6 +672,19 @@ export const TranslateServices: React.FunctionComponent = () => {
         [currentModelData, updateAiModelConfig]
     )
 
+    const handleOfficialEndpointChange = useCallback(
+        (officialEndpointId: string) => {
+            if (!currentModelData) {
+                return
+            }
+            updateAiModelConfig({
+                id: currentModelData.id,
+                params: { officialEndpointId }
+            })
+        },
+        [currentModelData, updateAiModelConfig]
+    )
+
     const currentModelOptions = React.useMemo(
         () => getTranslationServiceOptions(config?.aiModelList || []),
         [config?.aiModelList]
@@ -867,6 +887,12 @@ export const TranslateServices: React.FunctionComponent = () => {
                                                 </SourceToggleButton>
                                             </SourceToggleGroup>
                                         </FormRow>
+                                        <BailianOfficialEndpointFields
+                                            model={currentModelData}
+                                            onEndpointChange={
+                                                handleOfficialEndpointChange
+                                            }
+                                        />
                                         <FormRow
                                             label="请求地址"
                                             required={!isOfficial}
@@ -902,30 +928,40 @@ export const TranslateServices: React.FunctionComponent = () => {
                                                 }
                                             />
                                         </FormRow>
-                                        {!isOfficial && (
-                                            <FormRow
-                                                label="支持图片输入"
-                                                description="自定义模型需显式声明视觉能力，开启后可用于图片翻译"
-                                                controlId="custom-model-vision-capability"
-                                            >
-                                                <Switch
-                                                    id="custom-model-vision-capability"
-                                                    aria-describedby="custom-model-vision-capability-description"
-                                                    checked={isVisionCapableModel(
-                                                        currentModelData
-                                                    )}
-                                                    onChange={vision =>
-                                                        updateAiModelConfig({
-                                                            id: currentModelData.id,
-                                                            capabilities: {
-                                                                ...currentModelData.capabilities,
-                                                                vision
-                                                            }
-                                                        })
+                                        {currentModelData &&
+                                            canExplicitlyConfigureVision(
+                                                currentModelData
+                                            ) && (
+                                                <FormRow
+                                                    label="支持图片输入"
+                                                    description={
+                                                        isTokenPlan
+                                                            ? "Token Plan 模型可显式声明视觉能力，开启后可用于图片翻译"
+                                                            : "自定义模型需显式声明视觉能力，开启后可用于图片翻译"
                                                     }
-                                                />
-                                            </FormRow>
-                                        )}
+                                                    controlId="model-vision-capability"
+                                                >
+                                                    <Switch
+                                                        id="model-vision-capability"
+                                                        aria-describedby="model-vision-capability-description"
+                                                        checked={isVisionCapableModel(
+                                                            currentModelData
+                                                        )}
+                                                        onChange={vision =>
+                                                            updateAiModelConfig(
+                                                                {
+                                                                    id: currentModelData.id,
+                                                                    capabilities:
+                                                                        {
+                                                                            ...currentModelData.capabilities,
+                                                                            vision
+                                                                        }
+                                                                }
+                                                            )
+                                                        }
+                                                    />
+                                                </FormRow>
+                                            )}
                                         {PROVIDER_REGISTRY[
                                             currentModelData.type
                                         ].discovery !== "none" && (
@@ -946,10 +982,13 @@ export const TranslateServices: React.FunctionComponent = () => {
                                                             params: {
                                                                 modelName
                                                             },
-                                                            capabilities: {
-                                                                ...currentModelData.capabilities,
-                                                                vision: capabilities?.vision
-                                                            }
+                                                            capabilities:
+                                                                capabilities
+                                                                    ? {
+                                                                          ...currentModelData.capabilities,
+                                                                          ...capabilities
+                                                                      }
+                                                                    : currentModelData.capabilities
                                                         })
                                                     }
                                                 />
@@ -1009,7 +1048,11 @@ export const TranslateServices: React.FunctionComponent = () => {
                                                                 fieldConfig.placeholder
                                                             }
                                                             helperText={
-                                                                fieldConfig.helperText
+                                                                item ===
+                                                                    "apiKey" &&
+                                                                isTokenPlan
+                                                                    ? "请使用当前地区 Token Plan 专属 API Key（通常以 sk-sp- 开头）"
+                                                                    : fieldConfig.helperText
                                                             }
                                                             helperLink={
                                                                 fieldConfig.helperLink
