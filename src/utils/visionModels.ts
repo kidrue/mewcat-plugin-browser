@@ -162,6 +162,29 @@ export function getVisionModelOptions(
     return getConfiguredVisionModelOptions(models as BaseModel[], platform)
 }
 
+export function buildVisionModelSelectionOptions(
+    models: DiscoveredModel[],
+    currentModelName: string | undefined
+): ModelSelectionOption[] {
+    const options = getRemoteVisionModelOptions(models)
+    const selectedModelName = currentModelName?.trim()
+
+    if (
+        selectedModelName &&
+        !options.some(option => option.value === selectedModelName)
+    ) {
+        return [
+            {
+                value: selectedModelName,
+                label: `${selectedModelName}（当前模型未返回）`
+            },
+            ...options
+        ]
+    }
+
+    return options
+}
+
 export function getVisionPlatformOptions(
     models: BaseModel[]
 ): VisionPlatformOption[] {
