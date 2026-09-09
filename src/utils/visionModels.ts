@@ -9,6 +9,13 @@ export interface VisionPlatformOption {
     value: AiModel_Platform_Enum
 }
 
+export function createVisionModelSelectionKey(
+    serviceId: string,
+    modelName: string
+): string {
+    return `${encodeURIComponent(serviceId)}:${encodeURIComponent(modelName)}`
+}
+
 export interface VisionModelOption {
     label: string
     value: string
@@ -63,8 +70,9 @@ export function normalizeImageTranslationSelection(
         ...config,
         imageTranslationModelId,
         imageTranslationModelName:
-            config.imageTranslationModelName?.trim() ||
-            service.params.modelName.trim()
+            config.imageTranslationModelName === undefined
+                ? service.params.modelName.trim()
+                : config.imageTranslationModelName.trim()
     }
 }
 

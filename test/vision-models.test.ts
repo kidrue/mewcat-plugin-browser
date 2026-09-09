@@ -200,6 +200,7 @@ describe("vision model capabilities", () => {
             getImageTranslationConfigRepair({
                 enableImageTranslateButton: true,
                 imageTranslationModelId: "vision",
+                imageTranslationModelName: "gpt-5",
                 aiModelList: [
                     createModel(
                         "vision",
@@ -280,6 +281,7 @@ describe("vision model capabilities", () => {
             isImageTranslationEnabled({
                 enableImageTranslateButton: true,
                 imageTranslationModelId: "vision",
+                imageTranslationModelName: "gpt-5",
                 aiModelList: [
                     createModel(
                         "vision",

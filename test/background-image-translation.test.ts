@@ -75,7 +75,7 @@ function createDeps(
     overrides: Partial<StructuredImageTranslationDependencies> = {}
 ): StructuredImageTranslationDependencies {
     return {
-        loadConfig: vi.fn(async () => ({ aiModelList: [model] })),
+        loadConfig: vi.fn(async () => ({ aiModelList: [model], imageTranslationModelId: model.id, imageTranslationModelName: model.params.modelName })),
         capture: vi.fn(async () => ({
             blob: new Blob(["source-image"], { type: "image/png" }),
             capturePath: "direct-fetch"
@@ -165,9 +165,9 @@ describe("structured background image translation", () => {
     it.each([
         ["missing", [], "MODEL_NOT_FOUND"],
         [
-            "not vision",
-            [{ ...model, capabilities: { vision: false } }],
-            "MODEL_NOT_VISION_CAPABLE"
+            "non-LLM",
+            [{ ...model, type: "DEEPL" as const }],
+            "MODEL_UNAVAILABLE"
         ],
         ["disabled", [{ ...model, enabled: false }], "MODEL_UNAVAILABLE"],
         [
@@ -222,7 +222,7 @@ describe("structured background image translation", () => {
             result: {
                 sourceWidth: 640,
                 sourceHeight: 480,
-                modelId: "vision-model",
+                modelId: "vision-model:gpt-5-mini",
                 cacheHit: false,
                 blocks: decoratedBlocks
             }
@@ -444,13 +444,50 @@ describe("structured background image translation", () => {
         }
     )
 
-    it("uses the WXT local config key through the production loader boundary", async () => {
-        const getItem = vi.fn(async () => ({ aiModelList: [model] }))
+    it("uses the WXT sync config key through the production loader boundary", async () => {
+        const getItem = vi.fn(async () => ({
+            aiModelList: [model],
+            imageTranslationModelId: model.id,
+            imageTranslationModelName: "gpt-4.1-mini"
+        }))
 
         await expect(createBrowserConfigLoader(getItem)()).resolves.toEqual({
-            aiModelList: [model]
+            aiModelList: [model],
+            imageTranslationModelId: model.id,
+            imageTranslationModelName: "gpt-4.1-mini"
         })
-        expect(getItem).toHaveBeenCalledWith("local:extension-config")
+        expect(getItem).toHaveBeenCalledWith("sync:extension-config")
+    })
+
+    it("overrides only the in-memory model name from the image selection", async () => {
+        const storedModel = {
+            ...model,
+            params: { ...model.params, modelName: "gpt-5-mini" }
+        }
+        const config = {
+            aiModelList: [storedModel],
+            imageTranslationModelId: storedModel.id,
+            imageTranslationModelName: "gpt-4.1-mini"
+        }
+        const deps = createDeps({ loadConfig: vi.fn(async () => config) })
+
+        const response = await createStructuredImageTranslationHandler(deps)(
+            request,
+            {}
+        )
+
+        expect(deps.translate).toHaveBeenCalledWith(
+            prepared,
+            expect.objectContaining({
+                id: "vision-model",
+                params: expect.objectContaining({ modelName: "gpt-4.1-mini" })
+            })
+        )
+        expect(config.aiModelList[0].params.modelName).toBe("gpt-5-mini")
+        expect(response).toMatchObject({
+            success: true,
+            result: { modelId: "vision-model:gpt-4.1-mini" }
+        })
     })
 
     it("filters corrupted models at the production loader boundary", async () => {

@@ -20,6 +20,25 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it("preserves an explicitly cleared visual name through storage writes", async () => {
+        const setItem = vi.fn(async () => undefined)
+        const adapter = createTranslationServiceStorageAdapter({
+            getItem: vi.fn(async (_key, initialValue) => initialValue),
+            setItem,
+            removeItem: vi.fn(async () => undefined),
+            subscribe: vi.fn(() => () => undefined)
+        })
+        await adapter.setItem("extension-config", {
+            ...defaultExtensionConfig,
+            aiModelList: [validModel],
+            imageTranslationModelId: validModel.id,
+            imageTranslationModelName: ""
+        })
+        expect(setItem).toHaveBeenCalledWith("extension-config", expect.objectContaining({
+            imageTranslationModelId: validModel.id,
+            imageTranslationModelName: ""
+        }))
+    })
     it("repairs invalid fields without discarding valid user settings", () => {
         const repaired = repairExtensionConfig(
             {
@@ -70,6 +89,7 @@ describe("extension config validation", () => {
             {
                 ...defaultExtensionConfig,
                 imageTranslationModelId: "bailian-service",
+                imageTranslationModelName: undefined,
                 aiModelList: [
                     {
                         ...validModel,
