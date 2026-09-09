@@ -132,6 +132,19 @@ const ListItemLabel = styled.span`
     gap: var(--space-2);
 `
 
+const SummaryInfo = styled.div`
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+`
+
+const AvailabilityHint = styled.small`
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    line-height: var(--line-height-normal);
+`
+
 // 帮助图标是这套语言里少数保留圆形的元素之一
 const HelpIcon = styled.span`
     display: inline-flex;
@@ -270,6 +283,9 @@ function SettingsPanel({
     )
 
     const modelOptions = getTranslationServiceOptions(config.aiModelList || [])
+    const hasUsableGenerativeModel = config.aiModelList.some(
+        model => model.enabled && Boolean(model.params.apiKey?.trim())
+    )
 
     const handleToggleTranslation = (checked: boolean) => {
         updateConfig({ isSelectedTranslate: checked })
@@ -277,6 +293,10 @@ function SettingsPanel({
 
     const handleToggleContext = (checked: boolean) => {
         updateConfig({ enableContext: checked })
+    }
+
+    const handleTogglePageSummary = (checked: boolean) => {
+        updateConfig({ enablePageSummary: checked })
     }
 
     const handleDetectedLanguageChange = (value: string) => {
@@ -343,6 +363,30 @@ function SettingsPanel({
                     <CustomToggle
                         checked={config.enableContext ?? false}
                         onChange={handleToggleContext}
+                    />
+                </ListItem>
+                <ListItem>
+                    <SummaryInfo>
+                        <ListItemLabel>
+                            自动总结页面
+                            <Tooltip
+                                content="页面内容将发送到已配置的生成式 AI 服务，请确认内容适合发送。"
+                                position="top"
+                                width={220}
+                            >
+                                <HelpIcon>?</HelpIcon>
+                            </Tooltip>
+                        </ListItemLabel>
+                        {!hasUsableGenerativeModel && (
+                            <AvailabilityHint role="status">
+                                请先配置可用的生成式 AI 模型；开关状态会保留。
+                            </AvailabilityHint>
+                        )}
+                    </SummaryInfo>
+                    <CustomToggle
+                        aria-label="自动总结页面"
+                        checked={config.enablePageSummary ?? false}
+                        onChange={handleTogglePageSummary}
                     />
                 </ListItem>
                 <ListItem>

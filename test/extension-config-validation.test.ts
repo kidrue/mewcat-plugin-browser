@@ -98,6 +98,40 @@ describe("extension config validation", () => {
         expect(repaired).not.toHaveProperty("unknownField")
     })
 
+    it("repairs page summary settings to safe defaults and preserves valid values", () => {
+        const storedWithoutPageSummary = { ...defaultExtensionConfig }
+        delete storedWithoutPageSummary.enablePageSummary
+        delete storedWithoutPageSummary.pageSummaryDisabledSites
+
+        const defaults = repairExtensionConfig(
+            storedWithoutPageSummary,
+            defaultExtensionConfig
+        )
+        const valid = repairExtensionConfig(
+            {
+                ...defaultExtensionConfig,
+                enablePageSummary: true,
+                pageSummaryDisabledSites: ["example.com"]
+            },
+            defaultExtensionConfig
+        )
+        const invalid = repairExtensionConfig(
+            {
+                ...defaultExtensionConfig,
+                enablePageSummary: "yes",
+                pageSummaryDisabledSites: ["example.com", 42]
+            },
+            defaultExtensionConfig
+        )
+
+        expect(defaults.enablePageSummary).toBe(false)
+        expect(defaults.pageSummaryDisabledSites).toEqual([])
+        expect(valid.enablePageSummary).toBe(true)
+        expect(valid.pageSummaryDisabledSites).toEqual(["example.com"])
+        expect(invalid.enablePageSummary).toBe(false)
+        expect(invalid.pageSummaryDisabledSites).toEqual([])
+    })
+
     it("falls back safely when the stored value is not an object", () => {
         expect(
             repairExtensionConfig("corrupted", defaultExtensionConfig)

@@ -3,10 +3,12 @@ import * as React from "react"
 
 import {
     CustomSelect,
+    CustomToggle,
     FormRow,
     NumberInput,
     OptionsSection,
     StylePreview,
+    Tooltip,
     UrlManager
 } from "@/components"
 import {
@@ -22,6 +24,9 @@ export const Basic: React.FunctionComponent = () => {
     const updateConfig = useSetAtom(updateConfigAtom)
 
     const languageOptions = languages.languages
+    const hasUsableGenerativeModel = config.aiModelList.some(
+        model => model.enabled && Boolean(model.params.apiKey?.trim())
+    )
 
     return (
         <>
@@ -87,6 +92,42 @@ export const Basic: React.FunctionComponent = () => {
                         placeholder="输入网址，如：example.com"
                         emptyText="暂无配置"
                     />
+                </FormRow>
+            </OptionsSection>
+
+            <OptionsSection title="页面总结">
+                <FormRow
+                    label="自动总结页面"
+                    description="自动提炼页面重点；页面内容将发送到已配置的生成式 AI 服务。"
+                    controlId="enable-page-summary"
+                >
+                    <div>
+                        <CustomToggle
+                            id="enable-page-summary"
+                            aria-label="自动总结页面"
+                            checked={config.enablePageSummary ?? false}
+                            onChange={checked =>
+                                updateConfig({ enablePageSummary: checked })
+                            }
+                        />
+                        <Tooltip
+                            content="总结由已配置的生成式 AI 服务处理，请确认页面内容适合发送给该服务。"
+                            position="top"
+                            width={240}
+                        >
+                            <button
+                                type="button"
+                                aria-label="了解页面总结的数据使用方式"
+                            >
+                                ?
+                            </button>
+                        </Tooltip>
+                    </div>
+                    {!hasUsableGenerativeModel && (
+                        <small role="status">
+                            请先配置可用的生成式 AI 模型；开关状态会保留。
+                        </small>
+                    )}
                 </FormRow>
             </OptionsSection>
 

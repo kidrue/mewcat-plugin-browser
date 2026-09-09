@@ -96,6 +96,10 @@ export const defaultExtensionConfig: ExtensionConfig = {
     // AI 智能上下文翻译配置
     enableContext: false,
 
+    // 网页总结配置
+    enablePageSummary: false,
+    pageSummaryDisabledSites: [],
+
     // 图片翻译配置
     enableImageTranslateButton: false,
     imageTranslationModelId: "",
