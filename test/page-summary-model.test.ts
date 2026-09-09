@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest"
 
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
-import { hasUsablePageSummaryModel } from "../src/utils/pageSummary"
+import {
+    hasUsablePageSummaryModel,
+    selectPageSummaryModel
+} from "../src/utils/pageSummary"
 
 const configuredModel: BaseModel = {
     id: "configured-model",
@@ -38,5 +41,43 @@ describe("page summary model availability", () => {
 
     it("accepts an enabled LLM model with credentials and a model name", () => {
         expect(hasUsablePageSummaryModel([configuredModel])).toBe(true)
+    })
+
+    it("prefers the selected usable model and falls back to the first usable model", () => {
+        const fallbackModel = {
+            ...configuredModel,
+            id: "fallback-model"
+        }
+
+        expect(
+            selectPageSummaryModel({
+                currentModel: configuredModel.id,
+                aiModelList: [configuredModel, fallbackModel]
+            })
+        ).toBe(configuredModel)
+
+        expect(
+            selectPageSummaryModel({
+                currentModel: "missing-model",
+                aiModelList: [
+                    { ...configuredModel, enabled: false },
+                    fallbackModel
+                ]
+            })
+        ).toBe(fallbackModel)
+    })
+
+    it("returns null when no usable generative model is configured", () => {
+        expect(
+            selectPageSummaryModel({
+                currentModel: "missing-model",
+                aiModelList: [
+                    {
+                        ...configuredModel,
+                        type: AiModel_Platform_Enum.DEEPL
+                    }
+                ]
+            })
+        ).toBeNull()
     })
 })

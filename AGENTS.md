@@ -720,3 +720,14 @@ _实机验证中发现并修复的 4 个缺陷_
 **修改内容**：将 `codex/bailian-token-plan` 分支合并到 `main`，包含官方通道选择、文本与视觉路由、严格模型发现和异常配置恢复。
 
 **原因**：让主工作目录包含已验证的 Token Plan 功能。合并后的 `pnpm check` 通过；原有未提交改动保留。
+
+### 2026-09-09 — 新增页面总结设置开关
+
+**修改内容**：
+
+- `src/types/config.ts`、`src/types/extensionConfigSchema.ts`、`src/state/constants.ts`：新增 `enablePageSummary` 与 `pageSummaryDisabledSites` 配置，默认关闭页面总结
+- `src/options/Basic.tsx`、`src/components/SettingsPanel/index.tsx`：新增独立的“自动总结页面”开关、隐私提示和无可用生成式模型提示
+- `src/utils/pageSummary.ts`、`src/translation/translationService.ts`：统一生成式模型可用性判断和页面总结模型回退选择，排除 `DEEPL`/`DEEPLX`
+- `test/`：新增配置、设置页和模型可用性回归测试
+
+**原因**：让页面总结功能在设置页可见且可控，避免将翻译专用模型误判为可生成总结的模型。

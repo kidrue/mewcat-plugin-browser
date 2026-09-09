@@ -65,7 +65,7 @@ const getSelectedModel = (
         : config.aiModelList.find(model => model.id === serviceId)
 }
 
-const isConfiguredGenerativeModel = (model: BaseModel): boolean => {
+export const isConfiguredGenerativeModel = (model: BaseModel): boolean => {
     if (!model || typeof model !== "object") {
         return false
     }
