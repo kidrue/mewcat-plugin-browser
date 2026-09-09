@@ -766,3 +766,20 @@ _实机验证中发现并修复的 4 个缺陷_
 - `test/`：新增配置、设置页和模型可用性回归测试
 
 **原因**：让页面总结功能在设置页可见且可控，避免将翻译专用模型误判为可生成总结的模型。
+
+---
+
+### 2026-09-09 — 清理已合并到 main 的本地功能分支
+
+**修改内容**：逐一验证以下分支均为 `main` 的祖先，没有遗漏的分支提交，使用 `git branch -d` 删除分支名：
+
+- `codex/bailian-token-plan`：`ac161096de69c7fac13ff2b5881acb508952f13c`
+- `codex/image-translation-remote-model-selection`：`594bcc63a62e202c3313f2df3977bebaf5897139`
+- `codex/page-summary-toggle-rendering`：`48035bc649ba8b7c3a5875b5f7c14211ef99611b`
+- `codex/token-usage-statistics`：`dfda213114f822c6c4cce89bef5082e67975de14`
+
+各关联 worktree 在原提交上切换为 detached HEAD，目录及未提交文件全部保留；操作前后对未提交文件计算 SHA256，确认内容未变。主工作区的未提交改动保持原样；本次没有推送或删除远程分支。需要恢复分支名时，可从上述提交重新创建。
+
+**原因**：按用户要求将全部本地分支收拢到 `main` 并清理已合并分支。相关提交此前已全部合入 `main`，无需重复生成合并提交。
+
+**验证**：当前 `main` 工作区执行 `pnpm check`，退出码为 0；包含 249 项图片/页面/配置测试、36 项翻译服务/概念解释测试、26 项商店测试及 Google 和划词交互检查。lint 为 0 errors、25 条既有 warnings；清理后本地仅剩 `main`，`git branch --no-merged main` 输出为空。
