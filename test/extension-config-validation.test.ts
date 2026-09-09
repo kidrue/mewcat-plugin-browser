@@ -79,8 +79,12 @@ describe("extension config validation", () => {
     })
 
     it("repairs page summary settings to safe defaults and preserves valid values", () => {
+        const storedWithoutPageSummary = { ...defaultExtensionConfig }
+        delete storedWithoutPageSummary.enablePageSummary
+        delete storedWithoutPageSummary.pageSummaryDisabledSites
+
         const defaults = repairExtensionConfig(
-            { ...defaultExtensionConfig },
+            storedWithoutPageSummary,
             defaultExtensionConfig
         )
         const valid = repairExtensionConfig(
