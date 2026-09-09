@@ -5,6 +5,7 @@ import { createTranslationServiceStorageAdapter } from "../src/state/translation
 import { AiModel_Platform_Enum } from "../src/types/aiModel"
 import type { ExtensionConfig } from "../src/types/config"
 import { repairExtensionConfig } from "../src/types/extensionConfigSchema"
+import { normalizeImageTranslationSelection } from "../src/utils/visionModels"
 
 const validModel = {
     id: "model-1",
@@ -51,6 +52,25 @@ describe("extension config validation", () => {
         expect(repaired.aiModelList).toEqual([modelWithEndpoint])
     })
 
+    it("preserves an explicitly cleared visual name through storage writes", async () => {
+        const setItem = vi.fn(async () => undefined)
+        const adapter = createTranslationServiceStorageAdapter({
+            getItem: vi.fn(async (_key, initialValue) => initialValue),
+            setItem,
+            removeItem: vi.fn(async () => undefined),
+            subscribe: vi.fn(() => () => undefined)
+        })
+        await adapter.setItem("extension-config", {
+            ...defaultExtensionConfig,
+            aiModelList: [validModel],
+            imageTranslationModelId: validModel.id,
+            imageTranslationModelName: ""
+        })
+        expect(setItem).toHaveBeenCalledWith("extension-config", expect.objectContaining({
+            imageTranslationModelId: validModel.id,
+            imageTranslationModelName: ""
+        }))
+    })
     it("repairs invalid fields without discarding valid user settings", () => {
         const repaired = repairExtensionConfig(
             {
@@ -82,6 +102,45 @@ describe("extension config validation", () => {
         expect(
             repairExtensionConfig("corrupted", defaultExtensionConfig)
         ).toEqual(defaultExtensionConfig)
+    })
+
+    it("preserves a legal independent image model name", () => {
+        const repaired = repairExtensionConfig(
+            {
+                ...defaultExtensionConfig,
+                imageTranslationModelName: "qwen-vl-max"
+            },
+            defaultExtensionConfig
+        )
+
+        expect(repaired.imageTranslationModelName).toBe("qwen-vl-max")
+    })
+
+    it("fills the visual model name from a legacy selected service", () => {
+        const repaired = repairExtensionConfig(
+            {
+                ...defaultExtensionConfig,
+                imageTranslationModelId: "bailian-service",
+                imageTranslationModelName: undefined,
+                aiModelList: [
+                    {
+                        ...validModel,
+                        id: "bailian-service",
+                        type: AiModel_Platform_Enum.BAILIAN,
+                        params: {
+                            ...validModel.params,
+                            modelName: "qwen-vl-plus"
+                        }
+                    }
+                ]
+            },
+            defaultExtensionConfig
+        )
+
+        expect(normalizeImageTranslationSelection(repaired)).toMatchObject({
+            imageTranslationModelId: "bailian-service",
+            imageTranslationModelName: "qwen-vl-plus"
+        })
     })
 
     it("writes a repaired stored config back before returning it", async () => {

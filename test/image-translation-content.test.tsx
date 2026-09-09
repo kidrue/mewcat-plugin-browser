@@ -26,6 +26,7 @@ const mocks = vi.hoisted(() => ({
         value: {
             enableImageTranslateButton: true,
             imageTranslationModelId: "vision-model",
+            imageTranslationModelName: "vision-model",
             targetLanguage: "zh-CN",
             aiModelList: []
         }
@@ -129,6 +130,7 @@ describe("ImageTranslate content integration", () => {
         mocks.config.value = {
             enableImageTranslateButton: true,
             imageTranslationModelId: "vision-model",
+            imageTranslationModelName: "vision-model",
             targetLanguage: "zh-CN",
             aiModelList: [usableVisionModel]
         }

@@ -99,5 +99,6 @@ export const defaultExtensionConfig: ExtensionConfig = {
     // 图片翻译配置
     enableImageTranslateButton: false,
     imageTranslationModelId: "",
+    imageTranslationModelName: "",
     imageTranslateProvider: "系统"
 }

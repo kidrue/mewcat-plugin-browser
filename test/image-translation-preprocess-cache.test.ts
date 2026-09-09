@@ -20,6 +20,7 @@ import {
     withImageTranslationDeduplication,
     type ImageTranslationCacheStorage
 } from "../src/translation/PictureCache"
+import { createVisionModelSelectionKey } from "../src/utils/visionModels"
 
 const encoder = new TextEncoder()
 
@@ -320,6 +321,31 @@ describe("image block colors", () => {
 })
 
 describe("structured image translation cache", () => {
+    it("separates cache identities for visual models under one service", () => {
+        const base = {
+            imageHash: "hash-a",
+            targetLanguage: "zh-CN"
+        }
+
+        expect(
+            createImageTranslationCacheKey({
+                ...base,
+                modelId: createVisionModelSelectionKey(
+                    "bailian-service",
+                    "qwen-vl-plus"
+                )
+            })
+        ).not.toBe(
+            createImageTranslationCacheKey({
+                ...base,
+                modelId: createVisionModelSelectionKey(
+                    "bailian-service",
+                    "qwen-vl-max"
+                )
+            })
+        )
+    })
+
     it("isolates deterministic keys by hash, language, model, and schema version", () => {
         const base = {
             imageHash: "hash-a",

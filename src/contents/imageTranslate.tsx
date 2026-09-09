@@ -24,7 +24,10 @@ import {
 import { configAtom } from "@/state"
 import type { CanvasHookMeta } from "@/types/canvas-hook"
 import { Toast, ToastType } from "@/utils/toast"
-import { isImageTranslationEnabled } from "@/utils/visionModels"
+import {
+    createVisionModelSelectionKey,
+    isImageTranslationEnabled
+} from "@/utils/visionModels"
 
 import "@/styles/theme.scss"
 
@@ -182,7 +185,11 @@ export const ImageTranslate: React.FC = () => {
 
     // 处理翻译按钮点击
     const handleTranslateClick = useCallback(async () => {
-        if (!state.currentTarget || state.translating) {
+        if (
+            !imageTranslationEnabled ||
+            !state.currentTarget ||
+            state.translating
+        ) {
             return
         }
 
@@ -190,7 +197,10 @@ export const ImageTranslate: React.FC = () => {
         try {
             const action = await controllerRef.current!.translate(
                 target,
-                config.imageTranslationModelId,
+                createVisionModelSelectionKey(
+                    config.imageTranslationModelId!,
+                    config.imageTranslationModelName!
+                ),
                 async () => {
                     setState(prev => ({ ...prev, translating: true }))
                     if (target instanceof HTMLImageElement) {
@@ -302,7 +312,18 @@ export const ImageTranslate: React.FC = () => {
         state.translating,
         config.targetLanguage,
         config.imageTranslationModelId,
+        config.imageTranslationModelName,
+        imageTranslationEnabled,
         getCanvasMetaForTranslate
+    ])
+
+    useEffect(() => {
+        controllerRef.current?.destroyAll()
+        setState(prev => ({ ...prev, translating: false }))
+    }, [
+        config.imageTranslationModelId,
+        config.imageTranslationModelName,
+        config.targetLanguage
     ])
 
     // 监听图片悬浮事件

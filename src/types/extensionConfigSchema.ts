@@ -58,6 +58,7 @@ const extensionConfigShape = {
     enableContext: z.boolean().optional(),
     enableImageTranslateButton: z.boolean().optional(),
     imageTranslationModelId: z.string().optional(),
+    imageTranslationModelName: z.string().optional(),
     imageTranslateProvider: z.string().optional()
 } satisfies z.ZodRawShape
 
@@ -86,6 +87,15 @@ export function repairExtensionConfig(
     const repaired: Record<string, unknown> = {}
 
     for (const [key, schema] of Object.entries(extensionConfigShape)) {
+        // Preserve absence for one-time legacy image model migration.
+        if (
+            key === "imageTranslationModelName" &&
+            source[key] === undefined &&
+            typeof source.imageTranslationModelId === "string" &&
+            source.imageTranslationModelId.trim()
+        ) {
+            continue
+        }
         if (key === "aiModelList" && Array.isArray(source[key])) {
             repaired[key] = repairAiModelList(source[key])
             continue

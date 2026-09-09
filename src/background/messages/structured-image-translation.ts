@@ -1,6 +1,6 @@
 import { storage } from "wxt/utils/storage"
 
-import { STORAGE_NAMES, toWxtLocalStorageKey } from "@/constants/storage"
+import { STORAGE_NAMES, toWxtSyncStorageKey } from "@/constants/storage"
 import {
     decorateBlocksWithColors,
     type VisionPixelBuffer
@@ -30,11 +30,18 @@ import {
 import type { BaseModel } from "@/types/aiModel"
 import type { ExtensionConfig } from "@/types/config"
 import { repairAiModelList } from "@/types/extensionConfigSchema"
-import { isVisionCapableModel } from "@/utils/visionModels"
+import {
+    createVisionModelSelectionKey,
+    getVisionServiceOptions,
+    isVisionCapableModel
+} from "@/utils/visionModels"
 
 import { captureImageForTranslation } from "./translate-image"
 
-type ImageTranslationConfig = Pick<ExtensionConfig, "aiModelList">
+type ImageTranslationConfig = Pick<
+    ExtensionConfig,
+    "aiModelList" | "imageTranslationModelId" | "imageTranslationModelName"
+>
 type ClosableVisionPixelBuffer = VisionPixelBuffer & { close?: () => void }
 
 export interface StructuredImageTranslationDependencies {
@@ -98,28 +105,34 @@ function mapError(error: unknown): SafeErrorCode {
     return "INTERNAL_ERROR"
 }
 
-function validateModel(
+export function resolveImageTranslationModel(
     config: ImageTranslationConfig | null,
-    modelId: string,
-    isVisionCapable: StructuredImageTranslationDependencies["isVisionCapable"]
-): BaseModel | TranslateImageResponse {
+    modelId: string
+): { model: BaseModel; selectionKey: string } | TranslateImageResponse {
     const model = config?.aiModelList.find(
         candidate => candidate.id === modelId
     )
     if (!model) {
         return failure("MODEL_NOT_FOUND")
     }
-    if (!isVisionCapable(model)) {
-        return failure("MODEL_NOT_VISION_CAPABLE")
-    }
-    if (!model.enabled || !model.params.apiKey.trim()) {
+    if (!getVisionServiceOptions([model]).length) {
         return failure("MODEL_UNAVAILABLE")
     }
-    return model
+    if (config?.imageTranslationModelId !== modelId)
+        return failure("MODEL_NOT_FOUND")
+    const modelName =
+        config.imageTranslationModelName === undefined
+            ? model.params.modelName.trim()
+            : config.imageTranslationModelName.trim()
+    if (!modelName) return failure("MODEL_NOT_FOUND")
+    return {
+        model: { ...model, params: { ...model.params, modelName } },
+        selectionKey: createVisionModelSelectionKey(modelId, modelName)
+    }
 }
 
 function isFailure(
-    value: BaseModel | TranslateImageResponse
+    value: { model: BaseModel; selectionKey: string } | TranslateImageResponse
 ): value is TranslateImageResponse {
     return "success" in value
 }
@@ -156,15 +169,14 @@ export function createStructuredImageTranslationHandler(
 
         let response: TranslateImageResponse
         try {
-            const modelOrFailure = validateModel(
+            const modelOrFailure = resolveImageTranslationModel(
                 await deps.loadConfig(),
-                request.modelId,
-                deps.isVisionCapable
+                request.modelId
             )
             if (isFailure(modelOrFailure)) {
                 response = modelOrFailure
             } else {
-                const model = modelOrFailure
+                const { model, selectionKey } = modelOrFailure
                 const captured = await deps.capture(request, sender)
                 const prepared = await deps.prepare(
                     captured.blob,
@@ -173,7 +185,7 @@ export function createStructuredImageTranslationHandler(
                 const cacheInput = {
                     imageHash: prepared.originalHash,
                     targetLanguage: request.targetLanguage,
-                    modelId: request.modelId
+                    modelId: selectionKey
                 }
                 const cached = await deps.getCache(cacheInput)
                 if (cached) {
@@ -216,7 +228,7 @@ export function createStructuredImageTranslationHandler(
                             const result: ImageTranslationResult = {
                                 sourceWidth: prepared.sourceWidth,
                                 sourceHeight: prepared.sourceHeight,
-                                modelId: request.modelId,
+                                modelId: selectionKey,
                                 cacheHit: false,
                                 blocks
                             }
@@ -304,18 +316,27 @@ export async function createBrowserVisionPixelBuffer(
 }
 
 export function createBrowserConfigLoader(
-    getItem: (key: `local:${string}`) => Promise<unknown> = key =>
+    getItem: (key: `sync:${string}`) => Promise<unknown> = key =>
         storage.getItem<unknown>(key)
 ): () => Promise<ImageTranslationConfig | null> {
     return async () => {
         const value = await getItem(
-            toWxtLocalStorageKey(STORAGE_NAMES.extensionConfig)
+            toWxtSyncStorageKey(STORAGE_NAMES.extensionConfig)
         )
         if (typeof value !== "object" || value === null) {
             return null
         }
 
+        const config = value as Record<string, unknown>
         return {
+            imageTranslationModelId:
+                typeof config.imageTranslationModelId === "string"
+                    ? config.imageTranslationModelId
+                    : undefined,
+            imageTranslationModelName:
+                typeof config.imageTranslationModelName === "string"
+                    ? config.imageTranslationModelName
+                    : undefined,
             aiModelList: repairAiModelList(
                 (value as { aiModelList?: unknown }).aiModelList
             )

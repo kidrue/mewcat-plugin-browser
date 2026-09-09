@@ -9,13 +9,14 @@ import {
     OptionsSection,
     Switch
 } from "@/components"
+import { useModelDiscovery } from "@/hooks/useModelDiscovery"
 import { translateStructuredImageViaBackground } from "@/services/imageTranslation"
 import { configAtom, updateConfigAtom } from "@/state"
 import {
+    buildVisionModelSelectionOptions,
+    createVisionModelSelectionKey,
     getImageTranslationConfigRepair,
-    getVisionModelOptions,
-    getVisionPlatformOptions,
-    getVisionPlatformSelection
+    getVisionServiceOptions
 } from "@/utils/visionModels"
 
 const Guidance = styled.p`
@@ -43,11 +44,33 @@ const TestStatus = styled.p<{ $status: "success" | "error" }>`
     line-height: var(--line-height-normal);
 `
 
+const ManualModelInput = styled.input`
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: inherit;
+
+    &:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px var(--seal-ring);
+    }
+`
+
 type CapabilityTestStatus =
     | { state: "idle" }
-    | { state: "loading"; modelId: string; requestId: number }
-    | { state: "success"; modelId: string; requestId: number }
-    | { state: "error"; modelId: string; requestId: number; message: string }
+    | { state: "loading"; selectionKey: string; requestId: number }
+    | { state: "success"; selectionKey: string; requestId: number }
+    | {
+          state: "error"
+          selectionKey: string
+          requestId: number
+          message: string
+      }
 
 function createCapabilityTestImage(): string {
     const canvas = document.createElement("canvas")
@@ -79,30 +102,31 @@ export const Image: React.FunctionComponent = () => {
     })
     const mountedRef = React.useRef(false)
     const capabilityRequestIdRef = React.useRef(0)
-    const selectedModelIdRef = React.useRef("")
+    const selectedSelectionKeyRef = React.useRef("")
     const aiModelList = config.aiModelList
-    const visionPlatformOptions = React.useMemo(
-        () => getVisionPlatformOptions(aiModelList),
+    const visionServiceOptions = React.useMemo(
+        () => getVisionServiceOptions(aiModelList),
         [aiModelList]
     )
-    const selectedPlatform = getVisionPlatformSelection(
-        config.imageTranslationModelId,
-        aiModelList
-    )
+    const selectedService = visionServiceOptions.find(
+        option => option.value === config.imageTranslationModelId
+    )?.service
+    const { models, isLoading, errorMessage, manualEntry, refresh } =
+        useModelDiscovery(selectedService)
     const visionModelOptions = React.useMemo(
         () =>
-            selectedPlatform
-                ? getVisionModelOptions(aiModelList, selectedPlatform)
-                : [],
-        [aiModelList, selectedPlatform]
+            buildVisionModelSelectionOptions(
+                models,
+                config.imageTranslationModelName
+            ),
+        [config.imageTranslationModelName, models]
     )
-    const selectedModelId = visionModelOptions.some(
-        option => option.value === config.imageTranslationModelId
-    )
-        ? config.imageTranslationModelId || ""
+    const selectedModelName = config.imageTranslationModelName?.trim() || ""
+    const hasSelectedModel = Boolean(selectedService && selectedModelName)
+    const selectedSelectionKey = selectedService
+        ? createVisionModelSelectionKey(selectedService.id, selectedModelName)
         : ""
-    const hasSelectedModel = selectedModelId.length > 0
-    selectedModelIdRef.current = selectedModelId
+    selectedSelectionKeyRef.current = selectedSelectionKey
 
     React.useEffect(() => {
         mountedRef.current = true
@@ -115,7 +139,7 @@ export const Image: React.FunctionComponent = () => {
     React.useEffect(() => {
         capabilityRequestIdRef.current += 1
         setTestStatus({ state: "idle" })
-    }, [config.targetLanguage, selectedModelId])
+    }, [config.targetLanguage, selectedSelectionKey])
 
     React.useEffect(() => {
         const repair = getImageTranslationConfigRepair(config)
@@ -124,36 +148,37 @@ export const Image: React.FunctionComponent = () => {
         }
     }, [config, updateConfig])
 
-    const handlePlatformChange = React.useCallback(
-        (platformValue: string) => {
-            const platform = visionPlatformOptions.find(
-                option => option.value === platformValue
-            )?.value
-            const imageTranslationModelId = platform
-                ? (getVisionModelOptions(aiModelList, platform)[0]?.value ?? "")
-                : ""
-
-            void updateConfig({ imageTranslationModelId })
+    const handleServiceChange = React.useCallback(
+        (imageTranslationModelId: string) => {
+            void updateConfig({
+                imageTranslationModelId,
+                imageTranslationModelName: "",
+                enableImageTranslateButton: false
+            })
         },
-        [aiModelList, updateConfig, visionPlatformOptions]
+        [updateConfig]
     )
 
     const handleCapabilityTest = React.useCallback(async () => {
-        if (!selectedModelId || testStatus.state === "loading") {
+        if (
+            !selectedService ||
+            !selectedModelName ||
+            testStatus.state === "loading"
+        ) {
             return
         }
 
         const requestId = capabilityRequestIdRef.current + 1
         capabilityRequestIdRef.current = requestId
-        const testedModelId = selectedModelId
+        const testedSelectionKey = selectedSelectionKey
         const isCurrentRequest = () =>
             mountedRef.current &&
             capabilityRequestIdRef.current === requestId &&
-            selectedModelIdRef.current === testedModelId
+            selectedSelectionKeyRef.current === testedSelectionKey
 
         setTestStatus({
             state: "loading",
-            modelId: testedModelId,
+            selectionKey: testedSelectionKey,
             requestId
         })
         try {
@@ -161,7 +186,7 @@ export const Image: React.FunctionComponent = () => {
             const result = await translateStructuredImageViaBackground({
                 imageUrl,
                 targetLanguage: config.targetLanguage,
-                modelId: testedModelId
+                modelId: selectedService.id
             })
             if (result.blocks.length === 0) {
                 throw new Error("图片中未识别到可翻译文字")
@@ -169,7 +194,7 @@ export const Image: React.FunctionComponent = () => {
             if (isCurrentRequest()) {
                 setTestStatus({
                     state: "success",
-                    modelId: testedModelId,
+                    selectionKey: testedSelectionKey,
                     requestId
                 })
             }
@@ -177,7 +202,7 @@ export const Image: React.FunctionComponent = () => {
             if (isCurrentRequest()) {
                 setTestStatus({
                     state: "error",
-                    modelId: testedModelId,
+                    selectionKey: testedSelectionKey,
                     requestId,
                     message:
                         error instanceof Error
@@ -186,7 +211,13 @@ export const Image: React.FunctionComponent = () => {
                 })
             }
         }
-    }, [config.targetLanguage, selectedModelId, testStatus.state])
+    }, [
+        config.targetLanguage,
+        selectedModelName,
+        selectedSelectionKey,
+        selectedService,
+        testStatus.state
+    ])
 
     return (
         <>
@@ -214,18 +245,18 @@ export const Image: React.FunctionComponent = () => {
                 </FormRow>
 
                 <FormRow
-                    label="模型平台"
-                    description="单独选择图片翻译使用的 AI 模型平台"
-                    controlId="image-translation-platform"
+                    label="翻译服务"
+                    description="选择“模型”设置中已添加的 AI 服务配置"
+                    controlId="image-translation-service"
                 >
                     <NativeSelect
-                        id="image-translation-platform"
-                        aria-describedby="image-translation-platform-description"
-                        value={selectedPlatform}
-                        onChange={handlePlatformChange}
-                        disabled={visionPlatformOptions.length === 0}
-                        options={visionPlatformOptions}
-                        placeholder="请选择模型平台"
+                        id="image-translation-service"
+                        aria-describedby="image-translation-service-description"
+                        value={selectedService?.id ?? ""}
+                        onChange={handleServiceChange}
+                        disabled={visionServiceOptions.length === 0}
+                        options={visionServiceOptions}
+                        placeholder="请选择翻译服务"
                     />
                 </FormRow>
 
@@ -234,27 +265,62 @@ export const Image: React.FunctionComponent = () => {
                     description="图片翻译使用独立模型，不会更改当前文本翻译服务"
                     controlId="image-translation-model"
                 >
-                    <NativeSelect
-                        id="image-translation-model"
-                        aria-describedby="image-translation-model-description"
-                        value={selectedModelId}
-                        onChange={imageTranslationModelId =>
-                            updateConfig({ imageTranslationModelId })
-                        }
-                        disabled={
-                            !selectedPlatform || visionModelOptions.length === 0
-                        }
-                        options={visionModelOptions}
-                        placeholder="请选择支持图片输入的模型"
-                    />
+                    {manualEntry ? (
+                        <ManualModelInput
+                            id="image-translation-model"
+                            aria-describedby="image-translation-model-description"
+                            value={selectedModelName}
+                            onChange={event =>
+                                updateConfig({
+                                    imageTranslationModelName:
+                                        event.target.value
+                                })
+                            }
+                            placeholder="请输入视觉模型名称"
+                        />
+                    ) : (
+                        <NativeSelect
+                            id="image-translation-model"
+                            aria-describedby="image-translation-model-description"
+                            value={selectedModelName}
+                            onChange={imageTranslationModelName =>
+                                updateConfig({ imageTranslationModelName })
+                            }
+                            disabled={
+                                !selectedService ||
+                                isLoading ||
+                                visionModelOptions.length === 0
+                            }
+                            options={visionModelOptions}
+                            placeholder={
+                                isLoading
+                                    ? "正在获取模型列表…"
+                                    : "请选择支持图片输入的模型"
+                            }
+                        />
+                    )}
+                    {selectedService && (
+                        <Button
+                            onClick={refresh}
+                            disabled={isLoading || manualEntry}
+                        >
+                            {isLoading ? "获取中…" : "刷新模型列表"}
+                        </Button>
+                    )}
                     {!hasSelectedModel && (
                         <Guidance>
-                            {visionModelOptions.length === 0
-                                ? visionPlatformOptions.length === 0
-                                    ? "请先在“模型”设置中配置并启用支持图片输入的模型。"
-                                    : "请先选择模型平台，再选择用于图片翻译的视觉模型。"
-                                : "请选择视觉模型后再启用图片翻译或运行能力测试。"}
+                            {!selectedService
+                                ? "请先在‘模型’设置中添加并启用 AI 平台并填写 API Key"
+                                : isLoading
+                                  ? "正在获取模型列表…"
+                                  : visionModelOptions.length === 0 &&
+                                      !manualEntry
+                                    ? "未发现支持图片的模型，请刷新或手动填写模型名称"
+                                    : "请选择视觉模型后再启用图片翻译或运行能力测试。"}
                         </Guidance>
+                    )}
+                    {errorMessage && (
+                        <Guidance role="alert">{errorMessage}</Guidance>
                     )}
                 </FormRow>
 

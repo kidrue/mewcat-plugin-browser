@@ -101,6 +101,9 @@ export interface ExtensionConfig {
     /** 图片翻译使用的视觉模型 ID（默认空，表示尚未选择） */
     imageTranslationModelId?: string
 
+    /** 图片翻译请求使用的实际视觉模型标识 */
+    imageTranslationModelName?: string
+
     /** 图片翻译服务商（默认 "系统"，禁止修改） */
     imageTranslateProvider?: string
 }

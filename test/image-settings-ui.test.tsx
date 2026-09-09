@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { JSDOM } from "jsdom"
 import React from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { Simulate } from "react-dom/test-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
@@ -11,7 +12,14 @@ const mocks = vi.hoisted(() => ({
     config: null as ExtensionConfig | null,
     updateConfig: vi.fn(),
     updateAiModelConfig: vi.fn(),
-    translateImage: vi.fn()
+    translateImage: vi.fn(),
+    discovery: {
+        models: [],
+        isLoading: false,
+        errorMessage: "",
+        manualEntry: false,
+        refresh: vi.fn()
+    }
 }))
 
 const atoms = vi.hoisted(() => ({
@@ -70,6 +78,14 @@ vi.mock("../src/services/imageTranslation.ts", () => ({
     translateStructuredImageViaBackground: mocks.translateImage
 }))
 
+vi.mock("@/hooks/useModelDiscovery", () => ({
+    useModelDiscovery: () => mocks.discovery
+}))
+
+vi.mock("../src/hooks/useModelDiscovery.ts", () => ({
+    useModelDiscovery: () => mocks.discovery
+}))
+
 const act = (
     React as typeof React & {
         unstable_act: typeof import("react-dom/test-utils").act
@@ -104,7 +120,7 @@ function createModel(
 function createConfig(
     overrides: Partial<ExtensionConfig> = {}
 ): ExtensionConfig {
-    return {
+    const config = {
         isSelectedTranslate: true,
         targetLanguage: "zh-CN",
         detectedLanguage: "auto",
@@ -115,8 +131,16 @@ function createConfig(
         currentModel: "text-model",
         enableImageTranslateButton: false,
         imageTranslationModelId: "",
+        imageTranslationModelName: "",
         ...overrides
     }
+    if (!config.imageTranslationModelName && config.imageTranslationModelId) {
+        config.imageTranslationModelName =
+            config.aiModelList.find(
+                model => model.id === config.imageTranslationModelId
+            )?.params.modelName ?? ""
+    }
+    return config
 }
 
 function setUpDom() {
@@ -206,6 +230,16 @@ async function click(element: Element) {
     })
 }
 
+function capabilityTestButton(): HTMLButtonElement {
+    const button = Array.from(document.querySelectorAll("button")).find(
+        element => element.textContent === "测试视觉能力"
+    )
+    if (!(button instanceof HTMLButtonElement)) {
+        throw new Error("missing capability test button")
+    }
+    return button
+}
+
 async function changeSelect(select: HTMLSelectElement, value: string) {
     await act(async () => {
         Object.getOwnPropertyDescriptor(
@@ -247,6 +281,13 @@ beforeEach(() => {
     mocks.updateConfig.mockReset()
     mocks.updateAiModelConfig.mockReset()
     mocks.translateImage.mockReset()
+    mocks.discovery = {
+        models: [],
+        isLoading: false,
+        errorMessage: "",
+        manualEntry: false,
+        refresh: vi.fn()
+    }
 })
 
 afterEach(async () => {
@@ -258,7 +299,155 @@ afterEach(async () => {
 })
 
 describe("image translation settings", () => {
-    it("derives the image platform and filters its models without changing Google Translate", async () => {
+    it("discovers visual models for the selected service and persists only the image model name", async () => {
+        mocks.config = createConfig({
+            currentModel: "text-service",
+            aiModelList: [
+                createModel("bailian-service", {
+                    type: AiModel_Platform_Enum.BAILIAN,
+                    modelName: "qwen-plus"
+                })
+            ]
+        })
+        mocks.discovery.models = [
+            {
+                id: "qwen-vl-max",
+                name: "Qwen VL Max",
+                availability: "verified",
+                vision: "supported"
+            },
+            {
+                id: "qwen-plus",
+                name: "Qwen Plus",
+                availability: "verified",
+                vision: "unsupported"
+            }
+        ]
+        mocks.updateConfig.mockImplementation(updates => {
+            mocks.config = { ...mocks.config!, ...updates }
+        })
+        const { Image } = await import("../src/options/Image")
+        root = await render(<Image />)
+
+        const serviceSelector = rowByLabel("翻译服务").querySelector(
+            "select"
+        ) as HTMLSelectElement
+        await changeSelect(serviceSelector, "bailian-service")
+        expect(mocks.updateConfig).toHaveBeenLastCalledWith({
+            imageTranslationModelId: "bailian-service",
+            imageTranslationModelName: "",
+            enableImageTranslateButton: false
+        })
+
+        await act(async () => root?.render(<Image />))
+        const modelSelector = rowByLabel("视觉模型").querySelector(
+            "select"
+        ) as HTMLSelectElement
+        expect(
+            Array.from(modelSelector.options)
+                .filter(option => option.value)
+                .map(option => option.value)
+        ).toEqual(["qwen-vl-max"])
+
+        await changeSelect(modelSelector, "qwen-vl-max")
+        expect(mocks.updateConfig).toHaveBeenLastCalledWith({
+            imageTranslationModelName: "qwen-vl-max"
+        })
+        expect(mocks.config.currentModel).toBe("text-service")
+        expect(mocks.config.aiModelList[0].params.modelName).toBe("qwen-plus")
+    })
+
+    it("keeps separate service configurations on the same platform isolated", async () => {
+        mocks.config = createConfig({
+            aiModelList: [
+                createModel("bailian-first", {
+                    type: AiModel_Platform_Enum.BAILIAN,
+                    modelName: "qwen-plus"
+                }),
+                createModel("bailian-second", {
+                    type: AiModel_Platform_Enum.BAILIAN,
+                    modelName: "qwen-turbo"
+                })
+            ]
+        })
+        const { Image } = await import("../src/options/Image")
+        root = await render(<Image />)
+
+        const serviceSelector = rowByLabel("翻译服务").querySelector(
+            "select"
+        ) as HTMLSelectElement
+        expect(
+            Array.from(serviceSelector.options).map(option => option.value)
+        ).toEqual(["", "bailian-first", "bailian-second"])
+
+        await changeSelect(serviceSelector, "bailian-second")
+        expect(mocks.updateConfig).toHaveBeenLastCalledWith({
+            imageTranslationModelId: "bailian-second",
+            imageTranslationModelName: "",
+            enableImageTranslateButton: false
+        })
+    })
+
+    it("allows a custom service to enter a visual model name manually", async () => {
+        mocks.config = createConfig({
+            aiModelList: [
+                createModel("custom-service", {
+                    isOfficial: false,
+                    modelName: "text-model"
+                })
+            ],
+            imageTranslationModelId: "custom-service"
+        })
+        mocks.discovery.manualEntry = true
+        mocks.discovery.errorMessage = "当前自定义接口不支持自动获取模型列表"
+        const { Image } = await import("../src/options/Image")
+        root = await render(<Image />)
+
+        const manualInput = rowByLabel("视觉模型").querySelector("input")
+        expect(manualInput).toBeInstanceOf(HTMLInputElement)
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype,
+                "value"
+            )?.set?.call(manualInput, "private-vl")
+            Simulate.change(manualInput!)
+        })
+        expect(mocks.updateConfig).toHaveBeenLastCalledWith({
+            imageTranslationModelName: "private-vl"
+        })
+        expect(document.body.textContent).toContain(
+            "当前自定义接口不支持自动获取模型列表"
+        )
+    })
+
+    it("keeps the stored visual model available when discovery does not return it", async () => {
+        mocks.config = createConfig({
+            aiModelList: [createModel("service")],
+            imageTranslationModelId: "service",
+            imageTranslationModelName: "legacy-vl"
+        })
+        mocks.discovery.models = [
+            {
+                id: "current-vl",
+                name: "Current VL",
+                availability: "verified",
+                vision: "supported"
+            }
+        ]
+        const { Image } = await import("../src/options/Image")
+        root = await render(<Image />)
+
+        const modelSelector = rowByLabel("视觉模型").querySelector(
+            "select"
+        ) as HTMLSelectElement
+        expect(modelSelector.value).toBe("legacy-vl")
+        expect(
+            Array.from(modelSelector.options).map(option => option.value)
+        ).toEqual(["legacy-vl", "current-vl"])
+        expect(document.body.textContent).toContain("当前模型未返回")
+    })
+
+    it("lists configured services without changing the text translation selection", async () => {
         mocks.config = createConfig({
             currentModel: "google-translate",
             aiModelList: [
@@ -284,32 +473,36 @@ describe("image translation settings", () => {
         const { Image } = await import("../src/options/Image")
         root = await render(<Image />)
 
-        const platformSelector = rowByLabel("模型平台").querySelector("select")
-        expect(platformSelector).toBeInstanceOf(HTMLSelectElement)
-        expect(platformSelector!.labels?.[0]?.textContent).toBe("模型平台")
-        expect(platformSelector!.value).toBe(AiModel_Platform_Enum.OPENAI)
+        const serviceSelector = rowByLabel("翻译服务").querySelector("select")
+        expect(serviceSelector).toBeInstanceOf(HTMLSelectElement)
+        expect(serviceSelector!.labels?.[0]?.textContent).toBe("翻译服务")
+        expect(serviceSelector!.value).toBe("openai-second")
         expect(
-            Array.from(platformSelector!.querySelectorAll("option")).map(
+            Array.from(serviceSelector!.querySelectorAll("option")).map(
                 option => option.getAttribute("value")
             )
         ).toEqual([
-            AiModel_Platform_Enum.OPENAI,
-            AiModel_Platform_Enum.GEMINI
+            "openai-first",
+            "openai-second",
+            "gemini-vision",
+            "text-only"
         ])
 
         const modelSelector = rowByLabel("视觉模型").querySelector("select")
         expect(modelSelector).toBeInstanceOf(HTMLSelectElement)
-        expect(modelSelector!.value).toBe("openai-second")
+        expect(modelSelector!.value).toBe("gpt-5")
         expect(
             Array.from(modelSelector!.querySelectorAll("option")).map(option =>
                 option.getAttribute("value")
             )
-        ).toEqual(["openai-first", "openai-second"])
+        ).toEqual(["gpt-5"])
 
-        await changeSelect(modelSelector!, "openai-first")
+        await changeSelect(serviceSelector!, "openai-first")
 
         expect(mocks.updateConfig).toHaveBeenCalledWith({
-            imageTranslationModelId: "openai-first"
+            imageTranslationModelId: "openai-first",
+            imageTranslationModelName: "",
+            enableImageTranslateButton: false
         })
         expect(mocks.updateConfig).not.toHaveBeenCalledWith(
             expect.objectContaining({ currentModel: expect.anything() })
@@ -318,14 +511,14 @@ describe("image translation settings", () => {
         await act(async () => root?.render(<Image />))
 
         expect(
-            rowByLabel("视觉模型").querySelector<HTMLSelectElement>("select")
+            rowByLabel("翻译服务").querySelector<HTMLSelectElement>("select")
                 ?.value
         ).toBe("openai-first")
         expect(mocks.config.imageTranslationModelId).toBe("openai-first")
         expect(mocks.config.currentModel).toBe("google-translate")
     })
 
-    it("selects the first usable vision model when the image platform changes", async () => {
+    it("clears the image model when the selected service changes", async () => {
         mocks.config = createConfig({
             currentModel: "google-translate",
             aiModelList: [
@@ -347,13 +540,15 @@ describe("image translation settings", () => {
         const { Image } = await import("../src/options/Image")
         root = await render(<Image />)
 
-        const platformSelector = rowByLabel("模型平台").querySelector(
+        const serviceSelector = rowByLabel("翻译服务").querySelector(
             "select"
         ) as HTMLSelectElement
-        await changeSelect(platformSelector, AiModel_Platform_Enum.GEMINI)
+        await changeSelect(serviceSelector, "gemini-second")
 
         expect(mocks.updateConfig).toHaveBeenCalledWith({
-            imageTranslationModelId: "gemini-first"
+            imageTranslationModelId: "gemini-second",
+            imageTranslationModelName: "",
+            enableImageTranslateButton: false
         })
         expect(mocks.updateConfig).not.toHaveBeenCalledWith(
             expect.objectContaining({ currentModel: expect.anything() })
@@ -362,18 +557,9 @@ describe("image translation settings", () => {
         await act(async () => root?.render(<Image />))
 
         expect(
-            rowByLabel("模型平台").querySelector<HTMLSelectElement>("select")
+            rowByLabel("翻译服务").querySelector<HTMLSelectElement>("select")
                 ?.value
-        ).toBe(AiModel_Platform_Enum.GEMINI)
-        const modelSelector = rowByLabel("视觉模型").querySelector(
-            "select"
-        ) as HTMLSelectElement
-        expect(modelSelector.value).toBe("gemini-first")
-        expect(
-            Array.from(modelSelector.querySelectorAll("option")).map(option =>
-                option.getAttribute("value")
-            )
-        ).toEqual(["gemini-first", "gemini-second"])
+        ).toBe("gemini-second")
         expect(mocks.config.currentModel).toBe("google-translate")
     })
 
@@ -387,10 +573,10 @@ describe("image translation settings", () => {
         root = await render(<Image />)
 
         expect(document.body.textContent).toContain(
-            "请先选择模型平台，再选择用于图片翻译的视觉模型"
+            "请先在‘模型’设置中添加并启用 AI 平台并填写 API Key"
         )
         expect(
-            rowByLabel("模型平台").querySelector<HTMLSelectElement>("select")
+            rowByLabel("翻译服务").querySelector<HTMLSelectElement>("select")
                 ?.disabled
         ).toBe(false)
         expect(
@@ -412,18 +598,18 @@ describe("image translation settings", () => {
         expect(document.body.textContent).toContain("可能产生服务商费用")
     })
 
-    it("disables both selectors when no usable vision model is configured", async () => {
+    it("disables service selection when no usable AI service is configured", async () => {
         mocks.config = createConfig({
             aiModelList: [
-                createModel("text-only", { vision: false }),
-                createModel("disabled-vision", { enabled: false })
+                createModel("missing-key", { apiKey: " " }),
+                createModel("disabled-service", { enabled: false })
             ]
         })
         const { Image } = await import("../src/options/Image")
         root = await render(<Image />)
 
         expect(
-            rowByLabel("模型平台").querySelector<HTMLSelectElement>("select")
+            rowByLabel("翻译服务").querySelector<HTMLSelectElement>("select")
                 ?.disabled
         ).toBe(true)
         expect(
@@ -431,7 +617,7 @@ describe("image translation settings", () => {
                 ?.disabled
         ).toBe(true)
         expect(document.body.textContent).toContain(
-            "请先在“模型”设置中配置并启用支持图片输入的模型"
+            "请先在‘模型’设置中添加并启用 AI 平台并填写 API Key"
         )
     })
 
@@ -511,7 +697,7 @@ describe("image translation settings", () => {
         const { Image } = await import("../src/options/Image")
         root = await render(<Image />)
 
-        await click(document.querySelector("button")!)
+        await click(capabilityTestButton())
         mocks.config = {
             ...mocks.config,
             imageTranslationModelId: "vision-b"
@@ -519,7 +705,7 @@ describe("image translation settings", () => {
         await act(async () => root?.render(<Image />))
         expect(document.body.textContent).not.toContain("视觉能力测试成功")
 
-        await click(document.querySelector("button")!)
+        await click(capabilityTestButton())
         await act(async () => {
             oldRequest.resolve(successfulCapabilityResult("vision-a"))
             await oldRequest.promise
@@ -547,13 +733,13 @@ describe("image translation settings", () => {
         const { Image } = await import("../src/options/Image")
         root = await render(<Image />)
 
-        await click(document.querySelector("button")!)
+        await click(capabilityTestButton())
         mocks.config = {
             ...mocks.config,
             imageTranslationModelId: "vision-b"
         }
         await act(async () => root?.render(<Image />))
-        await click(document.querySelector("button")!)
+        await click(capabilityTestButton())
         await act(async () => {
             oldRequest.reject(new Error("vision-a failed late"))
             await oldRequest.promise.catch(() => undefined)
@@ -576,7 +762,7 @@ describe("image translation settings", () => {
             })
             const { Image } = await import("../src/options/Image")
             root = await render(<Image />)
-            await click(document.querySelector("button")!)
+            await click(capabilityTestButton())
 
             await act(async () => root?.unmount())
             root = undefined
@@ -605,7 +791,7 @@ describe("image translation settings", () => {
         const { Image } = await import("../src/options/Image")
         root = await render(<Image />)
 
-        await click(document.querySelector("button")!)
+        await click(capabilityTestButton())
 
         expect(document.querySelector('[role="alert"]')?.textContent).toBe(
             "视觉能力测试失败：图片中未识别到可翻译文字"
@@ -623,7 +809,7 @@ describe("image translation settings", () => {
         const { Image } = await import("../src/options/Image")
         root = await render(<Image />)
 
-        await click(document.querySelector("button")!)
+        await click(capabilityTestButton())
 
         expect(document.querySelector('[role="alert"]')?.textContent).toBe(
             "视觉能力测试失败：图片中未识别到可翻译文字"
@@ -631,10 +817,7 @@ describe("image translation settings", () => {
     })
 
     it("keeps the generated capability image runtime-only", () => {
-        const source = readFileSync(
-            new URL("../src/options/Image.tsx", import.meta.url),
-            "utf8"
-        )
+        const source = readFileSync("src/options/Image.tsx", "utf8")
         expect(source).not.toMatch(
             /(?:import|from)\s*[('"].*\.(?:png|jpe?g|webp|gif|svg)/i
         )

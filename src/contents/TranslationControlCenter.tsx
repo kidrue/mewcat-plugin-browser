@@ -379,7 +379,14 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         }
 
         return doTranslate()
-    }, [doTranslate, isDragged, isTranslateRef, loading, onClearTranslate, refreshing])
+    }, [
+        doTranslate,
+        isDragged,
+        isTranslateRef,
+        loading,
+        onClearTranslate,
+        refreshing
+    ])
 
     const onRefreshTranslate = useCallback(
         async (event: React.MouseEvent<HTMLButtonElement>) => {

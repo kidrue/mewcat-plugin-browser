@@ -1,6 +1,10 @@
 import { storage } from "#imports"
 
-import { STORAGE_NAMES, toWxtLocalStorageKey, toWxtSyncStorageKey } from "@/constants/storage"
+import {
+    STORAGE_NAMES,
+    toWxtLocalStorageKey,
+    toWxtSyncStorageKey
+} from "@/constants/storage"
 
 const PERSISTED_ATOM_KEYS: Readonly<Record<string, string>> = {
     "extension-config": STORAGE_NAMES.extensionConfig,
@@ -13,7 +17,6 @@ const toLocalStorageKey = (key: string): `local:${string}` =>
 
 const toSyncStorageKey = (key: string): `sync:${string}` =>
     toWxtSyncStorageKey(PERSISTED_ATOM_KEYS[key] ?? key)
-
 
 // Chrome Storage 适配器 for Jotai
 export const chromeStorageAdapter = {

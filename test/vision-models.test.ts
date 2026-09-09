@@ -1,14 +1,19 @@
 import { describe, expect, it } from "vitest"
 
+import type { DiscoveredModel } from "../src/model-management/catalog"
+import { defaultExtensionConfig } from "../src/state/constants"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 import {
+    buildVisionServiceLabel,
     getImageTranslationConfigRepair,
     getVisionModelOptions,
     getVisionPlatformOptions,
     getVisionPlatformSelection,
+    getVisionServiceOptions,
     isImageTranslationEnabled,
     isVisionCapableModel,
-    normalizeImageTranslationModelSelection
+    normalizeImageTranslationModelSelection,
+    normalizeImageTranslationSelection
 } from "../src/utils/visionModels"
 
 const createModel = (
@@ -36,6 +41,142 @@ const createModel = (
 })
 
 describe("vision model capabilities", () => {
+    it("lists usable LLM service configurations with stable labels", () => {
+        const bailian = createModel(
+            "bailian",
+            AiModel_Platform_Enum.BAILIAN,
+            "qwen-plus"
+        )
+        const gemini = createModel(
+            "gemini",
+            AiModel_Platform_Enum.GEMINI,
+            "gemini-2.5-flash",
+            { isOfficial: false }
+        )
+
+        expect(
+            getVisionServiceOptions([
+                bailian,
+                createModel("disabled", AiModel_Platform_Enum.OPENAI, "gpt-5", {
+                    enabled: false
+                }),
+                createModel(
+                    "missing-key",
+                    AiModel_Platform_Enum.GEMINI,
+                    "gemini-2.5-flash",
+                    { apiKey: " " }
+                ),
+                createModel("deepl", AiModel_Platform_Enum.DEEPL, "deepl"),
+                gemini
+            ])
+        ).toEqual([
+            {
+                value: "bailian",
+                label: "阿里百炼 · qwen-plus · 官方",
+                service: bailian
+            },
+            {
+                value: "gemini",
+                label: "Gemini · gemini-2.5-flash · 自定义",
+                service: gemini
+            }
+        ])
+    })
+
+    it("numbers otherwise identical service labels in input order", () => {
+        const first = createModel(
+            "bailian-1",
+            AiModel_Platform_Enum.BAILIAN,
+            "qwen-plus"
+        )
+        const second = { ...first, id: "bailian-2" }
+
+        expect(buildVisionServiceLabel(first)).toBe(
+            "阿里百炼 · qwen-plus · 官方"
+        )
+        expect(
+            getVisionServiceOptions([first, second]).map(option => option.label)
+        ).toEqual([
+            "阿里百炼 · qwen-plus · 官方",
+            "阿里百炼 · qwen-plus · 官方（2）"
+        ])
+    })
+
+    it("keeps supported and unknown remote models while excluding text-only models", () => {
+        const models: DiscoveredModel[] = [
+            {
+                id: "supported",
+                name: "Supported vision",
+                availability: "verified",
+                vision: "supported"
+            },
+            {
+                id: "unknown",
+                name: "Unknown vision",
+                availability: "catalog",
+                vision: "unknown"
+            },
+            {
+                id: "unsupported",
+                name: "Text only",
+                availability: "verified",
+                vision: "unsupported"
+            }
+        ]
+
+        expect(
+            getVisionModelOptions(models).map(option => option.value)
+        ).toEqual(["supported", "unknown"])
+    })
+
+    it("clears image selection when its service is unavailable", () => {
+        const result = normalizeImageTranslationSelection({
+            ...defaultExtensionConfig,
+            currentModel: "text-service",
+            enableImageTranslateButton: true,
+            imageTranslationModelId: "disabled",
+            imageTranslationModelName: "qwen-vl-plus",
+            aiModelList: [
+                createModel(
+                    "disabled",
+                    AiModel_Platform_Enum.BAILIAN,
+                    "qwen-plus",
+                    { enabled: false }
+                )
+            ]
+        })
+
+        expect(result).toMatchObject({
+            imageTranslationModelId: "",
+            imageTranslationModelName: "",
+            enableImageTranslateButton: false,
+            currentModel: "text-service"
+        })
+        expect(result.aiModelList[0]?.params.modelName).toBe("qwen-plus")
+    })
+
+    it("clears image selection for a non-LLM service", () => {
+        const result = normalizeImageTranslationSelection({
+            ...defaultExtensionConfig,
+            enableImageTranslateButton: true,
+            imageTranslationModelId: "deepl-service",
+            imageTranslationModelName: "vision-model",
+            aiModelList: [
+                createModel(
+                    "deepl-service",
+                    AiModel_Platform_Enum.DEEPL,
+                    "deepl"
+                )
+            ]
+        })
+
+        expect(result).toMatchObject({
+            imageTranslationModelId: "",
+            imageTranslationModelName: "",
+            enableImageTranslateButton: false
+        })
+    })
+
     it("returns the persisted disable repair without changing text selection", () => {
         const config = {
             enableImageTranslateButton: true,
@@ -59,6 +200,7 @@ describe("vision model capabilities", () => {
             getImageTranslationConfigRepair({
                 enableImageTranslateButton: true,
                 imageTranslationModelId: "vision",
+                imageTranslationModelName: "gpt-5",
                 aiModelList: [
                     createModel(
                         "vision",
@@ -139,6 +281,7 @@ describe("vision model capabilities", () => {
             isImageTranslationEnabled({
                 enableImageTranslateButton: true,
                 imageTranslationModelId: "vision",
+                imageTranslationModelName: "gpt-5",
                 aiModelList: [
                     createModel(
                         "vision",
@@ -289,12 +432,9 @@ describe("vision model capabilities", () => {
 
     it("lists only platforms that contain usable vision models", () => {
         const models = [
-            createModel(
-                "openai-first",
-                AiModel_Platform_Enum.OPENAI,
-                "gpt-5",
-                { vision: true }
-            ),
+            createModel("openai-first", AiModel_Platform_Enum.OPENAI, "gpt-5", {
+                vision: true
+            }),
             createModel(
                 "openai-second",
                 AiModel_Platform_Enum.OPENAI,
@@ -338,9 +478,7 @@ describe("vision model capabilities", () => {
         expect(getVisionPlatformSelection("openai-vision", models)).toBe(
             AiModel_Platform_Enum.OPENAI
         )
-        expect(getVisionPlatformSelection("disabled-gemini", models)).toBe(
-            ""
-        )
+        expect(getVisionPlatformSelection("disabled-gemini", models)).toBe("")
         expect(getVisionPlatformSelection("missing", models)).toBe("")
     })
 })
