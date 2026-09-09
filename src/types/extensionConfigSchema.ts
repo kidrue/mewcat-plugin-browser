@@ -56,6 +56,8 @@ const extensionConfigShape = {
         .optional(),
     enableThinking: z.boolean().optional(),
     enableContext: z.boolean().optional(),
+    enablePageSummary: z.boolean().optional(),
+    pageSummaryDisabledSites: z.array(z.string()).optional(),
     enableImageTranslateButton: z.boolean().optional(),
     imageTranslationModelId: z.string().optional(),
     imageTranslateProvider: z.string().optional()

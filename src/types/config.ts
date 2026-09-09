@@ -95,6 +95,12 @@ export interface ExtensionConfig {
     /** 是否启用 AI 智能上下文翻译（默认 false） */
     enableContext?: boolean
 
+    /** 是否启用网页总结（默认 false） */
+    enablePageSummary?: boolean
+
+    /** 禁用网页总结的网站列表 */
+    pageSummaryDisabledSites?: string[]
+
     /** 是否在图片上显示快捷翻译按钮（默认 false） */
     enableImageTranslateButton?: boolean
 
