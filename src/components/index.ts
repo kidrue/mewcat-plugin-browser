@@ -1,5 +1,6 @@
 // 导出所有组件
 export { default as Button } from "./Button"
+export { default as BrandLogo } from "./BrandLogo"
 export { default as LoadingDots } from "./LoadingDots"
 export { default as CustomSelect } from "./Select"
 export { default as CustomToggle } from "./Switch"

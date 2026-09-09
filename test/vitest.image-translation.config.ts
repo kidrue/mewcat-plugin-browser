@@ -28,5 +28,8 @@ export default defineConfig({
                 new URL("./mocks/imports.ts", import.meta.url)
             )
         }
+    },
+    test: {
+        exclude: [...configDefaults.exclude, ".worktrees/**"]
     }
 })

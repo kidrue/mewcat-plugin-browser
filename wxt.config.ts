@@ -22,7 +22,7 @@ export default defineConfig({
         ],
         web_accessible_resources: [
             {
-                resources: ["assets/**"],
+                resources: ["assets/**", "icons/**"],
                 matches: ["<all_urls>", "http://127.0.0.1/*"]
             }
         ]

@@ -53,6 +53,30 @@ function deferred<T>() {
 
 let root: Root | undefined
 
+async function renderExplanation(explanation: string, onFinished?: () => void) {
+    mocks.explainConcept.mockResolvedValueOnce(explanation)
+    const { TranslateTextPanel } = await import(
+        "../src/components/TranslateTextPanel/index.tsx"
+    )
+    const host = document.querySelector<HTMLDivElement>("#host")!
+    root = createRoot(host)
+    await act(async () => {
+        root?.render(
+            <TranslateTextPanel
+                data="Treaty of Versailles"
+                pageTitle="Causes of World War II"
+                context="The treaty reshaped Europe after World War I."
+                onFinished={onFinished}
+            />
+        )
+    })
+    await flushEffects()
+    const button = host.querySelector<HTMLButtonElement>("button")!
+    await act(async () => button.click())
+    await flushEffects()
+    return { host, button }
+}
+
 beforeEach(() => {
     document.body.innerHTML = "<div id=host></div>"
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
@@ -122,6 +146,9 @@ describe("selection concept explanation panel", () => {
         await flushEffects()
 
         expect(document.body.textContent).toContain("类别：历史事件")
+        expect(document.querySelector("p")?.textContent).toBe(
+            "类别：历史事件\n简释：第一次世界大战后的和平条约。"
+        )
         expect(document.body.textContent).toContain("AI 生成，未联网核验")
         expect(onFinished).toHaveBeenCalledTimes(3)
     })
@@ -240,5 +267,137 @@ describe("selection concept explanation panel", () => {
         expect(explainButton?.textContent).toContain("重新解释")
         expect(explainButton?.disabled).toBe(false)
         expect(onFinished).toHaveBeenCalledTimes(3)
+    })
+
+    it("renders basic Markdown only for concept explanations", async () => {
+        mocks.translateText.mockResolvedValueOnce("**凡尔赛条约**")
+        const { host } = await renderExplanation(
+            [
+                "# 类别",
+                "",
+                "**历史事件**，又称*和平条约*。",
+                "",
+                "- 背景",
+                "- 语境",
+                "",
+                "1. 起因",
+                "2. 影响",
+                "",
+                "> 需要结合上下文理解。",
+                "",
+                "行内代码：`treaty`。",
+                "",
+                "```text",
+                "  first line",
+                "    second line",
+                "```"
+            ].join("\n")
+        )
+
+        expect(host.textContent).toContain("**凡尔赛条约**")
+        expect(host.querySelector("h1")?.textContent).toBe("类别")
+        expect(host.querySelector("strong")?.textContent).toBe("历史事件")
+        expect(host.querySelector("em")?.textContent).toBe("和平条约")
+        expect(
+            Array.from(host.querySelectorAll("ul > li"), li => li.textContent)
+        ).toEqual(["背景", "语境"])
+        expect(
+            Array.from(host.querySelectorAll("ol > li"), li => li.textContent)
+        ).toEqual(["起因", "影响"])
+        expect(host.querySelector("blockquote p")?.textContent).toBe(
+            "需要结合上下文理解。"
+        )
+        expect(host.querySelector("p > code")?.textContent).toBe("treaty")
+        expect(host.querySelector("pre > code")?.textContent).toBe(
+            "  first line\n    second line\n"
+        )
+        expect(host.textContent).toContain("AI 生成，未联网核验")
+    })
+
+    it("opens safe explanation links in an isolated new tab", async () => {
+        const { host } = await renderExplanation(
+            '[参考资料](https://example.com/history "历史资料")'
+        )
+        const link = host.querySelector("a")
+
+        expect(link?.textContent).toBe("参考资料")
+        expect(link?.getAttribute("href")).toBe("https://example.com/history")
+        expect(link?.getAttribute("title")).toBe("历史资料")
+        expect(link?.getAttribute("target")).toBe("_blank")
+        expect(link?.getAttribute("rel")).toBe("noopener noreferrer")
+    })
+
+    it.each(["javascript:alert%281%29", "data:text/html;base64,PHNjcmlwdD4="])(
+        "does not turn an unsafe URL into a navigation: %s",
+        async url => {
+            const { host } = await renderExplanation(`[危险链接](${url})`)
+
+            expect(host.textContent).toContain("危险链接")
+            expect(host.querySelector("a[href]")).toBeNull()
+            expect(host.textContent).not.toContain(url)
+        }
+    )
+
+    it("skips raw HTML while still rendering surrounding Markdown", async () => {
+        const { host } = await renderExplanation(
+            [
+                "**可读解释**",
+                "",
+                '<script>alert("unsafe")</script>',
+                "",
+                '<iframe src="https://example.com/embed"></iframe>',
+                "",
+                '<img src="https://example.com/tracker.png" onerror="alert(1)">',
+                "",
+                "普通文本<span>保留文字</span>。"
+            ].join("\n")
+        )
+
+        expect(host.querySelector("strong")?.textContent).toBe("可读解释")
+        expect(host.querySelector("script, iframe, img, [onerror]")).toBeNull()
+        expect(host.textContent).not.toContain("<script>")
+        expect(host.textContent).not.toContain("unsafe")
+        expect(host.textContent).toContain("普通文本保留文字。")
+    })
+
+    it("shows image alt text without loading remote images", async () => {
+        const { host } = await renderExplanation(
+            "背景：![历史示意图](https://example.com/tracker.png)"
+        )
+
+        expect(host.querySelector("p")?.textContent).toBe("背景：历史示意图")
+        expect(host.querySelector("img")).toBeNull()
+        expect(host.innerHTML).not.toContain("https://example.com/tracker.png")
+    })
+
+    it("renders the replacement Markdown and repositions after explaining again", async () => {
+        const onFinished = vi.fn()
+        const { host, button } = await renderExplanation(
+            "## 初次解释",
+            onFinished
+        )
+        expect(host.querySelector("h2")?.textContent).toBe("初次解释")
+
+        const explanation = deferred<string>()
+        mocks.explainConcept.mockReturnValueOnce(explanation.promise)
+        onFinished.mockClear()
+        await act(async () => button.click())
+        expect(button.disabled).toBe(true)
+        expect(button.textContent).toContain("解释中")
+        expect(onFinished).toHaveBeenCalledTimes(1)
+
+        await act(async () => {
+            explanation.resolve("## 更新解释\n\n**补充语境**")
+            await explanation.promise
+        })
+        await flushEffects()
+
+        expect(host.querySelector("h2")?.textContent).toBe("更新解释")
+        expect(host.querySelector("strong")?.textContent).toBe("补充语境")
+        expect(host.textContent).not.toContain("初次解释")
+        expect(host.textContent).toContain("凡尔赛条约")
+        expect(button.disabled).toBe(false)
+        expect(button.textContent).toContain("重新解释")
+        expect(onFinished).toHaveBeenCalledTimes(2)
     })
 })

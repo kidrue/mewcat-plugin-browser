@@ -20,6 +20,35 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it("does not write back equivalent configs with reordered keys", async () => {
+        const normalized = repairExtensionConfig(
+            defaultExtensionConfig,
+            defaultExtensionConfig
+        )
+        const reordered = Object.fromEntries(
+            Object.entries(normalized).reverse()
+        ) as ExtensionConfig
+        const setItem = vi.fn(async () => undefined)
+        let notify: ((value: ExtensionConfig) => void) | undefined
+        const adapter = createTranslationServiceStorageAdapter({
+            getItem: async () => reordered,
+            setItem,
+            removeItem: async () => undefined,
+            subscribe: (_key, callback) => {
+                notify = callback
+                return () => undefined
+            }
+        })
+        await adapter.getItem("extension-config", defaultExtensionConfig)
+        const callback = vi.fn()
+        adapter.subscribe("extension-config", callback, defaultExtensionConfig)
+        for (let index = 0; index < 130; index++) {
+            notify?.(reordered)
+        }
+        expect(callback).toHaveBeenCalledTimes(130)
+        expect(setItem).not.toHaveBeenCalled()
+    })
+
     it("keeps legacy models without an official endpoint ID valid", () => {
         const repaired = repairExtensionConfig(
             {

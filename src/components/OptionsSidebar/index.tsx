@@ -1,6 +1,8 @@
 import React from "react"
 import styled from "styled-components"
 
+import BrandLogo from "../BrandLogo"
+
 interface NavigationItem {
     id: string
     label: string
@@ -43,27 +45,12 @@ const SidebarContainer = styled.aside`
     }
 `
 
-// 朱砂印 logo —— 与页面内悬浮球同形制
-const SpineSeal = styled.div`
-    width: 40px;
-    height: 40px;
-    flex: none;
-    border-radius: var(--radius-xl);
-    background: var(--primary-color);
-    color: var(--text-inverse);
-    font-family: var(--font-display);
-    font-size: 21px;
-    font-weight: var(--font-weight-semibold);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset 0 0 0 1.5px rgba(251, 248, 240, 0.55);
-    user-select: none;
+const SpineLogo = styled(BrandLogo)`
+    box-shadow: 0 2px 8px rgba(79, 112, 190, 0.2);
 
     @media (max-width: 900px) {
         width: 34px;
         height: 34px;
-        font-size: 18px;
     }
 `
 
@@ -153,7 +140,7 @@ const OptionsSidebar: React.FC<OptionsSidebarProps> = ({
 }) => {
     return (
         <SidebarContainer className={className}>
-            <SpineSeal aria-hidden="true">譯</SpineSeal>
+            <SpineLogo size={40} />
             <NavList role="tablist" aria-label={title}>
                 {navigationItems.map(item => (
                     <NavItem

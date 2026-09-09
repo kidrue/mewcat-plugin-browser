@@ -16,3 +16,6 @@ key.pem
 # crx 打包输出目录 / CI 产物暂存目录
 release/
 dist-assets/
+
+# Codex 设计讨论生成的本地可视化草图
+.superpowers/

@@ -1,4 +1,5 @@
 import React, { useLayoutEffect } from "react"
+import Markdown, { type Components } from "react-markdown"
 import { useAsyncFn, useAsyncRetry } from "react-use"
 import styled from "styled-components"
 
@@ -110,6 +111,7 @@ const SCxActionHint = styled.span`
 `
 
 const SCxExplanation = styled.div`
+    min-width: 0;
     margin-top: 8px;
     padding: 10px 12px;
     border: 1px solid #e4ddcd;
@@ -118,11 +120,118 @@ const SCxExplanation = styled.div`
 `
 
 const SCxExplanationText = styled.div`
+    min-width: 0;
     color: #1a1714;
     font-size: 13px;
     line-height: 1.7;
-    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        margin: 12px 0 6px;
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.5;
+    }
+
+    h1 {
+        font-size: 16px;
+    }
+
+    h2 {
+        font-size: 15px;
+    }
+
+    p,
+    ul,
+    ol,
+    blockquote,
+    pre {
+        margin: 8px 0;
+    }
+
+    p,
+    li {
+        white-space: pre-line;
+    }
+
+    ul,
+    ol {
+        padding-left: 20px;
+    }
+
+    li + li {
+        margin-top: 4px;
+    }
+
+    blockquote {
+        padding-left: 10px;
+        border-left: 3px solid #d8d0be;
+        color: #6e665c;
+    }
+
+    code {
+        padding: 1px 4px;
+        border-radius: 3px;
+        background: rgba(178, 58, 46, 0.07);
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+    }
+
+    pre {
+        max-width: 100%;
+        padding: 8px;
+        overflow-x: auto;
+        border-radius: 4px;
+        background: rgba(26, 23, 20, 0.05);
+        box-sizing: border-box;
+        white-space: pre;
+        overflow-wrap: normal;
+    }
+
+    pre code {
+        padding: 0;
+        background: none;
+        white-space: inherit;
+        overflow-wrap: normal;
+    }
+
+    a {
+        color: #b23a2e;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    > :first-child {
+        margin-top: 0;
+    }
+
+    > :last-child {
+        margin-bottom: 0;
+    }
 `
+
+const explanationMarkdownComponents: Components = {
+    a: ({ href, title, children }) =>
+        href ? (
+            <a
+                href={href}
+                title={title}
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                {children}
+            </a>
+        ) : (
+            <>{children}</>
+        ),
+    img: ({ alt }) => <>{alt}</>
+}
 
 const SCxAiNotice = styled.div`
     margin-top: 8px;
@@ -224,7 +333,12 @@ export const TranslateTextPanel: React.FunctionComponent<
             {explanationState.value && (
                 <SCxExplanation>
                     <SCxExplanationText>
-                        {explanationState.value}
+                        <Markdown
+                            skipHtml
+                            components={explanationMarkdownComponents}
+                        >
+                            {explanationState.value}
+                        </Markdown>
                     </SCxExplanationText>
                     <SCxAiNotice>AI 生成，未联网核验</SCxAiNotice>
                 </SCxExplanation>

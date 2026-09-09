@@ -9,6 +9,7 @@ import {
 } from "@/state"
 import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
+import BrandLogo from "../BrandLogo"
 import NativeSelect from "../NativeSelect"
 import CustomToggle from "../Switch"
 import Tooltip from "../Tooltip"
@@ -60,23 +61,8 @@ const Header = styled.div`
     }
 `
 
-// 与页面上的悬浮球同形制：朱砂方印 + 内留白边 + 宋体印文
-const Seal = styled.div`
-    width: 40px;
-    height: 40px;
-    flex: none;
-    border-radius: var(--radius-xl);
-    background: var(--primary-color);
-    color: var(--text-inverse);
-    font-family: var(--font-display);
-    font-size: 21px;
-    font-weight: var(--font-weight-semibold);
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset 0 0 0 1.5px rgba(251, 248, 240, 0.55);
-    user-select: none;
+const HeaderLogo = styled(BrandLogo)`
+    box-shadow: 0 2px 8px rgba(79, 112, 190, 0.2);
 `
 
 const HeaderInfo = styled.div`
@@ -335,7 +321,7 @@ function SettingsPanel({
     return (
         <PanelContainer $variant={variant}>
             <Header>
-                <Seal aria-hidden="true">譯</Seal>
+                <HeaderLogo size={40} />
                 <HeaderInfo>
                     <HeaderTitle>譯趣貓</HeaderTitle>
                     <HeaderSubtitle>智能翻译助手</HeaderSubtitle>

@@ -191,6 +191,11 @@ export function useSelectionTranslate<T extends HTMLElement>({
         if (!config.isSelectedTranslate) {
             return
         }
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                hideAll()
+            }
+        }
         const handleKeyUp = (e: KeyboardEvent) => {
             // 根据配置的触发模式检查对应的按键
             const triggerKeyText = e.key.toUpperCase()
@@ -209,12 +214,14 @@ export function useSelectionTranslate<T extends HTMLElement>({
             }
             showTranslatePanel()
         }
+        document.addEventListener("keydown", handleKeyDown)
         document.addEventListener("keyup", handleKeyUp)
 
         return () => {
+            document.removeEventListener("keydown", handleKeyDown)
             document.removeEventListener("keyup", handleKeyUp)
         }
-    }, [config.isSelectedTranslate, showTranslatePanel, triggerMode])
+    }, [config.isSelectedTranslate, hideAll, showTranslatePanel, triggerMode])
 
     // 监听鼠标事件
     useEffect(() => {

@@ -85,6 +85,18 @@ describe("functional translation service", () => {
                 }
             ]
         })
+
+        const systemMessage =
+            request?.type === "generate" ? request.messages[0]?.content : ""
+        expect(systemMessage).toContain("严格使用基础 Markdown 输出")
+        for (const heading of ["## 类别", "## 简释", "## 背景", "## 语境"]) {
+            expect(systemMessage).toContain(heading)
+        }
+        expect(systemMessage).toContain("不要输出 HTML、XML、JSON")
+        expect(systemMessage).toContain("不要使用表格、脚注、数学公式或图片")
+        expect(systemMessage).toContain(
+            "不要添加前言、结语或 Markdown 代码围栏"
+        )
     })
 
     it("keeps prompt-like selected text inside escaped data boundaries", async () => {

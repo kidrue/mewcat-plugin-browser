@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useAsync, useAsyncFn, useClickAway, useLatest } from "react-use"
 import styled, { StyleSheetManager } from "styled-components"
 
+import BrandLogo from "../components/BrandLogo"
 import Icon from "../components/Icon"
 import SettingsPanel from "../components/SettingsPanel"
 import Tooltip from "../components/Tooltip"
@@ -32,12 +33,14 @@ const SCxFloatingButton = styled.div`
     width: 54px;
     height: 54px;
     border-radius: var(--radius-xl);
-    background: var(--primary-color, #b23a2e);
-    /* 内描边 —— 印面的留白边 */
+    padding: 2px;
+    box-sizing: border-box;
+    overflow: visible;
+    background: rgba(255, 255, 255, 0.94);
     box-shadow:
-        inset 0 0 0 1.5px rgba(251, 248, 240, 0.6),
-        0 3px 10px rgba(142, 42, 32, 0.24);
-    opacity: 0.84;
+        0 0 0 1px rgba(91, 141, 239, 0.24),
+        0 4px 14px rgba(79, 112, 190, 0.28);
+    opacity: 0.94;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -57,22 +60,15 @@ const SCxFloatingButton = styled.div`
     }
 `
 
-// 印文：一个「譯」字。用系统宋体，不依赖任何图片资源。
-const SCxSealGlyph = styled.span`
-    font-family: var(--font-display, serif);
-    font-size: 27px;
-    font-weight: 600;
-    line-height: 1;
-    color: var(--text-inverse, #fbf8f0);
-    user-select: none;
-    -webkit-user-drag: none;
+const SCxBrandLogo = styled(BrandLogo)`
+    border-radius: calc(var(--radius-xl, 16px) - 2px);
 `
 
 // 研墨：翻译进行中，外沿一圈虚线缓慢转动
 const SCxGrindRing = styled.div<{ $active: boolean }>`
     position: absolute;
     inset: -7px;
-    border: 1.5px dashed var(--primary-color, #b23a2e);
+    border: 1.5px dashed #5b8def;
     border-radius: calc(var(--radius-xl, 16px) + 4px);
     pointer-events: none;
     opacity: ${p => (p.$active ? 0.75 : 0)};
@@ -96,7 +92,7 @@ const SCxInkWash = styled.div<{ $active: boolean }>`
     position: absolute;
     inset: 0;
     border-radius: var(--radius-xl);
-    background: var(--primary-color, #b23a2e);
+    background: rgba(117, 155, 241, 0.72);
     pointer-events: none;
     opacity: 0;
     ${p => p.$active && `animation: mewcat-wash 0.62s ease-out 1;`}
@@ -627,7 +623,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                             $active={isTranslate && !loading}
                             aria-hidden="true"
                         />
-                        <SCxSealGlyph aria-hidden="true">譯</SCxSealGlyph>
+                        <SCxBrandLogo size={50} />
 
                         {isTranslate && (
                             <SCxTickIcon>

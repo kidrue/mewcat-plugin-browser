@@ -783,3 +783,27 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：按用户要求将全部本地分支收拢到 `main` 并清理已合并分支。相关提交此前已全部合入 `main`，无需重复生成合并提交。
 
 **验证**：当前 `main` 工作区执行 `pnpm check`，退出码为 0；包含 249 项图片/页面/配置测试、36 项翻译服务/概念解释测试、26 项商店测试及 Google 和划词交互检查。lint 为 0 errors、25 条既有 warnings；清理后本地仅剩 `main`，`git branch --no-merged main` 输出为空。
+
+---
+
+### 2026-09-09 — 划词概念解释支持基础 Markdown 渲染
+
+**修改内容**：
+
+- `package.json`、`pnpm-lock.yaml`：新增 `react-markdown@^10` 运行时依赖。
+- `src/components/TranslateTextPanel/index.tsx`：仅将概念解释结果改为基础 Markdown 渲染，支持标题、强调、列表、引用、代码和链接；设置局部排版、长代码横向滚动、危险链接过滤、原始 HTML 跳过及图片替代文本展示；保留翻译、加载、错误、重试和定位回调行为。
+- `test/selection-explanation-panel.test.tsx`：补充 Markdown DOM、链接安全、原始 HTML、图片替代文本和重新解释布局回归测试。
+
+**原因**：让划词解释结果保留模型输出的层次结构，提高长文本解释的可读性，同时避免远程图片、原始 HTML 和不安全链接影响页面。
+
+**验证**：`pnpm check` 与 `pnpm exec wxt build` 均通过；`pnpm check` 包含 11 项概念解释面板测试、32 项翻译服务/网关测试、26 项商店测试及 249 项图片/页面/配置测试，lint 为 0 errors、25 条既有 warnings。
+
+---
+
+### 2026-09-09 — 稳定划词概念解释的 Markdown 输出格式
+
+**修改内容**：更新 `src/translation/modelTranslation.ts` 的概念解释系统提示词，要求模型固定使用四个二级标题输出基础 Markdown，禁止 HTML、XML、JSON、代码围栏、表格、脚注、数学公式和图片；在 `test/translation-service.test.ts` 增加提示词约束回归断言。
+
+**原因**：统一模型返回结构，降低不同模型输出格式波动，确保与划词解释面板的基础 Markdown 渲染能力匹配。
+
+**验证**：`pnpm check` 全部通过。

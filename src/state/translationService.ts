@@ -1,3 +1,5 @@
+import { equals } from "ramda"
+
 import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import { migrateLegacyModel } from "@/model-management/catalog"
 import type { BaseModel } from "@/types"
@@ -89,7 +91,8 @@ const normalizeStoredConfig = (
 
 const configsEqual = (left: unknown, right: ExtensionConfig): boolean => {
     try {
-        return JSON.stringify(left) === JSON.stringify(right)
+        // Storage may reorder object keys; only actual value changes need repair.
+        return equals(left, right)
     } catch {
         return false
     }

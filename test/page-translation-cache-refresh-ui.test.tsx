@@ -116,6 +116,7 @@ beforeEach(() => {
         IS_REACT_ACT_ENVIRONMENT: true,
         chrome: {
             runtime: {
+                getURL: (path: string) => `chrome-extension://mewcat/${path}`,
                 sendMessage: vi.fn(),
                 onMessage: {
                     addListener: vi.fn(),
@@ -134,6 +135,21 @@ afterEach(async () => {
 })
 
 describe("translation button cache refresh", () => {
+    it("uses the generated extension icon as the floating translation logo", async () => {
+        const { default: TranslationControlCenter } = await import(
+            "../src/contents/TranslationControlCenter"
+        )
+        await act(async () => root?.render(<TranslationControlCenter />))
+
+        const logo = shadowRoot.querySelector<HTMLImageElement>(
+            'img[src="chrome-extension://mewcat/icons/128.png"]'
+        )
+
+        expect(logo).not.toBeNull()
+        expect(logo?.getAttribute("alt")).toBe("")
+        expect(logo?.draggable).toBe(false)
+    })
+
     it("clears the page cache and retranslates from the hover action", async () => {
         const { default: TranslationControlCenter } = await import(
             "../src/contents/TranslationControlCenter"

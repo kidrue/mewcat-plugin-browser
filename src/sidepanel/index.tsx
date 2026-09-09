@@ -9,6 +9,7 @@ import { AUTO_DETECT_OPTION, languages } from "@/constants"
 import { useConfig } from "@/state/config"
 import { translateText } from "@/translation/translationService"
 
+import BrandLogo from "../components/BrandLogo"
 import LoadingDots from "../components/LoadingDots"
 import NativeSelect from "../components/NativeSelect"
 
@@ -49,23 +50,8 @@ const Header = styled.div`
     }
 `
 
-// 朱砂印 —— 与悬浮球、popup 同形制
-const Seal = styled.div`
-    width: 28px;
-    height: 28px;
-    flex: none;
-    border-radius: var(--radius-lg);
-    background: var(--primary-color);
-    color: var(--text-inverse);
-    font-family: var(--font-display);
-    font-size: 15px;
-    font-weight: var(--font-weight-semibold);
-    line-height: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset 0 0 0 1px rgba(251, 248, 240, 0.55);
-    user-select: none;
+const HeaderLogo = styled(BrandLogo)`
+    box-shadow: 0 1px 5px rgba(79, 112, 190, 0.18);
 `
 
 const HeaderTitle = styled.h1`
@@ -411,7 +397,7 @@ const SlidePanel: React.FunctionComponent = () => {
     return (
         <Container>
             <Header>
-                <Seal aria-hidden="true">譯</Seal>
+                <HeaderLogo size={28} />
                 <HeaderTitle>翻译侧边栏</HeaderTitle>
             </Header>
 

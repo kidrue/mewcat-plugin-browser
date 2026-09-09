@@ -271,6 +271,17 @@ await act(async () => {
 assert.equal(latestHook!.state.isVisible, true)
 
 await act(async () => {
+    document.dispatchEvent(
+        new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+    )
+})
+assert.equal(
+    latestHook!.state.isVisible,
+    false,
+    "Escape must close the visible selection translation panel"
+)
+
+await act(async () => {
     root.render(<Harness configOverrides={{ selectionTriggerMode: "shift" }} />)
 })
 await dragSelect(10, 21)
