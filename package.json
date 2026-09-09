@@ -3,7 +3,7 @@
     "displayName": "mewCat",
     "private": true,
     "type": "module",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "packageManager": "pnpm@10.20.0",
     "scripts": {
         "predev": "node scripts/check-legacy-output.cjs",

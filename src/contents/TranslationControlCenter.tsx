@@ -18,14 +18,33 @@ export const getShadowHostId = () => "translation-control-center-overlay"
 
 const SCxContainer = styled.div.withConfig({
     shouldForwardProp: prop => !(prop === "isDragging")
-})<{ x: number; y: number; isDragging: boolean }>`
+})<{
+    x: number
+    y: number
+    isDragging: boolean
+    $expanded: boolean
+    $right: boolean
+}>`
     position: fixed;
-    left: ${({ x }) => x || window.innerWidth - 80}px;
-    top: ${({ y }) => (y ? `${y}px` : "calc(50% - 100px)")};
+    left: ${({ x }) => x}px;
+    top: ${({ y }) => y}px;
+    width: 54px;
+    height: 54px;
+    transform: ${({ $expanded, isDragging, $right }) =>
+        $expanded || isDragging
+            ? "translateX(0)"
+            : `translateX(${$right ? "50%" : "-50%"})`};
     z-index: 99999;
     visibility: visible;
     cursor: ${props => (props.isDragging ? "grabbing" : "grab")};
     transition: ${props => (props.isDragging ? "none" : "all 0.3s ease")};
+    &:hover,
+    &:focus-within {
+        transform: translateX(0);
+    }
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
 `
 
 const SCxFloatingButton = styled.div`
@@ -40,7 +59,7 @@ const SCxFloatingButton = styled.div`
     box-shadow:
         0 0 0 1px rgba(91, 141, 239, 0.24),
         0 4px 14px rgba(79, 112, 190, 0.28);
-    opacity: 0.94;
+    opacity: 0.5;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -50,13 +69,12 @@ const SCxFloatingButton = styled.div`
         transform var(--transition-base, 0.2s ease);
     user-select: none;
 
-    &:hover {
+    ${SCxContainer}:hover &, ${SCxContainer}:focus-within & {
         opacity: 1;
-        transform: translateY(-1px);
     }
 
     &:active {
-        transform: translateY(0) scale(0.96);
+        transform: scale(0.96);
     }
 `
 
@@ -573,6 +591,8 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 x={position.x}
                 y={position.y}
                 isDragging={isDragging}
+                $expanded={showSettingsIcon || showSettingsPanel || isDragging}
+                $right={alignRight}
                 onClick={onToggleTranslate}
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
@@ -603,12 +623,21 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                               ? "清理翻译"
                               : "开启翻译"
                     }
-                    position="left"
+                    position={alignRight ? "left" : "right"}
                     trigger="hover"
                     disabled={isDragging}
                 >
                     <SCxFloatingButton
+                        data-mewcat-drag-handle
                         role="button"
+                        tabIndex={0}
+                        onKeyDown={event => {
+                            if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault()
+                                isDragged.current = false
+                                event.currentTarget.click()
+                            }
+                        }}
                         aria-label={
                             loading
                                 ? "翻译中"

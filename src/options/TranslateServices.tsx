@@ -1023,7 +1023,7 @@ export const TranslateServices: React.FunctionComponent = () => {
                                                 }
                                                 return (
                                                     <FormRow
-                                                        key={item}
+                                                        key={`${currentModelData.id}:${item}`}
                                                         label={
                                                             fieldConfig.label
                                                         }

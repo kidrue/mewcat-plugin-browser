@@ -20,6 +20,56 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it("preserves the image switch across concurrent config updates and reload", async () => {
+        const { createStore } = await import("jotai")
+        const { configAtom, updateConfigAtom } = await import(
+            "../src/state/config"
+        )
+        const { storage } = await import("#imports")
+        let persisted = {
+            ...defaultExtensionConfig,
+            aiModelList: [validModel],
+            imageTranslationModelId: validModel.id,
+            imageTranslationModelName: "gpt-4o-mini"
+        }
+        const read = vi
+            .spyOn(storage, "getItem")
+            .mockImplementation(async () => persisted)
+        const write = vi
+            .spyOn(storage, "setItem")
+            .mockImplementation(async (_key, value) => {
+                persisted = value as typeof persisted
+            })
+        try {
+            const store = createStore()
+            await store.set(configAtom, persisted)
+            await Promise.all([
+                store.set(updateConfigAtom, {
+                    enableImageTranslateButton: true
+                }),
+                store.set(updateConfigAtom, { detectedLanguage: "en" })
+            ])
+            expect(persisted.enableImageTranslateButton).toBe(true)
+            expect(persisted.detectedLanguage).toBe("en")
+            const adapter = createTranslationServiceStorageAdapter({
+                getItem: async () => persisted,
+                setItem: async () => undefined,
+                removeItem: async () => undefined,
+                subscribe: () => () => undefined
+            })
+            expect(
+                (
+                    await adapter.getItem(
+                        "extension-config",
+                        defaultExtensionConfig
+                    )
+                ).enableImageTranslateButton
+            ).toBe(true)
+        } finally {
+            read.mockRestore()
+            write.mockRestore()
+        }
+    })
     it("does not write back equivalent configs with reordered keys", async () => {
         const normalized = repairExtensionConfig(
             defaultExtensionConfig,
@@ -95,10 +145,13 @@ describe("extension config validation", () => {
             imageTranslationModelId: validModel.id,
             imageTranslationModelName: ""
         })
-        expect(setItem).toHaveBeenCalledWith("extension-config", expect.objectContaining({
-            imageTranslationModelId: validModel.id,
-            imageTranslationModelName: ""
-        }))
+        expect(setItem).toHaveBeenCalledWith(
+            "extension-config",
+            expect.objectContaining({
+                imageTranslationModelId: validModel.id,
+                imageTranslationModelName: ""
+            })
+        )
     })
     it("repairs invalid fields without discarding valid user settings", () => {
         const repaired = repairExtensionConfig(

@@ -807,3 +807,24 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：统一模型返回结构，降低不同模型输出格式波动，确保与划词解释面板的基础 Markdown 渲染能力匹配。
 
 **验证**：`pnpm check` 全部通过。
+
+### 2026-09-09 — 修复服务错误残留、图片开关覆盖并调整总结弹窗
+
+**修改内容**：
+
+- `src/options/TranslateServices.tsx`、`src/components/ApiKeyInput/index.tsx`：按服务隔离输入组件状态，密钥改变时清空测试结果，并忽略已过期的异步测试结果。
+- `src/state/config.ts`：同一状态容器内串行处理配置和模型更新，等待持久化完成，避免连续更新使用旧快照覆盖图片翻译开关；模型更新返回最新模型列表。
+- `src/page-summary/PageSummaryRenderer.ts`、`src/page-summary/PageSummaryController.ts`：总结改为底部居中半透明按钮打开原生弹窗，悬浮显示红色关闭按钮，可暂时隐藏至刷新页面；保留加载和错误状态，并安全处理卸载后的请求返回。
+- `test/extension-config-validation.test.ts`、`test/model-discovery.test.tsx`、`test/page-summary-renderer.test.ts`：补充并发更新持久化、错误状态隔离和弹窗交互回归测试。
+
+**原因**：修复切换服务后错误残留及配置写入竞争导致图片开关丢失，使页面总结按需展示且不占正文空间。
+
+**验证**：执行 `pnpm format`；设置进程环境变量 `VITEST_MAX_WORKERS=2` 后 `pnpm check` 全部通过，图片、页面与配置组 252 项测试通过。默认高并发曾导致 UI 测试超时，降低并发后通过；尚未进行真实扩展页面的视觉验收。
+
+### 2026-09-09 — 优化翻译按钮吸边交互与总结帮助图标
+
+**修改内容**：`src/options/Basic.tsx` 将未设置样式的问号按钮替换为统一帮助图标，调整开关与图标对齐；`src/contents/TranslationControlCenter.tsx` 将主翻译按钮默认透明度设为 0.5，按左右侧向外偏移自身宽度的一半，悬浮与键盘聚焦时展开，支持键盘操作；`src/hooks/useDrag.ts` 重构拖拽坐标和左右吸边，限制拖拽起点为主按钮，处理窗口缩放并为上下操作入口预留空间；`test/model-discovery.test.tsx` 补充真实拖拽 hook 回归验证。
+
+**原因**：减少悬浮翻译按钮对网页内容的遮挡，修复自动总结开关旁问号按钮样式异常，并防止普通页面点击改变悬浮按钮位置。
+
+**验证**：执行 `pnpm format`；进程环境变量 `VITEST_MAX_WORKERS=2` 下 `pnpm check` 全部通过，图片、页面与配置组 253 项测试通过。未执行真实浏览器视觉验收。

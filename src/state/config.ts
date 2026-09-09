@@ -28,49 +28,62 @@ export const extensionConfigAtom = atom(async get => {
     return get(configAtom)
 })
 
+// Serialize read-modify-write operations per store, including persistence.
+const configWriteQueueAtom = atom<Promise<unknown>>(Promise.resolve())
+const mutateConfigAtom = atom(
+    null,
+    (get, set, update: (config: ExtensionConfig) => ExtensionConfig) => {
+        const pending = get(configWriteQueueAtom)
+            .catch(() => undefined)
+            .then(async () => {
+                const current = await get(configAtom)
+                const next = update(current)
+                if (!equals(current, next)) {
+                    await set(configAtom, next)
+                }
+                return next
+            })
+        set(configWriteQueueAtom, pending)
+        return pending
+    }
+)
+
 export const updateConfigAtom = atom(
     null,
-    async (get, set, updates: DeepPartial<ExtensionConfig>) => {
-        const currentConfig = await get(configAtom)
-        const newConfig = mergeDeepRight(
-            clone(currentConfig),
-            updates
-        ) as ExtensionConfig
-        if (equals(newConfig, currentConfig)) {
-            return currentConfig
-        }
-        set(configAtom, newConfig)
-
-        return newConfig
-    }
+    (_get, set, updates: DeepPartial<ExtensionConfig>) =>
+        set(
+            mutateConfigAtom,
+            current =>
+                mergeDeepRight(clone(current), updates) as ExtensionConfig
+        )
 )
 
 // 添加一个修改ai模型配置的原子方法
 export const updateAiModelConfigAtom = atom(
     null,
     async (
-        get,
+        _get,
         set,
         updates: { id: string } & DeepPartial<BaseModel>
     ): Promise<ExtensionConfig> => {
-        const currentConfig = await clone(get(configAtom))
-        const aiModelList = currentConfig.aiModelList
-        const aiModelIndex = findIndex(
-            model => model.id === updates.id,
-            aiModelList
-        )
-        if (aiModelIndex === -1) {
-            return currentConfig
-        }
-        const updatedModel = mergeDeepRight(
-            clone(aiModelList[aiModelIndex]),
-            updates
-        )
-        const newAiModelList = aiModelList.map((model, index) =>
-            index === aiModelIndex ? updatedModel : model
-        )
-        set(configAtom, { ...currentConfig, aiModelList: newAiModelList })
-        return { ...currentConfig, aiModelList }
+        return set(mutateConfigAtom, currentConfig => {
+            const aiModelList = currentConfig.aiModelList
+            const aiModelIndex = findIndex(
+                model => model.id === updates.id,
+                aiModelList
+            )
+            if (aiModelIndex === -1) {
+                return currentConfig
+            }
+            const updatedModel = mergeDeepRight(
+                clone(aiModelList[aiModelIndex]),
+                updates
+            )
+            const newAiModelList = aiModelList.map((model, index) =>
+                index === aiModelIndex ? updatedModel : model
+            )
+            return { ...currentConfig, aiModelList: newAiModelList }
+        })
     }
 )
 

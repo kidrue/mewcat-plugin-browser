@@ -1,120 +1,138 @@
 import { useEffect, useRef, useState } from "react"
-import { useWindowSize } from "react-use"
 
 interface Position {
     x: number
     y: number
 }
 
-interface UseDragOptions {
-    onDragStart?: () => void
-    onDragEnd?: () => void
-    clickThreshold?: number
+const BUTTON_SIZE = 54
+
+export function dockPosition(
+    position: Position,
+    width: number,
+    height: number
+): Position {
+    return {
+        x:
+            position.x + BUTTON_SIZE / 2 < width / 2
+                ? 0
+                : Math.max(0, width - BUTTON_SIZE),
+        y: Math.max(
+            Math.min(44, Math.max(0, (height - BUTTON_SIZE) / 2)),
+            Math.min(position.y, height - BUTTON_SIZE - 44)
+        )
+    }
 }
 
-interface UseDragReturn {
-    position: Position
-    isDragging: boolean
-    isDragged: React.MutableRefObject<boolean>
-    ref: React.MutableRefObject<HTMLDivElement>
-    windowRect: { width: number; height: number }
-}
-
-export const useDrag = (options: UseDragOptions = {}): UseDragReturn => {
-    const { onDragStart, onDragEnd } = options
-
-    const [position, setPosition] = useState<Position>({ x: 0, y: 0 })
-    const [windowRect, setWindowRect] = useState({
-        width: window.innerWidth,
-        height: window.innerHeight
-    })
+export const useDrag = () => {
+    const [position, setPosition] = useState<Position>(() =>
+        dockPosition(
+            {
+                x: window.innerWidth,
+                y: window.innerHeight / 2 - BUTTON_SIZE / 2
+            },
+            window.innerWidth,
+            window.innerHeight
+        )
+    )
     const [isDragging, setIsDragging] = useState(false)
-    const dragStart = useRef<Position>({ x: 0, y: 0 })
-    const dragOffset = useRef<Position>({ x: 0, y: 0 })
     const ref = useRef<HTMLDivElement>(null)
     const isDragged = useRef(false)
+    const positionRef = useRef(position)
+    positionRef.current = position
 
     useEffect(() => {
-        const handleMouseUp = (e: MouseEvent) => {
-            setIsDragging(isDragging => {
-                if (!isDragging) {
-                    return isDragging
-                }
-                return false
+        const element = ref.current
+        if (!element) {
+            return
+        }
+        let viewportWidth = window.innerWidth
+        let start: { mouse: Position; position: Position } | null = null
+        const moveTo = (next: Position) => {
+            positionRef.current = next
+            setPosition(next)
+        }
+        const handleMouseDown = (event: MouseEvent) => {
+            if (
+                event.button !== 0 ||
+                !(event.target instanceof Element) ||
+                !event.target.closest("[data-mewcat-drag-handle]")
+            ) {
+                return
+            }
+            isDragged.current = false
+            start = {
+                mouse: { x: event.clientX, y: event.clientY },
+                position: positionRef.current
+            }
+        }
+        const handleMouseMove = (event: MouseEvent) => {
+            if (!start) {
+                return
+            }
+            const dx = event.clientX - start.mouse.x
+            const dy = event.clientY - start.mouse.y
+            if (!isDragged.current && Math.hypot(dx, dy) < 5) {
+                return
+            }
+            isDragged.current = true
+            setIsDragging(true)
+            moveTo({
+                x: Math.max(
+                    0,
+                    Math.min(
+                        start.position.x + dx,
+                        window.innerWidth - BUTTON_SIZE
+                    )
+                ),
+                y: Math.max(
+                    0,
+                    Math.min(
+                        start.position.y + dy,
+                        window.innerHeight - BUTTON_SIZE
+                    )
+                )
             })
-            const rect = ref.current.getBoundingClientRect()
-
-            setPosition({ x: rect.x, y: rect.y })
-            dragOffset.current = { x: 0, y: 0 }
-            ref.current.style.removeProperty("transform")
-            onDragEnd?.()
         }
-        document.addEventListener("mouseup", handleMouseUp)
-
-        return () => {
-            document.removeEventListener("mouseup", handleMouseUp)
+        const handleMouseUp = () => {
+            if (!start) {
+                return
+            }
+            start = null
+            setIsDragging(false)
+            moveTo(
+                dockPosition(
+                    positionRef.current,
+                    window.innerWidth,
+                    window.innerHeight
+                )
+            )
         }
-    }, [onDragEnd])
-
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            requestAnimationFrame(() => {
-                setIsDragging(isDragging => {
-                    if (!isDragging) {
-                        return isDragging
-                    }
-                    const newX = e.pageX - dragStart.current.x
-                    const newY = e.pageY - dragStart.current.y
-                    isDragged.current =
-                        Math.abs(newX) > 10 || Math.abs(newY) > 10
-                    dragOffset.current = { x: newX, y: newY }
-                    ref.current.style.transform = `translate(${newX}px, ${newY}px)`
-                    return isDragging
-                })
-            })
+        const handleResize = () => {
+            const right =
+                positionRef.current.x + BUTTON_SIZE / 2 >= viewportWidth / 2
+            viewportWidth = window.innerWidth
+            moveTo(
+                dockPosition(
+                    { x: right ? viewportWidth : 0, y: positionRef.current.y },
+                    window.innerWidth,
+                    window.innerHeight
+                )
+            )
         }
+        element.addEventListener("mousedown", handleMouseDown)
         document.addEventListener("mousemove", handleMouseMove)
-
+        document.addEventListener("mouseup", handleMouseUp)
+        window.addEventListener("blur", handleMouseUp)
+        window.addEventListener("resize", handleResize)
         return () => {
+            element.removeEventListener("mousedown", handleMouseDown)
             document.removeEventListener("mousemove", handleMouseMove)
+            document.removeEventListener("mouseup", handleMouseUp)
+            window.removeEventListener("blur", handleMouseUp)
+            window.removeEventListener("resize", handleResize)
         }
     }, [])
 
-    useEffect(() => {
-        const handleMouseDown = (e: MouseEvent) => {
-            isDragged.current = false
-            setIsDragging(true)
-            dragStart.current = {
-                x: e.pageX,
-                y: e.pageY
-            }
-            onDragStart?.()
-        }
-
-        ref.current.addEventListener("mousedown", handleMouseDown)
-        return () => {
-            ref?.current?.removeEventListener?.("mousedown", handleMouseDown)
-        }
-    }, [onDragStart])
-
-    const { height, width } = useWindowSize()
-
-    useEffect(() => {
-        setWindowRect(rect => {
-            setPosition(({ x, y }) => {
-                const ratioX = width / rect.width
-                const ratioY = height / rect.height
-                return { x: ratioX * x, y: ratioY * y }
-            })
-            return { width, height }
-        })
-    }, [height, width])
-
-    return {
-        position,
-        isDragging,
-        windowRect,
-        isDragged: isDragged,
-        ref
-    }
+    return { ref, position, isDragging, isDragged }
 }

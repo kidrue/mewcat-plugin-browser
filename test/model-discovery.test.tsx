@@ -4,6 +4,8 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import ApiKeyInput from "../src/components/ApiKeyInput"
+import { useDrag } from "../src/hooks/useDrag"
 import { useModelDiscovery } from "../src/hooks/useModelDiscovery"
 import { ModelDiscoveryError } from "../src/model-management/discovery"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
@@ -60,6 +62,89 @@ function DiscoveryProbe({ model }: { model: BaseModel }): React.ReactElement {
 }
 
 describe("useModelDiscovery", () => {
+    it("docks the translation handle after dragging without moving on unrelated mouse releases", async () => {
+        function DragProbe() {
+            const drag = useDrag()
+            return (
+                <div
+                    ref={drag.ref}
+                    data-x={drag.position.x}
+                    data-y={drag.position.y}
+                >
+                    <button data-mewcat-drag-handle>drag</button>
+                    <button>settings</button>
+                </div>
+            )
+        }
+        const host = document.createElement("div")
+        document.body.append(host)
+        root = createRoot(host)
+        await act(async () => root?.render(<DragProbe />))
+        const container = host.firstElementChild as HTMLElement
+        const handle = host.querySelector("button")!
+        const initialX = window.innerWidth - 54
+        expect(Number(container.dataset.x)).toBe(initialX)
+        await act(async () => {
+            document.dispatchEvent(new MouseEvent("mouseup"))
+        })
+        expect(Number(container.dataset.x)).toBe(initialX)
+        await act(async () => {
+            handle.dispatchEvent(
+                new MouseEvent("mousedown", {
+                    bubbles: true,
+                    clientX: initialX,
+                    clientY: 200
+                })
+            )
+        })
+        await act(async () => {
+            document.dispatchEvent(
+                new MouseEvent("mousemove", { clientX: 10, clientY: 200 })
+            )
+        })
+        await act(async () => {
+            document.dispatchEvent(new MouseEvent("mouseup"))
+        })
+        expect(Number(container.dataset.x)).toBe(0)
+    })
+    it("clears API errors when switching services and ignores an old pending result", async () => {
+        const host = document.createElement("div")
+        document.body.append(host)
+        root = createRoot(host)
+        const failed = vi.fn(async () => false)
+        const renderInput = (service: string, onTest = failed) =>
+            root?.render(
+                <ApiKeyInput
+                    key={service}
+                    label="API Key"
+                    value="same-key"
+                    onChange={() => undefined}
+                    onTest={onTest}
+                />
+            )
+        await act(async () => renderInput("first"))
+        await act(async () =>
+            host.querySelector<HTMLButtonElement>("button")!.click()
+        )
+        expect(host.textContent).toContain("API Key 验证失败")
+        await act(async () => renderInput("second"))
+        expect(host.textContent).not.toContain("API Key 验证失败")
+        let resolve!: (result: boolean) => void
+        const pending = vi.fn(
+            () =>
+                new Promise<boolean>(done => {
+                    resolve = done
+                })
+        )
+        await act(async () => renderInput("second", pending))
+        await act(async () =>
+            host.querySelector<HTMLButtonElement>("button")!.click()
+        )
+        await act(async () => renderInput("third"))
+        await act(async () => resolve(false))
+        expect(host.textContent).not.toContain("API Key 验证失败")
+        expect(host.textContent).not.toContain("正在测试")
+    })
     it("waits for the debounce then exposes discovered models", async () => {
         vi.useFakeTimers()
         mocks.discoverModels.mockResolvedValue([

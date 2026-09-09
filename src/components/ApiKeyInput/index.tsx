@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import styled from "styled-components"
 
 import Icon from "../Icon"
@@ -168,6 +168,16 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
         "idle" | "testing" | "success" | "error"
     >("idle")
     const [testMessage, setTestMessage] = useState("")
+    const requestId = useRef(0)
+
+    useEffect(() => {
+        requestId.current += 1
+        setTestStatus("idle")
+        setTestMessage("")
+        return () => {
+            requestId.current += 1
+        }
+    }, [value])
 
     const hasValue = value.length > 0
     const isValid =
@@ -188,9 +198,13 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
 
         setTestStatus("testing")
         setTestMessage("正在测试连接...")
+        const currentRequest = ++requestId.current
 
         try {
             const result = await onTest(value)
+            if (currentRequest !== requestId.current) {
+                return
+            }
             if (result) {
                 setTestStatus("success")
                 setTestMessage("API Key 验证成功")
@@ -199,6 +213,9 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
                 setTestMessage("API Key 验证失败")
             }
         } catch (error) {
+            if (currentRequest !== requestId.current) {
+                return
+            }
             setTestStatus("error")
             setTestMessage(
                 `测试失败: ${error instanceof Error ? error.message : "未知错误"}`
@@ -220,6 +237,7 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
         <Container>
             <InputWrapper>
                 <Input
+                    aria-label={label}
                     type={isVisible ? "text" : "password"}
                     value={value}
                     onChange={handleInputChange}

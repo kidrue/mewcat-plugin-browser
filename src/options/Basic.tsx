@@ -1,5 +1,6 @@
 import { useAtom, useSetAtom } from "jotai"
 import * as React from "react"
+import styled from "styled-components"
 
 import {
     CustomSelect,
@@ -11,6 +12,7 @@ import {
     Tooltip,
     UrlManager
 } from "@/components"
+import Icon from "@/components/Icon"
 import {
     DEFAULT_VALUES,
     languages,
@@ -19,6 +21,36 @@ import {
 import { configAtom, updateConfigAtom } from "@/state"
 import type { TranslationStyleType } from "@/types/translationStyle"
 import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
+
+const SummaryControls = styled.div`
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+`
+
+const SummaryHelp = styled.button`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: help;
+
+    &:hover,
+    &:focus-visible {
+        color: var(--primary-color);
+        background: var(--bg-tertiary);
+    }
+    &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+`
 
 export const Basic: React.FunctionComponent = () => {
     const [config] = useAtom(configAtom)
@@ -102,7 +134,7 @@ export const Basic: React.FunctionComponent = () => {
                     description="自动提炼页面重点；页面内容将发送到已配置的生成式 AI 服务。"
                     controlId="enable-page-summary"
                 >
-                    <div>
+                    <SummaryControls>
                         <CustomToggle
                             id="enable-page-summary"
                             aria-label="自动总结页面"
@@ -115,15 +147,16 @@ export const Basic: React.FunctionComponent = () => {
                             content="总结由已配置的生成式 AI 服务处理，请确认页面内容适合发送给该服务。"
                             position="top"
                             width={240}
+                            trigger="both"
                         >
-                            <button
+                            <SummaryHelp
                                 type="button"
                                 aria-label="了解页面总结的数据使用方式"
                             >
-                                ?
-                            </button>
+                                <Icon name="help" size={16} />
+                            </SummaryHelp>
                         </Tooltip>
-                    </div>
+                    </SummaryControls>
                     {!hasUsableGenerativeModel && (
                         <small role="status">
                             请先配置可用的生成式 AI 模型；开关状态会保留。

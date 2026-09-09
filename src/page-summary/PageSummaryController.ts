@@ -61,13 +61,13 @@ export class PageSummaryController {
                 throw new Error(response.error.message)
             }
             const summary = normalizeSummaryResult(response.text)
-            this.handle.update(
+            this.handle?.update(
                 summary
                     ? { status: "success", summary, pageType }
                     : { status: "empty" }
             )
         } catch {
-            this.handle.update({ status: "error" })
+            this.handle?.update({ status: "error" })
         }
     }
 
