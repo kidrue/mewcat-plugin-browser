@@ -1,3 +1,4 @@
+import type { TokenUsageFeature } from "@/token-usage/types"
 import type { BaseModel } from "@/types/aiModel"
 
 export interface ModelGatewayMessage {
@@ -9,6 +10,7 @@ export interface ModelGatewayGenerateRequest {
     type: "generate"
     model: BaseModel
     messages: ModelGatewayMessage[]
+    feature: TokenUsageFeature
     enableThinking?: boolean
     timeoutMs?: number
 }
@@ -29,6 +31,7 @@ export interface ModelGatewayGenerateVisionRequest {
         base64: string
         targetLanguage: string
     }
+    feature: "image-translation"
     timeoutMs?: number
 }
 

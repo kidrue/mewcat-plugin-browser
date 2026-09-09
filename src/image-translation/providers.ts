@@ -94,6 +94,7 @@ export async function translateWithVisionModel(
 ): Promise<VisionTranslationResult> {
     const response = await sender({
         type: "generate-vision",
+        feature: "image-translation",
         model,
         image: {
             mimeType: image.mimeType,

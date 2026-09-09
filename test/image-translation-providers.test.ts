@@ -64,6 +64,7 @@ describe("vision model gateway client", () => {
 
         expect(received).toEqual({
             type: "generate-vision",
+            feature: "image-translation",
             model,
             image: {
                 mimeType: "image/webp",

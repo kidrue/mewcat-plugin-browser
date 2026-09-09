@@ -17,6 +17,7 @@ import { About } from "./About"
 import { Basic } from "./Basic"
 import { Image } from "./Image"
 import { Selection } from "./Selection"
+import { TokenUsage } from "./TokenUsage"
 import TranslateServices from "./TranslateServices"
 
 const Container = styled.div`
@@ -63,6 +64,8 @@ const IndexOptions: React.FunctionComponent = () => {
                 return <Selection />
             case "image":
                 return <Image />
+            case "usage":
+                return <TokenUsage />
             case "about":
                 return <About />
             default:
