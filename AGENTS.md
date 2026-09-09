@@ -743,3 +743,13 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：允许图片翻译复用翻译服务的平台凭据，同时独立选择视觉模型，不影响文本翻译模型。
 
 **验证**：`pnpm format` 已执行；`pnpm check` 全部通过，包括 213 项图片/页面/配置测试、26 项商店发布测试以及 Google 和划词测试。尚未使用真实服务凭据执行收费图片翻译。
+
+---
+
+### 2026-09-09 — 按时间顺序合并全部本地功能分支到 main
+
+**修改内容**：按各未合并分支最后提交时间，将 `codex/token-usage-statistics`、`codex/image-translation-remote-model-selection` 和 `codex/page-summary-toggle-rendering` 合并到 `main`；确认此前的 `codex/bailian-token-plan` 也已包含在主分支。冲突解决时保留 Token 用量统计、百炼 Token Plan、图片具体视觉模型选择与页面总结配置，并让共享模型发现逻辑继续传递 `officialEndpointId`。
+
+**原因**：统一所有本地功能分支的提交历史和实现，使 `main` 成为当前完整集成分支，同时保留合并前未提交的工作区改动。
+
+**验证**：`pnpm format` 与 `pnpm check` 均通过；全量检查包含 typecheck、lint（0 error）、Prettier、hotlink-rules、cspell、Google 翻译、划词翻译、26 项 Chrome Web Store 测试及 232 项图片/页面/配置测试。
