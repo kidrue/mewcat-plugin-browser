@@ -7,6 +7,7 @@ import {
     getTranslationServiceOptions,
     updateConfigAtom
 } from "@/state"
+import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
 import NativeSelect from "../NativeSelect"
 import CustomToggle from "../Switch"
@@ -283,8 +284,8 @@ function SettingsPanel({
     )
 
     const modelOptions = getTranslationServiceOptions(config.aiModelList || [])
-    const hasUsableGenerativeModel = config.aiModelList.some(
-        model => model.enabled && Boolean(model.params.apiKey?.trim())
+    const hasUsableGenerativeModel = hasUsablePageSummaryModel(
+        config.aiModelList
     )
 
     const handleToggleTranslation = (checked: boolean) => {

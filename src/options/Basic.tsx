@@ -18,14 +18,15 @@ import {
 } from "@/constants"
 import { configAtom, updateConfigAtom } from "@/state"
 import type { TranslationStyleType } from "@/types/translationStyle"
+import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
 export const Basic: React.FunctionComponent = () => {
     const [config] = useAtom(configAtom)
     const updateConfig = useSetAtom(updateConfigAtom)
 
     const languageOptions = languages.languages
-    const hasUsableGenerativeModel = config.aiModelList.some(
-        model => model.enabled && Boolean(model.params.apiKey?.trim())
+    const hasUsableGenerativeModel = hasUsablePageSummaryModel(
+        config.aiModelList
     )
 
     return (

@@ -102,7 +102,14 @@ describe("options page summary setting", () => {
     })
 
     it("keeps the saved toggle available while explaining a missing generative model", async () => {
-        mocks.config = createConfig({ aiModelList: [] })
+        mocks.config = createConfig({
+            aiModelList: [
+                {
+                    ...usableModel,
+                    type: AiModel_Platform_Enum.DEEPL
+                }
+            ]
+        })
 
         await renderBasic()
 

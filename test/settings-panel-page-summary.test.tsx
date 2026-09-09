@@ -115,7 +115,12 @@ describe("quick settings page summary setting", () => {
 
     it("keeps the saved toggle available while explaining a missing generative model", async () => {
         mocks.config = createConfig({
-            aiModelList: [],
+            aiModelList: [
+                {
+                    ...usableModel,
+                    params: { ...usableModel.params, modelName: "   " }
+                }
+            ],
             currentModel: "google-translate",
             enablePageSummary: true
         })

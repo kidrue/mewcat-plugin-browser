@@ -753,3 +753,16 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：统一所有本地功能分支的提交历史和实现，使 `main` 成为当前完整集成分支，同时保留合并前未提交的工作区改动。
 
 **验证**：`pnpm format` 与 `pnpm check` 均通过；全量检查包含 typecheck、lint（0 error）、Prettier、hotlink-rules、cspell、Google 翻译、划词翻译、26 项 Chrome Web Store 测试及 232 项图片/页面/配置测试。
+
+---
+
+### 2026-09-09 — 新增页面总结设置开关
+
+**修改内容**：
+
+- `src/types/config.ts`、`src/types/extensionConfigSchema.ts`、`src/state/constants.ts`：新增 `enablePageSummary` 与 `pageSummaryDisabledSites` 配置，默认关闭页面总结
+- `src/options/Basic.tsx`、`src/components/SettingsPanel/index.tsx`：新增独立的“自动总结页面”开关、隐私提示和无可用生成式模型提示
+- `src/utils/pageSummary.ts`、`src/translation/translationService.ts`：统一生成式模型可用性判断和页面总结模型回退选择，排除 `DEEPL`/`DEEPLX`
+- `test/`：新增配置、设置页和模型可用性回归测试
+
+**原因**：让页面总结功能在设置页可见且可控，避免将翻译专用模型误判为可生成总结的模型。
