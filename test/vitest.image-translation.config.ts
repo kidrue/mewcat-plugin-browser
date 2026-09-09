@@ -20,6 +20,7 @@ export default defineConfig({
     ],
     resolve: {
         alias: {
+            "#imports": "wxt/utils/storage",
             "@": fileURLToPath(new URL("../src", import.meta.url))
         }
     }

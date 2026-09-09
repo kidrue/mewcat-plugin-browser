@@ -14,6 +14,7 @@ import { translateStructuredImageViaBackground } from "@/services/imageTranslati
 import { configAtom, updateConfigAtom } from "@/state"
 import {
     buildVisionModelSelectionOptions,
+    createVisionModelSelectionKey,
     getImageTranslationConfigRepair,
     getVisionServiceOptions
 } from "@/utils/visionModels"
@@ -123,7 +124,7 @@ export const Image: React.FunctionComponent = () => {
     const selectedModelName = config.imageTranslationModelName?.trim() || ""
     const hasSelectedModel = Boolean(selectedService && selectedModelName)
     const selectedSelectionKey = selectedService
-        ? `${selectedService.id}\u0000${selectedModelName}`
+        ? createVisionModelSelectionKey(selectedService.id, selectedModelName)
         : ""
     selectedSelectionKeyRef.current = selectedSelectionKey
 
@@ -300,7 +301,6 @@ export const Image: React.FunctionComponent = () => {
                     )}
                     {selectedService && (
                         <Button
-                            type="button"
                             onClick={refresh}
                             disabled={isLoading || manualEntry}
                         >

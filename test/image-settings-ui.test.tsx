@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs"
 import { JSDOM } from "jsdom"
 import React from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { Simulate } from "react-dom/test-utils"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
@@ -409,12 +410,7 @@ describe("image translation settings", () => {
                 window.HTMLInputElement.prototype,
                 "value"
             )?.set?.call(manualInput, "private-vl")
-            manualInput?.dispatchEvent(
-                new window.Event("input", { bubbles: true })
-            )
-            manualInput?.dispatchEvent(
-                new window.Event("change", { bubbles: true })
-            )
+            Simulate.change(manualInput!)
         })
         expect(mocks.updateConfig).toHaveBeenLastCalledWith({
             imageTranslationModelName: "private-vl"
