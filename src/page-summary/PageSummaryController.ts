@@ -42,6 +42,7 @@ export class PageSummaryController {
         try {
             const response = await sendMessage("model-gateway", {
                 type: "generate",
+                feature: "page-summary",
                 model,
                 messages: [
                     {
