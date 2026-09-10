@@ -25,7 +25,7 @@ interface TranslateTextPanelProps {
 
 const SCxContainer = styled.div`
     padding: 8px;
-    color: #1a1714;
+    color: #203b57;
     position: relative;
     width: 100%;
     max-height: 360px;
@@ -58,7 +58,7 @@ const SCxErrorText = styled.div`
     font-size: 14px;
     font-weight: 500;
     line-height: 1.6;
-    color: #a5342a;
+    color: #b84c5a;
 `
 
 const SCxLoadingContainer = styled.div`
@@ -72,13 +72,13 @@ const SCxLoadingContainer = styled.div`
 
 const SCxLoadingText = styled.span`
     font-size: 12px;
-    color: #6e665c;
+    color: #6f879c;
     font-weight: 500;
 `
 
 const SCxActions = styled.div`
     padding-top: 8px;
-    border-top: 1px solid #e4ddcd;
+    border-top: 1px solid #e3eef7;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -87,16 +87,16 @@ const SCxActions = styled.div`
 const SCxExplainButton = styled.button`
     height: 28px;
     padding: 0 12px;
-    border: 1px solid #b23a2e;
+    border: 1px solid #2878c8;
     border-radius: var(--radius-md);
-    background: rgba(178, 58, 46, 0.08);
-    color: #b23a2e;
+    background: rgba(40, 120, 200, 0.08);
+    color: #2878c8;
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
 
     &:hover:not(:disabled) {
-        background: rgba(178, 58, 46, 0.14);
+        background: rgba(40, 120, 200, 0.14);
     }
 
     &:disabled {
@@ -114,14 +114,14 @@ const SCxExplanation = styled.div`
     min-width: 0;
     margin-top: 8px;
     padding: 10px 12px;
-    border: 1px solid #e4ddcd;
+    border: 1px solid #e3eef7;
     border-radius: var(--radius-lg);
-    background: rgba(178, 58, 46, 0.04);
+    background: rgba(40, 120, 200, 0.04);
 `
 
 const SCxExplanationText = styled.div`
     min-width: 0;
-    color: #1a1714;
+    color: #203b57;
     font-size: 13px;
     line-height: 1.7;
     overflow-wrap: anywhere;
@@ -170,14 +170,14 @@ const SCxExplanationText = styled.div`
 
     blockquote {
         padding-left: 10px;
-        border-left: 3px solid #d8d0be;
-        color: #6e665c;
+        border-left: 3px solid #c1d7e8;
+        color: #6f879c;
     }
 
     code {
         padding: 1px 4px;
         border-radius: 3px;
-        background: rgba(178, 58, 46, 0.07);
+        background: rgba(40, 120, 200, 0.07);
         font-family: ui-monospace, monospace;
         font-size: 12px;
         white-space: pre-wrap;
@@ -188,7 +188,7 @@ const SCxExplanationText = styled.div`
         padding: 8px;
         overflow-x: auto;
         border-radius: 4px;
-        background: rgba(26, 23, 20, 0.05);
+        background: rgba(32, 59, 87, 0.05);
         box-sizing: border-box;
         white-space: pre;
         overflow-wrap: normal;
@@ -202,7 +202,7 @@ const SCxExplanationText = styled.div`
     }
 
     a {
-        color: #b23a2e;
+        color: #2878c8;
         text-decoration: underline;
         text-underline-offset: 2px;
     }
@@ -235,7 +235,7 @@ const explanationMarkdownComponents: Components = {
 
 const SCxAiNotice = styled.div`
     margin-top: 8px;
-    color: #7c7469;
+    color: #6f879c;
     font-size: 10px;
 `
 
@@ -303,7 +303,7 @@ export const TranslateTextPanel: React.FunctionComponent<
 
                 {loading && (
                     <SCxLoadingContainer>
-                        <LoadingDots loading={true} color="#b23a2e" size={4} />
+                        <LoadingDots loading={true} color="#2878c8" size={4} />
                         <SCxLoadingText>翻译中...</SCxLoadingText>
                     </SCxLoadingContainer>
                 )}

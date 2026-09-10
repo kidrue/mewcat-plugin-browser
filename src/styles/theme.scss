@@ -1,12 +1,12 @@
 // ============================================
-// 宣纸朱印 - Rice Paper & Vermilion Seal
+// 晴空来信 - Sky Letter Blue & White
 // --------------------------------------------
-// 设计主张：翻译是「落定文本」。
-// 设置页是典籍的目录与注解，悬浮球是一枚朱砂印 —— 开启翻译＝盖章。
+// 设计主张：翻译是一封被好好送达的来信。
+// 设置页是晴空邮局的工作台，悬浮球是一枚纸飞机邮戳 —— 开启翻译＝寄出。
 //
 // 三条规则：
-// 1. 朱砂是唯一强调色。石青只用于「成功/通过」。
-// 2. 控件、卡片与浮层使用分级圆角，功能性指示器保留圆形。
+// 1. 天空蓝是唯一强调色，暖黄色只作邮票般的微小提示。
+// 2. 白色纸面承载操作，蓝色留白承载层级，阴影保持轻盈。
 // 3. 人写的话用无衬线，机器给的值（模型名、URL、耗时）用等宽，标题用宋体。
 // ============================================
 
@@ -15,81 +15,84 @@
 :root,
 :host {
     // ============================================
-    // 主题色 - 朱砂
+    // 主题色 - 晴空蓝
     // ============================================
-    --primary-color: #b23a2e;
-    --primary-hover: #8e2a20;
-    --primary-light: #f7efe6; // 朱砂淡底（不透明版，用于实底场景）
-    --primary-muted: #c4685c;
+    --primary-color: #2878c8;
+    --primary-hover: #1d5f9e;
+    --primary-light: #e8f4ff;
+    --primary-muted: #73a9d8;
 
-    --seal-wash: rgba(178, 58, 46, 0.09); // 朱砂淡底（透明版）
-    --seal-ring: rgba(178, 58, 46, 0.16); // focus 环
+    --seal-wash: rgba(40, 120, 200, 0.1); // 蓝色淡底（保留旧变量名）
+    --seal-ring: rgba(40, 120, 200, 0.22); // focus 环
+    --sky-wash: rgba(116, 185, 231, 0.16);
+    --sky-line: #b7d8ef;
+    --stamp-yellow: #f2bf62;
 
     // 渐变仅保留极弱的一档，纸不该有强渐变
-    --gradient-subtle: linear-gradient(180deg, #fbf8f0 0%, #f2ede1 100%);
+    --gradient-subtle: linear-gradient(180deg, #ffffff 0%, #f2f8fe 100%);
     --gradient-primary-soft: linear-gradient(
         135deg,
-        rgba(178, 58, 46, 0.06) 0%,
-        rgba(178, 58, 46, 0.03) 100%
+        rgba(40, 120, 200, 0.1) 0%,
+        rgba(126, 190, 235, 0.04) 100%
     );
 
     // ============================================
-    // 纸与墨 - Paper & Ink
+    // 纸与海 - Paper & Sky
     // ============================================
     --white: #ffffff;
-    --bg-primary: #f2ede1; // 纸底
-    --bg-secondary: #fbf8f0; // 纸面（抬起）
-    --bg-tertiary: #eae3d4; // 纸的凹陷
-    --paper-3: #eae3d4; // 语义别名，供新代码使用
+    --bg-primary: #f2f8fe; // 晴空底
+    --bg-secondary: #ffffff; // 纸面（抬起）
+    --bg-tertiary: #e8f2fb; // 蓝色凹陷
+    --paper-3: #e8f2fb; // 语义别名，供新代码使用
 
-    --gray-50: #fbf8f0;
-    --gray-100: #eae3d4;
-    --gray-200: #ded5c3;
-    --gray-300: #cfc4ae;
-    --gray-400: #9a9188;
-    --gray-500: #6e665c;
-    --gray-600: #4a443c;
-    --gray-700: #3a352e;
-    --gray-800: #2a2620;
-    --gray-900: #1a1714;
+    --gray-50: #f7fbff;
+    --gray-100: #e8f2fb;
+    --gray-200: #d7e7f3;
+    --gray-300: #c1d7e8;
+    --gray-400: #a3b7c8;
+    --gray-500: #6f879c;
+    --gray-600: #4d6780;
+    --gray-700: #36536d;
+    --gray-800: #29455f;
+    --gray-900: #203b57;
 
     // ============================================
     // 文字 - Typography Colors
     // ============================================
-    --text-primary: #1a1714; // 墨
-    --text-secondary: #4a443c;
-    --text-tertiary: #6e665c; // 淡墨
-    --text-disabled: #9a9188;
-    --text-inverse: #fbf8f0;
+    --text-primary: #203b57;
+    --text-secondary: #4d6780;
+    --text-tertiary: #6f879c;
+    --text-disabled: #a3b7c8;
+    --text-inverse: #ffffff;
 
     // ============================================
     // 功能色 - Semantic
-    // 石青作成功，赭黄作警示，深赤作错误，均压低饱和度以融入纸面
+    // 海玻璃作成功，邮票黄作警示，珊瑚红作错误
     // ============================================
-    --jade: #3e6b63;
-    --success: #3e6b63;
-    --success-bg: rgba(62, 107, 99, 0.1);
-    --success-border: #a8c2bc;
+    --jade: #2c9c9a;
+    --success: #2c9c9a;
+    --success-bg: rgba(44, 156, 154, 0.1);
+    --success-border: #a9d9d3;
 
-    --warning: #a97a1f;
-    --warning-bg: rgba(169, 122, 31, 0.09);
-    --warning-border: #ddc48b;
+    --warning: #b9771d;
+    --warning-bg: rgba(242, 191, 98, 0.16);
+    --warning-border: #ecd39d;
 
-    --error: #a5342a;
-    --error-bg: rgba(165, 52, 42, 0.08);
-    --error-border: #d8a49e;
+    --error: #b84c5a;
+    --error-bg: rgba(184, 76, 90, 0.08);
+    --error-border: #e4b8bf;
 
-    --info: #4a6b8a;
-    --info-bg: rgba(74, 107, 138, 0.08);
-    --info-border: #a8bccd;
+    --info: #3c74ad;
+    --info-bg: rgba(60, 116, 173, 0.08);
+    --info-border: #afc9e2;
 
     // ============================================
     // 界线与圆角 - Rules & Radius
     // ============================================
-    --border-color: #d8d0be; // hairline
-    --border-light: #e4ddcd;
-    --rule-strong: #bfb49d; // 骑缝线、较重的分隔
-    --border-focus: #b23a2e;
+    --border-color: #cfe0ef; // hairline
+    --border-light: #e3eef7;
+    --rule-strong: #a9c5dd;
+    --border-focus: #2878c8;
 
     --radius-sm: 6px; // 小型标记与紧凑控件
     --radius-md: 8px; // 按钮、输入框与普通控件
@@ -100,14 +103,14 @@
     // ============================================
     // 阴影 - 纸面不该悬空，一律极轻
     // ============================================
-    --shadow-xs: 0 1px 0 rgba(26, 23, 20, 0.03);
-    --shadow-sm: 0 1px 2px rgba(26, 23, 20, 0.05);
-    --shadow-md: 0 2px 6px rgba(26, 23, 20, 0.07);
-    --shadow-lg: 0 6px 18px rgba(26, 23, 20, 0.1);
-    --shadow-xl: 0 10px 34px rgba(26, 23, 20, 0.14);
+    --shadow-xs: 0 1px 0 rgba(32, 59, 87, 0.04);
+    --shadow-sm: 0 1px 2px rgba(32, 59, 87, 0.06);
+    --shadow-md: 0 2px 8px rgba(32, 59, 87, 0.08);
+    --shadow-lg: 0 8px 24px rgba(32, 59, 87, 0.12);
+    --shadow-xl: 0 14px 40px rgba(32, 59, 87, 0.16);
 
-    --shadow-primary: 0 3px 10px rgba(142, 42, 32, 0.2);
-    --shadow-primary-sm: 0 2px 6px rgba(142, 42, 32, 0.16);
+    --shadow-primary: 0 4px 14px rgba(40, 120, 200, 0.22);
+    --shadow-primary-sm: 0 2px 8px rgba(40, 120, 200, 0.18);
 
     // ============================================
     // 间距 - Spacing
@@ -201,7 +204,7 @@
 // Mixins
 // ============================================
 
-// 主按钮 - 朱砂实底
+// 主按钮 - 晴空蓝实底
 @mixin btn-primary {
     display: inline-flex;
     align-items: center;
@@ -384,7 +387,7 @@
     margin: var(--space-4) 0;
 }
 
-// 骑缝线 —— 一条实线压着一枚朱砂标记，用于分隔大段落
+// 信纸折痕 —— 一条实线压着一枚蓝色邮戳，用于分隔大段落
 @mixin seam {
     position: relative;
     height: 1px;

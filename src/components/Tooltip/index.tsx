@@ -36,7 +36,7 @@ const SCxTooltipContent = styled.div.withConfig({
     width?: number | string
 }>`
     background: var(--gray-900, #1a1714);
-    color: var(--text-inverse, #fbf8f0);
+    color: var(--text-inverse, #ffffff);
     padding: 6px 10px;
     border-radius: var(--radius-md);
     font-size: 12px;

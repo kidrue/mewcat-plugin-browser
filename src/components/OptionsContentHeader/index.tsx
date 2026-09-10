@@ -12,7 +12,7 @@ interface OptionsContentHeaderProps {
 }
 
 const HeaderContainer = styled.header`
-    margin-bottom: var(--space-7);
+    margin-bottom: var(--space-6);
 `
 
 const Masthead = styled.div`
@@ -36,7 +36,7 @@ const BrandName = styled.h1`
     font-size: var(--font-size-4xl);
     font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.06em;
     line-height: var(--line-height-tight);
     margin: 0;
 `
@@ -50,6 +50,9 @@ const Version = styled.span`
 `
 
 const Status = styled.div`
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
     font-size: var(--font-size-sm);
     color: var(--text-secondary);
     letter-spacing: 0.02em;
@@ -58,7 +61,7 @@ const Status = styled.div`
     text-overflow: ellipsis;
 `
 
-// 骑缝线：一条实线压着一枚朱砂方印
+// 一条轻薄蓝线，像信纸上的折痕
 const Seam = styled.div`
     position: relative;
     height: 1px;
@@ -72,7 +75,7 @@ const Seam = styled.div`
         width: 9px;
         height: 9px;
         background: var(--primary-color);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-full);
     }
 `
 

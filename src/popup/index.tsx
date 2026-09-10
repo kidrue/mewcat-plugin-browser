@@ -5,7 +5,7 @@ import "@/styles/theme.scss"
 
 import SettingsPanel from "../components/SettingsPanel"
 
-// popup 与悬浮球弹出的面板是同一份实现，只是不再叠一层纸面。
+// popup 与悬浮球共用设置逻辑，embedded 变体提供插画背景。
 function IndexPopup() {
     const { value: currentTabUrl } = useAsyncRetry<URL>(() => {
         return new Promise((resolve, reject) => {

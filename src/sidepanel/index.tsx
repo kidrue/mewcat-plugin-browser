@@ -12,6 +12,7 @@ import { translateText } from "@/translation/translationService"
 import BrandLogo from "../components/BrandLogo"
 import LoadingDots from "../components/LoadingDots"
 import NativeSelect from "../components/NativeSelect"
+import { SkyMascot } from "../components/SkyArtwork"
 
 // ============================================
 // Layout
@@ -22,7 +23,13 @@ const Container = styled.div`
     min-height: 100vh;
     display: flex;
     flex-direction: column;
-    background: var(--bg-primary);
+    background:
+        radial-gradient(
+            circle at 100% 0,
+            rgba(126, 190, 235, 0.18),
+            transparent 16rem
+        ),
+        var(--bg-primary);
     font-family: var(--font-family);
     color: var(--text-primary);
 `
@@ -34,7 +41,7 @@ const Header = styled.div`
     padding: var(--space-4);
     background: var(--bg-secondary);
     flex-shrink: 0;
-    /* 骑缝线 */
+    /* 信纸折痕 */
     position: relative;
     border-bottom: 1px solid var(--rule-strong);
 
@@ -46,12 +53,13 @@ const Header = styled.div`
         width: 8px;
         height: 8px;
         background: var(--primary-color);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-full);
     }
 `
 
 const HeaderLogo = styled(BrandLogo)`
-    box-shadow: 0 1px 5px rgba(79, 112, 190, 0.18);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-primary-sm);
 `
 
 const HeaderTitle = styled.h1`
@@ -62,6 +70,29 @@ const HeaderTitle = styled.h1`
     color: var(--text-primary);
     margin: 0;
     flex: 1;
+`
+
+const HeaderInfo = styled.div`
+    flex: 1;
+    min-width: 0;
+`
+
+const HeaderMeta = styled.span`
+    display: block;
+    margin-top: var(--space-1);
+    color: var(--text-tertiary);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.04em;
+`
+
+const HeaderMascot = styled(SkyMascot)`
+    width: 38px;
+    height: 46px;
+    flex: none;
+    object-fit: cover;
+    object-position: 50% 7%;
+    border-radius: var(--radius-lg);
+    background: var(--primary-light);
 `
 
 // ============================================
@@ -81,6 +112,10 @@ const LanguageRow = styled.div`
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.7);
 `
 
 const LangBox = styled.div`
@@ -127,7 +162,7 @@ const StyledTextarea = styled.textarea`
     padding-right: var(--space-8);
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
     font-family: var(--font-family);
     line-height: var(--line-height-relaxed);
@@ -244,7 +279,7 @@ const Divider = styled.div`
 `
 
 const ResultBox = styled.div`
-    background: var(--bg-secondary);
+    background: rgba(255, 255, 255, 0.82);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     min-height: 100px;
@@ -398,7 +433,11 @@ const SlidePanel: React.FunctionComponent = () => {
         <Container>
             <Header>
                 <HeaderLogo size={28} />
-                <HeaderTitle>翻译侧边栏</HeaderTitle>
+                <HeaderInfo>
+                    <HeaderTitle>翻译侧边栏</HeaderTitle>
+                    <HeaderMeta>把每句话送到懂你的地方</HeaderMeta>
+                </HeaderInfo>
+                <HeaderMascot />
             </Header>
 
             <TranslatePane>

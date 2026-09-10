@@ -9,8 +9,7 @@ interface OptionsSectionProps {
     className?: string
 }
 
-// 分节不是卡片：没有背景、没有外框、没有 hover。
-// 层级完全由「朱砂方块 + 宋体标题 + 向右延伸的 hairline」建立。
+// 分节使用白色纸面、留白和蓝色 hairline 建立层级，不堆叠装饰卡片。
 const Section = styled.section`
     margin-bottom: var(--space-8);
 
@@ -38,13 +37,13 @@ const SectionTitle = styled.h3`
     margin: 0;
     flex-shrink: 0;
 
-    /* 圆角标记：与全局柔和的容器语言保持一致 */
+    /* 小圆点像邮戳，提示阅读起点 */
     &::before {
         content: "";
         width: 7px;
         height: 7px;
         background: var(--primary-color);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-full);
         flex-shrink: 0;
     }
 `

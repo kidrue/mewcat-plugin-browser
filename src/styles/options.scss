@@ -34,7 +34,7 @@ a {
     text-decoration: none;
 }
 
-// 焦点一律用朱砂环。不写 outline: none —— 键盘用户需要它。
+// 焦点使用天空蓝环。不写 outline: none —— 键盘用户需要它。
 :focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;
@@ -43,6 +43,11 @@ a {
 .options-container {
     font-family: var(--font-family);
     color: var(--text-primary);
+    background-image: radial-gradient(
+        circle at 74% 8%,
+        rgba(126, 190, 235, 0.12),
+        transparent 30rem
+    );
 }
 
 // 滚动条：细，与纸面同色系，不抢注意力

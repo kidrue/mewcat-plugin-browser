@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>mewCat 二次元 UI 预览</title>
+  <style>
+    :root {
+      --coral: #f26b5e; --coral-deep: #dc5147; --coral-soft: #fff0f3;
+      --cream: #fff9f5; --white: #fff; --ink: #29242b; --ink-2: #5f5762;
+      --muted: #817681; --line: #eadde3; --line-strong: #ddcbd4;
+      --blue: #6e9fe8; --blue-soft: #edf5ff; --mint: #55a58d; --mint-soft: #ecf8f4;
+      --purple: #8b78d0; --gold: #e9a23b;
+      --shadow: 0 18px 48px rgba(96, 63, 79, .13);
+      --soft-shadow: 0 8px 24px rgba(96, 63, 79, .09);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f3eaf0; color: var(--ink); font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+    button, input, select, textarea { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    .page { max-width: 1440px; margin: 24px auto; overflow: hidden; border-radius: 24px; background: radial-gradient(circle at 95% 5%, #ffe4e7, transparent 25%), radial-gradient(circle at 5% 24%, #e7f1ff, transparent 22%), var(--cream); box-shadow: var(--shadow); }
+    .topbar { min-height: 74px; padding: 14px 26px; display: flex; align-items: center; justify-content: space-between; gap: 20px; background: rgba(255,255,255,.78); border-bottom: 1px solid var(--line); backdrop-filter: blur(14px); }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-mark { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 14px; color: white; font-size: 24px; background: linear-gradient(145deg, #ff8a78, var(--coral)); box-shadow: 0 7px 16px rgba(242,107,94,.28); }
+    .brand strong { display: block; font-size: 16px; letter-spacing: .06em; }
+    .brand small { color: var(--muted); font-size: 11px; }
+    .top-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .jump { padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--ink-2); background: var(--white); font-size: 12px; transition: .18s; }
+    .jump:hover, .jump.active { color: var(--coral-deep); border-color: #f3aaa2; background: var(--coral-soft); }
+    .intro { position: relative; padding: 46px 7% 38px; display: grid; grid-template-columns: 1.1fr .9fr; align-items: center; gap: 42px; }
+    .intro h1 { margin: 0 0 14px; font-size: clamp(30px, 5vw, 58px); line-height: 1.1; letter-spacing: -.05em; }
+    .intro h1 em { color: var(--coral); font-style: normal; }
+    .intro p { max-width: 620px; margin: 0; color: var(--ink-2); line-height: 1.9; }
+    .intro-note { display: inline-flex; gap: 8px; margin-top: 22px; padding: 9px 13px; border-radius: 999px; color: var(--coral-deep); background: var(--coral-soft); font-size: 12px; }
+    .mascot { width: 190px; height: 190px; position: relative; margin: auto; display: grid; place-items: center; border-radius: 50%; background: #fff; box-shadow: 0 18px 35px rgba(115, 71, 91, .14); }
+    .mascot::before, .mascot::after { content: ""; position: absolute; top: 27px; width: 55px; height: 70px; background: #ffd8d3; border: 7px solid #493845; }
+    .mascot::before { left: 28px; transform: rotate(-25deg) skewY(10deg); border-radius: 12px 34px 5px 34px; }
+    .mascot::after { right: 28px; transform: rotate(25deg) skewY(-10deg); border-radius: 34px 12px 34px 5px; }
+    .face { position: relative; z-index: 1; width: 119px; height: 104px; margin-top: 23px; border: 7px solid #493845; border-radius: 45% 45% 49% 49%; background: #ffe8d8; }
+    .face::before, .face::after { content: ""; position: absolute; top: 39px; width: 12px; height: 19px; border-radius: 50%; background: #493845; }
+    .face::before { left: 28px; } .face::after { right: 28px; }
+    .nose { position: absolute; left: 50%; top: 60px; width: 11px; height: 8px; transform: translateX(-50%); border-radius: 50%; background: var(--coral); }
+    .smile { position: absolute; left: 50%; top: 72px; width: 23px; height: 12px; transform: translateX(-50%); border-bottom: 3px solid #493845; border-radius: 50%; }
+    .cheek { position: absolute; top: 63px; width: 17px; height: 8px; border-radius: 50%; background: #f4a5a5; opacity: .7; }
+    .cheek.left { left: 10px; } .cheek.right { right: 10px; }
+    .section { position: relative; padding: 26px 7% 58px; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .section-kicker { margin: 0 0 5px; color: var(--coral); font: 700 11px/1 "Nunito", sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+    .section h2 { margin: 0; font-size: 24px; letter-spacing: -.03em; }
+    .section-head p { margin: 0; color: var(--muted); font-size: 12px; }
+    .showcase { padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,255,255,.63); box-shadow: var(--soft-shadow); }
+    .settings-showcase { display: grid; grid-template-columns: 190px 1fr; min-height: 470px; overflow: hidden; padding: 0; }
+    .settings-nav { padding: 24px 14px; background: #fff4f4; border-right: 1px solid var(--line); }
+    .nav-brand { display: flex; align-items: center; gap: 9px; margin: 0 8px 24px; }
+    .nav-brand .mini-mark { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; color: white; background: var(--coral); }
+    .nav-brand span { font-weight: 700; font-size: 13px; }
+    .nav-item { width: 100%; display: flex; align-items: center; gap: 9px; margin: 4px 0; padding: 11px 10px; border-radius: 10px; color: var(--ink-2); text-align: left; font-size: 12px; background: transparent; }
+    .nav-item:hover, .nav-item.active { color: var(--coral-deep); background: #ffe5e5; }
+    .nav-item.active::before { content: "✦"; color: var(--coral); }
+    .settings-main { padding: 30px 34px; background: rgba(255,255,255,.72); }
+    .settings-title { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+    .settings-title h3 { margin: 0; font-size: 22px; }
+    .status { padding: 7px 10px; border-radius: 999px; color: var(--mint); background: var(--mint-soft); font-size: 11px; }
+    .form-card { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: white; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { display: block; margin-bottom: 7px; color: var(--ink-2); font-size: 11px; }
+    .field input, .field select { width: 100%; padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: #fffafd; outline: 0; font-size: 12px; }
+    .field input:focus, .field select:focus { border-color: var(--coral); box-shadow: 0 0 0 3px rgba(242,107,94,.14); }
+    .segmented { display: flex; gap: 6px; padding: 4px; border-radius: 10px; background: #fff1f2; }
+    .segmented button { flex: 1; padding: 7px 5px; border-radius: 7px; color: var(--muted); background: transparent; font-size: 11px; }
+    .segmented button.active { color: var(--coral-deep); background: #fff; box-shadow: 0 2px 7px rgba(96,63,79,.08); }
+    .primary { padding: 10px 15px; border-radius: 10px; color: white; background: var(--coral); box-shadow: 0 7px 14px rgba(242,107,94,.2); font-size: 12px; }
+    .primary:hover { background: var(--coral-deep); }
+    .showcase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+    .contained-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 13px; }
+    .contained-title strong { font-size: 13px; } .contained-title span { color: var(--muted); font-size: 10px; }
+    .popup-shell { width: min(100%, 380px); margin: 0 auto; padding: 16px; border: 1px solid var(--line); border-radius: 20px; background: #fff; box-shadow: var(--soft-shadow); }
+    .popup-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 13px; border-bottom: 1px solid var(--line); }
+    .popup-brand { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 4px var(--mint-soft); }
+    .popup-hero { display: flex; align-items: center; gap: 12px; padding: 17px 0; }
+    .bubble { flex: 1; padding: 10px 12px; border-radius: 12px 12px 12px 3px; color: var(--ink-2); background: var(--coral-soft); font-size: 12px; line-height: 1.6; }
+    .tiny-cat { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 16px; font-size: 26px; background: #ffe6d3; }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #fffafd; }
+    .toggle-row small { display: block; color: var(--muted); margin-top: 4px; font-size: 10px; }
+    .switch { width: 38px; height: 22px; padding: 3px; border-radius: 999px; background: #d7ccd5; transition: .2s; }
+    .switch::after { content: ""; display: block; width: 16px; height: 16px; border-radius: 50%; background: white; transition: .2s; }
+    .switch.on { background: var(--coral); } .switch.on::after { transform: translateX(16px); }
+    .side-shell { padding: 17px; border: 1px solid var(--line); border-radius: 20px; background: #fff; box-shadow: var(--soft-shadow); }
+    .language-row { display: grid; grid-template-columns: 1fr 34px 1fr; gap: 7px; align-items: center; }
+    .language { padding: 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-2); background: #fffafd; font-size: 12px; }
+    .swap { width: 32px; height: 32px; border-radius: 9px; color: var(--coral); background: var(--coral-soft); }
+    .side-shell textarea { width: 100%; min-height: 92px; margin-top: 12px; padding: 11px; border: 1px solid var(--line); border-radius: 11px; resize: vertical; color: var(--ink); outline: 0; font-size: 12px; line-height: 1.7; }
+    .result { min-height: 88px; margin: 10px 0 13px; padding: 11px; border-radius: 11px; color: var(--ink-2); background: var(--blue-soft); font-size: 12px; line-height: 1.7; }
+    .result.empty { color: var(--muted); background: #faf7fb; }
+    .action-row { display: flex; justify-content: flex-end; gap: 7px; }
+    .ghost { padding: 8px 11px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-2); background: white; font-size: 11px; }
+    .selection-area { min-height: 210px; position: relative; padding: 35px 30px; border-radius: 14px; background: #fdfcff; overflow: hidden; }
+    .selection-area::before { content: "THE LITTLE PRINCE"; position: absolute; top: 14px; right: 18px; color: #ebe0e9; font: 800 11px "Nunito", sans-serif; letter-spacing: .15em; }
+    .selection-area p { max-width: 450px; margin: 0; color: #615766; line-height: 2; font-family: Georgia, serif; font-size: 15px; }
+    .selection-area mark { padding: 2px 4px; border-radius: 4px; color: var(--coral-deep); background: #ffd9df; }
+    .translate-popover { width: min(100%, 310px); position: absolute; left: 25%; bottom: 20px; padding: 13px; border: 1px solid #f3c4c3; border-radius: 14px; background: #fff; box-shadow: 0 12px 30px rgba(96,63,79,.15); }
+    .translate-popover::before { content: ""; position: absolute; top: -7px; left: 43%; width: 13px; height: 13px; transform: rotate(45deg); border-left: 1px solid #f3c4c3; border-top: 1px solid #f3c4c3; background: #fff; }
+    .pop-label { color: var(--muted); font-size: 10px; } .pop-text { margin: 5px 0 9px; font-size: 13px; }
+    .pop-actions { display: flex; gap: 6px; } .pop-actions button { padding: 6px 8px; border-radius: 7px; color: var(--ink-2); background: #fff5f6; font-size: 10px; }
+    .image-card { position: relative; min-height: 210px; padding: 18px; border-radius: 14px; overflow: hidden; background: linear-gradient(145deg, #dfeeff, #fff1dc); }
+    .image-card::before { content: "A LITTLE DAY"; position: absolute; top: 22px; left: 25px; color: rgba(42,53,86,.5); font: 800 15px "Nunito", sans-serif; letter-spacing: .1em; }
+    .image-card::after { content: "小さな一日"; position: absolute; top: 52px; left: 26px; color: rgba(42,53,86,.55); font-size: 12px; }
+    .scan-line { position: absolute; top: 0; left: 22px; right: 22px; height: 2px; background: var(--coral); box-shadow: 0 0 14px var(--coral); animation: scan 2.2s ease-in-out infinite; }
+    @keyframes scan { 0%,100% { transform: translateY(8px); opacity: .4; } 50% { transform: translateY(155px); opacity: 1; } }
+    .image-status { position: absolute; left: 18px; right: 18px; bottom: 16px; display: flex; align-items: center; justify-content: space-between; padding: 9px 10px; border-radius: 10px; color: var(--ink-2); background: rgba(255,255,255,.85); font-size: 11px; }
+    .floating-demo { min-height: 210px; position: relative; padding: 18px; border-radius: 14px; background: #f4f7fb; }
+    .browser-line { width: 58%; height: 8px; margin-bottom: 12px; border-radius: 99px; background: #dce5ef; }
+    .browser-copy { width: 90%; height: 7px; margin: 8px 0; border-radius: 99px; background: #e2e8f0; }
+    .float-button { position: absolute; right: 18px; bottom: 18px; width: 54px; height: 54px; border: 4px solid white; border-radius: 19px; color: white; font-size: 26px; background: linear-gradient(145deg, #ff8a78, var(--coral)); box-shadow: 0 9px 20px rgba(242,107,94,.35); transition: .2s; }
+    .float-button:hover { transform: translateY(-3px) rotate(-4deg); }
+    .float-panel { display: none; position: absolute; right: 18px; bottom: 82px; width: 180px; padding: 12px; border: 1px solid var(--line); border-radius: 13px; background: #fff; box-shadow: var(--soft-shadow); font-size: 11px; }
+    .float-panel.open { display: block; animation: pop .2s ease-out; }
+    @keyframes pop { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    .token-strip { display: flex; flex-wrap: wrap; gap: 10px; }
+    .token { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--ink-2); font-size: 11px; }
+    .swatch { width: 18px; height: 18px; border-radius: 6px; }
+    .footer { padding: 22px 7%; color: var(--muted); border-top: 1px solid var(--line); font-size: 11px; text-align: center; }
+    @media (max-width: 860px) { .intro { grid-template-columns: 1fr; padding-top: 34px; } .mascot { width: 140px; height: 140px; transform: scale(.78); margin-top: -22px; } .settings-showcase { grid-template-columns: 1fr; } .settings-nav { display: flex; overflow-x: auto; gap: 5px; border-right: 0; border-bottom: 1px solid var(--line); } .nav-brand { display: none; } .nav-item { width: auto; white-space: nowrap; } .settings-main { padding: 24px 18px; } }
+    @media (max-width: 620px) { .page { margin: 0; border-radius: 0; } .topbar { align-items: flex-start; flex-direction: column; } .top-actions { justify-content: flex-start; } .section { padding-right: 18px; padding-left: 18px; } .showcase-grid { grid-template-columns: 1fr; } .form-card { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .settings-title { align-items: flex-start; flex-direction: column; } .selection-area { padding: 26px 17px; } .translate-popover { left: 8%; width: 84%; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <div class="brand"><div class="brand-mark">ฅ</div><div><strong>mewCat · 译趣喵</strong><small>Anime translation assistant / UI direction preview</small></div></div>
+      <nav class="top-actions" aria-label="预览区域导航">
+        <button class="jump active" data-target="settings-showcase">设置页</button>
+        <button class="jump" data-target="popup-showcase">Popup</button>
+        <button class="jump" data-target="sidepanel-showcase">Side Panel</button>
+        <button class="jump" data-target="selection-showcase">划词 / 图片</button>
+      </nav>
+    </header>
+    <section class="intro">
+      <div><div class="section-kicker">visual language / 01</div><h1>让每一句翻译<br>都有一只<em>猫</em>陪着。</h1><p>轻治愈二次元 × 猫系 AI 助手 × 克制科技感。角色负责温度，界面负责效率；在小尺寸 Chrome 扩展里，也保持清晰、轻盈和可长期使用。</p><div class="intro-note">✦ 80% 工具效率 · 20% 二次元氛围</div></div>
+      <div class="mascot" aria-label="原创猫咪助手形象"><div class="face"><i class="cheek left"></i><i class="cheek right"></i><i class="nose"></i><i class="smile"></i></div></div>
+    </section>
+    <section class="section" id="settings-showcase">
+      <div class="section-head"><div><div class="section-kicker">desktop shell / 02</div><h2>设置页 · 书架式工作台</h2></div><p>左侧导航、右侧分组配置，信息密度优先</p></div>
+      <div class="showcase settings-showcase">
+        <aside class="settings-nav">
+          <div class="nav-brand"><div class="mini-mark">ฅ</div><span>译趣喵</span></div>
+          <button class="nav-item active" data-setting="basic">⌂ 基础设置</button><button class="nav-item" data-setting="service">✦ 翻译服务</button><button class="nav-item" data-setting="selection">⌁ 划词翻译</button><button class="nav-item" data-setting="image">▧ 图片翻译</button><button class="nav-item" data-setting="about">♡ 关于译趣喵</button>
+        </aside>
+        <div class="settings-main">
+          <div class="settings-title"><div><div class="section-kicker">basic settings</div><h3 id="setting-title">基础设置</h3></div><span class="status">● 已连接</span></div>
+          <div class="form-card">
+            <div class="field"><label>目标语言</label><select><option>简体中文</option><option>繁體中文</option><option>English</option></select></div>
+            <div class="field"><label>翻译触发</label><select><option>自动识别</option><option>点击按钮</option></select></div>
+            <div class="field full"><label>当前模型</label><input value="mewCat · Gemini 2.5 Flash" /></div>
+            <div class="field"><label>模型类型</label><div class="segmented"><button class="active">官方</button><button>自定义</button></div></div>
+            <div class="field"><label>网页翻译</label><div class="toggle-row"><span>沉浸式翻译<small>自动翻译页面文本</small></span><button class="switch on" aria-label="切换网页翻译"></button></div></div>
+            <div class="field full" style="display:flex;justify-content:flex-end;gap:8px;padding-top:4px"><button class="ghost">恢复默认</button><button class="primary">保存设置 ✦</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <section class="section" id="popup-showcase">
+      <div class="section-head"><div><div class="section-kicker">compact surfaces / 03</div><h2>Popup 与 Side Panel</h2></div><p>一眼看到状态，一步完成操作</p></div>
+      <div class="showcase-grid">
+        <div class="popup-shell" aria-label="Popup 预览">
+          <div class="contained-title"><strong>Popup</strong><span>360 × 460</span></div>
+          <div class="popup-head"><div class="popup-brand"><span class="dot"></span>译趣喵正在守护此页</div><span style="color:var(--muted)">⋯</span></div>
+          <div class="popup-hero"><div class="tiny-cat">ฅ</div><div class="bubble">今天也要把世界读懂喵。<br><span style="color:var(--coral-deep)">检测到日文页面 · 可开始翻译</span></div></div>
+          <div class="toggle-row"><span><b>网页翻译</b><small>将页面内容翻译为简体中文</small></span><button class="switch on" id="popup-toggle" aria-pressed="true"></button></div>
+          <div class="language-row" style="margin-top:12px"><div class="language">自动检测</div><button class="swap" aria-label="交换语言">⇄</button><div class="language">简体中文</div></div>
+          <button class="primary" style="width:100%;margin-top:13px" id="popup-action">开始翻译 ✦</button>
+        </div>
+        <div class="side-shell" id="sidepanel-showcase" aria-label="Side Panel 预览">
+          <div class="contained-title"><strong>Side Panel · 快捷翻译</strong><span>宽度自适应</span></div>
+          <div class="language-row"><div class="language" id="from-lang">English</div><button class="swap" id="side-swap" aria-label="交换语言">⇄</button><div class="language" id="to-lang">简体中文</div></div>
+          <textarea id="source-text">The moon is a quiet witness to every little journey.</textarea>
+          <div class="result" id="translation-result">月亮是每一段小小旅程的安静见证。</div>
+          <div class="action-row"><button class="ghost" id="clear-side">清空</button><button class="ghost">复制译文</button><button class="primary" id="translate-side">重新翻译</button></div>
+        </div>
+      </div>
+    </section>
+    <section class="section" id="selection-showcase">
+      <div class="section-head"><div><div class="section-kicker">in-page moments / 04</div><h2>划词翻译、图片翻译与悬浮入口</h2></div><p>角色只在需要被看见的时刻出现</p></div>
+      <div class="showcase-grid">
+        <div class="selection-area" aria-label="划词翻译预览"><p>It was a <mark>beautiful morning</mark>, and the little translator opened a window to another language.</p><div class="translate-popover"><div class="pop-label">mewCat 划词翻译</div><div class="pop-text">美好的早晨</div><div class="pop-actions"><button id="copy-selection">复制</button><button>朗读</button><button>展开解释</button></div></div></div>
+        <div class="image-card" aria-label="图片翻译预览"><div class="scan-line"></div><div class="image-status"><span id="image-status-text">正在扫描文字…</span><button class="ghost" id="image-action">暂停扫描</button></div></div>
+        <div class="floating-demo" aria-label="悬浮入口预览"><div class="browser-line"></div><div class="browser-copy"></div><div class="browser-copy" style="width:76%"></div><div class="browser-copy" style="width:84%"></div><button class="float-button" id="float-button" aria-label="打开译趣喵助手">ฅ</button><div class="float-panel" id="float-panel">喵！选中文字或点击这里，随时开始翻译。<div style="margin-top:9px;color:var(--coral)">● 在线 · Gemini 2.5 Flash</div></div></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="section-head"><div><div class="section-kicker">design tokens / 05</div><h2>色彩与状态</h2></div><p>珊瑚橙负责行动，薄荷绿负责安心</p></div>
+      <div class="token-strip"><div class="token"><span class="swatch" style="background:var(--coral)"></span>品牌主色</div><div class="token"><span class="swatch" style="background:var(--coral-soft)"></span>柔和强调</div><div class="token"><span class="swatch" style="background:var(--blue)"></span>信息状态</div><div class="token"><span class="swatch" style="background:var(--mint)"></span>成功状态</div><div class="token"><span class="swatch" style="background:var(--purple)"></span>辅助色</div><div class="token"><span class="swatch" style="background:var(--ink)"></span>墨色文字</div></div>
+    </section>
+    <footer class="footer">mewCat / 译趣喵 · 二次元 UI 风格探索稿 · 当前为视觉原型，不连接真实翻译服务</footer>
+  </main>
+  <script>
+    const root = document;
+    root.querySelectorAll(".jump").forEach(function (button) {
+      button.addEventListener("click", function () {
+        root.getElementById(button.dataset.target).scrollIntoView({ behavior: "smooth", block: "start" });
+        root.querySelectorAll(".jump").forEach(function (item) { item.classList.toggle("active", item === button); });
+      });
+    });
+    const settingTitles = { basic: "基础设置", service: "翻译服务", selection: "划词翻译", image: "图片翻译", about: "关于译趣喵" };
+    root.querySelectorAll("[data-setting]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        root.querySelectorAll("[data-setting]").forEach(function (item) { item.classList.toggle("active", item === button); });
+        root.getElementById("setting-title").textContent = settingTitles[button.dataset.setting];
+      });
+    });
+    root.querySelectorAll(".switch").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const active = button.classList.toggle("on");
+        button.setAttribute("aria-pressed", String(active));
+      });
+    });
+    root.getElementById("popup-action").addEventListener("click", function () { this.textContent = "翻译完成 ✓"; });
+    root.getElementById("side-swap").addEventListener("click", function () {
+      const from = root.getElementById("from-lang"); const to = root.getElementById("to-lang");
+      const value = from.textContent; from.textContent = to.textContent; to.textContent = value;
+    });
+    root.getElementById("clear-side").addEventListener("click", function () {
+      root.getElementById("source-text").value = ""; root.getElementById("translation-result").classList.add("empty"); root.getElementById("translation-result").textContent = "输入文字后，译文会出现在这里。";
+    });
+    root.getElementById("translate-side").addEventListener("click", function () {
+      root.getElementById("translation-result").classList.remove("empty"); root.getElementById("translation-result").textContent = "月亮是每一段小小旅程的安静见证。"; this.textContent = "已翻译 ✓";
+    });
+    root.getElementById("copy-selection").addEventListener("click", function () { this.textContent = "已复制 ✓"; });
+    root.getElementById("image-action").addEventListener("click", function () { const paused = this.textContent === "暂停扫描"; this.textContent = paused ? "继续扫描" : "暂停扫描"; root.getElementById("image-status-text").textContent = paused ? "扫描已暂停" : "正在扫描文字…"; });
+    root.getElementById("float-button").addEventListener("click", function () { root.getElementById("float-panel").classList.toggle("open"); });
+  </script>
+</body>
+</html>

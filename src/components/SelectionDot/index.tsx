@@ -19,12 +19,12 @@ const SCxDot = styled.div<{ x: number; y: number }>`
     z-index: 100000;
     width: 24px;
     height: 24px;
-    /* 一枚小朱砂印 —— 与页面悬浮球同形制 */
-    background: #b23a2e;
+    /* 一枚小蓝色邮戳 —— 与页面悬浮球同形制 */
+    background: #2878c8;
     border-radius: var(--radius-lg);
     box-shadow:
         inset 0 0 0 1px rgba(251, 248, 240, 0.55),
-        0 2px 6px rgba(142, 42, 32, 0.24);
+        0 2px 6px rgba(40, 120, 200, 0.24);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -66,8 +66,8 @@ const SCxTooltip = styled.div.withConfig({
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%) translateY(-4px);
-    background: #1a1714;
-    color: #fbf8f0;
+    background: #203b57;
+    color: #ffffff;
     padding: 4px 8px;
     border-radius: var(--radius-sm);
     font-size: 12px;
@@ -85,7 +85,7 @@ const SCxTooltip = styled.div.withConfig({
         left: 50%;
         transform: translateX(-50%);
         border: 4px solid transparent;
-        border-top-color: #1a1714;
+        border-top-color: #203b57;
     }
 `
 
@@ -156,7 +156,7 @@ const SelectionDot = React.forwardRef<HTMLDivElement, SelectionDotProps>(
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
             >
-                <Icon name={getIcon()} size={14} color="#fbf8f0" />
+                <Icon name={getIcon()} size={14} color="#ffffff" />
                 <SCxTooltip show={showTooltip}>{getTooltipText()}</SCxTooltip>
             </SCxDot>
         )

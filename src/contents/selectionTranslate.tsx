@@ -31,10 +31,10 @@ const SCxContainer = styled.div.withConfig({
     min-height: 120px;
     /* max-height: 300px; */
     z-index: 99999;
-    background: #fbf8f0;
+    background: #ffffff;
     border-radius: var(--radius-xl);
-    box-shadow: 0 10px 34px rgba(26, 23, 20, 0.16);
-    border: 1px solid #d8d0be;
+    box-shadow: 0 10px 34px rgba(32, 59, 87, 0.16);
+    border: 1px solid #cfe0ef;
     opacity: ${props => (props.isVisible ? 1 : 0)};
     visibility: ${props => getSelectionPanelVisibility(props.isVisible)};
     transform: ${props =>
@@ -47,7 +47,7 @@ const SCxContainer = styled.div.withConfig({
     display: flex;
     flex-direction: column;
 
-    /* 顶端一道朱砂封边 */
+    /* 顶端一道天空蓝封边 */
     &::before {
         content: "";
         position: absolute;
@@ -55,14 +55,14 @@ const SCxContainer = styled.div.withConfig({
         left: 0;
         right: 0;
         height: 3px;
-        background: #b23a2e;
+        background: #2878c8;
         border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     }
 `
 
 const SCxHeader = styled.div`
     padding: 12px 16px 8px 16px;
-    border-bottom: 1px solid #e4ddcd;
+    border-bottom: 1px solid #e3eef7;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -71,7 +71,7 @@ const SCxHeader = styled.div`
 const SCxTitle = styled.div`
     font-size: 12px;
     font-weight: 600;
-    color: #b23a2e;
+    color: #2878c8;
     letter-spacing: 0.04em;
     display: flex;
     align-items: center;
@@ -80,9 +80,9 @@ const SCxTitle = styled.div`
     .icon-translate {
         width: 18px;
         height: 18px;
-        background: #b23a2e;
+        background: #2878c8;
         border-radius: var(--radius-md);
-        box-shadow: inset 0 0 0 1px rgba(251, 248, 240, 0.55);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -99,13 +99,13 @@ const SCxCloseButton = styled.button`
     align-items: center;
     justify-content: center;
     border-radius: var(--radius-md);
-    color: #6e665c;
+    color: #6f879c;
     font-size: 12px;
     transition: all 0.16s ease;
 
     &:hover {
-        background: rgba(178, 58, 46, 0.09);
-        color: #b23a2e;
+        background: rgba(40, 120, 200, 0.1);
+        color: #2878c8;
     }
 `
 

@@ -28,14 +28,16 @@ export function renderPageSummary(
         *{box-sizing:border-box}
         button{font:inherit;cursor:pointer}
         .launcher{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2147483646}
-        .trigger{padding:8px 20px;border:1px solid #b9afa080;border-radius:24px;background:#fbf8f099;backdrop-filter:blur(12px);color:#5f4939;box-shadow:0 4px 18px #00000014}
+        .trigger{padding:8px 20px;border:1px solid #b7d8ef80;border-radius:24px;background:#ffffff99;backdrop-filter:blur(12px);color:#36536d;box-shadow:0 4px 18px #203b5714;opacity:0.5;transition:opacity 0.2s ease}
+        .launcher:hover .trigger,.launcher:focus-within .trigger{opacity:1}
+        @media(prefers-reduced-motion:reduce){.trigger{transition:none}}
         .dismiss{position:absolute;right:-8px;top:-10px;width:24px;height:24px;border:0;border-radius:50%;background:#fff;color:#dc2626;opacity:0;pointer-events:none;line-height:1}
         .launcher:hover .dismiss,.launcher:focus-within .dismiss{opacity:1;pointer-events:auto}
-        button:focus-visible{outline:2px solid #b23a2e;outline-offset:3px}
-        dialog{position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;border:1px solid #d8cdbb;border-radius:16px;padding:24px;background:#fbf8f0;color:#1a1714;font:14px/1.7 system-ui,sans-serif;box-shadow:0 16px 60px #0003}
+        button:focus-visible{outline:2px solid #2878c8;outline-offset:3px}
+        dialog{position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;border:1px solid #cfe0ef;border-radius:16px;padding:24px;background:#ffffff;color:#203b57;font:14px/1.7 system-ui,sans-serif;box-shadow:0 16px 60px #203b5733}
         dialog::backdrop{background:#0004}
         .close{float:right;border:0;background:transparent;color:#756b5e;font-size:22px}
-        .label{font-size:18px;font-weight:600;color:#b23a2e;margin-bottom:12px}
+        .label{font-size:18px;font-weight:600;color:#2878c8;margin-bottom:12px}
         .content{white-space:pre-wrap;overflow-wrap:anywhere}
         .meta{font-size:12px;color:#756b5e;margin-top:12px}
         [hidden]{display:none!important}

@@ -30,17 +30,37 @@ const SCxContainer = styled.div.withConfig({
     top: ${({ y }) => y}px;
     width: 54px;
     height: 54px;
+    --mewcat-expanded-offset: ${({ $right }) => ($right ? "-12px" : "12px")};
     transform: ${({ $expanded, isDragging, $right }) =>
-        $expanded || isDragging
+        isDragging
             ? "translateX(0)"
-            : `translateX(${$right ? "50%" : "-50%"})`};
+            : $expanded
+              ? "translateX(var(--mewcat-expanded-offset))"
+              : `translateX(${$right ? "50%" : "-50%"})`};
     z-index: 99999;
     visibility: visible;
     cursor: ${props => (props.isDragging ? "grabbing" : "grab")};
     transition: ${props => (props.isDragging ? "none" : "all 0.3s ease")};
     &:hover,
     &:focus-within {
-        transform: translateX(0);
+        transform: ${({ isDragging }) =>
+            isDragging
+                ? "translateX(0)"
+                : "translateX(var(--mewcat-expanded-offset))"};
+    }
+    /* Keep the hover area connected to the edge while the button moves inward. */
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        ${({ $right }) => ($right ? "right: -12px" : "left: -12px")};
+        width: ${({ $expanded, isDragging }) =>
+            $expanded && !isDragging ? "12px" : "0"};
+        height: 100%;
+    }
+    &:hover::before,
+    &:focus-within::before {
+        width: ${({ isDragging }) => (isDragging ? "0" : "12px")};
     }
     @media (prefers-reduced-motion: reduce) {
         transition: none;
@@ -57,8 +77,8 @@ const SCxFloatingButton = styled.div`
     overflow: visible;
     background: rgba(255, 255, 255, 0.94);
     box-shadow:
-        0 0 0 1px rgba(91, 141, 239, 0.24),
-        0 4px 14px rgba(79, 112, 190, 0.28);
+        0 0 0 1px var(--sky-line),
+        var(--shadow-primary);
     opacity: 0.5;
     display: flex;
     align-items: center;
@@ -86,12 +106,12 @@ const SCxBrandLogo = styled(BrandLogo)`
 const SCxGrindRing = styled.div<{ $active: boolean }>`
     position: absolute;
     inset: -7px;
-    border: 1.5px dashed #5b8def;
+    border: 1.5px dashed var(--primary-muted);
     border-radius: calc(var(--radius-xl, 16px) + 4px);
     pointer-events: none;
     opacity: ${p => (p.$active ? 0.75 : 0)};
     transition: opacity var(--transition-base, 0.2s ease);
-    animation: mewcat-grind 5s linear infinite;
+    animation: ${p => (p.$active ? "mewcat-grind 5s linear infinite" : "none")};
 
     @keyframes mewcat-grind {
         to {
@@ -110,7 +130,7 @@ const SCxInkWash = styled.div<{ $active: boolean }>`
     position: absolute;
     inset: 0;
     border-radius: var(--radius-xl);
-    background: rgba(117, 155, 241, 0.72);
+    background: rgba(126, 190, 235, 0.72);
     pointer-events: none;
     opacity: 0;
     ${p => p.$active && `animation: mewcat-wash 0.62s ease-out 1;`}
@@ -142,9 +162,9 @@ const SCxTickIcon = styled.div`
     display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--jade, #3e6b63);
+    background: var(--success);
     border-radius: var(--radius-sm);
-    box-shadow: inset 0 0 0 1.5px rgba(251, 248, 240, 0.85);
+    box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.9);
 `
 
 const SCxSettingsIcon = styled.div.withConfig({
@@ -157,9 +177,9 @@ const SCxSettingsIcon = styled.div.withConfig({
     width: 30px;
     height: 30px;
     border-radius: var(--radius-md);
-    background: var(--bg-secondary, #fbf8f0);
-    border: 1px solid var(--border-color, #d8d0be);
-    box-shadow: var(--shadow-sm, 0 1px 2px rgba(26, 23, 20, 0.05));
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -173,19 +193,24 @@ const SCxSettingsIcon = styled.div.withConfig({
     pointer-events: ${props => (props.visible ? "auto" : "none")};
 
     &:hover {
-        background: var(--primary-light, #f7efe6);
-        border-color: var(--primary-color, #b23a2e);
+        background: var(--primary-light);
+        border-color: var(--primary-color);
 
         svg {
-            color: var(--primary-color, #b23a2e);
+            color: var(--primary-color);
         }
     }
 
     svg {
         width: 16px;
         height: 16px;
-        color: var(--text-tertiary, #6e665c);
+        color: var(--text-tertiary);
         transition: color var(--transition-base, 0.2s ease);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
     }
 `
 
@@ -198,9 +223,9 @@ const SCxRefreshIcon = styled.button<{ $visible: boolean }>`
     height: 30px;
     padding: 0;
     border-radius: var(--radius-md);
-    background: var(--bg-secondary, #fbf8f0);
-    border: 1px solid var(--border-color, #d8d0be);
-    box-shadow: var(--shadow-sm, 0 1px 2px rgba(26, 23, 20, 0.05));
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -214,11 +239,11 @@ const SCxRefreshIcon = styled.button<{ $visible: boolean }>`
     pointer-events: ${props => (props.$visible ? "auto" : "none")};
 
     &:hover:not(:disabled) {
-        background: var(--primary-light, #f7efe6);
-        border-color: var(--primary-color, #b23a2e);
+        background: var(--primary-light);
+        border-color: var(--primary-color);
 
         svg {
-            color: var(--primary-color, #b23a2e);
+            color: var(--primary-color);
         }
     }
 
@@ -228,7 +253,7 @@ const SCxRefreshIcon = styled.button<{ $visible: boolean }>`
     }
 
     svg {
-        color: var(--text-tertiary, #6e665c);
+        color: var(--text-tertiary);
         transition: color var(--transition-base, 0.2s ease);
     }
 `
@@ -250,6 +275,10 @@ const SCxSettingsPanel = styled.div.withConfig({
     transition: all 0.3s ease;
     pointer-events: ${props => (props.visible ? "auto" : "none")};
     z-index: 10000;
+
+    @media (prefers-reduced-motion: reduce) {
+        transition: none;
+    }
 `
 const TranslationControlCenter: React.FunctionComponent = () => {
     const [config] = useAtom(configAtom)
@@ -659,7 +688,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                                 <Icon
                                     name={"check"}
                                     size={12}
-                                    color="#fbf8f0"
+                                    color="#ffffff"
                                 />
                             </SCxTickIcon>
                         )}
@@ -668,9 +697,19 @@ const TranslationControlCenter: React.FunctionComponent = () => {
 
                 <SCxSettingsIcon
                     visible={showSettingsIcon}
+                    role="button"
+                    tabIndex={showSettingsIcon ? 0 : -1}
+                    aria-label="打开高级设置"
                     onClick={e => {
                         e.stopPropagation()
                         setShowSettingsPanel(!showSettingsPanel)
+                    }}
+                    onKeyDown={e => {
+                        if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setShowSettingsPanel(!showSettingsPanel)
+                        }
                     }}
                     onMouseEnter={handleSettingsIconMouseEnter}
                 >

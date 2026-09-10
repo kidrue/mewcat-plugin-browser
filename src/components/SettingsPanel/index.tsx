@@ -1,5 +1,5 @@
 import { useAtom, useSetAtom } from "jotai"
-import styled from "styled-components"
+import styled, { css } from "styled-components"
 
 import { AUTO_DETECT_OPTION, languages } from "@/constants"
 import {
@@ -11,6 +11,7 @@ import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
 import BrandLogo from "../BrandLogo"
 import NativeSelect from "../NativeSelect"
+import { SkyBackdrop, SkyMascot } from "../SkyArtwork"
 import CustomToggle from "../Switch"
 import Tooltip from "../Tooltip"
 
@@ -18,25 +19,64 @@ import Tooltip from "../Tooltip"
 // Styled Components
 // ============================================
 
-// floating：浮在页面上，需要自己的纸面与边界。
-// embedded：已经处在 popup 自己的窗口里，不再叠一层纸。
-const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
-    width: 320px;
-    min-height: 400px;
-    padding: var(--space-4);
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-primary);
-    font-family: var(--font-family);
-    color: var(--text-primary);
+const PopupBackdrop = styled(SkyBackdrop)`
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 62% center;
+`
 
-    ${p =>
-        p.$variant === "floating" &&
-        `
-        border-radius: var(--radius-xl);
-        border: 1px solid var(--border-color);
-        box-shadow: var(--shadow-xl);
-    `}
+// 只裁切装饰层，设置区保持 overflow:visible，给帮助浮层留出空间。
+const PopupScenery = styled.div`
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+    background: var(--bg-primary);
+
+    &::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+            linear-gradient(
+                    90deg,
+                    rgba(255, 255, 255, 0.92),
+                    rgba(255, 255, 255, 0.64) 48%,
+                    rgba(255, 255, 255, 0.06) 78%
+                )
+                0 0 / 100% 144px no-repeat,
+            linear-gradient(
+                180deg,
+                rgba(242, 248, 254, 0.12),
+                rgba(242, 248, 254, 0.28) 140px,
+                rgba(242, 248, 254, 0.44)
+            );
+    }
+`
+
+const PopupPortrait = styled.div`
+    position: absolute;
+    right: -4px;
+    bottom: 0;
+    width: 76px;
+    height: 112px;
+    overflow: hidden;
+    pointer-events: none;
+    mask-image: linear-gradient(#000 82%, transparent);
+
+    img {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 156px;
+        max-width: none;
+        height: auto;
+        transform: translateX(-50%);
+    }
 `
 
 const Header = styled.div`
@@ -45,7 +85,7 @@ const Header = styled.div`
     gap: var(--space-3);
     margin-bottom: var(--space-4);
     padding-bottom: var(--space-3);
-    /* 骑缝线：实线压一枚朱砂方印 */
+    /* 信纸折痕：蓝线压着一枚小邮戳 */
     position: relative;
     border-bottom: 1px solid var(--rule-strong);
 
@@ -57,17 +97,28 @@ const Header = styled.div`
         width: 8px;
         height: 8px;
         background: var(--primary-color);
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-full);
     }
 `
 
 const HeaderLogo = styled(BrandLogo)`
-    box-shadow: 0 2px 8px rgba(79, 112, 190, 0.2);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-primary-sm);
 `
 
 const HeaderInfo = styled.div`
     flex: 1;
     min-width: 0;
+`
+
+const HeaderMascot = styled(SkyMascot)`
+    width: 34px;
+    height: 42px;
+    flex: none;
+    object-fit: cover;
+    object-position: 50% 7%;
+    border-radius: var(--radius-lg);
+    background: var(--primary-light);
 `
 
 const HeaderTitle = styled.h1`
@@ -170,7 +221,7 @@ const LanguageRow = styled.div`
     /* 与底部「高级设置」之间的最小间距 —— 后者用 margin-top:auto 贴底，撑满时不会自带间距 */
     margin-bottom: var(--space-5);
     padding: var(--space-3);
-    background: var(--seal-wash);
+    background: linear-gradient(135deg, var(--primary-light), #f5fbff);
     border-radius: var(--radius-lg);
     border: 1px solid var(--border-light);
 `
@@ -242,6 +293,131 @@ const SettingsButton = styled.button`
     }
 `
 
+// 透明度只作用于底色，文字和控件保持完整对比度。
+const popupGlassSurface = css`
+    position: relative;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.86);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -1px 0 rgba(143, 183, 216, 0.18),
+        0 6px 20px rgba(32, 74, 112, 0.1);
+
+    @supports (backdrop-filter: blur(1px)) {
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.55),
+            rgba(238, 248, 255, 0.38)
+        );
+        -webkit-backdrop-filter: blur(16px) saturate(1.2) brightness(1.06);
+        backdrop-filter: blur(16px) saturate(1.2) brightness(1.06);
+    }
+
+    @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+        background: var(--bg-secondary);
+        border-color: var(--border-color);
+        backdrop-filter: none;
+    }
+`
+
+const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
+    width: 320px;
+    min-height: 400px;
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    background:
+        radial-gradient(
+            circle at 100% 0,
+            rgba(126, 190, 235, 0.18),
+            transparent 11rem
+        ),
+        var(--bg-secondary);
+    font-family: var(--font-family);
+    color: var(--text-primary);
+
+    ${p =>
+        p.$variant === "floating"
+            ? css`
+                  border-radius: var(--radius-xl);
+                  border: 1px solid var(--border-color);
+                  box-shadow: var(--shadow-xl);
+              `
+            : css`
+                  position: relative;
+                  isolation: isolate;
+                  width: 100%;
+                  background: var(--bg-primary);
+
+                  ${Header} {
+                      min-height: 112px;
+                      align-items: flex-end;
+                      padding-right: 64px;
+                      padding-bottom: var(--space-4);
+                      margin-bottom: var(--space-3);
+                  }
+
+                  ${HeaderTitle} {
+                      font-size: var(--font-size-2xl);
+                  }
+
+                  ${HeaderSubtitle} {
+                      color: var(--text-secondary);
+                  }
+
+                  ${AvailabilityHint}, ${LanguageLabel}, ${HelpIcon} {
+                      color: var(--text-primary);
+                  }
+
+                  ${Section} {
+                      ${popupGlassSurface}
+                      /* 帮助浮层在卡片内渲染，需要高于后面的玻璃卡片。 */
+                      z-index: 2;
+                      padding: var(--space-3);
+                      margin-bottom: var(--space-3);
+                      border-radius: var(--radius-xl);
+                  }
+
+                  ${ListItem} {
+                      padding: 10px 0;
+                      border-bottom-color: rgba(123, 164, 197, 0.28);
+
+                      &:first-child {
+                          padding-top: 0;
+                      }
+
+                      &:last-child {
+                          padding-bottom: 0;
+                      }
+                  }
+
+                  ${LanguageRow} {
+                      ${popupGlassSurface}
+                      z-index: 1;
+                      margin-top: 0;
+                      margin-bottom: var(--space-3);
+                  }
+
+                  select {
+                      background: rgba(255, 255, 255, 0.46);
+                      border-color: rgba(116, 158, 194, 0.48);
+                  }
+
+                  ${SettingsButton} {
+                      ${popupGlassSurface}
+                      z-index: 1;
+                      border-radius: var(--radius-lg);
+                      color: var(--text-primary);
+
+                      &:hover {
+                          background: rgba(255, 255, 255, 0.86);
+                          border-color: var(--primary-muted);
+                          color: var(--primary-hover);
+                      }
+                  }
+              `}
+`
+
 const GearPath = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="3" />
@@ -251,7 +427,7 @@ const GearPath = () => (
 
 interface SettingsPanelProps {
     currentTabUrl?: URL
-    /** floating = 悬浮球弹出的面板（自带纸面与投影）；embedded = popup 窗口内（不叠纸） */
+    /** floating = 悬浮球纸面面板；embedded = popup 插画背景与设置卡片 */
     variant?: "floating" | "embedded"
 }
 
@@ -320,18 +496,31 @@ function SettingsPanel({
 
     return (
         <PanelContainer $variant={variant}>
+            {variant === "embedded" && (
+                <PopupScenery aria-hidden="true">
+                    <PopupBackdrop />
+                </PopupScenery>
+            )}
             <Header>
                 <HeaderLogo size={40} />
                 <HeaderInfo>
-                    <HeaderTitle>譯趣貓</HeaderTitle>
-                    <HeaderSubtitle>智能翻译助手</HeaderSubtitle>
+                    <HeaderTitle>译趣喵</HeaderTitle>
+                    <HeaderSubtitle>晴空来信 · 智能翻译助手</HeaderSubtitle>
                 </HeaderInfo>
+                {variant === "embedded" ? (
+                    <PopupPortrait aria-hidden="true">
+                        <SkyMascot />
+                    </PopupPortrait>
+                ) : (
+                    <HeaderMascot />
+                )}
             </Header>
 
             <Section>
                 <ListItem>
                     <ListItemLabel>启用划词翻译</ListItemLabel>
                     <CustomToggle
+                        aria-label="启用划词翻译"
                         checked={config.isSelectedTranslate}
                         onChange={handleToggleTranslation}
                     />
@@ -348,6 +537,7 @@ function SettingsPanel({
                         </Tooltip>
                     </ListItemLabel>
                     <CustomToggle
+                        aria-label="AI 智能上下文"
                         checked={config.enableContext ?? false}
                         onChange={handleToggleContext}
                     />
@@ -379,6 +569,7 @@ function SettingsPanel({
                 <ListItem>
                     <ListItemLabel>总是翻译此网站</ListItemLabel>
                     <CustomToggle
+                        aria-label="总是翻译此网站"
                         checked={isAlwayTranslateSite}
                         onChange={handleAddTranslationSite}
                     />
@@ -387,6 +578,7 @@ function SettingsPanel({
                     <ListItemLabel>翻译服务</ListItemLabel>
                     <ModelSelectWrapper>
                         <NativeSelect
+                            aria-label="翻译服务"
                             value={String(config.currentModel)}
                             onChange={handleCurrentModelChange}
                             options={modelOptions}
@@ -401,6 +593,7 @@ function SettingsPanel({
                 <LanguageBox>
                     <LanguageLabel>网页语言</LanguageLabel>
                     <NativeSelect
+                        aria-label="网页语言"
                         value={config.detectedLanguage}
                         disabled
                         onChange={handleDetectedLanguageChange}
@@ -422,6 +615,7 @@ function SettingsPanel({
                 <LanguageBox>
                     <LanguageLabelRight>目标语言</LanguageLabelRight>
                     <NativeSelect
+                        aria-label="目标语言"
                         value={config.targetLanguage}
                         onChange={handleTargetLanguageChange}
                         options={targetLanguageOptions}

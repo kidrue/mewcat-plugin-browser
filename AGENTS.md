@@ -828,3 +828,35 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：减少悬浮翻译按钮对网页内容的遮挡，修复自动总结开关旁问号按钮样式异常，并防止普通页面点击改变悬浮按钮位置。
 
 **验证**：执行 `pnpm format`；进程环境变量 `VITEST_MAX_WORKERS=2` 下 `pnpm check` 全部通过，图片、页面与配置组 253 项测试通过。未执行真实浏览器视觉验收。
+
+### 2026-09-10 — 应用「晴空来信」蓝白二次元 UI
+
+**修改内容**：新增 `src/components/SkyArtwork/` 与 `src/public/assets/sky-letter/`，为 Options、popup、sidepanel、划词翻译、图片翻译和页面总结统一接入天空蓝、纸面、邮局插画和澄羽装饰；调整设置导航、页头、分节、翻译入口、提示层和翻译控件的主题 token 与响应式样式；补充 `docs/ui-previews/`、`docs/superpowers/plans/2026-09-10-sky-letter-ui.md` 及 skill 资源说明。
+
+**原因**：将确认后的蓝白二次元提示词落到扩展四个入口，统一品牌视觉，同时保留既有翻译、配置、拖拽和状态交互。
+
+**验证**：`pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 和 `pnpm build` 通过；生产构建包含本地插画资源。本轮未进行浏览器视觉验收。
+
+### 2026-09-10 — 修复初始化入口加载不存在的样式文件
+
+**修改内容**：`src/entrypoints/initialize.content.tsx` 将 `cssInjectionMode` 从 `ui` 改为 `manual`，保留初始化组件和 Shadow DOM，停止请求未生成的 `content-scripts/initialize.css`。
+
+**原因**：初始化入口没有导入样式，WXT 不生成对应 CSS；启用自动 UI 样式加载会触发 Chrome 的资源访问拒绝报错。
+
+**验证**：`pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 和 `pnpm exec wxt build` 均通过；确认构建产物的初始化入口使用 `cssInjectionMode: manual`。
+
+### 2026-09-10 — popup 添加晴空邮局二次元背景
+
+**修改内容**：`src/components/SettingsPanel/index.tsx` 为 `embedded` 变体加入本地邮局插画、渐变文字遮罩与澄羽半身头像，设置列表和语言区域使用浅色纸面卡片并收紧行距；装饰层禁止点击且单独裁切，保留真实配置读写，并补齐开关与下拉框的无障碍名称。`src/styles/popup.scss` 保持 320px 宽度，增加 600px 高度上限和纵向滚动；`src/components/SkyArtwork/index.tsx`、`src/popup/index.tsx` 同步入口说明。
+
+**原因**：按用户要求让 popup 展示蓝白二次元图片背景，同时保证文字和控件清晰、底部操作可达，复用扩展内图片以支持离线显示。
+
+**验证**：`pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 和 `pnpm build` 通过；生产包包含两张本地插画。完成背景层级与共享组件的只读复核，本轮未进行浏览器视觉验收。
+
+### 2026-09-10 — popup 玻璃卡片提高透亮度
+
+**修改内容**：`src/components/SettingsPanel/index.tsx` 将 popup 卡片、语言区域和高级设置按钮调整为更低不透明度的白蓝玻璃渐变，增加 `backdrop-filter` 模糊、饱和度与亮度，并让下拉框底色同步变轻；保留高对比度和减少透明度时的回退样式。
+
+**原因**：根据用户反馈，让二次元邮局背景更自然地透过 popup 卡片，同时保持设置文字和交互控件清晰。
+
+**验证**：`pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 和 `pnpm build` 通过；生产包包含更新后的 popup 样式。本轮未进行浏览器视觉验收。

@@ -241,7 +241,7 @@ export function createLoadingELement(size = 30) {
             width: ${size}px;
             height: ${size}px;
             border: 2px solid #e4ddcd;
-            border-top: 2px solid #b23a2e;
+            border-top: 2px solid #2878c8;
             border-radius: 50%;
             display: inline-block;
             animation: spin 1s linear infinite;
@@ -335,7 +335,7 @@ export function createTranslationErrorUI(
         const button = document.createElement("span")
         button.className = className
         button.style.cssText = `
-            color: #b23a2e;
+            color: #2878c8;
             cursor: pointer;
             user-select: none;
             ${className === "mewcat-retry-btn" ? "margin-right: 6px;" : ""}
@@ -354,11 +354,11 @@ export function createTranslationErrorUI(
 
         // 悬停效果
         button.addEventListener("mouseenter", () => {
-            button.style.color = "#8e2a20"
-            button.style.backgroundColor = "#f7efe6"
+            button.style.color = "#1d5f9e"
+            button.style.backgroundColor = "#e8f4ff"
         })
         button.addEventListener("mouseleave", () => {
-            button.style.color = "#b23a2e"
+            button.style.color = "#2878c8"
             button.style.backgroundColor = "transparent"
         })
 
@@ -406,7 +406,7 @@ export function createTranslationErrorUI(
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(26, 23, 20, 0.46);
+        background: rgba(32, 59, 87, 0.46);
         backdrop-filter: blur(4px);
         z-index: 999999;
         justify-content: center;
@@ -418,11 +418,11 @@ export function createTranslationErrorUI(
     const errorModalContent = document.createElement("div")
     errorModalContent.className = "mewcat-error-modal-content"
     errorModalContent.style.cssText = `
-        background: #fbf8f0;
+        background: #ffffff;
         padding: 24px;
         border-radius: 16px;
-        border: 1px solid #d8d0be;
-        box-shadow: 0 10px 34px rgba(26, 23, 20, 0.18);
+        border: 1px solid #cfe0ef;
+        box-shadow: 0 10px 34px rgba(32, 59, 87, 0.18);
         max-width: 500px;
         min-width: 400px;
         position: relative;
@@ -441,18 +441,18 @@ export function createTranslationErrorUI(
         border: none;
         font-size: 20px;
         cursor: pointer;
-        color: #9a9188;
+        color: #a3b7c8;
         padding: 4px 8px;
         border-radius: 8px;
         transition: all 0.15s ease;
         line-height: 1;
     `
     closeButton.addEventListener("mouseenter", () => {
-        closeButton.style.color = "#1a1714"
-        closeButton.style.backgroundColor = "#eae3d4"
+        closeButton.style.color = "#203b57"
+        closeButton.style.backgroundColor = "#e8f2fb"
     })
     closeButton.addEventListener("mouseleave", () => {
-        closeButton.style.color = "#9a9188"
+        closeButton.style.color = "#a3b7c8"
         closeButton.style.backgroundColor = "transparent"
     })
 
@@ -462,7 +462,7 @@ export function createTranslationErrorUI(
         margin: 0 0 16px 0;
         font-size: 18px;
         font-weight: 600;
-        color: #a5342a;
+        color: #b84c5a;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -472,14 +472,14 @@ export function createTranslationErrorUI(
     // 错误详情内容
     const errorDetailsContent = document.createElement("div")
     errorDetailsContent.style.cssText = `
-        color: #4a443c;
+        color: #4d6780;
         font-size: 14px;
         line-height: 1.6;
         word-break: break-word;
         max-height: 300px;
         overflow-y: auto;
         padding: 12px;
-        background: #f2ede1;
+        background: #f2f8fe;
         border-radius: 12px;
         border: 1px solid #ded5c3;
     `

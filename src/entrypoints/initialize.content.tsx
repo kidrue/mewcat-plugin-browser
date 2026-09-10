@@ -6,7 +6,8 @@ import Initialize, { getShadowHostId } from "@/contents/initialize"
 
 export default defineContentScript({
     matches: ["<all_urls>"],
-    cssInjectionMode: "ui",
+    // This entrypoint has no stylesheet; do not fetch initialize.css.
+    cssInjectionMode: "manual",
     async main(ctx) {
         const ui = await createShadowRootUi(ctx, {
             name: "mewcat-initialize",

@@ -1,0 +1,1760 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>mewCat · 晴空来信扩展界面预览</title>
+        <style>
+            :root {
+                --sky-0: #f5faff;
+                --sky-1: #e9f5ff;
+                --sky-2: #d8edff;
+                --blue-1: #3478f6;
+                --blue-2: #215dca;
+                --blue-3: #173c80;
+                --ink: #253b55;
+                --muted: #6a809b;
+                --line: #d9e8f5;
+                --white: #ffffff;
+                --cream: #fff4cb;
+                --mint: #3d9e86;
+                --danger: #cf6672;
+                --shadow: 0 24px 80px rgba(25, 77, 132, 0.15);
+                --small-shadow: 0 10px 28px rgba(25, 77, 132, 0.12);
+                --radius: 20px;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            html {
+                min-width: 320px;
+                background: #dfeefa;
+            }
+
+            body {
+                min-height: 100vh;
+                margin: 0;
+                color: var(--ink);
+                background:
+                    radial-gradient(circle at 10% 12%, rgba(255, 255, 255, 0.9), transparent 27rem),
+                    linear-gradient(135deg, #dceeff 0%, #f7fbff 48%, #e5f1ff 100%);
+                font-family: "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+            }
+
+            button,
+            input,
+            select,
+            textarea {
+                font: inherit;
+            }
+
+            button {
+                border: 0;
+                cursor: pointer;
+            }
+
+            button:focus-visible,
+            input:focus-visible,
+            select:focus-visible,
+            textarea:focus-visible {
+                outline: 3px solid rgba(52, 120, 246, 0.3);
+                outline-offset: 2px;
+            }
+
+            .icon {
+                width: 18px;
+                height: 18px;
+                fill: none;
+                stroke: currentColor;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+                stroke-width: 1.8;
+                flex: 0 0 auto;
+            }
+
+            .icon.icon-fill {
+                fill: currentColor;
+                stroke: none;
+            }
+
+            .page {
+                width: min(1500px, calc(100% - 34px));
+                min-height: calc(100vh - 34px);
+                margin: 17px auto;
+                overflow: hidden;
+                border: 1px solid rgba(255, 255, 255, 0.82);
+                border-radius: 28px;
+                background: rgba(255, 255, 255, 0.6);
+                box-shadow: var(--shadow);
+                backdrop-filter: blur(14px);
+            }
+
+            .topbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 20px;
+                min-height: 72px;
+                padding: 13px 24px;
+                border-bottom: 1px solid var(--line);
+                background: rgba(255, 255, 255, 0.82);
+            }
+
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 11px;
+                min-width: 210px;
+            }
+
+            .brand-mark {
+                display: grid;
+                width: 44px;
+                height: 44px;
+                place-items: center;
+                color: #fff;
+                border-radius: 14px 14px 14px 4px;
+                background: linear-gradient(145deg, #5ba2ff, var(--blue-1));
+                box-shadow: 0 8px 18px rgba(52, 120, 246, 0.27);
+            }
+
+            .brand strong {
+                display: block;
+                font-size: 16px;
+                letter-spacing: 0.08em;
+            }
+
+            .brand small {
+                display: block;
+                margin-top: 2px;
+                color: var(--muted);
+                font-size: 11px;
+            }
+
+            .screen-tabs {
+                display: flex;
+                gap: 6px;
+                overflow-x: auto;
+                padding: 2px;
+            }
+
+            .screen-tab {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                min-height: 37px;
+                padding: 8px 12px;
+                color: var(--muted);
+                border: 1px solid transparent;
+                border-radius: 11px;
+                background: transparent;
+                white-space: nowrap;
+                font-size: 12px;
+                transition: 180ms ease;
+            }
+
+            .screen-tab:hover,
+            .screen-tab.active {
+                color: var(--blue-2);
+                border-color: #bdd8fa;
+                background: #edf6ff;
+            }
+
+            .stage {
+                padding: 24px;
+            }
+
+            .surface {
+                display: none;
+                min-height: 720px;
+                animation: surface-in 360ms ease both;
+            }
+
+            .surface.active {
+                display: block;
+            }
+
+            @keyframes surface-in {
+                from {
+                    opacity: 0;
+                    transform: translateY(7px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+
+            .surface-heading {
+                display: flex;
+                align-items: end;
+                justify-content: space-between;
+                gap: 24px;
+                margin: 0 4px 16px;
+            }
+
+            .surface-heading h1,
+            .surface-heading h2,
+            .surface-heading p {
+                margin: 0;
+            }
+
+            .surface-heading h1 {
+                font-size: clamp(28px, 4vw, 44px);
+                letter-spacing: -0.055em;
+            }
+
+            .surface-heading h1 span {
+                color: var(--blue-1);
+            }
+
+            .surface-heading p {
+                max-width: 560px;
+                color: var(--muted);
+                line-height: 1.75;
+                font-size: 13px;
+            }
+
+            .eyebrow {
+                margin: 0 0 8px;
+                color: var(--blue-1);
+                font-size: 11px;
+                font-weight: 750;
+                letter-spacing: 0.15em;
+            }
+
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                min-height: 38px;
+                padding: 9px 13px;
+                color: var(--ink);
+                border: 1px solid var(--line);
+                border-radius: 11px;
+                background: var(--white);
+                box-shadow: 0 3px 10px rgba(32, 84, 135, 0.05);
+                font-size: 12px;
+                transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+            }
+
+            .btn:hover {
+                border-color: #9ec7f6;
+                background: #f6fbff;
+                transform: translateY(-1px);
+            }
+
+            .btn.primary {
+                color: #fff;
+                border-color: var(--blue-1);
+                background: var(--blue-1);
+                box-shadow: 0 8px 18px rgba(52, 120, 246, 0.22);
+            }
+
+            .btn.primary:hover {
+                border-color: var(--blue-2);
+                background: var(--blue-2);
+            }
+
+            .btn.ghost {
+                color: var(--blue-2);
+                border-color: #c9def6;
+                background: #f1f8ff;
+            }
+
+            .btn.danger {
+                color: var(--danger);
+                border-color: #f1cbd0;
+                background: #fff7f8;
+            }
+
+            .icon-btn {
+                display: inline-grid;
+                width: 35px;
+                height: 35px;
+                place-items: center;
+                color: var(--muted);
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #fff;
+                transition: 180ms ease;
+            }
+
+            .icon-btn:hover {
+                color: var(--blue-2);
+                border-color: #9ec7f6;
+                background: #f1f8ff;
+            }
+
+            .options-shell {
+                overflow: hidden;
+                border: 1px solid var(--line);
+                border-radius: var(--radius);
+                background: #fff;
+                box-shadow: var(--small-shadow);
+            }
+
+            .options-hero {
+                position: relative;
+                min-height: 252px;
+                padding: 33px 39% 28px 37px;
+                overflow: hidden;
+                background-image:
+                    linear-gradient(90deg, rgba(245, 250, 255, 0.95) 0%, rgba(245, 250, 255, 0.83) 35%, rgba(245, 250, 255, 0.2) 70%),
+                    url("assets/sky-post-office.png");
+                background-position: center;
+                background-size: cover;
+            }
+
+            [data-scene="dusk"] .options-hero {
+                filter: saturate(0.82) hue-rotate(11deg) brightness(0.86);
+            }
+
+            .options-hero h2 {
+                max-width: 520px;
+                margin: 0;
+                color: var(--blue-3);
+                font-size: clamp(25px, 4vw, 42px);
+                line-height: 1.16;
+                letter-spacing: -0.06em;
+            }
+
+            .options-hero p {
+                max-width: 450px;
+                margin: 12px 0 0;
+                color: #526f8e;
+                line-height: 1.8;
+                font-size: 13px;
+            }
+
+            .hero-character {
+                position: absolute;
+                right: 7%;
+                bottom: -34px;
+                width: min(190px, 23%);
+                max-height: 285px;
+                object-fit: contain;
+                object-position: bottom;
+                filter: drop-shadow(0 15px 15px rgba(35, 82, 137, 0.16));
+                pointer-events: none;
+            }
+
+            .stamp-note {
+                display: inline-flex;
+                align-items: center;
+                gap: 7px;
+                margin-top: 16px;
+                padding: 7px 10px;
+                color: var(--blue-2);
+                border: 1px dashed #9bc3ee;
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.68);
+                font-size: 11px;
+            }
+
+            .options-body {
+                display: grid;
+                grid-template-columns: 190px minmax(0, 1fr);
+                min-height: 470px;
+            }
+
+            .options-nav {
+                padding: 21px 13px;
+                border-right: 1px solid var(--line);
+                background: #f4faff;
+            }
+
+            .nav-label {
+                padding: 0 10px 10px;
+                color: #7590ac;
+                font-size: 10px;
+                font-weight: 750;
+                letter-spacing: 0.13em;
+            }
+
+            .option-nav-button {
+                display: flex;
+                align-items: center;
+                width: 100%;
+                gap: 9px;
+                margin: 4px 0;
+                padding: 10px 10px;
+                color: var(--muted);
+                border: 1px solid transparent;
+                border-radius: 10px;
+                background: transparent;
+                text-align: left;
+                font-size: 12px;
+                transition: 180ms ease;
+            }
+
+            .option-nav-button:hover,
+            .option-nav-button.active {
+                color: var(--blue-2);
+                border-color: #c5def7;
+                background: #eaf5ff;
+            }
+
+            .option-nav-button.active .nav-dot {
+                color: var(--blue-1);
+            }
+
+            .nav-dot {
+                color: #9eb8d2;
+                font-size: 13px;
+            }
+
+            .options-content {
+                min-width: 0;
+                padding: 25px 29px 30px;
+            }
+
+            .options-content-head {
+                display: flex;
+                align-items: start;
+                justify-content: space-between;
+                gap: 18px;
+                margin-bottom: 19px;
+            }
+
+            .options-content-head h3 {
+                margin: 0;
+                font-size: 21px;
+                letter-spacing: -0.04em;
+            }
+
+            .options-content-head p {
+                margin: 5px 0 0;
+                color: var(--muted);
+                font-size: 12px;
+            }
+
+            .save-state {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 9px;
+                color: var(--mint);
+                border-radius: 999px;
+                background: #edf9f5;
+                font-size: 11px;
+                white-space: nowrap;
+            }
+
+            .settings-grid {
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+            }
+
+            .setting-card {
+                min-width: 0;
+                padding: 15px;
+                border: 1px solid var(--line);
+                border-radius: 14px;
+                background: #fbfdff;
+            }
+
+            .setting-card.full {
+                grid-column: 1 / -1;
+            }
+
+            .setting-label {
+                display: block;
+                margin-bottom: 9px;
+                color: #425f7f;
+                font-size: 12px;
+                font-weight: 700;
+            }
+
+            .setting-help {
+                margin: 7px 0 0;
+                color: var(--muted);
+                font-size: 11px;
+                line-height: 1.55;
+            }
+
+            .field,
+            .select-field,
+            .text-field {
+                width: 100%;
+                min-height: 37px;
+                padding: 8px 10px;
+                color: var(--ink);
+                border: 1px solid #cfe1f1;
+                border-radius: 9px;
+                background: #fff;
+                font-size: 12px;
+            }
+
+            .field:disabled,
+            .select-field:disabled {
+                color: #8aa1b9;
+                background: #f1f6fa;
+            }
+
+            .switch-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 14px;
+            }
+
+            .switch {
+                position: relative;
+                display: inline-flex;
+                width: 40px;
+                height: 23px;
+                flex: 0 0 auto;
+            }
+
+            .switch input {
+                width: 1px;
+                height: 1px;
+                opacity: 0;
+            }
+
+            .switch-track {
+                position: absolute;
+                inset: 0;
+                border-radius: 999px;
+                background: #cbd9e6;
+                transition: 180ms ease;
+            }
+
+            .switch-track::after {
+                position: absolute;
+                top: 3px;
+                left: 3px;
+                width: 17px;
+                height: 17px;
+                border-radius: 50%;
+                background: #fff;
+                box-shadow: 0 2px 5px rgba(30, 64, 103, 0.2);
+                content: "";
+                transition: 180ms ease;
+            }
+
+            .switch input:checked + .switch-track {
+                background: var(--blue-1);
+            }
+
+            .switch input:checked + .switch-track::after {
+                transform: translateX(17px);
+            }
+
+            .segment {
+                display: inline-flex;
+                gap: 4px;
+                padding: 4px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: #f3f8fc;
+            }
+
+            .segment button {
+                padding: 7px 9px;
+                color: var(--muted);
+                border-radius: 7px;
+                background: transparent;
+                font-size: 11px;
+            }
+
+            .segment button.active {
+                color: var(--blue-2);
+                background: #fff;
+                box-shadow: 0 2px 8px rgba(31, 84, 137, 0.1);
+            }
+
+            .option-panel {
+                display: none;
+            }
+
+            .option-panel.active {
+                display: block;
+                animation: panel-in 260ms ease both;
+            }
+
+            @keyframes panel-in {
+                from { opacity: 0; transform: translateY(4px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            .model-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                padding: 12px;
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                background: #fff;
+            }
+
+            .model-row + .model-row {
+                margin-top: 8px;
+            }
+
+            .model-title {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 12px;
+                font-weight: 750;
+            }
+
+            .model-badge {
+                display: inline-grid;
+                width: 27px;
+                height: 27px;
+                place-items: center;
+                color: var(--blue-2);
+                border-radius: 9px;
+                background: #eaf4ff;
+                font-size: 11px;
+                font-weight: 800;
+            }
+
+            .model-row small {
+                display: block;
+                margin-top: 3px;
+                color: var(--muted);
+                font-size: 10px;
+            }
+
+            .model-actions {
+                display: flex;
+                align-items: center;
+                gap: 7px;
+            }
+
+            .stats {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 10px;
+                margin-bottom: 13px;
+            }
+
+            .stat {
+                padding: 14px;
+                border: 1px solid var(--line);
+                border-radius: 13px;
+                background: #fbfdff;
+            }
+
+            .stat small {
+                color: var(--muted);
+                font-size: 10px;
+            }
+
+            .stat strong {
+                display: block;
+                margin-top: 7px;
+                color: var(--blue-2);
+                font-size: 22px;
+            }
+
+            .preview-note {
+                display: flex;
+                align-items: flex-start;
+                gap: 9px;
+                padding: 11px 12px;
+                color: #526f8e;
+                border: 1px dashed #b8d4ef;
+                border-radius: 11px;
+                background: #f4faff;
+                line-height: 1.6;
+                font-size: 11px;
+            }
+
+            .surface-compact {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 370px;
+                align-items: center;
+                gap: 30px;
+                min-height: 700px;
+                padding: clamp(22px, 5vw, 64px);
+                overflow: hidden;
+                border: 1px solid var(--line);
+                border-radius: var(--radius);
+                background:
+                    linear-gradient(115deg, rgba(255, 255, 255, 0.96), rgba(243, 250, 255, 0.7)),
+                    url("assets/sky-post-office.png") center / cover;
+                box-shadow: var(--small-shadow);
+            }
+
+            .compact-intro {
+                max-width: 510px;
+                padding: 14px;
+            }
+
+            .compact-intro h2 {
+                margin: 0;
+                color: var(--blue-3);
+                font-size: clamp(27px, 4vw, 48px);
+                line-height: 1.16;
+                letter-spacing: -0.06em;
+            }
+
+            .compact-intro p {
+                margin: 14px 0 0;
+                color: #5d7895;
+                line-height: 1.85;
+                font-size: 13px;
+            }
+
+            .compact-points {
+                display: grid;
+                gap: 8px;
+                margin: 25px 0 0;
+                padding: 0;
+                list-style: none;
+            }
+
+            .compact-points li {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                color: #496781;
+                font-size: 12px;
+            }
+
+            .compact-points li::before {
+                display: grid;
+                width: 20px;
+                height: 20px;
+                place-items: center;
+                color: var(--blue-1);
+                border-radius: 6px;
+                background: #e7f3ff;
+                content: "✦";
+                font-size: 10px;
+            }
+
+            .mock-popup,
+            .mock-sidepanel {
+                position: relative;
+                z-index: 1;
+                overflow: hidden;
+                border: 1px solid #c8dff3;
+                border-radius: 18px;
+                background: rgba(255, 255, 255, 0.94);
+                box-shadow: 0 22px 55px rgba(27, 72, 121, 0.2);
+            }
+
+            .mock-popup {
+                width: min(320px, 100%);
+                min-height: 480px;
+                justify-self: center;
+            }
+
+            .mock-sidepanel {
+                width: min(380px, 100%);
+                min-height: 560px;
+                justify-self: center;
+            }
+
+            .mock-top {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                min-height: 59px;
+                padding: 12px 15px;
+                border-bottom: 1px solid var(--line);
+                background: rgba(249, 253, 255, 0.95);
+            }
+
+            .mock-brand {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                color: var(--blue-3);
+                font-size: 13px;
+                font-weight: 800;
+            }
+
+            .mock-brand .brand-dot {
+                display: grid;
+                width: 28px;
+                height: 28px;
+                place-items: center;
+                color: #fff;
+                border-radius: 9px 9px 9px 3px;
+                background: var(--blue-1);
+            }
+
+            .mock-body {
+                padding: 15px;
+            }
+
+            .mock-heading {
+                margin: 0 0 3px;
+                color: var(--ink);
+                font-size: 17px;
+                letter-spacing: -0.04em;
+            }
+
+            .mock-subtitle {
+                margin: 0 0 14px;
+                color: var(--muted);
+                font-size: 10px;
+            }
+
+            .popup-character {
+                float: right;
+                width: 65px;
+                height: 82px;
+                margin: -15px -4px 0 5px;
+                object-fit: contain;
+                object-position: bottom;
+            }
+
+            .quick-card {
+                padding: 7px 10px;
+                border: 1px solid var(--line);
+                border-radius: 11px;
+                background: #fbfdff;
+            }
+
+            .quick-card + .quick-card {
+                margin-top: 7px;
+            }
+
+            .quick-row {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 12px;
+                min-height: 31px;
+            }
+
+            .quick-label {
+                display: flex;
+                align-items: center;
+                gap: 7px;
+                color: #405d7b;
+                font-size: 11px;
+            }
+
+            .quick-label .icon {
+                color: var(--blue-1);
+                width: 15px;
+                height: 15px;
+            }
+
+            .small-switch {
+                width: 32px;
+                height: 18px;
+            }
+
+            .small-switch .switch-track::after {
+                top: 2px;
+                left: 2px;
+                width: 14px;
+                height: 14px;
+            }
+
+            .small-switch input:checked + .switch-track::after {
+                transform: translateX(14px);
+            }
+
+            .mini-select {
+                width: 100%;
+                min-height: 31px;
+                padding: 5px 8px;
+                color: var(--ink);
+                border: 1px solid #d2e3f1;
+                border-radius: 8px;
+                background: #fff;
+                font-size: 11px;
+            }
+
+            .language-row {
+                display: grid;
+                grid-template-columns: 1fr 34px 1fr;
+                align-items: center;
+                gap: 7px;
+                margin-top: 10px;
+            }
+
+            .mock-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 9px;
+                margin-top: 14px;
+            }
+
+            .mock-footer .btn {
+                min-height: 32px;
+                padding: 7px 9px;
+                font-size: 10px;
+            }
+
+            .mock-footnote {
+                color: var(--muted);
+                font-size: 9px;
+                line-height: 1.5;
+            }
+
+            .translate-stage {
+                position: relative;
+                min-height: 700px;
+                overflow: hidden;
+                border: 1px solid #c8dff3;
+                border-radius: var(--radius);
+                background: #f9fcff;
+                box-shadow: var(--small-shadow);
+            }
+
+            .browser-chrome {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                min-height: 50px;
+                padding: 10px 15px;
+                border-bottom: 1px solid var(--line);
+                background: #fff;
+            }
+
+            .browser-dots {
+                display: flex;
+                gap: 5px;
+            }
+
+            .browser-dots i {
+                display: block;
+                width: 8px;
+                height: 8px;
+                border-radius: 50%;
+                background: #b6d1ea;
+            }
+
+            .address-bar {
+                flex: 1;
+                padding: 7px 10px;
+                overflow: hidden;
+                color: #7090ae;
+                border: 1px solid #d8e7f3;
+                border-radius: 8px;
+                background: #f7fbff;
+                font-size: 11px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .article-page {
+                width: min(780px, calc(100% - 70px));
+                margin: 50px auto 80px;
+                padding: 35px 40px 60px;
+                border: 1px solid #e0ecf6;
+                border-radius: 16px;
+                background: #fff;
+                box-shadow: 0 10px 32px rgba(37, 83, 132, 0.08);
+            }
+
+            .article-page h2 {
+                margin: 0;
+                color: #24466e;
+                font-family: Georgia, "Noto Serif SC", serif;
+                font-size: clamp(23px, 4vw, 38px);
+                line-height: 1.28;
+            }
+
+            .article-meta {
+                display: flex;
+                gap: 10px;
+                margin-top: 10px;
+                color: #7d96ae;
+                font-size: 11px;
+            }
+
+            .article-page p {
+                color: #526b84;
+                line-height: 2;
+                font-size: 14px;
+            }
+
+            .article-page blockquote {
+                margin: 22px 0;
+                padding: 13px 16px;
+                color: #466e98;
+                border-left: 3px solid #85bcf8;
+                background: #f1f8ff;
+                line-height: 1.8;
+                font-size: 13px;
+            }
+
+            .translate-float {
+                position: absolute;
+                right: 18px;
+                top: 52%;
+                z-index: 4;
+                display: grid;
+                width: 54px;
+                height: 54px;
+                place-items: center;
+                color: #fff;
+                border: 3px solid rgba(255, 255, 255, 0.82);
+                border-radius: 50%;
+                background: linear-gradient(145deg, #62a8ff, var(--blue-1));
+                box-shadow: 0 12px 26px rgba(35, 101, 190, 0.3);
+                transition: transform 180ms ease, box-shadow 180ms ease;
+            }
+
+            .translate-float:hover,
+            .translate-float.active {
+                transform: scale(1.08);
+                box-shadow: 0 15px 29px rgba(35, 101, 190, 0.4);
+            }
+
+            .translate-float img {
+                width: 49px;
+                height: 49px;
+                object-fit: cover;
+                object-position: top center;
+                border-radius: 50%;
+            }
+
+            .float-tools {
+                position: absolute;
+                right: 75px;
+                top: 50%;
+                display: flex;
+                gap: 6px;
+                padding: 5px;
+                border: 1px solid #c9dff2;
+                border-radius: 12px;
+                background: rgba(255, 255, 255, 0.96);
+                box-shadow: var(--small-shadow);
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(-50%) translateX(5px);
+                transition: 180ms ease;
+            }
+
+            .translate-stage:hover .float-tools,
+            .translate-stage:focus-within .float-tools,
+            .translate-stage.show-float-tools .float-tools {
+                opacity: 1;
+                pointer-events: auto;
+                transform: translateY(-50%) translateX(0);
+            }
+
+            .float-tools .icon-btn {
+                width: 30px;
+                height: 30px;
+            }
+
+            .translation-result {
+                display: none;
+                margin: -3px 0 14px;
+                padding: 12px 14px;
+                color: #245ca7;
+                border-left: 3px solid #67aaff;
+                border-radius: 0 10px 10px 0;
+                background: #edf6ff;
+                line-height: 1.7;
+                font-size: 13px;
+            }
+
+            .translation-result.show {
+                display: block;
+                animation: result-in 300ms ease both;
+            }
+
+            @keyframes result-in {
+                from { opacity: 0; transform: translateY(-4px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
+            .float-status {
+                position: absolute;
+                right: 14px;
+                bottom: 15px;
+                padding: 7px 10px;
+                color: #527491;
+                border: 1px solid #d1e2f1;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.92);
+                font-size: 10px;
+            }
+
+            .sidepanel-stage {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 380px;
+                min-height: 700px;
+                overflow: hidden;
+                border: 1px solid var(--line);
+                border-radius: var(--radius);
+                background: #eef7ff;
+                box-shadow: var(--small-shadow);
+            }
+
+            .sidepanel-page-copy {
+                position: relative;
+                overflow: hidden;
+                padding: clamp(30px, 6vw, 80px);
+                background-image:
+                    linear-gradient(105deg, rgba(238, 247, 255, 0.94), rgba(238, 247, 255, 0.56)),
+                    url("assets/sky-post-office.png");
+                background-position: center;
+                background-size: cover;
+            }
+
+            .sidepanel-page-copy h2 {
+                max-width: 540px;
+                margin: 0;
+                color: var(--blue-3);
+                font-size: clamp(28px, 5vw, 57px);
+                letter-spacing: -0.06em;
+                line-height: 1.12;
+            }
+
+            .sidepanel-page-copy p {
+                max-width: 470px;
+                margin: 20px 0 0;
+                color: #55738f;
+                line-height: 1.9;
+                font-size: 14px;
+            }
+
+            .sidepanel-character {
+                position: absolute;
+                right: 4%;
+                bottom: -30px;
+                width: min(240px, 35%);
+                max-height: 390px;
+                object-fit: contain;
+                object-position: bottom;
+                pointer-events: none;
+            }
+
+            .sidepanel-ui {
+                min-width: 0;
+                border-left: 1px solid #c9dfef;
+                background: #fff;
+            }
+
+            .sidepanel-ui .mock-body {
+                padding: 18px;
+            }
+
+            .panel-language-row {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) 34px minmax(0, 1fr);
+                align-items: center;
+                gap: 7px;
+                margin-bottom: 14px;
+            }
+
+            .panel-textarea {
+                width: 100%;
+                min-height: 164px;
+                padding: 13px;
+                resize: vertical;
+                color: var(--ink);
+                border: 1px solid #cfe1ef;
+                border-radius: 13px;
+                background: #fbfdff;
+                line-height: 1.75;
+                font-size: 13px;
+            }
+
+            .panel-actions {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                margin-top: 10px;
+            }
+
+            .panel-actions .btn {
+                min-height: 35px;
+                font-size: 11px;
+            }
+
+            .panel-result {
+                position: relative;
+                min-height: 130px;
+                margin-top: 15px;
+                padding: 14px;
+                color: #385f86;
+                border: 1px solid #cde3f6;
+                border-radius: 13px;
+                background: #f2f9ff;
+                line-height: 1.8;
+                font-size: 13px;
+            }
+
+            .panel-result.empty {
+                display: grid;
+                place-items: center;
+                color: #91a8bf;
+                border-style: dashed;
+                text-align: center;
+                font-size: 11px;
+            }
+
+            .result-copy {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                width: 28px;
+                height: 28px;
+            }
+
+            .hotkey {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                margin-top: 12px;
+                color: #7992ab;
+                font-size: 10px;
+            }
+
+            kbd {
+                padding: 2px 5px;
+                color: #507293;
+                border: 1px solid #cfe1ef;
+                border-bottom-width: 2px;
+                border-radius: 5px;
+                background: #fff;
+                font-size: 9px;
+            }
+
+            .toast {
+                position: fixed;
+                right: 28px;
+                bottom: 25px;
+                z-index: 20;
+                max-width: min(340px, calc(100vw - 40px));
+                padding: 11px 14px;
+                color: #fff;
+                border-radius: 11px;
+                background: #244c80;
+                box-shadow: var(--small-shadow);
+                opacity: 0;
+                pointer-events: none;
+                transform: translateY(10px);
+                transition: 200ms ease;
+                font-size: 12px;
+            }
+
+            .toast.show {
+                opacity: 1;
+                transform: translateY(0);
+            }
+
+            .demo-footer {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                padding: 0 25px 23px;
+                color: #7690a9;
+                font-size: 10px;
+            }
+
+            .demo-footer span:last-child {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            .sr-only {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                padding: 0;
+                overflow: hidden;
+                clip: rect(0, 0, 0, 0);
+                white-space: nowrap;
+                border: 0;
+            }
+
+            @media (max-width: 1020px) {
+                .topbar {
+                    align-items: flex-start;
+                    flex-direction: column;
+                }
+
+                .screen-tabs {
+                    width: 100%;
+                }
+
+                .surface-compact,
+                .sidepanel-stage {
+                    grid-template-columns: 1fr;
+                }
+
+                .compact-intro {
+                    max-width: 720px;
+                }
+
+                .mock-popup,
+                .mock-sidepanel {
+                    justify-self: start;
+                }
+
+                .sidepanel-page-copy {
+                    min-height: 310px;
+                }
+
+                .sidepanel-character {
+                    width: 155px;
+                    max-height: 270px;
+                }
+
+                .sidepanel-ui {
+                    width: min(380px, 100%);
+                    justify-self: center;
+                    border-top: 1px solid #c9dfef;
+                    border-left: 0;
+                }
+            }
+
+            @media (max-width: 760px) {
+                .page {
+                    width: 100%;
+                    min-height: 100vh;
+                    margin: 0;
+                    border: 0;
+                    border-radius: 0;
+                }
+
+                .topbar {
+                    padding: 12px 15px;
+                }
+
+                .stage {
+                    padding: 14px;
+                }
+
+                .surface-heading {
+                    display: block;
+                    margin-bottom: 12px;
+                }
+
+                .surface-heading p {
+                    margin-top: 8px;
+                }
+
+                .options-hero {
+                    min-height: 305px;
+                    padding: 27px 27px 145px;
+                    background-position: 61% center;
+                }
+
+                .hero-character {
+                    right: 5%;
+                    width: 145px;
+                    max-height: 190px;
+                }
+
+                .options-body {
+                    display: block;
+                }
+
+                .options-nav {
+                    display: flex;
+                    overflow-x: auto;
+                    border-right: 0;
+                    border-bottom: 1px solid var(--line);
+                    padding: 10px;
+                }
+
+                .nav-label {
+                    display: none;
+                }
+
+                .option-nav-button {
+                    width: auto;
+                    min-width: max-content;
+                    margin: 0 3px;
+                }
+
+                .options-content {
+                    padding: 20px 15px 24px;
+                }
+
+                .settings-grid,
+                .stats {
+                    grid-template-columns: 1fr;
+                }
+
+                .setting-card.full {
+                    grid-column: auto;
+                }
+
+                .surface-compact {
+                    gap: 18px;
+                    min-height: 680px;
+                    padding: 18px;
+                }
+
+                .compact-intro {
+                    padding: 6px 4px;
+                }
+
+                .translate-stage {
+                    min-height: 680px;
+                }
+
+                .article-page {
+                    width: calc(100% - 28px);
+                    margin: 22px auto 55px;
+                    padding: 25px 19px 45px;
+                }
+
+                .translate-float {
+                    right: 11px;
+                }
+
+                .float-tools {
+                    right: 72px;
+                }
+
+                .sidepanel-page-copy {
+                    min-height: 260px;
+                    padding: 28px 23px;
+                }
+
+                .sidepanel-page-copy h2 {
+                    max-width: 70%;
+                    font-size: 31px;
+                }
+
+                .sidepanel-character {
+                    right: 1%;
+                    width: 135px;
+                    max-height: 245px;
+                }
+
+                .demo-footer {
+                    align-items: flex-start;
+                    flex-direction: column;
+                    padding: 0 16px 18px;
+                }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+                *,
+                *::before,
+                *::after {
+                    scroll-behavior: auto !important;
+                    animation-duration: 0.001ms !important;
+                    animation-iteration-count: 1 !important;
+                    transition-duration: 0.001ms !important;
+                }
+            }
+        </style>
+    </head>
+    <body data-scene="day">
+        <svg aria-hidden="true" width="0" height="0" style="position: absolute">
+            <symbol id="i-cat" viewBox="0 0 24 24"><path d="m4 9 1.5-5 4 3.3a9 9 0 0 1 5 0L18.5 4 20 9v5a8 8 0 0 1-16 0Z" /><path d="M8 14h.01M16 14h.01M10 17c1.3 1 2.7 1 4 0" /></symbol>
+            <symbol id="i-translate" viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2m0 0c0 5-2.5 8-5 9m5-9c.5 3 2 5 4 6M5.5 12H12M14 13l4-9 4 9m-6.7-3h5.4M13 20h8" /></symbol>
+            <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" /><path d="m19 13.5 1.5 1-2 3.4-1.8-.8a7.5 7.5 0 0 1-2.2 1.3L14.2 20h-4l-.3-1.6a7.5 7.5 0 0 1-2.2-1.3l-1.8.8-2-3.4 1.5-1a7.5 7.5 0 0 1 0-2.6l-1.5-1 2-3.4 1.8.8a7.5 7.5 0 0 1 2.2-1.3L10.2 4h4l.3 1.6a7.5 7.5 0 0 1 2.2 1.3l1.8-.8 2 3.4-1.5 1a7.5 7.5 0 0 1 0 2.6Z" /></symbol>
+            <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 1.5 6.5L20 10l-6.5 1.5L12 18l-1.5-6.5L4 10l6.5-1.5Z" /><path d="m19 16 .6 2.4L22 19l-2.4.6L19 22l-.6-2.4L16 19l2.4-.6Z" /></symbol>
+            <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6" /></symbol>
+            <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m7 9 5 5 5-5" /></symbol>
+            <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9S14.5 18.5 12 21c-2.5-2.5-3.5-5.5-3.5-9S9.5 5.5 12 3Z" /></symbol>
+            <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6" /></symbol>
+            <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14-4L4 9m0 0V4m0 5h5M4 13a8 8 0 0 0 14 4l2-2m0 0v5m0-5h-5" /></symbol>
+            <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="12" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2" /></symbol>
+            <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></symbol>
+            <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9" r="1.5" /><path d="m4 17 4-4 3 3 3-4 6 5" /></symbol>
+            <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V5M4 19h16" /><path d="m7 15 3-4 3 2 5-7" /></symbol>
+            <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21Z" /><path d="M4 5.5V21M8 7h8M8 11h8" /></symbol>
+            <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></symbol>
+            <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 15.5A8 8 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z" /></symbol>
+            <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></symbol>
+            <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 7h12l-3-3m3 3-3 3M17 17H5l3 3m-3-3 3-3" /></symbol>
+            <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
+            <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M6 10h.01M9 10h.01M12 10h.01M15 10h.01M18 10h.01M6 14h8M16 14h2" /></symbol>
+        </svg>
+
+        <div class="page">
+            <header class="topbar">
+                <div class="brand">
+                    <div class="brand-mark"><svg class="icon icon-fill"><use href="#i-mail" /></svg></div>
+                    <div><strong>mewCat · 晴空来信</strong><small>浏览器翻译扩展 · 入口预览</small></div>
+                </div>
+                <nav class="screen-tabs" aria-label="预览入口">
+                    <button class="screen-tab active" data-surface="options"><svg class="icon"><use href="#i-settings" /></svg>Options</button>
+                    <button class="screen-tab" data-surface="popup"><svg class="icon"><use href="#i-spark" /></svg>Popup</button>
+                    <button class="screen-tab" data-surface="translate"><svg class="icon"><use href="#i-translate" /></svg>悬浮翻译按钮</button>
+                    <button class="screen-tab" data-surface="sidepanel"><svg class="icon"><use href="#i-book" /></svg>Sidepanel</button>
+                </nav>
+            </header>
+
+            <main class="stage">
+                <section class="surface active" id="surface-options" data-surface-panel="options">
+                    <div class="surface-heading">
+                        <div><p class="eyebrow">OPTIONS / SETTINGS</p><h1>把配置，也寄给<span>晴空。</span></h1></div>
+                        <p>完整设置页预览。延续扩展的真实信息架构，加入晴空邮局背景、邮票式导航和澄羽的安静陪伴。</p>
+                    </div>
+                    <div class="options-shell">
+                        <div class="options-hero">
+                            <h2>让每一页，都读起来像一封信。</h2>
+                            <p>在这里调整语言、模型和翻译方式。蓝白邮局是视觉记忆点，表单仍然保持清晰、可靠、容易修改。</p>
+                            <div class="stamp-note"><svg class="icon"><use href="#i-mail" /></svg>本地预览 · 设置不会发送到真实服务</div>
+                            <img class="hero-character" src="assets/chengyu.png" alt="澄羽手持来信站在邮局前" />
+                        </div>
+                        <div class="options-body">
+                            <aside class="options-nav">
+                                <div class="nav-label">邮局设置册</div>
+                                <button class="option-nav-button active" data-option-tab="basic"><span class="nav-dot">✦</span>基本配置</button>
+                                <button class="option-nav-button" data-option-tab="translation"><span class="nav-dot">✦</span>翻译服务</button>
+                                <button class="option-nav-button" data-option-tab="selection"><span class="nav-dot">✦</span>划词翻译</button>
+                                <button class="option-nav-button" data-option-tab="image"><span class="nav-dot">✦</span>图片</button>
+                                <button class="option-nav-button" data-option-tab="usage"><span class="nav-dot">✦</span>统计</button>
+                                <button class="option-nav-button" data-option-tab="about"><span class="nav-dot">✦</span>关于</button>
+                            </aside>
+                            <div class="options-content">
+                                <div class="option-panel active" data-option-panel="basic">
+                                    <div class="options-content-head"><div><h3>基本配置</h3><p>语言、网址和译文呈现方式</p></div><span class="save-state"><svg class="icon"><use href="#i-check" /></svg>已保存</span></div>
+                                    <div class="settings-grid">
+                                        <div class="setting-card full"><div class="switch-row"><div><span class="setting-label">自动总结页面</span><p class="setting-help">在页面翻译完成后，允许使用已配置的生成式模型生成摘要。</p></div><label class="switch"><input type="checkbox" data-config="summary" /><span class="switch-track"></span><span class="sr-only">自动总结页面</span></label></div></div>
+                                        <div class="setting-card"><label class="setting-label" for="target-language">目标语言</label><select id="target-language" class="select-field" data-config="target"><option value="zh-CN">简体中文</option><option value="en">English</option><option value="ja">日本語</option></select><p class="setting-help">默认将网页内容翻译为此语言。</p></div>
+                                        <div class="setting-card"><label class="setting-label" for="translation-style">译文显示样式</label><select id="translation-style" class="select-field"><option>高亮显示</option><option>下划线</option><option>背景色</option><option>无样式</option></select><p class="setting-help">预览中使用清晰的蓝色标记。</p></div>
+                                        <div class="setting-card"><label class="setting-label" for="translate-delay">自动翻译延迟</label><div style="display:flex;align-items:center;gap:9px"><input id="translate-delay" class="field" value="700" inputmode="numeric" /><span style="color:var(--muted);font-size:11px">ms</span></div><p class="setting-help">页面稳定后再开始扫描，减少闪烁。</p></div>
+                                        <div class="setting-card"><label class="setting-label" for="ignore-sites">永不翻译的网址</label><input id="ignore-sites" class="field" value="github.com" /><p class="setting-help">每行一个域名，示例为本地预览值。</p></div>
+                                    </div>
+                                </div>
+                                <div class="option-panel" data-option-panel="translation">
+                                    <div class="options-content-head"><div><h3>翻译服务</h3><p>模型、地址和请求行为</p></div><button class="btn primary" data-demo-action="toast" data-toast="已添加一个本地演示模型"><svg class="icon"><use href="#i-plus" /></svg>添加模型</button></div>
+                                    <div class="model-row"><div><div class="model-title"><span class="model-badge">D</span>DeepSeek V3.2</div><small>官方地址 · 已启用 · 支持思考</small></div><div class="model-actions"><span class="save-state">当前</span><button class="icon-btn" aria-label="测试模型" data-demo-action="toast" data-toast="连接测试为本地模拟"><svg class="icon"><use href="#i-refresh" /></svg></button><button class="icon-btn" aria-label="模型设置"><svg class="icon"><use href="#i-settings" /></svg></button></div></div>
+                                    <div class="model-row"><div><div class="model-title"><span class="model-badge">G</span>Gemini 2.5 Flash</div><small>自定义地址 · 未启用 · 视觉能力</small></div><div class="model-actions"><label class="switch"><input type="checkbox" /><span class="switch-track"></span><span class="sr-only">启用 Gemini 模型</span></label><button class="icon-btn" aria-label="模型设置"><svg class="icon"><use href="#i-settings" /></svg></button></div></div>
+                                    <div class="settings-grid" style="margin-top:12px"><div class="setting-card"><span class="setting-label">请求频率</span><input class="field" value="5" /><p class="setting-help">每秒最大请求数</p></div><div class="setting-card"><span class="setting-label">单次文本长度</span><input class="field" value="1000" /><p class="setting-help">字符数上限</p></div></div>
+                                </div>
+                                <div class="option-panel" data-option-panel="selection">
+                                    <div class="options-content-head"><div><h3>划词翻译</h3><p>选择页面文字后的翻译反馈</p></div><span class="save-state"><svg class="icon"><use href="#i-check" /></svg>已启用</span></div>
+                                    <div class="settings-grid"><div class="setting-card full"><div class="switch-row"><div><span class="setting-label">启用划词翻译</span><p class="setting-help">选择文本后显示轻量翻译入口。</p></div><label class="switch"><input type="checkbox" data-config="selection" checked /><span class="switch-track"></span><span class="sr-only">启用划词翻译</span></label></div></div><div class="setting-card"><span class="setting-label">触发方式</span><div class="segment"><button class="active">直接触发</button><button>小圆点</button><button>Shift</button></div></div><div class="setting-card"><span class="setting-label">交互方式</span><div class="segment"><button class="active">点击</button><button>悬浮</button></div></div><div class="setting-card full"><span class="setting-label">禁用网站</span><input class="field" value="github.com, docs.google.com" /></div></div>
+                                </div>
+                                <div class="option-panel" data-option-panel="image">
+                                    <div class="options-content-head"><div><h3>图片翻译</h3><p>图片入口和视觉模型</p></div><span class="save-state"><svg class="icon"><use href="#i-image" /></svg>可配置</span></div>
+                                    <div class="settings-grid"><div class="setting-card full"><div class="switch-row"><div><span class="setting-label">显示图片翻译按钮</span><p class="setting-help">在可识别图片旁显示蓝色翻译入口。</p></div><label class="switch"><input type="checkbox" /><span class="switch-track"></span><span class="sr-only">显示图片翻译按钮</span></label></div></div><div class="setting-card"><span class="setting-label">图片翻译服务</span><select class="select-field"><option>Gemini 2.5 Flash</option><option>DeepSeek V3.2</option></select></div><div class="setting-card"><span class="setting-label">测试图片</span><button class="btn ghost" data-demo-action="toast" data-toast="视觉模型测试为本地模拟"><svg class="icon"><use href="#i-image" /></svg>选择图片测试</button></div></div>
+                                </div>
+                                <div class="option-panel" data-option-panel="usage">
+                                    <div class="options-content-head"><div><h3>Token 用量统计</h3><p>只展示本地示例，不包含原文和 API Key</p></div><button class="btn danger" id="clear-usage">清空统计</button></div>
+                                    <div class="stats"><div class="stat"><small>今日总量</small><strong id="usage-today">12.8k</strong></div><div class="stat"><small>近 7 天</small><strong>58.4k</strong></div><div class="stat"><small>近 30 天</small><strong>210k</strong></div></div>
+                                    <div class="preview-note"><svg class="icon"><use href="#i-chart" /></svg><span>输入 8.1k · 输出 4.7k · API 返回 9.2k · 本地估算 3.6k。清空按钮只影响当前预览页面。</span></div>
+                                </div>
+                                <div class="option-panel" data-option-panel="about">
+                                    <div class="options-content-head"><div><h3>关于 mewCat</h3><p>译趣喵浏览器翻译助手</p></div><span class="save-state">v0.0.4</span></div>
+                                    <div class="preview-note"><svg class="icon"><use href="#i-mail" /></svg><span>mewCat 将网页内容变成容易阅读的来信。当前页面是视觉预览，不会请求真实翻译服务，也不会写入扩展配置。</span></div>
+                                    <div class="settings-grid" style="margin-top:12px"><div class="setting-card"><span class="setting-label">本地缓存</span><button class="btn ghost" data-demo-action="toast" data-toast="预览中没有可清理的缓存"><svg class="icon"><use href="#i-refresh" /></svg>清理缓存</button></div><div class="setting-card"><span class="setting-label">设计状态</span><p class="setting-help" style="margin:0">晴空邮局 · 蓝白主题 · 澄羽看板娘</p></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="surface" id="surface-popup" data-surface-panel="popup">
+                    <div class="surface-heading"><div><p class="eyebrow">POPUP / QUICK SETTINGS</p><h1>点击图标，<span>打开一封小信。</span></h1></div><p>Popup 保持真实扩展的窄面板逻辑：快捷开关优先，详细设置由齿轮入口继续进入 Options。</p></div>
+                    <div class="surface-compact">
+                        <div class="compact-intro"><p class="eyebrow">320 × 480 · POPUP</p><h2>今天想先翻译哪一页？</h2><p>一眼查看划词翻译、上下文、自动总结和当前服务。澄羽只在需要的时候出现，给出一条简短提示。</p><ul class="compact-points"><li>共享 Options 的关键开关与目标语言</li><li>一键打开高级设置，不在窄面板里塞满表单</li><li>所有示例状态均为本地模拟</li></ul></div>
+                        <div class="mock-popup" id="popup-card">
+                            <div class="mock-top"><div class="mock-brand"><span class="brand-dot"><svg class="icon"><use href="#i-cat" /></svg></span>译趣喵</div><button class="icon-btn" aria-label="打开设置" data-demo-action="navigate" data-navigate="options"><svg class="icon"><use href="#i-settings" /></svg></button></div>
+                            <div class="mock-body"><img class="popup-character" src="assets/chengyu.png" alt="澄羽头像" /><h2 class="mock-heading">快捷设置</h2><p class="mock-subtitle">让这页读起来更轻松</p>
+                                <div class="quick-card"><div class="quick-row"><span class="quick-label"><svg class="icon"><use href="#i-translate" /></svg>划词翻译</span><label class="switch small-switch"><input type="checkbox" data-config="selection" checked /><span class="switch-track"></span><span class="sr-only">划词翻译</span></label></div></div>
+                                <div class="quick-card"><div class="quick-row"><span class="quick-label"><svg class="icon"><use href="#i-book" /></svg>AI 智能上下文</span><label class="switch small-switch"><input type="checkbox" data-config="context" /><span class="switch-track"></span><span class="sr-only">AI 智能上下文</span></label></div></div>
+                                <div class="quick-card"><div class="quick-row"><span class="quick-label"><svg class="icon"><use href="#i-spark" /></svg>自动总结页面</span><label class="switch small-switch"><input type="checkbox" data-config="summary" /><span class="switch-track"></span><span class="sr-only">自动总结页面</span></label></div></div>
+                                <div class="quick-card"><div class="quick-row"><span class="quick-label"><svg class="icon"><use href="#i-globe" /></svg>总是翻译此网站</span><label class="switch small-switch"><input type="checkbox" data-config="always" /><span class="switch-track"></span><span class="sr-only">总是翻译此网站</span></label></div></div>
+                                <div class="quick-card"><label class="quick-label" for="popup-model"><svg class="icon"><use href="#i-settings" /></svg>翻译服务</label><select id="popup-model" class="mini-select" data-config="model"><option value="deepseek">DeepSeek V3.2</option><option value="gemini">Gemini 2.5 Flash</option><option value="google">Google Translate</option></select><div class="language-row"><select class="mini-select" aria-label="网页语言"><option>自动检测</option><option>English</option><option>日本語</option></select><button class="icon-btn" style="width:30px;height:30px" aria-label="交换语言" data-demo-action="toast" data-toast="源语言为自动检测时，交换会在真实扩展中保持禁用"><svg class="icon"><use href="#i-swap" /></svg></button><select class="mini-select" data-config="target" aria-label="目标语言"><option value="zh-CN">简体中文</option><option value="en">English</option><option value="ja">日本語</option></select></div></div>
+                                <div class="mock-footer"><span class="mock-footnote">站点：example.com<br />设置仅在本地预览生效</span><button class="btn ghost" data-demo-action="navigate" data-navigate="options">高级设置 <svg class="icon"><use href="#i-arrow" /></svg></button></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="surface" id="surface-translate" data-surface-panel="translate">
+                    <div class="surface-heading"><div><p class="eyebrow">CONTENT SCRIPT / FLOAT BUTTON</p><h1>让澄羽贴在页面边缘，<span>刚好够用。</span></h1></div><p>对应网页中的 54×54 悬浮入口：点击开始或清理翻译，悬浮后出现刷新与设置操作。</p></div>
+                    <div class="translate-stage" id="translate-stage">
+                        <div class="browser-chrome"><div class="browser-dots"><i></i><i></i><i></i></div><div class="address-bar">https://example.com/letters/blue-sky</div><button class="icon-btn" aria-label="刷新演示" data-demo-action="toast" data-toast="网页预览已刷新"><svg class="icon"><use href="#i-refresh" /></svg></button></div>
+                        <article class="article-page"><p class="eyebrow">A LETTER FROM THE COAST</p><h2>When the sky becomes a place to return to</h2><div class="article-meta"><span>Example Journal</span><span>6 min read</span></div><p id="article-original">The sea does not ask us to hurry. It keeps a quiet blue line on the horizon, waiting for the day when we remember how to look.</p><div class="translation-result" id="article-translation">大海从不催促我们赶路。它在地平线上留下一条安静的蓝线，等我们想起该如何重新凝望。</div><blockquote>Keep a small window open for wonder. It is often the first thing a translation reveals.</blockquote><p>On this page, the little paper plane marks the places where another language is waiting. Click the floating button to see the preview state, then use the gear to open quick settings.</p><p>Every visible action below is local to this demo. It is designed to help compare hierarchy, density and interaction rhythm before the UI is connected to the extension.</p></article>
+                        <div class="float-tools"><button class="icon-btn" aria-label="刷新翻译" data-demo-action="translate-refresh"><svg class="icon"><use href="#i-refresh" /></svg></button><button class="icon-btn" aria-label="打开快捷设置" data-demo-action="navigate" data-navigate="popup"><svg class="icon"><use href="#i-settings" /></svg></button></div>
+                        <button class="translate-float" id="translate-launcher" aria-label="开始翻译"><img src="assets/chengyu.png" alt="澄羽翻译入口" /></button>
+                        <div class="float-status" id="float-status">点击澄羽开始翻译</div>
+                    </div>
+                </section>
+
+                <section class="surface" id="surface-sidepanel" data-surface-panel="sidepanel">
+                    <div class="surface-heading"><div><p class="eyebrow">SIDEPANEL / QUICK TRANSLATE</p><h1>把一小段文字，<span>放进信封。</span></h1></div><p>Sidepanel 保持专注：输入、交换语言、翻译、复制结果。设置入口留在 Options，不在侧栏中重复。</p></div>
+                    <div class="sidepanel-stage"><div class="sidepanel-page-copy"><p class="eyebrow">THE LETTER DESK</p><h2>在另一种语言里，重新听见一句话。</h2><p>右侧是快捷翻译侧栏的预览。它可以从网页复制一段文字，也可以直接输入你的下一封信。</p><img class="sidepanel-character" src="assets/chengyu.png" alt="澄羽在写信桌旁" /></div>
+                        <div class="sidepanel-ui"><div class="mock-top"><div class="mock-brand"><span class="brand-dot"><svg class="icon"><use href="#i-translate" /></svg></span>翻译侧边栏</div><button class="icon-btn" aria-label="清空" id="side-close"><svg class="icon"><use href="#i-close" /></svg></button></div><div class="mock-body"><div class="panel-language-row"><select id="side-source" class="mini-select" aria-label="源语言"><option value="auto">自动检测</option><option value="en">English</option><option value="ja">日本語</option></select><button class="icon-btn" id="side-swap" aria-label="交换语言" disabled><svg class="icon"><use href="#i-swap" /></svg></button><select id="side-target" class="mini-select" data-config="target" aria-label="目标语言"><option value="zh-CN">简体中文</option><option value="en">English</option><option value="ja">日本語</option></select></div><label class="sr-only" for="side-input">输入要翻译的文本</label><textarea id="side-input" class="panel-textarea" placeholder="输入或粘贴要翻译的文本…">The world is a book, and those who do not travel read only one page.</textarea><div class="panel-actions"><button class="btn" id="side-clear"><svg class="icon"><use href="#i-close" /></svg>清空</button><button class="btn primary" id="side-translate"><svg class="icon"><use href="#i-translate" /></svg><span>翻译</span></button></div><div class="panel-result" id="side-result">世界是一本书，不旅行的人只读了其中一页。<button class="icon-btn result-copy" id="side-copy" aria-label="复制译文"><svg class="icon"><use href="#i-copy" /></svg></button></div><span class="hotkey"><svg class="icon"><use href="#i-keyboard" /></svg><kbd>Ctrl</kbd><span>＋</span><kbd>Enter</kbd> 快速翻译</span></div></div>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="demo-footer"><span>视觉预览 · 本页不连接真实翻译服务、不写入扩展配置</span><span><svg class="icon"><use href="#i-sun" /></svg><button class="btn" style="min-height:29px;padding:5px 8px;font-size:10px" id="scene-day">晴昼</button><button class="btn" style="min-height:29px;padding:5px 8px;font-size:10px" id="scene-dusk"><svg class="icon"><use href="#i-moon" /></svg>暮蓝</button></span></footer>
+        </div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+        <script>
+            (() => {
+                const state = {
+                    selection: true,
+                    context: false,
+                    summary: false,
+                    always: false,
+                    model: "deepseek",
+                    target: "zh-CN"
+                }
+                const toast = document.getElementById("toast")
+                let toastTimer
+
+                function showToast(message) {
+                    toast.textContent = message
+                    toast.classList.add("show")
+                    window.clearTimeout(toastTimer)
+                    toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2300)
+                }
+
+                function updateControls() {
+                    document.querySelectorAll("[data-config]").forEach(control => {
+                        const key = control.dataset.config
+                        if (!(key in state)) return
+                        if (control.type === "checkbox") control.checked = Boolean(state[key])
+                        else control.value = state[key]
+                    })
+                    document.dispatchEvent(new CustomEvent("demo:sync"))
+                }
+
+                function setSurface(id) {
+                    document.querySelectorAll("[data-surface-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.surfacePanel === id))
+                    document.querySelectorAll("[data-surface]").forEach(button => button.classList.toggle("active", button.dataset.surface === id))
+                    window.history.replaceState(null, "", `#${id}`)
+                    if (typeof window.scrollTo === "function") window.scrollTo({ top: 0, behavior: "smooth" })
+                }
+
+                window.Demo = {
+                    get: key => state[key],
+                    update: (key, value) => {
+                        if (!(key in state)) return
+                        state[key] = value
+                        updateControls()
+                    },
+                    sync: updateControls,
+                    toast: showToast,
+                    navigate: setSurface
+                }
+
+                document.addEventListener("click", event => {
+                    const surfaceButton = event.target.closest("[data-surface]")
+                    if (surfaceButton) setSurface(surfaceButton.dataset.surface)
+
+                    const action = event.target.closest("[data-demo-action]")
+                    if (!action) return
+                    const type = action.dataset.demoAction
+                    if (type === "toast") showToast(action.dataset.toast || "已完成")
+                    if (type === "navigate") setSurface(action.dataset.navigate)
+                    if (type === "translate-refresh") {
+                        const status = document.getElementById("float-status")
+                        status.textContent = "正在重新扫描页面…"
+                        window.setTimeout(() => { status.textContent = "翻译结果已更新"; showToast("翻译结果已更新（本地演示）") }, 700)
+                    }
+                })
+
+                document.addEventListener("change", event => {
+                    const control = event.target.closest("[data-config]")
+                    if (!control) return
+                    state[control.dataset.config] = control.type === "checkbox" ? control.checked : control.value
+                    updateControls()
+                    showToast("设置已同步到其他预览入口")
+                })
+
+                document.querySelectorAll("[data-option-tab]").forEach(button => button.addEventListener("click", () => {
+                    const id = button.dataset.optionTab
+                    document.querySelectorAll("[data-option-tab]").forEach(item => item.classList.toggle("active", item === button))
+                    document.querySelectorAll("[data-option-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.optionPanel === id))
+                }))
+
+                document.getElementById("clear-usage").addEventListener("click", () => {
+                    document.getElementById("usage-today").textContent = "0"
+                    showToast("本地预览统计已清空")
+                })
+
+                const launcher = document.getElementById("translate-launcher")
+                const translation = document.getElementById("article-translation")
+                const floatStatus = document.getElementById("float-status")
+                launcher.addEventListener("click", () => {
+                    const active = launcher.classList.toggle("active")
+                    translation.classList.toggle("show", active)
+                    floatStatus.textContent = active ? "已翻译 · 点击可清理" : "点击澄羽开始翻译"
+                    launcher.setAttribute("aria-label", active ? "清理翻译" : "开始翻译")
+                    showToast(active ? "页面翻译完成（本地演示）" : "已清理页面译文")
+                })
+
+                const source = document.getElementById("side-source")
+                const target = document.getElementById("side-target")
+                const swap = document.getElementById("side-swap")
+                const input = document.getElementById("side-input")
+                const result = document.getElementById("side-result")
+                const translate = document.getElementById("side-translate")
+                const copy = document.getElementById("side-copy")
+
+                function refreshSwap() {
+                    swap.disabled = source.value === "auto"
+                    swap.title = swap.disabled ? "源语言为自动检测时不能交换" : "交换语言"
+                }
+
+                source.addEventListener("change", refreshSwap)
+                swap.addEventListener("click", () => {
+                    if (swap.disabled) return
+                    const old = source.value
+                    source.value = target.value
+                    target.value = old
+                    showToast("语言已交换")
+                })
+                document.getElementById("side-clear").addEventListener("click", () => {
+                    input.value = ""
+                    result.classList.add("empty")
+                    result.innerHTML = "翻译结果会出现在这里。"
+                    showToast("已清空输入")
+                })
+                translate.addEventListener("click", () => {
+                    const value = input.value.trim()
+                    if (!value) { showToast("请先输入要翻译的文本"); input.focus(); return }
+                    translate.disabled = true
+                    translate.querySelector("span").textContent = "翻译中…"
+                    result.classList.remove("empty")
+                    result.textContent = "正在把这封信交给澄羽…"
+                    window.setTimeout(() => {
+                        const known = value === "Hello, world!" ? "你好，世界！" : value.startsWith("The world is a book") ? "世界是一本书，不旅行的人只读了其中一页。" : `这是本地预览译文：${value}`
+                        result.innerHTML = ""
+                        result.append(document.createTextNode(known))
+                        result.append(copy)
+                        translate.disabled = false
+                        translate.querySelector("span").textContent = "翻译"
+                        showToast("翻译完成（本地演示）")
+                    }, 650)
+                })
+                copy.addEventListener("click", async () => {
+                    const text = result.childNodes[0]?.textContent?.trim()
+                    if (!text || text === "翻译结果会出现在这里。") { showToast("暂无可复制的译文"); return }
+                    try {
+                        await navigator.clipboard.writeText(text)
+                        showToast("译文已复制")
+                    } catch { showToast("浏览器未授权剪贴板，已保留译文") }
+                })
+                input.addEventListener("keydown", event => {
+                    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") translate.click()
+                })
+
+                document.getElementById("scene-day").addEventListener("click", () => { document.body.dataset.scene = "day"; showToast("已切换到晴昼场景") })
+                document.getElementById("scene-dusk").addEventListener("click", () => { document.body.dataset.scene = "dusk"; showToast("已切换到暮蓝场景") })
+
+                const initialSurface = window.location.hash.slice(1)
+                if (["options", "popup", "translate", "sidepanel"].includes(initialSurface)) setSurface(initialSurface)
+                refreshSwap()
+                updateControls()
+            })()
+        </script>
+    </body>
+</html>

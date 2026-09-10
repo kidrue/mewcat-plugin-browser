@@ -41,11 +41,11 @@ const SCxButton = styled.button.withConfig({
     width: 40px;
     height: 40px;
     border-radius: var(--radius-xl);
-    background: #b23a2e;
+    background: #2878c8;
     border: none;
     box-shadow:
         inset 0 0 0 1.5px rgba(251, 248, 240, 0.6),
-        0 3px 10px rgba(142, 42, 32, 0.28);
+        0 3px 10px rgba(40, 120, 200, 0.28);
     cursor: ${props => (props.translating ? "not-allowed" : "pointer")};
     display: flex;
     align-items: center;

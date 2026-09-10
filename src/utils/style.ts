@@ -45,12 +45,12 @@ export type TranslationStyleUnion = TranslationStyleType
  * 获取翻译样式的CSS文本
  *
  * 注意：译文注入的是任意第三方页面，拿不到扩展的 CSS 变量，
- * 因此这里的朱砂 / 纸 / 墨都必须写字面值，与 theme.scss 的 token 保持一致。
+ * 因此这里的天空蓝 / 纸 / 深蓝灰都必须写字面值，与 theme.scss 的 token 保持一致。
  */
 export function getTranslationStyleCSS(
     style: TranslationStyleType = TranslationStyle.HIGHLIGHT
 ): string {
-    // 朱砂 #b23a2e / 纸 #fbf8f0 / 墨 #1a1714
+    // 天空蓝 #2878c8 / 纸 #ffffff / 深蓝灰 #203b57
     const baseStyle = `
         font-style: normal;
         font-weight: normal;
@@ -78,9 +78,9 @@ export function getTranslationStyleCSS(
             return (
                 baseStyle +
                 `
-                color: #1a1714;
-                background: #fbf3e4;
-                border-left: 3px solid #b23a2e;
+                color: #203b57;
+                background: #e8f4ff;
+                border-left: 3px solid #2878c8;
                 padding: 2px 8px;
             `
             )
@@ -92,7 +92,7 @@ export function getTranslationStyleCSS(
                 color: inherit;
                 background: transparent;
                 text-decoration: underline;
-                text-decoration-color: #b23a2e;
+                text-decoration-color: #2878c8;
                 text-decoration-thickness: 2px;
                 text-underline-offset: 3px;
             `
@@ -102,9 +102,9 @@ export function getTranslationStyleCSS(
             return (
                 baseStyle +
                 `
-                color: #1a1714;
-                background: #f7efe6;
-                border: 1px solid #e4d8c6;
+                color: #203b57;
+                background: #e8f4ff;
+                border: 1px solid #cfe0ef;
                 padding: 2px 8px;
             `
             )
@@ -115,7 +115,7 @@ export function getTranslationStyleCSS(
                 `
                 color: inherit;
                 background: transparent;
-                border: 1px solid #b23a2e;
+                border: 1px solid #2878c8;
                 border-radius: 6px;
                 padding: 2px 8px;
             `
@@ -127,8 +127,8 @@ export function getTranslationStyleCSS(
                 `
                 color: inherit;
                 background: transparent;
-                /* 朱砂在文字右下方留一道浅影，像盖印时的偏移 */
-                text-shadow: 1px 1px 0 rgba(178, 58, 46, 0.34);
+                /* 蓝色在文字右下方留一道浅影，像邮戳的偏移 */
+                text-shadow: 1px 1px 0 rgba(40, 120, 200, 0.34);
             `
             )
 
@@ -184,15 +184,15 @@ export function getStyleDescription(style: TranslationStyleType): string {
         case TranslationStyle.NONE:
             return "无样式 - 不添加任何特殊样式"
         case TranslationStyle.HIGHLIGHT:
-            return "高亮显示 - 米色底，左侧一道朱砂"
+            return "高亮显示 - 淡蓝底，左侧一道天空蓝"
         case TranslationStyle.UNDERLINE:
-            return "下划线 - 朱砂色下划线标识"
+            return "下划线 - 天空蓝下划线标识"
         case TranslationStyle.BACKGROUND:
-            return "背景色 - 淡朱砂底加细边"
+            return "背景色 - 淡蓝底加细边"
         case TranslationStyle.BORDER:
-            return "边框 - 朱砂色细边框包围"
+            return "边框 - 天空蓝细边框包围"
         case TranslationStyle.SHADOW:
-            return "阴影 - 文字带一道朱砂偏影"
+            return "阴影 - 文字带一道天空蓝偏影"
         default:
             return "默认样式"
     }
