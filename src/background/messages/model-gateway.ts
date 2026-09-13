@@ -1,5 +1,6 @@
 import { generateObject } from "@xsai/generate-object"
 import { generateText } from "@xsai/generate-text"
+import { streamText } from "@xsai/stream-text"
 
 import { visionTranslationPrompt } from "@/image-translation/prompt"
 import { visionTranslationSchema } from "@/image-translation/schema"
@@ -10,6 +11,7 @@ import type {
     ModelGatewayGenerateVisionRequest,
     ModelGatewayRequest,
     ModelGatewayResponse,
+    ModelGatewayStreamOptions,
     ModelGatewayTranslateEngineRequest
 } from "@/messaging/modelGatewayContracts"
 import {
@@ -21,6 +23,8 @@ import { estimateUsage, normalizeReportedUsage } from "@/token-usage/estimate"
 import { recordTokenUsage } from "@/token-usage/storage"
 import type { TokenUsageEvent } from "@/token-usage/types"
 import { AiModel_Platform_Enum, type BaseModel } from "@/types/aiModel"
+
+import { normalizeModelStreamResponse } from "../lib/model-stream-response"
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
 const activeControllers = new Set<AbortController>()
@@ -224,6 +228,99 @@ async function handleGenerate(
         return mapGatewayError(error, controller, request.model)
     } finally {
         cleanupController(controller, timeoutId)
+    }
+}
+
+export async function handleModelGatewayStream(
+    request: ModelGatewayGenerateRequest,
+    options: ModelGatewayStreamOptions,
+    dependencies: ModelGatewayDependencies = {}
+): Promise<ModelGatewayResponse> {
+    const { controller, timeoutId } = createController(request.timeoutMs)
+    const abort = () => controller.abort()
+    options.signal?.addEventListener("abort", abort, { once: true })
+    if (options.signal?.aborted) abort()
+    let text = ""
+    let usage: unknown
+    let reader: ReadableStreamDefaultReader<string> | undefined
+    let rejectRead: () => void = () => {}
+    try {
+        controller.signal.throwIfAborted()
+        let finished = false
+        let streamError: unknown
+        const result = streamText({
+            apiKey: request.model.params.apiKey,
+            baseURL: getGenerationBaseUrl(getEndpointSelection(request.model)),
+            model: request.model.params.modelName,
+            messages: request.messages,
+            abortSignal: controller.signal,
+            fetch: async (input, init) =>
+                normalizeModelStreamResponse(
+                    await (dependencies.fetch ?? fetch)(input, init)
+                ),
+            streamOptions: { includeUsage: true },
+            ...getThinkingOptions(
+                request.model.type,
+                request.enableThinking ?? false
+            ),
+            onEvent: event => {
+                if (event.type === "finish") {
+                    finished = event.finishReason === "stop"
+                    usage = event.usage ?? usage
+                } else if (event.type === "error") {
+                    streamError = event.error
+                }
+            }
+        })
+        // xsAI rejects every result promise on failure, including unused results.
+        void result.messages.catch(() => {})
+        void result.steps.catch(() => {})
+        void result.totalUsage.catch(() => {})
+        const finalUsage = result.usage.then(
+            value => {
+                usage = value
+            },
+            () => {}
+        )
+        reader = result.textStream.getReader()
+        const aborted = new Promise<never>((_resolve, reject) => {
+            rejectRead = () => reject(new DOMException("Aborted", "AbortError"))
+            controller.signal.addEventListener("abort", rejectRead, {
+                once: true
+            })
+        })
+        while (true) {
+            const chunk = await Promise.race([reader.read(), aborted])
+            controller.signal.throwIfAborted()
+            if (chunk.done) break
+            text += chunk.value
+            options.onDelta(chunk.value)
+        }
+        await finalUsage
+        if (streamError) throw streamError
+        return text.trim() && finished
+            ? { success: true, text: text.trim() }
+            : failure("INVALID_RESPONSE", "模型未返回完整解释，请重试")
+    } catch (error) {
+        const response = mapGatewayError(error, controller, request.model)
+        if (response.error.code === "NETWORK_FAILURE") {
+            response.error.message = "概念解释失败，请稍后重试"
+        }
+        return response
+    } finally {
+        options.signal?.removeEventListener("abort", abort)
+        controller.signal.removeEventListener("abort", rejectRead)
+        reader?.releaseLock()
+        cleanupController(controller, timeoutId)
+        if (text.trim()) {
+            await recordSuccessfulUsage(
+                request,
+                { usage },
+                request.messages.map(message => message.content).join("\n"),
+                text,
+                dependencies
+            )
+        }
     }
 }
 

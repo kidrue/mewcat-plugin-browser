@@ -1,29 +1,33 @@
-import React, { useLayoutEffect } from "react"
+import React, { useLayoutEffect, useRef } from "react"
 import Markdown, { type Components } from "react-markdown"
-import { useAsyncFn, useAsyncRetry } from "react-use"
+import { useAsyncRetry } from "react-use"
 import styled from "styled-components"
 
+import { UI_FONT_FAMILY } from "@/constants/fonts"
+import { useConceptExplanation } from "@/hooks/useConceptExplanation"
 import { useConfig } from "@/state/config"
 import {
     notifySelectionTranslationFinished,
     translateSelectedText
 } from "@/translation/selectionTranslation"
 import {
-    explainConcept as explainWithService,
     getConceptExplanationErrorMessage,
     translateText as translateWithService
 } from "@/translation/translationService"
 
 import LoadingDots from "../LoadingDots"
+import TranslationMark from "../TranslationMark"
 
 interface TranslateTextPanelProps {
     data?: string
     pageTitle?: string
     context?: string
+    active?: boolean
     onFinished?: () => void
 }
 
 const SCxContainer = styled.div`
+    font-family: ${UI_FONT_FAMILY};
     padding: 8px;
     color: #203b57;
     position: relative;
@@ -38,6 +42,7 @@ const SCxContainer = styled.div`
 `
 
 const SCxTranslationContent = styled.div`
+    min-width: 0;
     min-height: 84px;
     display: flex;
     align-items: center;
@@ -47,9 +52,16 @@ const SCxTranslationContent = styled.div`
 const SCxText = styled.div.withConfig({
     shouldForwardProp: prop => !(prop === "loading")
 })<{ loading: boolean }>`
+    min-width: 0;
+    width: 100%;
+    position: relative;
+    box-sizing: border-box;
+    padding: 4px 0 8px;
     font-size: 15px;
-    font-weight: 500;
-    line-height: 1.7;
+    font-weight: 400;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
     opacity: ${props => (props.loading ? 0.5 : 1)};
     transition: opacity 0.2s ease;
 `
@@ -241,7 +253,7 @@ const SCxAiNotice = styled.div`
 
 export const TranslateTextPanel: React.FunctionComponent<
     TranslateTextPanelProps
-> = ({ data, pageTitle, context, onFinished }) => {
+> = ({ data, pageTitle, context, active = true, onFinished }) => {
     const config = useConfig()
 
     const {
@@ -264,16 +276,13 @@ export const TranslateTextPanel: React.FunctionComponent<
         return result
     }, [data, config])
 
-    const [explanationState, requestExplanation] = useAsyncFn(async () => {
-        if (!data) {
-            return
-        }
-        return explainWithService(
-            config,
-            { text: data, pageTitle, context },
-            config.targetLanguage
-        )
-    }, [config, context, data, pageTitle])
+    const [explanationState, requestExplanation] = useConceptExplanation(
+        config,
+        { text: data ?? "", pageTitle, context },
+        config.targetLanguage,
+        active
+    )
+    const layoutTimer = useRef<ReturnType<typeof setTimeout>>()
 
     useLayoutEffect(() => {
         if (translateText && !loading) {
@@ -287,7 +296,18 @@ export const TranslateTextPanel: React.FunctionComponent<
             explanationState.error ||
             explanationState.value
         ) {
-            notifySelectionTranslationFinished(onFinished)
+            if (explanationState.loading && explanationState.value) {
+                if (layoutTimer.current === undefined) {
+                    layoutTimer.current = setTimeout(() => {
+                        layoutTimer.current = undefined
+                        notifySelectionTranslationFinished(onFinished)
+                    }, 32)
+                }
+            } else {
+                clearTimeout(layoutTimer.current)
+                layoutTimer.current = undefined
+                notifySelectionTranslationFinished(onFinished)
+            }
         }
     }, [
         explanationState.error,
@@ -296,10 +316,23 @@ export const TranslateTextPanel: React.FunctionComponent<
         onFinished
     ])
 
+    useLayoutEffect(
+        () => () => {
+            clearTimeout(layoutTimer.current)
+            layoutTimer.current = undefined
+        },
+        [onFinished]
+    )
+
     return (
         <SCxContainer>
             <SCxTranslationContent>
-                <SCxText loading={loading}>{translateText || ""}</SCxText>
+                <SCxText loading={loading}>
+                    {translateText || ""}
+                    {translateText && !loading && !error && (
+                        <TranslationMark placement="corner" />
+                    )}
+                </SCxText>
 
                 {loading && (
                     <SCxLoadingContainer>
@@ -313,7 +346,7 @@ export const TranslateTextPanel: React.FunctionComponent<
             <SCxActions>
                 <SCxExplainButton
                     type="button"
-                    disabled={!data || explanationState.loading}
+                    disabled={!data || !active || explanationState.loading}
                     onClick={() => void requestExplanation()}
                 >
                     {explanationState.loading

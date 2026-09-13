@@ -3,6 +3,7 @@ import { onMessage } from "@/messaging"
 import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
 import { handleModelGatewayRequest } from "./messages/model-gateway"
+import { handleModelGatewayStreamPort } from "./messages/model-gateway-stream"
 import { handleStructuredTranslateImage } from "./messages/structured-image-translation"
 import { handleTranslateImage } from "./messages/translate-image"
 import { handleTranslateRequest } from "./messages/translate-request"
@@ -71,6 +72,9 @@ export function registerExtensionMessages(register = onMessage) {
 
 export function registerBackgroundListeners() {
     registerExtensionMessages()
+    chrome.runtime.onConnect.addListener(port =>
+        handleModelGatewayStreamPort(port)
+    )
 
     chrome.runtime.onInstalled.addListener(() => {
         chrome.contextMenus.create({

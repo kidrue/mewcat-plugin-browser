@@ -71,3 +71,21 @@ export interface ModelGatewayFailureResponse {
 export type ModelGatewayResponse =
     | ModelGatewaySuccessResponse
     | ModelGatewayFailureResponse
+
+export const MODEL_GATEWAY_STREAM_PORT = "mewcat-concept-stream"
+export const MODEL_GATEWAY_STREAM_TIMEOUT_MS = 5 * 60 * 1000
+
+export interface ModelGatewayStreamOptions {
+    signal?: AbortSignal
+    onDelta: (text: string) => void
+}
+
+export type ModelGatewayStreamEvent =
+    | { type: "delta"; text: string }
+    | { type: "complete"; response: ModelGatewayResponse }
+    | { type: "heartbeat" }
+
+export type ModelGatewayStreamSender = (
+    request: ModelGatewayGenerateRequest,
+    options: ModelGatewayStreamOptions
+) => Promise<ModelGatewayResponse>

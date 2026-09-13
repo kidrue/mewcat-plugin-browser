@@ -25,6 +25,7 @@ vi.mock("@/state/config", () => ({
 vi.mock("@/translation/translationService", () => ({
     translateText: mocks.translateText,
     explainConcept: mocks.explainConcept,
+    streamConceptExplanation: mocks.explainConcept,
     getConceptExplanationErrorMessage: (error: unknown) =>
         error instanceof Error &&
         error.message === "配置生成式 AI 模型后可使用概念解释"
@@ -104,6 +105,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
+    vi.useRealTimers()
     if (root) {
         await act(async () => root?.unmount())
         root = undefined
@@ -111,6 +113,180 @@ afterEach(async () => {
 })
 
 describe("selection concept explanation panel", () => {
+    it("isolates replaced selections and cancels an unmounted request", async () => {
+        const first = deferred<string>()
+        const second = deferred<string>()
+        const streams: Array<{
+            signal: AbortSignal
+            onDelta: (text: string) => void
+        }> = []
+        mocks.explainConcept
+            .mockImplementationOnce((_config, _input, _language, options) => {
+                streams.push(options)
+                return first.promise
+            })
+            .mockImplementationOnce((_config, _input, _language, options) => {
+                streams.push(options)
+                return second.promise
+            })
+        const { TranslateTextPanel } = await import(
+            "../src/components/TranslateTextPanel/index.tsx"
+        )
+        const host = document.querySelector<HTMLDivElement>("#host")!
+        root = createRoot(host)
+        await act(async () =>
+            root?.render(<TranslateTextPanel data="first selection" />)
+        )
+        await flushEffects()
+        await act(async () =>
+            host.querySelector<HTMLButtonElement>("button")!.click()
+        )
+        await act(async () => streams[0].onDelta("## 旧解释"))
+        await act(async () =>
+            root?.render(<TranslateTextPanel data="second selection" />)
+        )
+        expect(streams[0].signal.aborted).toBe(true)
+        expect(host.textContent).not.toContain("旧解释")
+        await act(async () =>
+            host.querySelector<HTMLButtonElement>("button")!.click()
+        )
+        await act(async () => {
+            streams[1].onDelta("## 新解释")
+            streams[0].onDelta("迟到片段")
+            first.resolve("迟到结果")
+            await first.promise
+        })
+        expect(host.querySelector("h2")?.textContent).toBe("新解释")
+        expect(host.textContent).not.toContain("迟到")
+        expect(host.querySelector<HTMLButtonElement>("button")!.disabled).toBe(
+            true
+        )
+        await act(async () => root?.unmount())
+        root = undefined
+        expect(streams[1].signal.aborted).toBe(true)
+        await act(async () => {
+            streams[1].onDelta("迟到片段")
+            second.resolve("迟到结果")
+            await second.promise
+        })
+        expect(host.textContent).toBe("")
+    })
+
+    it("coalesces chunk layout updates and repositions after completion", async () => {
+        const pending = deferred<string>()
+        const onFinished = vi.fn()
+        let onDelta: (text: string) => void = () => {}
+        mocks.explainConcept.mockImplementationOnce(
+            (_config, _input, _language, options) => {
+                onDelta = options.onDelta
+                return pending.promise
+            }
+        )
+        const { TranslateTextPanel } = await import(
+            "../src/components/TranslateTextPanel/index.tsx"
+        )
+        const host = document.querySelector<HTMLDivElement>("#host")!
+        root = createRoot(host)
+        await act(async () =>
+            root?.render(
+                <TranslateTextPanel data="gravity" onFinished={onFinished} />
+            )
+        )
+        await flushEffects()
+        vi.useFakeTimers()
+        await act(async () =>
+            host.querySelector<HTMLButtonElement>("button")!.click()
+        )
+        onFinished.mockClear()
+        for (const value of ["## 简释", "\n\n", "引", "力"]) {
+            await act(async () => onDelta(value))
+        }
+        expect(host.querySelector("h2")?.textContent).toBe("简释")
+        expect(onFinished).not.toHaveBeenCalled()
+        await act(async () => vi.advanceTimersByTimeAsync(32))
+        expect(onFinished).toHaveBeenCalledTimes(1)
+        await act(async () => {
+            pending.resolve("## 简释\n\n引力")
+            await pending.promise
+        })
+        expect(onFinished).toHaveBeenCalledTimes(2)
+        expect(host.querySelector<HTMLButtonElement>("button")!.disabled).toBe(
+            false
+        )
+    })
+
+    it("shows Markdown chunks before completion and aborts a hidden panel", async () => {
+        const pending = deferred<string>()
+        let stream:
+            | { signal: AbortSignal; onDelta: (text: string) => void }
+            | undefined
+        mocks.explainConcept.mockImplementationOnce(
+            (_config, _input, _language, options) => {
+                stream = options
+                return pending.promise
+            }
+        )
+        const { TranslateTextPanel } = await import(
+            "../src/components/TranslateTextPanel/index.tsx"
+        )
+        const host = document.querySelector<HTMLDivElement>("#host")!
+        root = createRoot(host)
+        await act(async () =>
+            root?.render(<TranslateTextPanel data="Treaty of Versailles" />)
+        )
+        await flushEffects()
+        const button = host.querySelector<HTMLButtonElement>("button")!
+        await act(async () => button.click())
+        expect(stream).toBeDefined()
+        await act(async () => stream!.onDelta("## 类别\n\n**历史"))
+        expect(host.querySelector("h2")?.textContent).toBe("类别")
+        expect(button.disabled).toBe(true)
+        await act(async () => stream!.onDelta("事件**"))
+        expect(host.querySelector("strong")?.textContent).toBe("历史事件")
+        await act(async () =>
+            root?.render(
+                <TranslateTextPanel
+                    data="Treaty of Versailles"
+                    active={false}
+                />
+            )
+        )
+        expect(stream!.signal.aborted).toBe(true)
+        await act(async () => {
+            stream!.onDelta("迟到片段")
+            pending.resolve("迟到结果")
+            await pending.promise
+        })
+        expect(host.textContent).not.toContain("迟到")
+    })
+
+    it("keeps partial text on failure and replaces it when retrying", async () => {
+        mocks.explainConcept.mockImplementationOnce(
+            async (_config, _input, _language, options) => {
+                options.onDelta("## 已生成的部分\n\n内容")
+                throw new Error("private provider error")
+            }
+        )
+        const { TranslateTextPanel } = await import(
+            "../src/components/TranslateTextPanel/index.tsx"
+        )
+        const host = document.querySelector<HTMLDivElement>("#host")!
+        root = createRoot(host)
+        await act(async () =>
+            root?.render(<TranslateTextPanel data="Treaty of Versailles" />)
+        )
+        await flushEffects()
+        const button = host.querySelector<HTMLButtonElement>("button")!
+        await act(async () => button.click())
+        expect(host.querySelector("h2")?.textContent).toBe("已生成的部分")
+        expect(host.textContent).toContain("概念解释失败，请稍后重试")
+        expect(host.textContent).not.toContain("private provider error")
+        mocks.explainConcept.mockResolvedValueOnce("## 新解释")
+        await act(async () => button.click())
+        expect(host.querySelector("h2")?.textContent).toBe("新解释")
+        expect(host.textContent).not.toContain("已生成的部分")
+    })
+
     it("keeps translation visible and explains the selected concept on demand", async () => {
         const onFinished = vi.fn()
         const { TranslateTextPanel } = await import(
@@ -133,11 +309,15 @@ describe("selection concept explanation panel", () => {
         await flushEffects()
 
         expect(document.body.textContent).toContain("凡尔赛条约")
+        expect(host!.querySelectorAll(".mewcat-translation-mark")).toHaveLength(
+            1
+        )
         const explainButton = Array.from(
             document.querySelectorAll("button")
         ).find(button => button.textContent?.includes("解释概念"))
         expect(explainButton).toBeDefined()
 
+        onFinished.mockClear()
         await act(async () => {
             explainButton?.dispatchEvent(
                 new window.MouseEvent("click", { bubbles: true })
@@ -150,7 +330,7 @@ describe("selection concept explanation panel", () => {
             "类别：历史事件\n简释：第一次世界大战后的和平条约。"
         )
         expect(document.body.textContent).toContain("AI 生成，未联网核验")
-        expect(onFinished).toHaveBeenCalledTimes(3)
+        expect(onFinished).toHaveBeenCalled()
     })
 
     it("keeps translation visible when concept explanation is unavailable", async () => {

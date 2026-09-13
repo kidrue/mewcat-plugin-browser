@@ -205,6 +205,7 @@ const SelectionTranslate = () => {
                             data={state.text}
                             pageTitle={document.title}
                             context={state.context}
+                            active={state.isVisible}
                             onFinished={actions.onComputeRect}
                         />
                     </SCxContent>

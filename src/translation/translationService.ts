@@ -1,4 +1,8 @@
 import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import type {
+    ModelGatewayStreamOptions,
+    ModelGatewayStreamSender
+} from "@/messaging/modelGatewayContracts"
 import { PROVIDER_REGISTRY } from "@/model-management/providers"
 import { resolveTranslationServiceId } from "@/state/translationService"
 import type { AiRole, BaseModel, Message } from "@/types"
@@ -12,6 +16,7 @@ import {
     buildModelSummary,
     explainModelConcept,
     ModelGatewayClientError,
+    streamModelConcept,
     translateModelBatch,
     translateModelText,
     type ConceptExplanationInput,
@@ -31,6 +36,7 @@ export interface TranslationCallOptions {
 
 export interface TranslationServiceDependencies {
     modelGatewaySender?: ModelGatewaySender
+    modelGatewayStreamSender?: ModelGatewayStreamSender
     googleRequestSender?: TranslateRequestSender
 }
 
@@ -183,6 +189,26 @@ export function explainConcept(
         targetLanguage,
         { enableThinking: config.enableThinking },
         dependencies.modelGatewaySender
+    )
+}
+
+export function streamConceptExplanation(
+    config: TranslationRuntimeConfig,
+    input: ConceptExplanationInput,
+    targetLanguage: string,
+    options: ModelGatewayStreamOptions,
+    dependencies: TranslationServiceDependencies = {}
+): Promise<string> {
+    const model = getConceptExplanationModel(config)
+    if (!model) {
+        return Promise.reject(new ConceptExplanationUnavailableError())
+    }
+    return streamModelConcept(
+        model,
+        input,
+        targetLanguage,
+        { ...options, enableThinking: config.enableThinking },
+        dependencies.modelGatewayStreamSender
     )
 }
 

@@ -4,8 +4,11 @@ import { sendMessage } from "@/messaging"
 import type {
     ModelGatewayMessage,
     ModelGatewayRequest,
-    ModelGatewayResponse
+    ModelGatewayResponse,
+    ModelGatewayStreamOptions,
+    ModelGatewayStreamSender
 } from "@/messaging/modelGatewayContracts"
+import { requestModelGatewayStream } from "@/messaging/modelGatewayStream"
 import {
     AiModel_Platform_Enum,
     type AiRole,
@@ -155,6 +158,33 @@ export function explainModelConcept(
         },
         sender
     )
+}
+
+export async function streamModelConcept(
+    model: BaseModel,
+    input: ConceptExplanationInput,
+    targetLanguage: string,
+    options: ModelSummaryOptions & ModelGatewayStreamOptions,
+    sender: ModelGatewayStreamSender = requestModelGatewayStream
+): Promise<string> {
+    const response = await sender(
+        {
+            type: "generate",
+            model,
+            feature: "concept-explanation",
+            messages: buildConceptExplanationMessages(input, targetLanguage),
+            enableThinking: options.enableThinking
+        },
+        options
+    )
+    if (response.success === false) {
+        throw new ModelGatewayClientError(
+            response.error.code,
+            response.error.message,
+            response.error.status
+        )
+    }
+    return response.text
 }
 
 const translateWithModel = (
