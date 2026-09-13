@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="color-scheme" content="light" />
+        <title>晴空来信 · 界面素材册</title>
+        <style>
+            @font-face {
+                font-family: "寒蝉全圆体";
+                src: url("../../../src/public/assets/fonts/chill-round-regular.woff2")
+                    format("woff2");
+                font-style: normal;
+                font-weight: 400;
+                font-display: swap;
+            }
+
+            :root {
+                color: #243b52;
+                background: #f4f9fe;
+                font-family:
+                    "寒蝉全圆体", "PingFang SC", "Microsoft YaHei", sans-serif;
+                font-synthesis: none;
+                line-height: 1.65;
+                --line: #dceaf5;
+                --muted: #647e95;
+                --blue: #2576b8;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+            }
+            img {
+                display: block;
+                max-width: 100%;
+            }
+            a {
+                color: var(--blue);
+                text-underline-offset: 4px;
+            }
+            a:focus-visible {
+                outline: 3px solid #409edc;
+                outline-offset: 5px;
+                border-radius: 4px;
+            }
+            h1,
+            h2,
+            h3,
+            p,
+            figure {
+                margin: 0;
+            }
+            h1,
+            h2,
+            h3,
+            strong {
+                font-weight: 400;
+            }
+            code {
+                font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+                overflow-wrap: anywhere;
+            }
+
+            .page {
+                max-width: 1264px;
+                margin: 0 auto;
+                padding: 64px 32px 36px;
+            }
+
+            .masthead {
+                display: flex;
+                align-items: flex-end;
+                justify-content: space-between;
+                gap: 32px;
+                padding-bottom: 36px;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .brand {
+                color: var(--blue);
+                font-size: 15px;
+                letter-spacing: 0.1em;
+            }
+            h1 {
+                margin-top: 18px;
+                font-size: clamp(30px, 4.5vw, 48px);
+                line-height: 1.3;
+                letter-spacing: 0.04em;
+            }
+            .lead {
+                max-width: 620px;
+                margin-top: 18px;
+                color: var(--muted);
+                font-size: 16px;
+            }
+            .inventory {
+                flex: none;
+                padding-left: 28px;
+                border-left: 1px solid var(--line);
+                color: var(--muted);
+                font-size: 13px;
+            }
+            .inventory strong {
+                display: block;
+                color: var(--blue);
+                font-size: 34px;
+                line-height: 1.3;
+            }
+            .inventory span {
+                display: block;
+                margin-top: 6px;
+            }
+
+            section {
+                margin-top: 48px;
+            }
+            .section-heading {
+                display: flex;
+                align-items: baseline;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 10px 24px;
+                margin-bottom: 22px;
+            }
+            h2 {
+                font-size: 25px;
+                letter-spacing: 0.04em;
+            }
+            .section-heading p {
+                color: var(--muted);
+                font-size: 14px;
+            }
+            .scene-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 24px;
+            }
+            .card {
+                min-width: 0;
+                overflow: hidden;
+                background: #fff;
+                border: 1px solid var(--line);
+                border-radius: 16px;
+                box-shadow: 0 5px 16px rgba(42, 87, 127, 0.035);
+            }
+            .featured {
+                grid-column: span 2;
+            }
+            .scene-image {
+                width: 100%;
+                height: 226px;
+                object-fit: cover;
+                object-position: center;
+                background: #eaf5ff;
+            }
+            .caption {
+                padding: 22px 24px 24px;
+            }
+            h3 {
+                font-size: 20px;
+                line-height: 1.45;
+            }
+            .caption p {
+                margin-top: 10px;
+                color: var(--muted);
+                font-size: 14px;
+            }
+            .file-link {
+                display: inline-block;
+                margin-top: 18px;
+                font-size: 11px;
+                line-height: 1.7;
+            }
+
+            .icon-grid {
+                display: grid;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 20px;
+            }
+            .icon-stage {
+                display: flex;
+                justify-content: center;
+                align-items: flex-end;
+                gap: 16px;
+                min-height: 208px;
+                padding: 22px 12px 16px;
+                background: #eaf5ff;
+                border-bottom: 1px solid var(--line);
+            }
+            .icon-stage figure {
+                flex: none;
+                text-align: center;
+            }
+            .icon-stage img {
+                object-fit: contain;
+            }
+            .icon-large {
+                width: 128px;
+                height: 128px;
+            }
+            .icon-actual {
+                width: 64px;
+                height: 64px;
+            }
+            .icon-stage figcaption {
+                margin-top: 12px;
+                color: var(--muted);
+                font-size: 11px;
+            }
+            .icon-grid .caption {
+                padding: 20px;
+            }
+            .icon-grid h3 {
+                font-size: 18px;
+            }
+            .icon-note {
+                margin-top: 18px;
+                color: var(--muted);
+                font-size: 13px;
+            }
+
+            .portrait-card {
+                display: grid;
+                grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.4fr);
+            }
+            .portrait-image {
+                width: 100%;
+                height: 410px;
+                object-fit: cover;
+                object-position: center 30%;
+                background: #e8f4ff;
+            }
+            .portrait-copy {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: flex-start;
+                padding: 38px 44px;
+            }
+            .portrait-copy h3 {
+                font-size: 30px;
+            }
+            .portrait-copy > p {
+                max-width: 490px;
+                margin-top: 18px;
+                color: var(--muted);
+                font-size: 15px;
+            }
+            .portrait-detail {
+                margin-top: 24px;
+                padding-top: 22px;
+                border-top: 1px solid var(--line);
+                color: var(--muted);
+                font-size: 13px;
+            }
+            .portrait-detail strong {
+                color: #385774;
+            }
+            footer {
+                margin-top: 44px;
+                padding-top: 24px;
+                border-top: 1px solid var(--line);
+                color: var(--muted);
+                font-size: 12px;
+            }
+
+            @media (max-width: 1100px) {
+                .icon-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+                .scene-grid {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                }
+                .featured .scene-image {
+                    height: 280px;
+                }
+                .portrait-copy {
+                    padding: 30px;
+                }
+            }
+
+            @media (max-width: 620px) {
+                .page {
+                    padding: 32px 18px 28px;
+                }
+                .masthead {
+                    align-items: flex-start;
+                    flex-direction: column;
+                    gap: 24px;
+                    padding-bottom: 28px;
+                }
+                .inventory {
+                    display: flex;
+                    align-items: baseline;
+                    flex-wrap: wrap;
+                    gap: 8px 14px;
+                    padding-left: 0;
+                    border-left: 0;
+                }
+                .inventory strong {
+                    font-size: 24px;
+                }
+                .inventory span {
+                    margin-top: 0;
+                }
+                .lead {
+                    font-size: 15px;
+                }
+                section {
+                    margin-top: 36px;
+                }
+                .scene-grid,
+                .icon-grid,
+                .portrait-card {
+                    grid-template-columns: 1fr;
+                }
+                .featured {
+                    grid-column: auto;
+                }
+                .scene-image,
+                .featured .scene-image {
+                    height: auto;
+                    aspect-ratio: 16 / 10;
+                }
+                .caption {
+                    padding: 20px;
+                }
+                .icon-stage {
+                    gap: 32px;
+                }
+                .portrait-image {
+                    height: 350px;
+                    object-position: center 24%;
+                }
+                .portrait-copy {
+                    padding: 28px 24px;
+                }
+                .portrait-copy h3 {
+                    font-size: 25px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <main class="page">
+            <header class="masthead">
+                <div>
+                    <p class="brand">晴空来信 · 界面素材册</p>
+                    <h1>把晴空，收藏进界面。</h1>
+                    <p class="lead">
+                        海岸的光、书页的蓝，还有澄羽的一封来信。这组插画为页头、卡片与阅读状态准备，让每个分区拥有自己的小风景。
+                    </p>
+                </div>
+                <p class="inventory">
+                    <strong>10 张原创素材</strong
+                    ><span>5 张场景 · 4 枚图标 · 1 张肖像</span>
+                </p>
+            </header>
+
+            <section aria-labelledby="scenes-heading">
+                <div class="section-heading">
+                    <h2 id="scenes-heading">沿着海风，走进五处风景</h2>
+                    <p>用于页头与卡片背景，文字区保留浅色遮罩。</p>
+                </div>
+                <div class="scene-grid">
+                    <article class="card featured">
+                        <img
+                            class="scene-image"
+                            src="../../../src/public/assets/sky-letter/cloud-coast.png"
+                            alt="明亮晴空与临海邮局，纸飞机从海岸上方掠过"
+                            decoding="async"
+                        />
+                        <div class="caption">
+                            <h3>云间海岸</h3>
+                            <p>
+                                开阔的天空与海面适合欢迎页、关于页面，以及需要宽阔留白的横向卡片。
+                            </p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/cloud-coast.png"
+                                ><code>cloud-coast.png</code></a
+                            >
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img
+                            class="scene-image"
+                            src="../../../src/public/assets/sky-letter/reading-desk.png"
+                            alt="临海窗边的白色书桌，上面摆着打开的书本、蓝色笔和花朵"
+                            loading="lazy"
+                            decoding="async"
+                        />
+                        <div class="caption">
+                            <h3>海风写信桌</h3>
+                            <p>
+                                为划词翻译、阅读偏好与能力测试提供安静的背景。
+                            </p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/reading-desk.png"
+                                ><code>reading-desk.png</code></a
+                            >
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img
+                            class="scene-image"
+                            src="../../../src/public/assets/sky-letter/hydrangea-garden.png"
+                            alt="蓝色邮箱旁盛开的绣球花，白色围栏后是晴朗海岸"
+                            loading="lazy"
+                            decoding="async"
+                        />
+                        <div class="caption">
+                            <h3>邮局绣球花圃</h3>
+                            <p>
+                                适合图片翻译页头、网站范围卡片和轻盈的提示区域。
+                            </p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/hydrangea-garden.png"
+                                ><code>hydrangea-garden.png</code></a
+                            >
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img
+                            class="scene-image"
+                            src="../../../src/public/assets/sky-letter/blue-postcards.png"
+                            alt="铺在浅色桌面的信封、蓝色邮票、丝带和纸飞机"
+                            loading="lazy"
+                            decoding="async"
+                        />
+                        <div class="caption">
+                            <h3>蓝色明信片</h3>
+                            <p>
+                                用于翻译服务、模型连接与来源说明，呼应来信与传递的主题。
+                            </p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/blue-postcards.png"
+                                ><code>blue-postcards.png</code></a
+                            >
+                        </div>
+                    </article>
+                    <article class="card">
+                        <img
+                            class="scene-image"
+                            src="../../../src/public/assets/sky-letter/letter-archive.png"
+                            alt="海边窗下的白木档案架，摆放着整齐的信封和账本"
+                            loading="lazy"
+                            decoding="async"
+                        />
+                        <div class="caption">
+                            <h3>来信档案室</h3>
+                            <p>
+                                用于用量统计、缓存信息和数据明细，让数字有一处安放的书架。
+                            </p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/letter-archive.png"
+                                ><code>letter-archive.png</code></a
+                            >
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <section aria-labelledby="icons-heading">
+                <div class="section-heading">
+                    <h2 id="icons-heading">四枚小图标，标记不同的来信</h2>
+                    <p>透明 PNG · 左侧放大细节，右侧为 64 px 界面尺寸。</p>
+                </div>
+                <div class="icon-grid">
+                    <article class="card">
+                        <div class="icon-stage">
+                            <figure>
+                                <img
+                                    class="icon-large"
+                                    src="../../../src/public/assets/sky-letter/icon-mail.png"
+                                    width="128"
+                                    height="128"
+                                    alt="蓝白信封与纸飞机插画图标"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <figcaption>128 px</figcaption>
+                            </figure>
+                            <figure>
+                                <img
+                                    class="icon-actual"
+                                    src="../../../src/public/assets/sky-letter/icon-mail.png"
+                                    width="64"
+                                    height="64"
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <figcaption>64 px</figcaption>
+                            </figure>
+                        </div>
+                        <div class="caption">
+                            <h3>信封与纸飞机</h3>
+                            <p>翻译服务、连接设置与扩展信息。</p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/icon-mail.png"
+                                ><code>icon-mail.png</code></a
+                            >
+                        </div>
+                    </article>
+                    <article class="card">
+                        <div class="icon-stage">
+                            <figure>
+                                <img
+                                    class="icon-large"
+                                    src="../../../src/public/assets/sky-letter/icon-book.png"
+                                    width="128"
+                                    height="128"
+                                    alt="蓝色词典、书签和小花插画图标"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <figcaption>128 px</figcaption>
+                            </figure>
+                            <figure>
+                                <img
+                                    class="icon-actual"
+                                    src="../../../src/public/assets/sky-letter/icon-book.png"
+                                    width="64"
+                                    height="64"
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <figcaption>64 px</figcaption>
+                            </figure>
+                        </div>
+                        <div class="caption">
+                            <h3>词典与书签</h3>
+                            <p>划词翻译、阅读偏好与摘要设置。</p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/icon-book.png"
+                                ><code>icon-book.png</code></a
+                            >
+                        </div>
+                    </article>
+                    <article class="card">
+                        <div class="icon-stage">
+                            <figure>
+                                <img
+                                    class="icon-large"
+                                    src="../../../src/public/assets/sky-letter/icon-picture.png"
+                                    width="128"
+                                    height="128"
+                                    alt="蓝白风景明信片插画图标"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <figcaption>128 px</figcaption>
+                            </figure>
+                            <figure>
+                                <img
+                                    class="icon-actual"
+                                    src="../../../src/public/assets/sky-letter/icon-picture.png"
+                                    width="64"
+                                    height="64"
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <figcaption>64 px</figcaption>
+                            </figure>
+                        </div>
+                        <div class="caption">
+                            <h3>风景明信片</h3>
+                            <p>图片翻译、视觉模型与识图测试。</p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/icon-picture.png"
+                                ><code>icon-picture.png</code></a
+                            >
+                        </div>
+                    </article>
+                    <article class="card">
+                        <div class="icon-stage">
+                            <figure>
+                                <img
+                                    class="icon-large"
+                                    src="../../../src/public/assets/sky-letter/icon-ledger.png"
+                                    width="128"
+                                    height="128"
+                                    alt="浅蓝账本与文具插画图标"
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <figcaption>128 px</figcaption>
+                            </figure>
+                            <figure>
+                                <img
+                                    class="icon-actual"
+                                    src="../../../src/public/assets/sky-letter/icon-ledger.png"
+                                    width="64"
+                                    height="64"
+                                    alt=""
+                                    loading="lazy"
+                                    decoding="async"
+                                />
+                                <figcaption>64 px</figcaption>
+                            </figure>
+                        </div>
+                        <div class="caption">
+                            <h3>晴空账本</h3>
+                            <p>Token 用量、请求限制与本地缓存。</p>
+                            <a
+                                class="file-link"
+                                href="../../../src/public/assets/sky-letter/icon-ledger.png"
+                                ><code>icon-ledger.png</code></a
+                            >
+                        </div>
+                    </article>
+                </div>
+                <p class="icon-note">
+                    浅蓝色仅为预览底色。插画适合分组标题与状态区域；小尺寸操作按钮继续使用清晰的矢量图标。
+                </p>
+            </section>
+
+            <section aria-labelledby="portrait-heading">
+                <div class="section-heading">
+                    <h2 id="portrait-heading">一位安静的阅读伙伴</h2>
+                    <p>看板娘状态肖像 · 浅蓝背景。</p>
+                </div>
+                <article class="card portrait-card">
+                    <img
+                        class="portrait-image"
+                        src="../../../src/public/assets/sky-letter/chengyu-reading.png"
+                        alt="银白短发、浅蓝发梢的澄羽，穿着蓝白邮递员服装阅读手中的书本"
+                        loading="lazy"
+                        decoding="async"
+                    />
+                    <div class="portrait-copy">
+                        <h3>澄羽 · 阅读来信</h3>
+                        <p>
+                            把角色放进一张独立的相框卡片，陪伴阅读、关于页面或欢迎状态。使用适度裁切，让脸部、书本与蓝白服装成为画面重点。
+                        </p>
+                        <p class="portrait-detail">
+                            <strong>使用方式</strong
+                            ><br />这是一张带浅蓝底色的不透明肖像，适合相框或封面布局；无需按透明立绘叠加在文字和表单之上。
+                        </p>
+                        <a
+                            class="file-link"
+                            href="../../../src/public/assets/sky-letter/chengyu-reading.png"
+                            ><code>chengyu-reading.png</code></a
+                        >
+                    </div>
+                </article>
+            </section>
+            <footer>
+                晴空来信 · mewCat
+                设计素材册。图片与寒蝉全圆体均从项目本地读取；点击文件名可查看原图。本页用于视觉选材与尺寸比对。
+            </footer>
+        </main>
+    </body>
+</html>

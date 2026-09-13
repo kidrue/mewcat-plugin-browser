@@ -1,5 +1,7 @@
 import { createRoot } from "react-dom/client"
 
+import { UI_FONT_FAMILY } from "@/constants/fonts"
+
 export enum ToastType {
     SUCCESS = "success",
     ERROR = "error",
@@ -114,7 +116,7 @@ export class ToastController {
             max-width: 420px;
             padding: 12px 16px;
             border-radius: 16px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: ${UI_FONT_FAMILY};
             font-weight: 500;
             color: #fff;
             background: ${this.getBgColor(type)};

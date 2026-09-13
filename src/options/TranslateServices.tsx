@@ -33,6 +33,10 @@ import {
 import { AddModel } from "@/components/AddModel"
 import { AIModelEmptyState } from "@/components/AIModelEmptyState"
 import { ModelDiscoveryField } from "@/components/ModelDiscoveryField"
+import {
+    OptionsCardGrid,
+    OptionsPageIntro
+} from "@/components/OptionsPageLayout"
 import { DEFAULT_VALUES, platformNameMap } from "@/constants"
 import { AiRoleOptions, AiRoleSystemPrompts } from "@/constants/aiRole"
 import {
@@ -61,60 +65,56 @@ import {
 import { AI_MODEL_UI_LIST } from "./constants"
 
 const ModelListContainer = styled.div`
-    display: flex;
-    gap: var(--space-6);
-    min-height: 400px;
-    max-height: 600px;
+    display: grid;
+    grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--space-5);
+    margin-bottom: var(--space-5);
+
+    > * {
+        min-width: 0;
+    }
 
     /* 窄屏放弃左右分栏：目录在上、配置在下 */
-    @media (max-width: 900px) {
-        flex-direction: column;
-        max-height: none;
-        min-height: 0;
+    @media (max-width: 1100px) {
+        grid-template-columns: minmax(0, 1fr);
         gap: var(--space-4);
     }
 `
 
+const ModelDirectory = styled(OptionsSection)`
+    margin-bottom: 0;
+`
+
 const ModelList = styled.div`
-    width: 280px;
-    flex-shrink: 0;
-    background: var(--bg-secondary);
-    border-right: 1px solid var(--border-color);
-    padding: var(--space-3);
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    max-height: 100%;
+    max-height: 540px;
     overflow: auto;
-    border-radius: var(--radius-lg);
+    padding: 2px;
     ${hideScrollBar}
 
-    @media (max-width: 900px) {
-        width: 100%;
+    @media (max-width: 1100px) {
         max-height: 240px;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     }
 `
 
 const ModelConfigContainer = styled.div`
-    flex: 1;
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
-    max-height: 100%;
-    overflow: auto;
-    ${hideScrollBar}
+    gap: var(--space-5);
+    overflow-wrap: anywhere;
 
-    @media (max-width: 900px) {
-        max-height: none;
+    > section {
+        margin-bottom: 0;
     }
 `
 
 const ModelHeader = styled.div`
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
     margin-bottom: var(--space-3);
@@ -139,6 +139,7 @@ const ModelTitle = styled.h3`
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-semibold);
     color: var(--text-primary);
+    overflow-wrap: anywhere;
 `
 
 const ModelDescription = styled.p`
@@ -151,7 +152,7 @@ const ModelDescription = styled.p`
 const ConfigForm = styled.div`
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    min-width: 0;
 `
 
 const SourceToggleGroup = styled.div`
@@ -162,6 +163,7 @@ const SourceToggleGroup = styled.div`
 `
 
 const SourceToggleButton = styled.button<{ $active: boolean }>`
+    min-height: 36px;
     padding: var(--space-2) var(--space-4);
     border: none;
     background: ${p =>
@@ -177,13 +179,19 @@ const SourceToggleButton = styled.button<{ $active: boolean }>`
             p.$active ? "var(--primary-hover)" : "var(--gray-100)"};
     }
 
+    &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: -3px;
+    }
+
     & + & {
         border-left: 1px solid var(--border-color);
     }
 `
 
 const ModelItem = styled.div<{ $selected: boolean }>`
-    padding: var(--space-2) var(--space-3);
+    min-height: 58px;
+    padding: var(--space-3);
     border-radius: var(--radius-md);
     cursor: pointer;
     display: flex;
@@ -193,7 +201,7 @@ const ModelItem = styled.div<{ $selected: boolean }>`
         props.$selected ? "var(--seal-wash)" : "transparent"};
     color: ${props =>
         props.$selected ? "var(--primary-color)" : "var(--text-primary)"};
-    /* 选中态压一道朱砂边，不靠投影 —— 列表里每行都可点，投影会退化成无意义装饰 */
+    /* 蓝色侧标提示当前编辑的模型，列表项保持轻量。 */
     box-shadow: ${props =>
         props.$selected ? "inset 3px 0 0 var(--primary-color)" : "none"};
     transition:
@@ -218,6 +226,7 @@ const ModelItemTitle = styled.div`
     display: flex;
     align-items: center;
     gap: var(--space-2);
+    overflow-wrap: anywhere;
 `
 
 const ModelItemSubtitle = styled.div`
@@ -265,31 +274,6 @@ const LoadingSpinner = styled.div`
             transform: rotate(360deg);
         }
     }
-`
-
-const TestSection = styled.div`
-    margin-bottom: var(--space-5);
-    padding: var(--space-4);
-    background: var(--bg-tertiary);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--border-light);
-`
-
-const TestHeader = styled.div`
-    margin-bottom: var(--space-3);
-`
-
-const TestTitle = styled.h4`
-    margin: 0 0 var(--space-1) 0;
-    font-size: var(--font-size-base);
-    font-weight: var(--font-weight-semibold);
-    color: var(--text-primary);
-`
-
-const TestDescription = styled.p`
-    margin: 0;
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
 `
 
 function LeftPanelItem({
@@ -758,7 +742,18 @@ export const TranslateServices: React.FunctionComponent = () => {
 
     return (
         <>
-            <OptionsSection title="模型">
+            <OptionsPageIntro
+                scene="postcards"
+                icon="mail"
+                title="为每一封来信，选好翻译伙伴"
+                description="选择日常翻译服务，连接你的 AI 模型，再按阅读习惯调整翻译风格。"
+            />
+            <OptionsSection
+                artwork="coast"
+                icon="mail"
+                title="当前翻译服务"
+                description="这里决定实际使用的翻译服务；下方模型目录用于编辑各服务的配置。"
+            >
                 <FormRow
                     label="当前翻译服务"
                     description="选择当前用于翻译的服务"
@@ -774,16 +769,14 @@ export const TranslateServices: React.FunctionComponent = () => {
                     />
                 </FormRow>
             </OptionsSection>
-            <OptionsSection
-                title="AI模型"
-                rightSection={
-                    hasModels ? (
-                        <AddModel onItemClick={handleAddModel} />
-                    ) : undefined
-                }
-            >
-                {hasModels ? (
-                    <ModelListContainer>
+            {hasModels ? (
+                <ModelListContainer>
+                    <ModelDirectory
+                        artwork="postcards"
+                        title="AI 模型"
+                        description="选择模型编辑配置，拖动调整顺序。"
+                        rightSection={<AddModel onItemClick={handleAddModel} />}
+                    >
                         <DndContext
                             onDragEnd={onDragEnd}
                             onDragStart={onDragStart}
@@ -823,9 +816,15 @@ export const TranslateServices: React.FunctionComponent = () => {
                                 </ModelList>
                             </SortableContext>
                         </DndContext>
-                        <ModelConfigContainer>
-                            {currentModelData && (
-                                <>
+                    </ModelDirectory>
+                    <ModelConfigContainer>
+                        {currentModelData && (
+                            <>
+                                <OptionsSection
+                                    artwork="postcards"
+                                    title="连接配置"
+                                    description="设置服务通道、请求地址与访问凭据。"
+                                >
                                     <ModelHeader>
                                         <ModelHeaderContent>
                                             <ModelTitle>
@@ -946,72 +945,6 @@ export const TranslateServices: React.FunctionComponent = () => {
                                                 }
                                             />
                                         </FormRow>
-                                        {currentModelData &&
-                                            canExplicitlyConfigureVision(
-                                                currentModelData
-                                            ) && (
-                                                <FormRow
-                                                    label="支持图片输入"
-                                                    description={
-                                                        isTokenPlan
-                                                            ? "Token Plan 模型可显式声明视觉能力，开启后可用于图片翻译"
-                                                            : "自定义模型需显式声明视觉能力，开启后可用于图片翻译"
-                                                    }
-                                                    controlId="model-vision-capability"
-                                                >
-                                                    <Switch
-                                                        id="model-vision-capability"
-                                                        aria-describedby="model-vision-capability-description"
-                                                        checked={isVisionCapableModel(
-                                                            currentModelData
-                                                        )}
-                                                        onChange={vision =>
-                                                            updateAiModelConfig(
-                                                                {
-                                                                    id: currentModelData.id,
-                                                                    capabilities:
-                                                                        {
-                                                                            ...currentModelData.capabilities,
-                                                                            vision
-                                                                        }
-                                                                }
-                                                            )
-                                                        }
-                                                    />
-                                                </FormRow>
-                                            )}
-                                        {PROVIDER_REGISTRY[
-                                            currentModelData.type
-                                        ].discovery !== "none" && (
-                                            <FormRow
-                                                label="模型名称"
-                                                required
-                                                description="自动获取当前账号或接口可用的模型，并标记图片输入能力"
-                                                controlId={`model-name-${currentModelData.id}`}
-                                            >
-                                                <ModelDiscoveryField
-                                                    model={currentModelData}
-                                                    onChange={(
-                                                        modelName,
-                                                        capabilities
-                                                    ) =>
-                                                        updateAiModelConfig({
-                                                            id: currentModelData.id,
-                                                            params: {
-                                                                modelName
-                                                            },
-                                                            capabilities:
-                                                                capabilities
-                                                                    ? {
-                                                                          ...currentModelData.capabilities,
-                                                                          ...capabilities
-                                                                      }
-                                                                    : currentModelData.capabilities
-                                                        })
-                                                    }
-                                                />
-                                            </FormRow>
-                                        )}
                                         {currentModelConfig?.items?.map(
                                             item => {
                                                 const fieldConfig =
@@ -1087,115 +1020,216 @@ export const TranslateServices: React.FunctionComponent = () => {
                                             }
                                         )}
                                     </ConfigForm>
-                                </>
-                            )}
-                        </ModelConfigContainer>
-                    </ModelListContainer>
-                ) : (
+                                </OptionsSection>
+                                {(canExplicitlyConfigureVision(
+                                    currentModelData
+                                ) ||
+                                    PROVIDER_REGISTRY[currentModelData.type]
+                                        .discovery !== "none") && (
+                                    <OptionsSection
+                                        artwork="garden"
+                                        icon="picture"
+                                        title="模型能力"
+                                        description="选择可用模型，并确认图片输入支持。"
+                                    >
+                                        <ConfigForm>
+                                            {currentModelData &&
+                                                canExplicitlyConfigureVision(
+                                                    currentModelData
+                                                ) && (
+                                                    <FormRow
+                                                        label="支持图片输入"
+                                                        description={
+                                                            isTokenPlan
+                                                                ? "Token Plan 模型可显式声明视觉能力，开启后可用于图片翻译"
+                                                                : "自定义模型需显式声明视觉能力，开启后可用于图片翻译"
+                                                        }
+                                                        controlId="model-vision-capability"
+                                                    >
+                                                        <Switch
+                                                            id="model-vision-capability"
+                                                            aria-describedby="model-vision-capability-description"
+                                                            checked={isVisionCapableModel(
+                                                                currentModelData
+                                                            )}
+                                                            onChange={vision =>
+                                                                updateAiModelConfig(
+                                                                    {
+                                                                        id: currentModelData.id,
+                                                                        capabilities:
+                                                                            {
+                                                                                ...currentModelData.capabilities,
+                                                                                vision
+                                                                            }
+                                                                    }
+                                                                )
+                                                            }
+                                                        />
+                                                    </FormRow>
+                                                )}
+                                            {PROVIDER_REGISTRY[
+                                                currentModelData.type
+                                            ].discovery !== "none" && (
+                                                <FormRow
+                                                    label="模型名称"
+                                                    required
+                                                    description="自动获取当前账号或接口可用的模型，并标记图片输入能力"
+                                                    controlId={`model-name-${currentModelData.id}`}
+                                                >
+                                                    <ModelDiscoveryField
+                                                        model={currentModelData}
+                                                        onChange={(
+                                                            modelName,
+                                                            capabilities
+                                                        ) =>
+                                                            updateAiModelConfig(
+                                                                {
+                                                                    id: currentModelData.id,
+                                                                    params: {
+                                                                        modelName
+                                                                    },
+                                                                    capabilities:
+                                                                        capabilities
+                                                                            ? {
+                                                                                  ...currentModelData.capabilities,
+                                                                                  ...capabilities
+                                                                              }
+                                                                            : currentModelData.capabilities
+                                                                }
+                                                            )
+                                                        }
+                                                    />
+                                                </FormRow>
+                                            )}
+                                        </ConfigForm>
+                                    </OptionsSection>
+                                )}
+                            </>
+                        )}
+                    </ModelConfigContainer>
+                </ModelListContainer>
+            ) : (
+                <OptionsSection
+                    artwork="postcards"
+                    title="AI 模型"
+                    description="连接你常用的 AI 服务，让翻译更贴合内容。"
+                >
                     <AIModelEmptyState onItemClick={handleAddModel} />
-                )}
-            </OptionsSection>
+                </OptionsSection>
+            )}
 
-            <OptionsSection title="配置">
-                {hasModels && (
-                    <TestSection>
-                        <TestHeader>
-                            <TestTitle>模型测试</TestTitle>
-                            <TestDescription>
-                                测试所有可用模型的翻译能力
-                            </TestDescription>
-                        </TestHeader>
-                        <ModelTestPanel
-                            modelList={config.aiModelList}
-                            testText="Hello, world!"
-                            targetLang={config.targetLanguage}
-                        />
-                    </TestSection>
-                )}
-                {currentModelSupportsThinking && (
+            <OptionsCardGrid>
+                <OptionsSection
+                    artwork="desk"
+                    icon="book"
+                    title="翻译风格"
+                    description="调整专家角色、上下文与推理，让表达更符合阅读需求。"
+                >
+                    {currentModelSupportsThinking && (
+                        <FormRow
+                            label="启用思考能力"
+                            description="为支持思考的模型（如 DeepSeek R1、QwQ、Thinking 系列）启用深度推理能力，可能会增加响应时间"
+                        >
+                            <Switch
+                                checked={config.enableThinking || false}
+                                onChange={checked =>
+                                    updateConfig({ enableThinking: checked })
+                                }
+                            />
+                        </FormRow>
+                    )}
                     <FormRow
-                        label="启用思考能力"
-                        description="为支持思考的模型（如 DeepSeek R1、QwQ、Thinking 系列）启用深度推理能力，可能会增加响应时间"
+                        label="AI专家角色"
+                        description="选择AI翻译时的专家角色，不同角色会影响翻译风格"
+                    >
+                        <CustomSelect
+                            value={config.aiRole || AiRole.DEFAULT}
+                            onChange={value =>
+                                typeof value === "string" &&
+                                updateConfig({ aiRole: value as AiRole })
+                            }
+                            options={AiRoleOptions}
+                            placeholder="选择AI专家角色"
+                        />
+                        <RoleHelperText>
+                            {
+                                AiRoleSystemPrompts[
+                                    config.aiRole || AiRole.DEFAULT
+                                ]?.split("\n")[0]
+                            }
+                        </RoleHelperText>
+                    </FormRow>
+                    <FormRow
+                        label="启用AI智能上下文"
+                        description="结合网页上下文提升翻译效果，需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长"
                     >
                         <Switch
-                            checked={config.enableThinking || false}
+                            checked={config.enableContext || false}
                             onChange={checked =>
-                                updateConfig({ enableThinking: checked })
+                                updateConfig({ enableContext: checked })
                             }
                         />
                     </FormRow>
-                )}
-                <FormRow
-                    label="每秒最大请求数"
-                    description="限制AI模型的请求频率"
+                </OptionsSection>
+                <OptionsSection
+                    artwork="archive"
+                    icon="ledger"
+                    title="请求控制"
+                    description="按服务额度调整发送频率与文本长度。"
                 >
-                    <NumberInput
-                        value={
-                            config.maxRequestsPerSecond ||
-                            DEFAULT_VALUES.maxRequestsPerSecond
-                        }
-                        onChange={value =>
-                            updateConfig({ maxRequestsPerSecond: value })
-                        }
-                        placeholder={String(
-                            DEFAULT_VALUES.maxRequestsPerSecond
-                        )}
-                        min={1}
-                        max={100}
-                    />
-                </FormRow>
-                <FormRow
-                    label="每次请求最大文本长度"
-                    description="单次请求的文本字符数限制"
+                    <FormRow
+                        label="每秒最大请求数"
+                        description="限制AI模型的请求频率"
+                    >
+                        <NumberInput
+                            value={
+                                config.maxRequestsPerSecond ||
+                                DEFAULT_VALUES.maxRequestsPerSecond
+                            }
+                            onChange={value =>
+                                updateConfig({ maxRequestsPerSecond: value })
+                            }
+                            placeholder={String(
+                                DEFAULT_VALUES.maxRequestsPerSecond
+                            )}
+                            min={1}
+                            max={100}
+                        />
+                    </FormRow>
+                    <FormRow
+                        label="每次请求最大文本长度"
+                        description="单次请求的文本字符数限制"
+                    >
+                        <NumberInput
+                            value={
+                                config.maxTextLengthPerRequest ||
+                                DEFAULT_VALUES.maxTextLengthPerRequest
+                            }
+                            onChange={value =>
+                                updateConfig({ maxTextLengthPerRequest: value })
+                            }
+                            placeholder={String(
+                                DEFAULT_VALUES.maxTextLengthPerRequest
+                            )}
+                            min={100}
+                            max={10000}
+                        />
+                    </FormRow>
+                </OptionsSection>
+            </OptionsCardGrid>
+            {hasModels && (
+                <OptionsSection
+                    artwork="desk"
+                    title="模型测试"
+                    description="使用同一段示例文本，检查已配置模型的翻译能力。"
                 >
-                    <NumberInput
-                        value={
-                            config.maxTextLengthPerRequest ||
-                            DEFAULT_VALUES.maxTextLengthPerRequest
-                        }
-                        onChange={value =>
-                            updateConfig({ maxTextLengthPerRequest: value })
-                        }
-                        placeholder={String(
-                            DEFAULT_VALUES.maxTextLengthPerRequest
-                        )}
-                        min={100}
-                        max={10000}
+                    <ModelTestPanel
+                        modelList={config.aiModelList}
+                        testText="Hello, world!"
+                        targetLang={config.targetLanguage}
                     />
-                </FormRow>
-                <FormRow
-                    label="AI专家角色"
-                    description="选择AI翻译时的专家角色，不同角色会影响翻译风格"
-                >
-                    <CustomSelect
-                        value={config.aiRole || AiRole.DEFAULT}
-                        onChange={value =>
-                            typeof value === "string" &&
-                            updateConfig({ aiRole: value as AiRole })
-                        }
-                        options={AiRoleOptions}
-                        placeholder="选择AI专家角色"
-                    />
-                    <RoleHelperText>
-                        {
-                            AiRoleSystemPrompts[
-                                config.aiRole || AiRole.DEFAULT
-                            ]?.split("\n")[0]
-                        }
-                    </RoleHelperText>
-                </FormRow>
-                <FormRow
-                    label="启用AI智能上下文"
-                    description="结合网页上下文提升翻译效果，需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长"
-                >
-                    <Switch
-                        checked={config.enableContext || false}
-                        onChange={checked =>
-                            updateConfig({ enableContext: checked })
-                        }
-                    />
-                </FormRow>
-            </OptionsSection>
+                </OptionsSection>
+            )}
         </>
     )
 }

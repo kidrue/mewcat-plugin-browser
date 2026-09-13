@@ -1,3 +1,5 @@
+import { UI_FONT_FAMILY } from "@/constants/fonts"
+
 import type { PageType } from "./pageTypes"
 
 // cspell:ignore haspopup labelledby
@@ -24,7 +26,7 @@ export function renderPageSummary(
     document.documentElement.append(host)
     const style = document.createElement("style")
     style.textContent = `
-        :host{all:initial;font:14px/1.7 system-ui,sans-serif;color:#1a1714}
+        :host{all:initial;font:14px/1.7 ${UI_FONT_FAMILY};color:#1a1714}
         *{box-sizing:border-box}
         button{font:inherit;cursor:pointer}
         .launcher{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2147483646}
@@ -34,7 +36,7 @@ export function renderPageSummary(
         .dismiss{position:absolute;right:-8px;top:-10px;width:24px;height:24px;border:0;border-radius:50%;background:#fff;color:#dc2626;opacity:0;pointer-events:none;line-height:1}
         .launcher:hover .dismiss,.launcher:focus-within .dismiss{opacity:1;pointer-events:auto}
         button:focus-visible{outline:2px solid #2878c8;outline-offset:3px}
-        dialog{position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;border:1px solid #cfe0ef;border-radius:16px;padding:24px;background:#ffffff;color:#203b57;font:14px/1.7 system-ui,sans-serif;box-shadow:0 16px 60px #203b5733}
+        dialog{position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;border:1px solid #cfe0ef;border-radius:16px;padding:24px;background:#ffffff;color:#203b57;font:14px/1.7 ${UI_FONT_FAMILY};box-shadow:0 16px 60px #203b5733}
         dialog::backdrop{background:#0004}
         .close{float:right;border:0;background:transparent;color:#756b5e;font-size:22px}
         .label{font-size:18px;font-weight:600;color:#2878c8;margin-bottom:12px}

@@ -9,6 +9,7 @@ import {
     OptionsSection,
     Switch
 } from "@/components"
+import { OptionsPageIntro } from "@/components/OptionsPageLayout"
 import { useModelDiscovery } from "@/hooks/useModelDiscovery"
 import { translateStructuredImageViaBackground } from "@/services/imageTranslation"
 import { configAtom, updateConfigAtom } from "@/state"
@@ -221,7 +222,18 @@ export const Image: React.FunctionComponent = () => {
 
     return (
         <>
-            <OptionsSection title="图片翻译">
+            <OptionsPageIntro
+                scene="garden"
+                icon="picture"
+                title="图片翻译"
+                description="让图片里的文字也能读懂。复用已配置的服务，为图片单独选择合适的视觉模型。"
+            />
+            <OptionsSection
+                artwork="garden"
+                icon="picture"
+                title="图片翻译"
+                description="配置好视觉模型后，即可在网页图片上开启快捷翻译。"
+            >
                 <FormRow
                     label="图片上显示快捷翻译按钮"
                     description="鼠标悬浮在图片上时显示翻译按钮，点击可翻译图片"
@@ -243,7 +255,13 @@ export const Image: React.FunctionComponent = () => {
                         }
                     />
                 </FormRow>
-
+            </OptionsSection>
+            <OptionsSection
+                artwork="postcards"
+                icon="mail"
+                title="服务与视觉模型"
+                description="图片翻译独立使用这里的模型，不影响文本翻译设置。"
+            >
                 <FormRow
                     label="翻译服务"
                     description="选择“模型”设置中已添加的 AI 服务配置"
@@ -259,7 +277,6 @@ export const Image: React.FunctionComponent = () => {
                         placeholder="请选择翻译服务"
                     />
                 </FormRow>
-
                 <FormRow
                     label="视觉模型"
                     description="图片翻译使用独立模型，不会更改当前文本翻译服务"
@@ -323,7 +340,12 @@ export const Image: React.FunctionComponent = () => {
                         <Guidance role="alert">{errorMessage}</Guidance>
                     )}
                 </FormRow>
-
+            </OptionsSection>
+            <OptionsSection
+                artwork="desk"
+                title="视觉能力测试"
+                description="准备好后，用一张测试图片确认模型可以识别并翻译文字。"
+            >
                 <FormRow
                     label="视觉能力测试"
                     description="使用运行时生成的图片验证所选模型能否识别并翻译图片文字"

@@ -1,28 +1,62 @@
 import React from "react"
 import styled from "styled-components"
 
+import {
+    getSkySceneUrl,
+    SkyIllustratedIcon,
+    type SkyIllustration,
+    type SkyScene
+} from "@/components/SkyArtwork"
+
 interface OptionsSectionProps {
     title: string
+    description?: string
+    artwork?: SkyScene
+    icon?: SkyIllustration
     rightSection?: React.ReactNode
     layout?: "default" | "grid" | "horizontal"
     children: React.ReactNode
     className?: string
 }
 
-// 分节使用白色纸面、留白和蓝色 hairline 建立层级，不堆叠装饰卡片。
-const Section = styled.section`
-    margin-bottom: var(--space-8);
+// 一个功能组对应一张纸面卡片，卡片内的字段仍用细线分隔。
+const Section = styled.section<{ $artwork?: SkyScene }>`
+    min-width: 0;
+    margin-bottom: var(--space-6);
+    padding: var(--space-6);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    background-color: var(--bg-secondary);
+    background-image: ${props =>
+        props.$artwork
+            ? `linear-gradient(105deg, rgba(255,255,255,0.98) 15%, rgba(255,255,255,0.95) 55%, rgba(255,255,255,0.82)), url("${getSkySceneUrl(props.$artwork)}")`
+            : "linear-gradient(135deg, #ffffff 60%, #f3f9ff)"};
+    background-size: cover;
+    background-position: right center;
+    box-shadow: var(--shadow-sm);
 
     &:last-child {
         margin-bottom: 0;
     }
+
+    @media (max-width: 600px) {
+        padding: var(--space-4);
+    }
+`
+
+const HeadingIcon = styled(SkyIllustratedIcon)`
+    width: 52px;
+    height: 52px;
+    object-fit: contain;
+    flex: none;
 `
 
 const SectionHeader = styled.div`
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: var(--space-3);
-    margin-bottom: var(--space-4);
+    margin-bottom: var(--space-5);
 `
 
 const SectionTitle = styled.h3`
@@ -35,7 +69,8 @@ const SectionTitle = styled.h3`
     align-items: center;
     gap: var(--space-3);
     margin: 0;
-    flex-shrink: 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
 
     /* 小圆点像邮戳，提示阅读起点 */
     &::before {
@@ -48,17 +83,22 @@ const SectionTitle = styled.h3`
     }
 `
 
-// 标题右侧一直延伸到尽头的细线
-const Lead = styled.span`
+const Heading = styled.div`
     flex: 1;
-    height: 1px;
-    background: var(--border-color);
-    min-width: var(--space-4);
+    min-width: 0;
+`
+
+const Description = styled.p`
+    margin: var(--space-2) 0 0;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
 `
 
 const RightSection = styled.div`
-    flex-shrink: 0;
+    max-width: 100%;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
 `
@@ -111,27 +151,43 @@ const SectionContent = styled.div<{ layout?: string }>`
 
         > * {
             flex: 1;
+            min-width: 0;
         }
 
         @media (max-width: 900px) {
             flex-direction: column;
             gap: var(--space-3);
+
+            > * {
+                width: 100%;
+            }
         }
     `}
 `
 
 const OptionsSection: React.FC<OptionsSectionProps> = ({
     title,
+    description,
+    artwork,
+    icon,
     rightSection,
     layout = "default",
     children,
     className
 }) => {
+    const titleId = React.useId()
     return (
-        <Section className={className}>
+        <Section
+            className={className}
+            aria-labelledby={titleId}
+            $artwork={artwork}
+        >
             <SectionHeader>
-                <SectionTitle>{title}</SectionTitle>
-                <Lead aria-hidden="true" />
+                {icon && <HeadingIcon kind={icon} />}
+                <Heading>
+                    <SectionTitle id={titleId}>{title}</SectionTitle>
+                    {description && <Description>{description}</Description>}
+                </Heading>
                 {rightSection && <RightSection>{rightSection}</RightSection>}
             </SectionHeader>
             <SectionContent layout={layout}>{children}</SectionContent>

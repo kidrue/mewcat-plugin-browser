@@ -63,7 +63,12 @@ export const Basic: React.FunctionComponent = () => {
 
     return (
         <>
-            <OptionsSection title="翻译语言配置" layout="grid">
+            <OptionsSection
+                title="翻译语言配置"
+                layout="grid"
+                artwork="coast"
+                icon="mail"
+            >
                 <FormRow
                     label="总是翻译"
                     description="检测到这些语言时将自动翻译"
@@ -99,7 +104,7 @@ export const Basic: React.FunctionComponent = () => {
                 </FormRow>
             </OptionsSection>
 
-            <OptionsSection title="翻译网址配置" layout="grid">
+            <OptionsSection title="翻译网址配置" layout="grid" artwork="garden">
                 <FormRow
                     label="总是翻译"
                     description="在这些网址上将自动启用翻译"
@@ -128,7 +133,7 @@ export const Basic: React.FunctionComponent = () => {
                 </FormRow>
             </OptionsSection>
 
-            <OptionsSection title="页面总结">
+            <OptionsSection title="页面总结" artwork="desk" icon="book">
                 <FormRow
                     label="自动总结页面"
                     description="自动提炼页面重点；页面内容将发送到已配置的生成式 AI 服务。"
@@ -165,7 +170,12 @@ export const Basic: React.FunctionComponent = () => {
                 </FormRow>
             </OptionsSection>
 
-            <OptionsSection title="显示设置" layout="grid">
+            <OptionsSection
+                title="显示设置"
+                layout="grid"
+                artwork="postcards"
+                icon="picture"
+            >
                 <FormRow
                     label="译文显示样式"
                     description="选择翻译文本的显示样式"

@@ -3,10 +3,10 @@ import styled, { css } from "styled-components"
 
 import type { FormRowProps } from "./types"
 
-// 术语 / 注解双栏：左列是词条与释义，右列是控件。
-// 行与行之间用 hairline 分隔，不用卡片、不用 hover 背景 —— 像一页注解，不像一叠卡片。
+// 卡片内的字段用细线分隔；空间不足时控件换行，避免双列卡片挤压输入区。
 const Row = styled.div`
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     gap: var(--space-6);
     padding: var(--space-4) 0;
@@ -63,11 +63,16 @@ const Description = styled.p`
 `
 
 const Field = styled.div`
-    flex: 1;
+    flex: 1 1 220px;
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+
+    @media (max-width: 900px) {
+        flex: none;
+        width: 100%;
+    }
 `
 
 const FormRowComponent: React.FC<FormRowProps> = ({
