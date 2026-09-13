@@ -860,3 +860,149 @@ _实机验证中发现并修复的 4 个缺陷_
 **原因**：根据用户反馈，让二次元邮局背景更自然地透过 popup 卡片，同时保持设置文字和交互控件清晰。
 
 **验证**：`pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 和 `pnpm build` 通过；生产包包含更新后的 popup 样式。本轮未进行浏览器视觉验收。
+
+### 2026-09-10 — 修复高级设置按钮无响应
+
+**修改内容**：`src/components/SettingsPanel/index.tsx` 将高级设置入口改为发送 `OPEN_OPTIONS` 运行时消息；`src/background/index.ts` 在扩展后台接收消息并创建 options 标签页；`test/settings-panel-page-summary.test.tsx` 新增内容脚本环境下的回归测试。
+
+**原因**：页面翻译按钮打开的设置面板运行在 content script，无法直接调用 `chrome.tabs.create`，原实现点击高级设置会抛出 `TypeError` 并导致按钮无响应。
+
+**验证**：执行 `pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check`（254 项测试通过）和 `pnpm build` 均通过。本轮未进行浏览器视觉验收。
+
+### 2026-09-10 — 临时使用空 RuleConfig
+
+**修改内容**：`src/translation/RuleEngine.ts` 的 `initialize()` 临时使用 `RuleConfig` 空配置：`generalRule: {}`、`rules: []`，暂停加载外部 `rule.json`。
+
+**原因**：为临时验证无通用规则和站点规则时的翻译行为。
+
+**验证**：执行 `pnpm format`、`pnpm typecheck` 和 `VITEST_MAX_WORKERS=2` 下的 `pnpm check`，254 项测试通过。
+
+### 2026-09-10 — 完善 Options 卡片布局与寒蝉全圆体规范
+
+**修改内容**：新增 `src/components/OptionsPageLayout/` 共享 Options 页头与双列卡片网格；`OptionsSection` 和 `FormRow` 改为卡片内分组与窄屏自适应；翻译服务、划词翻译、图片翻译、Token 统计和关于页接入插画页头与语义卡片；`src/styles/theme.scss` 将寒蝉全圆体加入中文标题、正文和控件字体栈首位并提供系统字体回退。同步更新 `sky-letter-anime-ui` skill 及其 Options 参考，明确卡片分组和寒蝉全圆体规范。
+
+**原因**：提升其他 Options 页的信息分组、长内容可读性和窄屏适配，让晴空来信视觉语言在各设置页面保持一致，并将寒蝉全圆体作为主要品牌字体。
+
+**验证**：执行 `pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check`（当次图片与界面测试套件 254 项通过）；生产构建及浏览器检查随下方 2026-09-11 素材接入一起完成。
+
+### 2026-09-11 — 本地接入寒蝉全圆体
+
+**修改内容**：`src/public/assets/fonts/` 新增官方 v3.200 常规、粗体的完整 WOFF2 字体、OFL 授权和来源说明；`src/styles/fonts.scss` 定义两个字重，`src/utils/fonts.ts` 使用扩展运行时绝对 URL 在 document 中去重注册字体，popup、options、sidepanel 和四个页面 UI 入口统一调用；`src/styles/theme.scss` 补齐正文和原生控件的字体继承；`src/constants/fonts.ts` 统一独立浮层字体栈，页面摘要、Toast、错误提示及图片译文浮层同步应用。
+
+**原因**：仅设置字体名称会依赖用户系统安装情况，且网页内的相对字体路径会指向宿主站点。将字体随扩展打包并统一注册，使扩展页面和 Shadow DOM 面板均能离线显示寒蝉全圆体。
+
+**验证**：执行 `pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 和 `pnpm exec wxt build` 均通过；核对生产字体文件、授权文件、资源访问声明及四个页面入口的运行时字体路径。两份压缩字体的字符映射、字形顺序和字体名称表与原版一致。本轮未进行浏览器视觉验收。
+
+### 2026-09-11 — 概念解释改为流式输出
+
+**修改内容**：
+
+- `package.json`、`pnpm-lock.yaml`：新增与现有 xsAI 同版本的 `@xsai/stream-text@0.4.4`，将流式网关和消息通道测试纳入 `pnpm check`
+- `src/background/messages/model-gateway.ts`、`src/background/messages/model-gateway-stream.ts`、`src/background/index.ts`：增加基于独立 Port 的流式解释处理，支持请求校验、单请求取消、超时、心跳和资源清理；复用现有模型地址、思考参数和错误映射，按请求记录一次 Token 用量，完整返回优先使用真实用量，缺失或中断时按已生成文本估算
+- `src/background/lib/model-stream-response.ts`：规整 SSE 换行和跨片段 UTF-8，兼容 CRLF，并在收到结束标记后及时结束流；截断响应保留已生成内容并提示重试
+- `src/messaging/modelGatewayContracts.ts`、`src/messaging/modelGatewayStream.ts`、`src/translation/modelTranslation.ts`、`src/translation/translationService.ts`：新增流式消息协议、客户端与概念解释服务，沿用模型回退、选区语境和 Markdown 提示词
+- `src/hooks/useConceptExplanation.ts`、`src/components/TranslateTextPanel/index.tsx`、`src/contents/selectionTranslate.tsx`：解释内容逐段显示并累计渲染 Markdown，合并高频浮窗定位更新；隐藏、卸载及选区变化时取消旧请求并忽略迟到内容，失败保留部分结果，重试替换旧内容
+- `test/model-gateway-stream.test.ts`、`test/model-gateway-stream-port.test.ts`、`test/selection-explanation-panel.test.tsx`：覆盖增量、取消、断连、超时、换选区、重试、Markdown、用量统计、网络分片及扩展上下文失效的回归测试
+
+**原因**：减少点击“解释概念”后等待完整回答的时间，让用户在生成过程中即可阅读，并避免关闭浮窗后继续生成或旧请求污染新选区。
+
+**验证**：执行 `pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 和 `pnpm build` 均通过。流式链路使用真实 xsAI SDK 配合模拟接口验证，本轮未进行真实模型接口联调。
+
+### 2026-09-11 — 丰富晴空插画素材与 Options 卡片背景
+
+**修改内容**：
+
+- `src/public/assets/sky-letter/`：通过内置 image_gen 新增 5 张场景图、4 枚真实透明底插画图标，以及 1 张浅蓝底澄羽阅读肖像；原有邮局与角色素材保留
+- `src/components/SkyArtwork/`：统一场景映射、本地扩展资源 URL、装饰图标和阅读肖像组件；`OptionsPageLayout` 的图标与标题独立成行，避免窄屏说明文字绕图错位
+- `src/components/OptionsSection/` 与六个 Options 页面：按功能使用海岸、书桌、花圃、明信片和档案室背景，搭配信封、词典、图片和账本图标；文字区覆盖浅色遮罩，卡片主体保留弹层溢出空间，关于页增加阅读肖像
+- `test/token-usage-ui.test.tsx`：补充读取失败、清空中防重复操作、清空失败保留数据并允许重试的 3 项回归测试
+- `docs/ui-previews/sky-post-office/materials-preview.html`、`options-assets.md`：新增静态素材预览册、用途清单与复用提示词；同步更新个人 `sky-letter-anime-ui` skill 的丰富素材、卡片背景和插画图标偏好
+
+**原因**：让设置页面在统一的蓝白二次元风格中具有不同场景与细节，改善大面积纯色卡片的单调感，并保证阅读、输入、下拉菜单和窄屏布局仍清晰可用。
+
+**验证**：`pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check`、`pnpm build` 全部通过；图片与界面套件 257 项、翻译服务套件 46 项、解释面板套件 15 项测试通过，另通过 Chrome 商店发布测试 26 项。全量 ESLint 为 0 errors、32 条现有 warnings。使用实际 Options 组件与隔离示例数据检查桌面及 390px 窄屏，确认背景与图标加载、卡片排版、添加模型菜单和阅读肖像；未调用真实模型 API。核对 10 张新增素材均打包且与源文件一致，4 枚图标 alpha 范围均为 0–255。静态素材册本地引用完整、Prettier 检查通过，skill 结构校验通过。当前生产 ZIP 约 29.31 MB，保留高分辨率 PNG 素材。
+
+### 2026-09-11 — 优化译文排版并统一寒蝉全圆体
+
+**修改内容**：
+
+- `src/utils/style.ts`、`src/utils/dom.ts`：网页译文容器和六种译文样式统一使用寒蝉全圆体，保留原网页字号，采用 1.75 行高、随字号缩放的段落间距与长文本换行；高亮、背景和边框调整为浅蓝纸面、柔和细线与舒展留白，无装饰、下划线和阴影使用自然行内排版
+- `src/components/TranslateTextPanel/index.tsx`：划词译文显式使用统一字体，调整为常规字重和 1.8 行高，保留文本换行并避免长文本撑开面板
+- `src/components/StylePreview/index.tsx`、`src/types/translationStyle.ts`：设置页使用上下排列的英中双语示例，样式说明与实际显示保持一致
+
+**原因**：解决网页译文继承宿主字体、与扩展界面字体不一致的问题，同时改善密集译文、窄栏和长链接的阅读体验。
+
+**验证**：`pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 和 `pnpm exec wxt build` 均通过，lint 为 0 errors、32 条现有 warnings。使用实际 DOM 渲染函数在本地浏览器预览中检查六种样式、浅色与深色背景、240px 窄栏和 390px 视口，未出现横向溢出；字体加载返回 `loaded`。本轮未在真实第三方网页中重新加载扩展联调。
+
+### 2026-09-11 — 生成柔和蓝白「白猫来信」Logo 设计稿
+
+**修改内容**：`design-preview/sky-letter-logo/prompt.md` 保存完整设计提示词；通过内置 image_gen 生成 `mewcat-sky-logo.png`，将圆润白猫与雾蓝信封融合为蓝白图形；`preview.html` 展示原稿、16/32/48/128px 尺寸及白色、浅蓝、深蓝背景。设计稿独立保存，正式扩展图标未替换。
+
+**原因**：让品牌图标与晴空来信的低饱和蓝白配色、信纸卡片及圆润字体协调，减少复杂高光、彩色装饰和粗重轮廓造成的视觉突兀感。
+
+**验证**：`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 通过，图片与界面套件 257 项测试通过，lint 为 0 errors、32 条现有 warnings；预览与提示词经 Prettier 格式检查，图像为 1254×1254 RGBA。浏览器核对全部图片加载成功、实际尺寸和三种背景效果，页面无横向溢出；16px 下以整体形状为主，32px 以上可辨认猫脸与信封。
+
+### 2026-09-12 — 正式接入「白猫来信」品牌图标
+
+**修改内容**：
+
+- `src/assets/icon.png`：采用已生成的柔和蓝白猫与信封 Logo，沿用 WXT 自动生成的 16 / 32 / 48 / 128px 图标及共享 `BrandLogo`，统一工具栏、popup、Options、侧边栏与页面浮动按钮的品牌图形
+- `design-preview/sky-letter-logo/prompt.md`、`preview.html`：记录正式采用状态，保留原始提示词、设计稿和多尺寸预览
+- 全量检查修正：`src/monitoring/sanitize.ts` 为两段正则添加局部拼写说明；`test/chrome-web-store-publish.test.cjs` 保留发布测试命令校验，同时允许追加其他测试文件，修复工作区新增监控测试后的断言冲突
+
+**原因**：让正式扩展图标与晴空来信的蓝白插画、柔和卡片及圆润字体保持一致，并确保现有资源生成流程和质量检查继续可用。
+
+**验证**：执行 `pnpm format`、`VITEST_MAX_WORKERS=2` 下的 `pnpm check` 及 `pnpm build` 均通过；最终图片与界面套件 266 项测试通过，发布及构建套件 31 项测试通过。核对源图与设计稿 SHA256 一致，构建图标尺寸和 manifest 引用正确，生产 ZIP 中四张图标与构建目录逐项一致；检查 128px 构建图像。本轮未在 Chrome 中重新加载扩展进行实机联调。
+
+### 2026-09-12 — 接入生产环境 Sentry 错误诊断
+
+**修改内容**：
+
+- `src/monitoring/`、`src/entrypoints/`、`src/components/MonitoringErrorBoundary/`：生产环境在配置 DSN 时初始化 Sentry，覆盖 background、popup、options、sidepanel 和网页 content script；错误采样 100%，content script 的错误触发 Replay，遮盖文字与输入并阻挡媒体。
+- `src/background/`、`src/contents/`、`src/page-summary/`：已捕获异常上报固定功能与操作标签，以及完整网页 URL；保留原错误处理行为。不上传业务请求体、翻译文本和图片数据。
+- `src/monitoring/sanitize.ts`：过滤凭据、用户对象、请求体、不受控附加数据及可能含文本的控制台 Breadcrumb，保留排障所需的完整 URL 与堆栈。
+- `wxt.config.ts`、`scripts/upload-sentry-sourcemaps.cjs`、`.github/workflows/release.yml`：生产构建生成隐藏 Source Map，上传到 Sentry 后从扩展包中移除；CI 校验 Sentry 配置，构建令牌只在构建阶段使用。`scripts/build-with-timing.cjs` 改为单次构建。
+- `test/sentry-*.test.*`、`docs/chrome-web-store-automation.md`：补充监控、隐私、发布验证及商店披露说明。
+
+**原因**：收集生产环境错误并用堆栈、完整 URL 和遮盖内容的 Replay 复现故障。`pnpm check` 全部通过（图像测试 267 项）；生产构建与 Source Map 上传成功，ZIP 中无 `.map`、`.env.local` 或构建令牌。隔离测试错误的 SDK flush 成功；Sentry 项目内的可见性与 Replay 遮盖效果仍需在后台确认。
+
+### 2026-09-13 — 修正 popup 高级设置按钮遮罩与译文角标位置
+
+**修改内容**：
+
+- `src/components/SettingsPanel/index.tsx`：popup 的「高级设置」按钮不再复用半透明毛玻璃卡片样式，改用实色纸面与轻阴影，避免按钮呈现异常遮罩。
+- `src/utils/translationMark.ts`、`src/utils/dom.ts`、`src/components/StylePreview/index.tsx`：为带边框的网页译文新增 `border-corner` 摆放方式，使 14px 角标跨在右下边框上、约一半露在框外；图片及其他无边框场景维持原有位置。
+- `test/brand-logo-ui.test.tsx`：验证三种带边框译文样式的角标位置。
+
+**原因**：让 popup 操作按钮保持清晰，并使译文角标符合右下边框跨界显示的预期。`pnpm format`、`pnpm check` 通过（图片与界面套件 274 项测试通过）；本地浏览器无法打开开发服务，尚未完成 Chrome 扩展实机视觉核对。
+
+### 2026-09-13 — 为译文添加静态猫咪来信角标
+
+**修改内容**：
+
+- `src/utils/translationMark.ts`、`src/components/TranslationMark/index.tsx`：共享简化猫耳与信封 SVG，采用 12–14px 静态装饰；普通 DOM 按文档缓存并克隆矢量模板，不增加资源请求、动画或监听器。
+- `src/utils/dom.ts`、`src/utils/style.ts`、`src/translation/ImmersiveTranslator.ts`：六种网页译文样式接入角标；卡片预留右侧空间，行内译文在句尾显示，刷新内容时复用同一枚角标，保留译文文本和链接。
+- `src/components/TranslateTextPanel/index.tsx`、`src/sidepanel/index.tsx`、`src/components/StylePreview/index.tsx`：划词和侧栏成功结果显示角标，避开操作按钮，并同步设置样式预览。
+- `src/contents/imageTranslationOverlay.ts`：每张图片显示一枚角标，在覆盖层重绘时复用，不参与文字块字号计算；空结果清除角标。
+- `test/brand-logo-ui.test.tsx`、`test/image-translation-overlay.test.ts`、`test/selection-explanation-panel.test.tsx`：覆盖六种样式的文本与链接保留、译文刷新和图片重绘时的节点复用，以及划词展示。
+
+**原因**：通过轻量的猫咪来信标识增强晴空来信品牌风格，同时保持翻译请求与复制内容不变。
+
+**验证**：`pnpm format`、`pnpm check` 通过，图片与界面套件 274 项测试通过。浏览器使用实际组件与固定测试译文验证网页、划词、侧栏、图片和设置预览，确认复制文本无角标内容，360px 窄屏无横向溢出。千段网页译文在本机预热后取 5 次中位数，DOM 创建与同步布局由约 48.4ms 增至 73.0ms，额外约 24.6ms；该数据不包含模型请求、绘制或真实扩展端到端耗时。
+
+### 2026-09-13 — 暂时隐藏译文角标并扩展译文样式
+
+**修改内容**：
+
+- `src/utils/translationMark.ts`：以统一开关隐藏网页、划词、侧栏和图片译文角标；普通网页 DOM 的隐藏样式加 `!important`，保留现有 SVG 实现供后续恢复。
+- `src/types/translationStyle.ts`、`src/constants/options.ts`、`src/utils/style.ts`：在原有六种样式之外新增「侧边线」「柔和荧光笔」「信纸分隔」，分别提供透明底左侧线、文字下半部浅蓝底、译文上方细虚线；旧配置仍有效，默认高亮不变。
+- `src/utils/style.ts`、`src/components/TranslateTextPanel/index.tsx`：收回角标原先占用的译文右侧留白。
+- `test/translation-style-options.test.ts`、`package.json`：验证选项、布局、实际译文 CSS 与角标隐藏，并纳入 `pnpm check`。
+
+**原因**：角标视觉效果未达到预期，先隐藏并提供更多轻量译文展示方式。`pnpm format` 与 `pnpm check` 通过，图片与界面套件 280 项测试通过。
+
+### 2026-09-13 — 分批提交近期功能与规则回退清理
+
+**修改内容**：将设置页素材及字体、译文样式、概念解释流式输出、popup 高级设置修复、Sentry 监控与发布配置按功能分别提交；`src/translation/RuleEngine.ts` 清理加载规则失败时空配置回退的多余类型断言。
+
+**原因**：让近期功能便于逐项审阅和回溯，同时保持规则回退代码与 `GeneralRule` 类型一致。提交前再次执行 `pnpm check`，全量检查通过，图片与界面套件 280 项测试通过。
