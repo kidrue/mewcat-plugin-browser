@@ -87,7 +87,7 @@ export class RuleEngine {
         } catch (error) {
             console.error(`❌ RuleEngine: 加载 rule.json 失败`, error)
             // 使用空配置作为后备
-            this.generalRule = {} as GeneralRule
+            this.generalRule = {}
             this.siteRules = []
             this.initialized = true
         }
