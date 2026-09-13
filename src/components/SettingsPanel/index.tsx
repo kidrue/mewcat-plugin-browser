@@ -404,8 +404,11 @@ const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
                   }
 
                   ${SettingsButton} {
-                      ${popupGlassSurface}
+                      position: relative;
                       z-index: 1;
+                      background: #f8fbff;
+                      border-color: var(--border-color);
+                      box-shadow: 0 3px 12px rgba(32, 74, 112, 0.08);
                       border-radius: var(--radius-lg);
                       color: var(--text-primary);
 
@@ -491,7 +494,19 @@ function SettingsPanel({
     }
 
     const handleOpenSettings = () => {
-        chrome.tabs.create({ url: chrome.runtime.getURL("options.html") })
+        const runtime = chrome.runtime
+        if (typeof runtime?.sendMessage === "function") {
+            runtime.sendMessage({ type: "OPEN_OPTIONS" }, () => {
+                // 读取 lastError 以消费没有可用后台监听器时的 Chrome 警告。
+                void chrome.runtime.lastError
+            })
+            return
+        }
+
+        // 仅作为极旧运行环境的降级路径；正常 popup 与内容脚本都走后台消息。
+        if (typeof chrome.tabs?.create === "function") {
+            chrome.tabs.create({ url: runtime.getURL("options.html") })
+        }
     }
 
     return (

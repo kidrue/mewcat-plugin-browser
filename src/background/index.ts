@@ -127,8 +127,26 @@ export function registerBackgroundListeners() {
     })
 
     chrome.runtime.onMessage.addListener(
-        (message: { type: string; isTranslate: boolean }) => {
-            if (message.type === "TRANSLATE_END") {
+        (message: { type?: string; isTranslate?: boolean }) => {
+            if (message.type === "OPEN_OPTIONS") {
+                chrome.tabs.create(
+                    { url: chrome.runtime.getURL("options.html") },
+                    () => {
+                        if (chrome.runtime.lastError) {
+                            console.error(
+                                "打开高级设置失败:",
+                                chrome.runtime.lastError.message
+                            )
+                        }
+                    }
+                )
+                return
+            }
+
+            if (
+                message.type === "TRANSLATE_END" &&
+                typeof message.isTranslate === "boolean"
+            ) {
                 chrome.contextMenus.update(CONTEXT_MENU_ID, {
                     title: message.isTranslate ? "关闭翻译" : "开启翻译"
                 })

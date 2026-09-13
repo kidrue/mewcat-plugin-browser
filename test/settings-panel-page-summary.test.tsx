@@ -69,7 +69,10 @@ beforeEach(() => {
     Object.assign(globalThis, {
         IS_REACT_ACT_ENVIRONMENT: true,
         chrome: {
-            runtime: { getURL: vi.fn((path: string) => path) },
+            runtime: {
+                getURL: vi.fn((path: string) => path),
+                sendMessage: vi.fn()
+            },
             tabs: { create: vi.fn() }
         }
     })
@@ -134,6 +137,33 @@ describe("quick settings page summary setting", () => {
         expect(toggle?.disabled).toBe(false)
         expect(document.body.textContent).toContain(
             "请先配置可用的生成式 AI 模型"
+        )
+    })
+
+    it("opens advanced settings through the runtime bridge in a content script", async () => {
+        const sendMessage = vi.fn()
+        Object.assign(globalThis, {
+            chrome: {
+                runtime: {
+                    getURL: vi.fn((path: string) => path),
+                    sendMessage
+                },
+                tabs: {}
+            }
+        })
+
+        await renderSettingsPanel()
+
+        const settingsButton = document.querySelector<HTMLButtonElement>(
+            "button"
+        )
+        expect(settingsButton).not.toBeNull()
+
+        await act(async () => settingsButton?.click())
+
+        expect(sendMessage).toHaveBeenCalledWith(
+            { type: "OPEN_OPTIONS" },
+            expect.any(Function)
         )
     })
 })
