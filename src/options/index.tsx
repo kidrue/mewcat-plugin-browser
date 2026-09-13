@@ -9,6 +9,7 @@ import "@/styles/options.scss"
 
 import { ErrorFallback } from "@/components/ErrorFallback"
 import { SkyBackdrop, SkyMascot } from "@/components/SkyArtwork"
+import { captureExtensionException } from "@/monitoring"
 import { configAtom } from "@/state"
 
 import OptionsContentHeader from "../components/OptionsContentHeader"
@@ -311,7 +312,16 @@ const IndexOptions: React.FunctionComponent = () => {
                         </HeroCopy>
                     </Hero>
                 )}
-                <ErrorBoundary fallbackRender={ErrorFallback}>
+                <ErrorBoundary
+                    fallbackRender={ErrorFallback}
+                    onError={error =>
+                        captureExtensionException(error, {
+                            feature: "options",
+                            operation: "render",
+                            pageUrl: location.href
+                        })
+                    }
+                >
                     {renderContent()}
                 </ErrorBoundary>
             </MainContent>

@@ -33,21 +33,17 @@ function runCommand(name, command) {
 console.log(chalk.bold.blue("\n🚀 开始构建 mewCat 扩展\n"))
 const totalStart = Date.now()
 
-const wxtTime = runCommand("WXT 编译", "pnpm exec wxt build")
 const cleanTime = runCommand("清理旧压缩包", "pnpm clean:prod:zip")
-const zipTime = runCommand("生成压缩包", "pnpm package")
+const zipTime = runCommand("WXT 编译与打包", "pnpm package")
 const totalTime = Date.now() - totalStart
 
 console.log(chalk.bold.blue("\n📊 构建耗时统计\n"))
 console.log(chalk.gray("─".repeat(40)))
 console.log(
-    `  WXT 编译         ${chalk.yellow(formatTime(wxtTime).padStart(10))}`
-)
-console.log(
     `  清理旧包         ${chalk.yellow(formatTime(cleanTime).padStart(10))}`
 )
 console.log(
-    `  压缩打包         ${chalk.yellow(formatTime(zipTime).padStart(10))}`
+    `  编译与打包       ${chalk.yellow(formatTime(zipTime).padStart(10))}`
 )
 console.log(chalk.gray("─".repeat(40)))
 console.log(

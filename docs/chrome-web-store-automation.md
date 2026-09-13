@@ -123,6 +123,10 @@ IAM 配置可能需要几分钟才能生效。
 
 ## 发布流程
 
+生产构建启用 Sentry 错误诊断。GitHub Actions Variables 需要配置 `WXT_SENTRY_DSN`、`SENTRY_ORG`、`SENTRY_PROJECT`，Secret 需要配置 `SENTRY_AUTH_TOKEN`。本地可把这些值放在不提交的 `.env.local`。构建会生成隐藏 Source Map，上传到 Sentry 后从 ZIP/CRX 中移除；缺少任一项配置时 CI 拒绝发布。`SENTRY_AUTH_TOKEN` 仅用于构建，不进入扩展运行时。
+
+商店数据使用披露需要与扩展行为一致：生产环境会把错误堆栈、浏览网页的完整 URL（包括查询参数和片段）、错误发生前的点击与滚动等 Replay 活动发送给 Sentry，用于复现和修复故障。Replay 遮盖所有文字和输入，并阻挡媒体；扩展不主动上报账号、手机号、Cookie、API Key、翻译原文、译文、Prompt、图片或请求体。完整 URL 仍可能包含敏感信息，商店后台应按浏览历史与用户活动等实际数据类别披露，并在隐私政策中说明第三方 Sentry 处理和诊断用途。代码文档不代替商店后台的人工披露更新。
+
 1. 修改 `package.json` 的 `version`，版本必须高于商店当前版本。
 2. 提交并推送到 `main`。
 3. GitHub Actions 执行 `pnpm check`、构建 ZIP/CRX，生成 `SHA256SUMS`，并把三者组成的单一 recovery bundle 保存到 draft GitHub Release。

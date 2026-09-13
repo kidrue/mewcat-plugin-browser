@@ -2,14 +2,17 @@ import { createRoot } from "react-dom/client"
 
 import { createShadowRootUi, defineContentScript } from "#imports"
 
+import { MonitoringErrorBoundary } from "@/components/MonitoringErrorBoundary"
 import SelectionTranslate, {
     getShadowHostId
 } from "@/contents/selectionTranslate"
+import { registerUiFonts } from "@/utils/fonts"
 
 export default defineContentScript({
     matches: ["<all_urls>"],
     cssInjectionMode: "ui",
     async main(ctx) {
+        registerUiFonts()
         const ui = await createShadowRootUi(ctx, {
             name: "mewcat-selection-translate",
             position: "inline",
@@ -20,7 +23,15 @@ export default defineContentScript({
                 const app = document.createElement("div")
                 container.append(app)
                 const root = createRoot(app)
-                root.render(<SelectionTranslate />)
+                root.render(
+                    <MonitoringErrorBoundary
+                        feature="selection-translation"
+                        operation="render"
+                        fallbackRender={() => null}
+                    >
+                        <SelectionTranslate />
+                    </MonitoringErrorBoundary>
+                )
                 return root
             },
             onRemove(root) {

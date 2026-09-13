@@ -1,4 +1,5 @@
 import { sendMessage } from "@/messaging"
+import { captureExtensionException } from "@/monitoring"
 import type { ExtensionConfig } from "@/types/config"
 
 import { selectPageSummaryModel } from "../utils/pageSummary"
@@ -66,7 +67,12 @@ export class PageSummaryController {
                     ? { status: "success", summary, pageType }
                     : { status: "empty" }
             )
-        } catch {
+        } catch (error) {
+            captureExtensionException(error, {
+                feature: "page-summary",
+                operation: "generate",
+                pageUrl: location.href
+            })
             this.handle?.update({ status: "error" })
         }
     }

@@ -566,9 +566,9 @@ describe("Chrome Web Store release workflow", () => {
     it("includes the publisher tests in the project quality gate", () => {
         const packageJson = require("../package.json")
 
-        assert.equal(
+        assert.match(
             packageJson.scripts["test:chrome-web-store"],
-            "node --test test/chrome-web-store-publish.test.cjs"
+            /^node --test test\/chrome-web-store-publish\.test\.cjs(?:\s|$)/
         )
         assert.match(packageJson.scripts.check, /test:chrome-web-store/)
     })

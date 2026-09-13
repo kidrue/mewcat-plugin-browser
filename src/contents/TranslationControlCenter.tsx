@@ -3,6 +3,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useAsync, useAsyncFn, useClickAway, useLatest } from "react-use"
 import styled, { StyleSheetManager } from "styled-components"
 
+import { captureExtensionException } from "@/monitoring"
+
 import BrandLogo from "../components/BrandLogo"
 import Icon from "../components/Icon"
 import SettingsPanel from "../components/SettingsPanel"
@@ -30,7 +32,7 @@ const SCxContainer = styled.div.withConfig({
     top: ${({ y }) => y}px;
     width: 54px;
     height: 54px;
-    --mewcat-expanded-offset: ${({ $right }) => ($right ? "-12px" : "12px")};
+    --mewcat-expanded-offset: ${({ $right }) => ($right ? "-24px" : "24px")};
     transform: ${({ $expanded, isDragging, $right }) =>
         isDragging
             ? "translateX(0)"
@@ -395,6 +397,11 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             const res = await immersiveTranslator.startImmersiveTranslation()
             return res
         } catch (err) {
+            captureExtensionException(err, {
+                feature: "page-translation",
+                operation: "translate",
+                pageUrl: location.href
+            })
             console.error("Translation failed:", err)
             setIsTranslate(false)
             return false
@@ -460,6 +467,11 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                     message: "已刷新当前页面翻译"
                 })
             } catch (error) {
+                captureExtensionException(error, {
+                    feature: "page-translation",
+                    operation: "refresh",
+                    pageUrl: location.href
+                })
                 console.error("刷新当前页面翻译失败:", error)
                 Toast.show({
                     type: ToastType.ERROR,

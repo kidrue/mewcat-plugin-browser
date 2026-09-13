@@ -17,6 +17,7 @@ import {
     createImageTranslationOverlay,
     hasSupportedTargetTransform
 } from "@/contents/imageTranslationOverlay"
+import { captureExtensionException } from "@/monitoring"
 import {
     translateStructuredImageViaBackground,
     validateImage
@@ -296,6 +297,11 @@ export const ImageTranslate: React.FC = () => {
                         : "图片翻译成功"
             })
         } catch (error) {
+            captureExtensionException(error, {
+                feature: "image-translation",
+                operation: "translate",
+                pageUrl: location.href
+            })
             console.error("[ImageTranslate] 翻译失败:", error)
             setState(prev => ({
                 ...prev,

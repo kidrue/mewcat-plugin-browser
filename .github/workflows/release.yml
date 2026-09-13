@@ -91,8 +91,28 @@ jobs:
             echo "::notice::将发布 $TAG"
           fi
 
+      - name: Validate Sentry configuration
+        if: steps.version.outputs.should_release == 'true' && steps.version.outputs.reuse_draft != 'true'
+        env:
+          WXT_SENTRY_DSN: ${{ vars.WXT_SENTRY_DSN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          for name in WXT_SENTRY_DSN SENTRY_ORG SENTRY_PROJECT SENTRY_AUTH_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::缺少 Sentry 配置 ${name}"
+              exit 1
+            fi
+          done
+
       - name: Build
         if: steps.version.outputs.should_release == 'true' && steps.version.outputs.reuse_draft != 'true'
+        env:
+          WXT_SENTRY_DSN: ${{ vars.WXT_SENTRY_DSN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: pnpm build
 
       - name: Write crx signing key

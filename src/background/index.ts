@@ -1,5 +1,6 @@
 import { onMessage } from "@/messaging"
 
+import { monitorBackgroundHandler } from "./lib/monitor-background-handler"
 import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
 import { handleModelGatewayRequest } from "./messages/model-gateway"
@@ -42,31 +43,58 @@ async function handleToggleImmersiveTranslate(tabId: number) {
 
 export function registerExtensionMessages(register = onMessage) {
     register("canvas-hook-event", message =>
-        handleCanvasHookEvent(message.data)
+        monitorBackgroundHandler(
+            "canvas-hook-event",
+            () => handleCanvasHookEvent(message.data),
+            message.sender.tab?.url
+        )
     )
     register("inject-main-world-hook", message =>
-        handleInjectMainWorldHook(
-            message.data,
-            message.sender as chrome.runtime.MessageSender
+        monitorBackgroundHandler(
+            "inject-main-world-hook",
+            () =>
+                handleInjectMainWorldHook(
+                    message.data,
+                    message.sender as chrome.runtime.MessageSender
+                ),
+            message.sender.tab?.url
         )
     )
     register("translate-image", message =>
-        handleStructuredTranslateImage(
-            message.data,
-            message.sender as chrome.runtime.MessageSender
+        monitorBackgroundHandler(
+            "translate-image",
+            () =>
+                handleStructuredTranslateImage(
+                    message.data,
+                    message.sender as chrome.runtime.MessageSender
+                ),
+            message.sender.tab?.url
         )
     )
     register("translate-image-legacy", message =>
-        handleTranslateImage(
-            message.data,
-            message.sender as chrome.runtime.MessageSender
+        monitorBackgroundHandler(
+            "translate-image-legacy",
+            () =>
+                handleTranslateImage(
+                    message.data,
+                    message.sender as chrome.runtime.MessageSender
+                ),
+            message.sender.tab?.url
         )
     )
     register("translate-request", message =>
-        handleTranslateRequest(message.data)
+        monitorBackgroundHandler(
+            "translate-request",
+            () => handleTranslateRequest(message.data),
+            message.sender.tab?.url
+        )
     )
     register("model-gateway", message =>
-        handleModelGatewayRequest(message.data)
+        monitorBackgroundHandler(
+            "model-gateway",
+            () => handleModelGatewayRequest(message.data),
+            message.sender.tab?.url
+        )
     )
 }
 

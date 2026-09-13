@@ -1,4 +1,5 @@
 import { defineConfig } from "wxt"
+import { execFileSync } from "node:child_process"
 
 export default defineConfig({
     srcDir: "src",
@@ -8,6 +9,18 @@ export default defineConfig({
     targetBrowsers: ["chrome"],
     imports: false,
     modules: ["@wxt-dev/module-react", "@wxt-dev/auto-icons"],
+    vite: env => ({ build: { sourcemap: env.mode === "production" ? "hidden" : false } }),
+    hooks: {
+        "build:done": wxt => {
+            if (wxt.config.mode === "production") {
+                execFileSync(
+                    process.execPath,
+                    ["scripts/upload-sentry-sourcemaps.cjs", wxt.config.outDir],
+                    { stdio: "inherit" }
+                )
+            }
+        }
+    },
     manifest: {
         name: "mewCat",
         host_permissions: ["<all_urls>"],

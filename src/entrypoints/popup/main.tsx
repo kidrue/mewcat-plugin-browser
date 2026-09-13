@@ -1,7 +1,13 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
+import { MonitoringErrorBoundary } from "@/components/MonitoringErrorBoundary"
+import { initializeSentry } from "@/monitoring"
 import Popup from "@/popup"
+import { registerUiFonts } from "@/utils/fonts"
+
+initializeSentry({ runtimeContext: "popup", enableReplay: true })
+registerUiFonts()
 
 const container = document.getElementById("root")
 if (!container) {
@@ -10,6 +16,8 @@ if (!container) {
 
 createRoot(container).render(
     <StrictMode>
-        <Popup />
+        <MonitoringErrorBoundary feature="popup" operation="render">
+            <Popup />
+        </MonitoringErrorBoundary>
     </StrictMode>
 )
