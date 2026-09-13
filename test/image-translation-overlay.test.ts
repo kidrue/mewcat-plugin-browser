@@ -245,10 +245,17 @@ describe("image translation overlay layout", () => {
                 "[data-mewcat-image-translation-block]"
             )?.style.writingMode
         ).toBe("vertical-rl")
+        const mark = root.querySelector(".mewcat-translation-mark")
+        expect(mark).not.toBeNull()
+        expect(root.textContent).toBe("縦書き")
         resizeCallback?.()
         window.dispatchEvent(new Event("resize"))
         expect(callbacks).toHaveLength(1)
         callbacks[0]()
+        expect(root.querySelectorAll(".mewcat-translation-mark")).toHaveLength(
+            1
+        )
+        expect(root.querySelector(".mewcat-translation-mark")).toBe(mark)
         overlay.update({ ...result, blocks: [] })
         expect(callbacks).toHaveLength(2)
         callbacks[1]()

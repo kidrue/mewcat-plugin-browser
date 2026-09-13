@@ -5,6 +5,8 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import type { ExtensionConfig } from "../src/types/config"
+import { TranslationStyle } from "../src/types/translationStyle"
+import * as translationDom from "../src/utils/dom"
 
 const mocks = vi.hoisted(() => ({
     config: {
@@ -84,6 +86,46 @@ function expectGeneratedExtensionLogo() {
 }
 
 describe("brand logo placement", () => {
+    it.each(Object.values(TranslationStyle))(
+        "keeps translation text and links intact with a decorative mark in %s",
+        style => {
+            const element = translationDom.createTranslationDisplayElement(
+                '阅读<a href="https://example.com">原文</a>',
+                style
+            )
+            const mark = element.querySelector(".mewcat-translation-mark")
+            expect(mark).not.toBeNull()
+            expect(mark?.getAttribute("aria-hidden")).toBe("true")
+            expect(mark?.getAttribute("focusable")).toBe("false")
+            if (
+                style === TranslationStyle.HIGHLIGHT ||
+                style === TranslationStyle.BACKGROUND ||
+                style === TranslationStyle.BORDER
+            ) {
+                expect((mark as SVGSVGElement).style.right).toBe("-7px")
+                expect((mark as SVGSVGElement).style.bottom).toBe("-7px")
+            }
+            expect(element.textContent).toBe("阅读原文")
+            expect(element.querySelector("a")?.href).toBe(
+                "https://example.com/"
+            )
+            expect(element.querySelector("img, image, use")).toBeNull()
+        }
+    )
+
+    it("reuses one decorative mark when translation content is refreshed", () => {
+        const element = translationDom.createTranslationDisplayElement("旧译文")
+        const mark = element.querySelector(".mewcat-translation-mark")
+        expect(mark).not.toBeNull()
+        translationDom.setTranslationDisplayContent(element, "新译文")
+        translationDom.setTranslationDisplayContent(element, "最终译文")
+        expect(element.textContent).toBe("最终译文")
+        expect(
+            element.querySelectorAll(".mewcat-translation-mark")
+        ).toHaveLength(1)
+        expect(element.querySelector(".mewcat-translation-mark")).toBe(mark)
+    })
+
     it("shows the generated extension icon in the options sidebar", async () => {
         const { default: OptionsSidebar } = await import(
             "../src/components/OptionsSidebar"

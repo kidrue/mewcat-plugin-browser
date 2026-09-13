@@ -10,6 +10,7 @@ import {
     matchUrlPatternList,
     parseErrorString,
     safeRemoveElement,
+    setTranslationDisplayContent,
     splitTranslationResults,
     type TranslationStyleUnion
 } from "@/utils"
@@ -877,7 +878,7 @@ export class ImmersiveTranslator {
             const fontElement = translateNode.translate
             if (fontElement) {
                 // 如果是 HTML 内容，使用 innerHTML
-                fontElement.innerHTML = processedText
+                setTranslationDisplayContent(fontElement, processedText)
             } else {
                 const translateELement = createTranslationDisplayElement(
                     processedText,

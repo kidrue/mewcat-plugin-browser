@@ -1,7 +1,9 @@
+import { UI_FONT_FAMILY } from "@/constants/fonts"
 import type {
     ImageTranslationResult,
     NormalizedImageBox
 } from "@/messaging/protocol"
+import { createTranslationMark } from "@/utils/translationMark"
 
 export interface Rect {
     left: number
@@ -500,6 +502,13 @@ export function createImageTranslationOverlay(
     const MutationObserverCtor =
         deps.MutationObserver || window.MutationObserver
     const root = document.createElement("div")
+    // 每张图片只保留一枚角标，重绘时复用，不进入文字块尺寸计算。
+    const mark = createTranslationMark("corner")
+    Object.assign(mark.style, {
+        padding: "3px",
+        borderRadius: "4px",
+        background: "rgba(245, 250, 255, 0.94)"
+    })
     const targetId = `target-${Math.random().toString(36).slice(2, 10)}`
     root.setAttribute("data-mewcat-image-translation-overlay", "")
     root.setAttribute("data-mewcat-image-translation-target", targetId)
@@ -507,6 +516,7 @@ export function createImageTranslationOverlay(
         position: "fixed",
         pointerEvents: "none",
         zIndex: "2147483000",
+        fontFamily: UI_FONT_FAMILY,
         overflow: "hidden",
         display: "block"
     })
@@ -578,7 +588,8 @@ export function createImageTranslationOverlay(
                         block.writingMode === "vertical" ? "mixed" : "initial"
                 })
                 return element
-            })
+            }),
+            ...(result.blocks.length ? [mark] : [])
         )
     }
 

@@ -13,6 +13,7 @@ import BrandLogo from "../components/BrandLogo"
 import LoadingDots from "../components/LoadingDots"
 import NativeSelect from "../components/NativeSelect"
 import { SkyMascot } from "../components/SkyArtwork"
+import TranslationMark from "../components/TranslationMark"
 
 // ============================================
 // Layout
@@ -303,6 +304,7 @@ const ResultText = styled.div<{ $empty?: boolean; $error?: boolean }>`
 
 const ResultActions = styled.div`
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     margin-top: var(--space-2);
     gap: var(--space-2);
@@ -596,6 +598,7 @@ const SlidePanel: React.FunctionComponent = () => {
                                     </>
                                 )}
                             </IconButton>
+                            {!error && <TranslationMark placement="plain" />}
                         </ResultActions>
                     )}
                 </ResultBox>

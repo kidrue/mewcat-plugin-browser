@@ -2,7 +2,9 @@ import React from "react"
 import styled from "styled-components"
 
 import type { TranslationStyleType } from "@/types/translationStyle"
-import { getTranslationStyleCSS } from "@/utils"
+import { getTranslationStyleCSS, shouldInsertAsBlock } from "@/utils/style"
+
+import TranslationMark from "../TranslationMark"
 
 interface StylePreviewProps {
     style: TranslationStyleType
@@ -26,11 +28,25 @@ const SCxPreviewText = styled.div.withConfig({
     ${props => getTranslationStyleCSS(props.styleName)}
 `
 
+const SCxOriginalText = styled.p`
+    margin: 0 0 var(--space-2);
+    color: var(--text-secondary);
+`
+
 const StylePreview: React.FC<StylePreviewProps> = ({ style, className }) => {
     return (
         <SCxPreviewContainer className={className}>
+            <SCxOriginalText>
+                A gentle breeze turns the pages. Take your time and enjoy
+                reading.
+            </SCxOriginalText>
             <SCxPreviewText styleName={style}>
-                This is a translation example 这是一个翻译示例
+                微风轻轻翻动书页，慢慢读，让每一段文字都清晰舒展。
+                <TranslationMark
+                    placement={
+                        shouldInsertAsBlock(style) ? "border-corner" : "inline"
+                    }
+                />
             </SCxPreviewText>
         </SCxPreviewContainer>
     )

@@ -26,7 +26,10 @@ export const TRANSLATION_STYLE_OPTIONS = [
     { value: TranslationStyle.UNDERLINE, label: "下划线" },
     { value: TranslationStyle.BACKGROUND, label: "背景色" },
     { value: TranslationStyle.BORDER, label: "边框" },
-    { value: TranslationStyle.SHADOW, label: "阴影" }
+    { value: TranslationStyle.SHADOW, label: "阴影" },
+    { value: TranslationStyle.SIDE_LINE, label: "侧边线" },
+    { value: TranslationStyle.MARKER, label: "柔和荧光笔" },
+    { value: TranslationStyle.LETTER_DIVIDER, label: "信纸分隔" }
 ]
 
 // 触发方式选项

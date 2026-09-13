@@ -3,7 +3,10 @@
  * 包含元素文本提取、选择器匹配等功能
  */
 
+import { UI_FONT_FAMILY } from "@/constants/fonts"
+
 import { getTranslationStyleCSS, type TranslationStyleUnion } from "./style"
+import { createTranslationMark } from "./translationMark"
 
 export function isSelectionUiEvent(
     event: Pick<Event, "composedPath">,
@@ -179,17 +182,22 @@ export function createTranslationContainerElement(
 
     // 基础样式
     let cssText = `
-     word-break: break-word;
-    user-select: text;
-    letter-spacing: normal!important;
-     `
+        font-family: ${UI_FONT_FAMILY} !important;
+        font-size: inherit;
+        word-break: normal;
+        overflow-wrap: anywhere;
+        user-select: text;
+        letter-spacing: normal !important;
+        box-sizing: border-box;
+        max-width: 100%;
+        min-width: 0;
+    `
 
-    // 如果是换行展示，添加上下 8px 外边距
+    // 段落间距随原文字号缩放，短译文仍保留行内插入。
     if (insertTagType === "br") {
         cssText += `
-    margin-top: 8px;
-    margin-bottom: 8px;
-    display: block;
+            margin-block: 0.5em;
+            display: block;
         `
     }
 
@@ -229,8 +237,23 @@ export function createTranslationDisplayElement(
     // 应用样式特定的CSS
     translationElement.style.cssText = getTranslationStyleCSS(style)
     translationElement.className = "mewcat-wrapper"
-    translationElement.innerHTML = text
+    setTranslationDisplayContent(translationElement, text)
     return translationElement
+}
+
+/** 更新译文时复用装饰节点，文字、链接与缓存内容不包含品牌标识。 */
+export function setTranslationDisplayContent(element: Element, text: string) {
+    const previousMark = element.lastElementChild
+    const mark = previousMark?.classList.contains("mewcat-translation-mark")
+        ? previousMark
+        : createTranslationMark(
+              (element as HTMLElement).style.display === "inline-block"
+                  ? "border-corner"
+                  : "inline",
+              element.ownerDocument
+          )
+    element.innerHTML = text
+    element.appendChild(mark)
 }
 
 export function createLoadingELement(size = 30) {
@@ -319,6 +342,7 @@ export function createTranslationErrorUI(
     const errorContainer = document.createElement("font")
     errorContainer.className = "mewcat-error-container"
     errorContainer.style.cssText = `
+        font-family: ${UI_FONT_FAMILY};
         margin-left: 4px;
         display:flex;
         align-items:center;
@@ -418,6 +442,7 @@ export function createTranslationErrorUI(
     const errorModalContent = document.createElement("div")
     errorModalContent.className = "mewcat-error-modal-content"
     errorModalContent.style.cssText = `
+        font-family: ${UI_FONT_FAMILY};
         background: #ffffff;
         padding: 24px;
         border-radius: 16px;
@@ -434,6 +459,7 @@ export function createTranslationErrorUI(
     closeButton.className = "mewcat-error-modal-close"
     closeButton.innerHTML = "✕"
     closeButton.style.cssText = `
+        font-family: inherit;
         position: absolute;
         top: 16px;
         right: 16px;
