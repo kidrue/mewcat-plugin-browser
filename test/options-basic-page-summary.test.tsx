@@ -85,9 +85,9 @@ describe("options page summary setting", () => {
         await renderBasic()
         const toggle = document.querySelector<HTMLInputElement>('input[role="switch"][aria-label="按阅读范围翻译"]')
         expect(toggle).not.toBeNull()
-        expect(toggle?.checked).toBe(false)
+        expect(toggle?.checked).toBe(true)
         await act(async () => toggle?.click())
-        expect(mocks.updateConfig).toHaveBeenCalledWith({ enableViewportTranslation: true })
+        expect(mocks.updateConfig).toHaveBeenCalledWith({ enableViewportTranslation: false })
     })
     it("shows the saved summary state independently and writes its own field", async () => {
         await renderBasic()
