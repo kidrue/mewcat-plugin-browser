@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta
+            name="description"
+            content="A local reading playground for testing mewCat translation, selection, images and page summaries."
+        />
+        <title>mewCat · 翻译验收实验室</title>
+        <link rel="stylesheet" href="/style.css" />
+        <script src="/app.js" defer></script>
+    </head>
+    <body>
+        <header lang="zh-CN">
+            <a class="brand" href="#top"
+                >mewCat <span>译趣喵 / EXAMPLE</span></a
+            >
+            <span class="badge">本地测试素材 · 人工验收</span>
+        </header>
+        <div class="layout" id="top">
+            <aside lang="zh-CN" aria-label="验收导航">
+                <p class="eyebrow">验收工作台</p>
+                <nav>
+                    <a href="#reading">01 · 沉浸式翻译</a>
+                    <a href="#selection">02 · 划词翻译</a>
+                    <a href="#languages">03 · 多语言</a>
+                    <a href="#dynamic">04 · 动态内容</a>
+                    <a href="#images">05 · 图片翻译</a>
+                    <a href="#summary">06 · 页面总结</a>
+                </nav>
+                <div class="progress-box">
+                    <strong id="progress-label" aria-live="polite"
+                        >已验收 0 / 6</strong
+                    >
+                    <progress
+                        id="progress"
+                        max="6"
+                        value="0"
+                        aria-label="人工验收进度"
+                    ></progress>
+                    <p>
+                        勾选表示你已人工确认通过，不代表自动测试结果。刷新页面后保留记录。
+                    </p>
+                    <button id="reset-checks" type="button">
+                        清空验收记录
+                    </button>
+                    <p id="storage-status" role="status"></p>
+                </div>
+            </aside>
+            <main>
+                <div class="hero" lang="zh-CN">
+                    <p class="eyebrow">TRANSLATION PLAYGROUND</p>
+                    <h1>让每一次翻译，<br />都有据可验。</h1>
+                    <p>六组可重复操作的素材，从第一段译文到整页总结。</p>
+                    <div class="setup">
+                        <strong>开始前</strong>
+                        <p>
+                            在 Chrome 加载
+                            mewCat，允许访问此站点，在扩展中选好翻译服务和目标语言（建议简体中文）。页面不会读取密钥，也不会主动发起翻译。
+                        </p>
+                        <p>
+                            先清空上一轮记录，再逐项操作扩展并核对预期。免费文本服务可用于文本验收；图片与总结需要配置支持对应能力的模型。
+                        </p>
+                    </div>
+                </div>
+                <section id="reading">
+                    <div class="section-heading" lang="zh-CN">
+                        <span>01</span>
+                        <h2>沉浸式翻译</h2>
+                    </div>
+                    <div class="instructions" lang="zh-CN">
+                        操作：用扩展开启整页翻译，检查正文、列表、表格和行内格式，再恢复原文。预期：译文完整、顺序正确，链接可点击；重复开关不叠加译文。
+                    </div>
+                    <article>
+                        <p class="eyebrow">FIELD NOTES / CITY LIFE</p>
+                        <h3>A quieter way to move through the city</h3>
+                        <p>
+                            Every morning, Maya walks to the station beside a
+                            narrow canal. The route is longer than the main
+                            road, but the water and trees make the journey feel
+                            shorter. She often notices details that disappear
+                            when she travels by car: a new bakery, a repaired
+                            bridge, or the first flowers of spring.
+                        </p>
+                        <p>
+                            A good walking route needs
+                            <strong>safe crossings</strong>,
+                            <em>comfortable shade</em>, and clear signs. Small
+                            improvements can help people choose a slower journey
+                            without making their day more difficult. Read the
+                            <a href="#summary">community library story</a> for
+                            another example of a shared public space.
+                        </p>
+                        <ul>
+                            <li>
+                                Keep paths clear for people using wheelchairs.
+                            </li>
+                            <li>
+                                Place benches near busy crossings and public
+                                transport.
+                            </li>
+                            <li>
+                                Use simple signs that visitors can understand
+                                quickly.
+                            </li>
+                        </ul>
+                        <div class="table-scroll">
+                            <table>
+                                <caption>
+                                    Three ways to reach the station
+                                </caption>
+                                <thead>
+                                    <tr>
+                                        <th>Route</th>
+                                        <th>Travel time</th>
+                                        <th>What to expect</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Canal path</td>
+                                        <td>18 minutes</td>
+                                        <td>Quiet water and morning shade</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Main road</td>
+                                        <td>12 minutes</td>
+                                        <td>Shops and busy crossings</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Park trail</td>
+                                        <td>22 minutes</td>
+                                        <td>Wide paths and places to rest</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <details>
+                            <summary>
+                                Additional reading: an evening walk
+                            </summary>
+                            <p>
+                                In the evening, the same route feels different.
+                                Families gather near the canal, cyclists slow
+                                down at the bridge, and the bakery puts
+                                tomorrow's menu in the window.
+                            </p>
+                        </details>
+                    </article>
+                    <label class="check" lang="zh-CN"
+                        ><input
+                            type="checkbox"
+                            data-check="reading"
+                        />已核对翻译、排版及恢复原文</label
+                    >
+                </section>
+                <section id="selection">
+                    <div class="section-heading" lang="zh-CN">
+                        <span>02</span>
+                        <h2>划词翻译</h2>
+                    </div>
+                    <div class="instructions" lang="zh-CN">
+                        操作：开启划词翻译，按设置中的触发方式依次选择单词、整句和跨行内容。预期：面板展示对应选区的结果；关闭后再次选取能正常使用。
+                    </div>
+                    <p>
+                        Serendipity is the joy of finding something valuable
+                        when you were looking for something else.
+                    </p>
+                    <blockquote>
+                        The best tools help us understand unfamiliar ideas.<br />They
+                        leave enough room for curiosity, context, and a second
+                        look.
+                    </blockquote>
+                    <label class="check" lang="zh-CN"
+                        ><input
+                            type="checkbox"
+                            data-check="selection"
+                        />已核对不同选区与面板开关</label
+                    >
+                </section>
+                <section id="languages">
+                    <div class="section-heading" lang="zh-CN">
+                        <span>03</span>
+                        <h2>多语言与混合内容</h2>
+                    </div>
+                    <div class="instructions" lang="zh-CN">
+                        操作：用整页或划词翻译检查以下内容。预期：外语含义正确，中文、数字和产品名没有乱码；具体措辞允许因模型而异。
+                    </div>
+                    <div class="language-grid">
+                        <div lang="ja">
+                            <span class="language-tag">日本語</span>
+                            <p>
+                                図書館は本を借りるだけの場所ではありません。静かに勉強したり、地域の人々と新しい知識を分かち合ったりできる場所です。
+                            </p>
+                        </div>
+                        <div lang="fr">
+                            <span class="language-tag">Français</span>
+                            <p>
+                                Le jardin partagé ouvre chaque samedi matin. Les
+                                voisins apportent des graines, échangent des
+                                conseils et apprennent à cultiver ensemble.
+                            </p>
+                        </div>
+                        <div lang="de">
+                            <span class="language-tag">Deutsch</span>
+                            <p>
+                                Der neue Radweg verbindet den Bahnhof mit dem
+                                Stadtpark. Breite Wege und klare Schilder machen
+                                die Fahrt für alle angenehmer.
+                            </p>
+                        </div>
+                        <div>
+                            <span class="language-tag" lang="zh-CN"
+                                >混合内容</span
+                            >
+                            <p>
+                                The workshop starts at 10:30 and costs $12.50.
+                                Bring a USB-C cable and a laptop with Chrome
+                                installed.
+                                <span lang="zh-CN">请提前十分钟到场。</span>
+                            </p>
+                        </div>
+                    </div>
+                    <label class="check" lang="zh-CN"
+                        ><input
+                            type="checkbox"
+                            data-check="languages"
+                        />已核对多语言和特殊字符</label
+                    >
+                </section>
+                <section id="dynamic">
+                    <div class="section-heading" lang="zh-CN">
+                        <span>04</span>
+                        <h2>动态内容</h2>
+                    </div>
+                    <div class="instructions" lang="zh-CN">
+                        操作：先开启整页翻译，再追加两次段落并替换内容。预期：新增和替换后的英文得到翻译，旧译文不残留、不重复；重置后可再次操作。
+                    </div>
+                    <div class="actions" lang="zh-CN">
+                        <button id="append-content" type="button">
+                            追加段落</button
+                        ><button id="replace-content" type="button">
+                            替换内容</button
+                        ><button id="reset-content" type="button">
+                            重置素材
+                        </button>
+                    </div>
+                    <p
+                        class="muted"
+                        id="dynamic-status"
+                        role="status"
+                        lang="zh-CN"
+                    >
+                        初始素材
+                    </p>
+                    <div id="dynamic-content">
+                        <p>
+                            The neighborhood newsletter arrives every Friday. It
+                            shares local events, new walking routes, and stories
+                            from the community.
+                        </p>
+                    </div>
+                    <label class="check" lang="zh-CN"
+                        ><input
+                            type="checkbox"
+                            data-check="dynamic"
+                        />已核对动态更新与译文去重</label
+                    >
+                </section>
+                <section id="images">
+                    <div class="section-heading" lang="zh-CN">
+                        <span>05</span>
+                        <h2>图片翻译</h2>
+                    </div>
+                    <div class="instructions" lang="zh-CN">
+                        操作：在扩展中配置图片翻译服务，使用图片悬浮按钮（需在设置中开启）或右键菜单翻译下图。预期：标题、开放时间和三条说明被正确识别；译文展示完整，支持恢复原图时能正常恢复。
+                    </div>
+                    <figure>
+                        <img
+                            src="/assets/reading-card.png"
+                            width="1000"
+                            height="620"
+                            alt="English reading club notice used for image translation acceptance"
+                        />
+                        <figcaption lang="zh-CN">
+                            本地 PNG 素材，无外部图片依赖。核对要点：周六
+                            10:00–12:00、携带一本书、分享故事、欢迎所有人。
+                        </figcaption>
+                    </figure>
+                    <label class="check" lang="zh-CN"
+                        ><input
+                            type="checkbox"
+                            data-check="images"
+                        />已核对图片识别与译文展示</label
+                    >
+                </section>
+                <section id="summary">
+                    <div class="section-heading" lang="zh-CN">
+                        <span>06</span>
+                        <h2>页面总结</h2>
+                    </div>
+                    <div class="instructions" lang="zh-CN">
+                        操作：配置总结模型，使用扩展的页面总结功能。预期：总结响应正常，覆盖页面主要内容；以下文章可用于核对关键事实。整页包含其他素材，总结不必仅限本文。
+                    </div>
+                    <article>
+                        <p class="eyebrow">COMMUNITY / A SMALL EXPERIMENT</p>
+                        <h3>The library that stayed open a little longer</h3>
+                        <p>
+                            In April, a neighborhood library began a six-week
+                            experiment. On Tuesdays and Thursdays, it stayed
+                            open until eight in the evening instead of closing
+                            at five. The goal was simple: make the library
+                            easier to visit for people whose work or study
+                            schedules kept them busy during the day.
+                        </p>
+                        <p>
+                            The team did not buy new equipment or change the
+                            building. Instead, three staff members adjusted
+                            their shifts, and volunteers welcomed visitors near
+                            the entrance. A quiet room remained available for
+                            students, while a larger table became a place for
+                            informal reading groups. Clear signs explained which
+                            spaces were meant for conversation.
+                        </p>
+                        <p>
+                            During the first two weeks, most evening visitors
+                            came to study. Later, parents began arriving with
+                            children after dinner, and several neighbors
+                            organized a weekly book exchange. Staff counted 240
+                            evening visits over the six weeks. These were
+                            visits, not unique people, so the number could not
+                            tell them exactly how many residents had benefited.
+                        </p>
+                        <p>
+                            There were challenges. The last bus left shortly
+                            after eight, leaving little time for staff to close
+                            the building. Volunteers also needed a more
+                            predictable schedule. Before extending the
+                            experiment, the library planned to discuss transport
+                            options and publish shifts earlier so everyone could
+                            plan ahead.
+                        </p>
+                        <p>
+                            The final report recommended continuing the evening
+                            hours for another three months, with a review at the
+                            end of that period. It did not claim that longer
+                            opening hours would work for every library. Its
+                            central lesson was that a small, carefully observed
+                            change can reveal needs that a daytime schedule
+                            makes easy to miss.
+                        </p>
+                    </article>
+                    <details lang="zh-CN">
+                        <summary>展开事实核对清单</summary>
+                        <ul>
+                            <li>试行六周，周二和周四延长至晚上八点。</li>
+                            <li>记录的是 240 次到访，不是 240 名独立访客。</li>
+                            <li>问题包括末班车时间与志愿者排班。</li>
+                            <li>建议再延续三个月后复评，并非已经永久实施。</li>
+                        </ul>
+                    </details>
+                    <label class="check" lang="zh-CN"
+                        ><input
+                            type="checkbox"
+                            data-check="summary"
+                        />已核对总结响应与关键事实</label
+                    >
+                </section>
+                <footer lang="zh-CN">
+                    验收建议：记录扩展版本、模型、浏览器版本和失败操作；译文措辞差异不直接视为失败。页面本身不检测扩展是否安装。
+                </footer>
+            </main>
+        </div>
+    </body>
+</html>

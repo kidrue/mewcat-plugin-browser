@@ -8,6 +8,7 @@
     "scripts": {
         "predev": "node scripts/check-legacy-output.cjs",
         "dev": "wxt",
+        "example": "node example/server.mjs",
         "prebuild": "node scripts/check-legacy-output.cjs",
         "build": "node scripts/build-with-timing.cjs",
         "package": "node scripts/package-with-date.cjs",
