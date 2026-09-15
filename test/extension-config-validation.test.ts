@@ -20,10 +20,32 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
-    it("defaults reading-range translation off and preserves a stored opt-in", () => {
-        expect(repairExtensionConfig({}, defaultExtensionConfig).enableViewportTranslation).toBe(false)
+    it.each([undefined, "unknown-style"])(
+        "uses the postal bubble when the stored style is %s",
+        translationStyle => {
+            const config = repairExtensionConfig(
+                { ...defaultExtensionConfig, translationStyle },
+                defaultExtensionConfig
+            )
+            expect(config.translationStyle).toBe("bubble-postal")
+        }
+    )
+
+    it.each(["none", "highlight", "bubble-blue", "bubble-postal"])(
+        "preserves the selected %s style when loading saved config",
+        translationStyle => {
+            const config = repairExtensionConfig(
+                { ...defaultExtensionConfig, translationStyle },
+                defaultExtensionConfig
+            )
+            expect(config.translationStyle).toBe(translationStyle)
+        }
+    )
+
+    it("defaults reading-range translation on and preserves a stored opt-out", () => {
+        expect(repairExtensionConfig({}, defaultExtensionConfig).enableViewportTranslation).toBe(true)
         expect(repairExtensionConfig({ ...defaultExtensionConfig, enableViewportTranslation: true }, defaultExtensionConfig).enableViewportTranslation).toBe(true)
-        expect(repairExtensionConfig({ ...defaultExtensionConfig, enableViewportTranslation: "true" }, defaultExtensionConfig).enableViewportTranslation).toBe(false)
+        expect(repairExtensionConfig({ ...defaultExtensionConfig, enableViewportTranslation: "true" }, defaultExtensionConfig).enableViewportTranslation).toBe(true)
     })
     it("preserves the image switch across concurrent config updates and reload", async () => {
         const { createStore } = await import("jotai")

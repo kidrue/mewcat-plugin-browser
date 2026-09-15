@@ -22,14 +22,20 @@ export const NAVIGATION_ITEMS: NavigationItem[] = [
 // 译文样式选项
 export const TRANSLATION_STYLE_OPTIONS = [
     { value: TranslationStyle.NONE, label: "无样式" },
+    { value: TranslationStyle.BUBBLE_POSTAL, label: "晴空邮喵（默认）" },
+    { value: TranslationStyle.BUBBLE_BLUE, label: "云朵猫猫" },
+    { value: TranslationStyle.BUBBLE_PINK, label: "樱花兔兔" },
+    { value: TranslationStyle.BUBBLE_MINT, label: "森林蛙蛙" },
+    { value: TranslationStyle.BUBBLE_PURPLE, label: "星月猫猫" },
+    { value: TranslationStyle.BUBBLE_ORANGE, label: "布丁小熊" },
     { value: TranslationStyle.HIGHLIGHT, label: "高亮显示" },
-    { value: TranslationStyle.UNDERLINE, label: "下划线" },
     { value: TranslationStyle.BACKGROUND, label: "背景色" },
     { value: TranslationStyle.BORDER, label: "边框" },
-    { value: TranslationStyle.SHADOW, label: "阴影" },
     { value: TranslationStyle.SIDE_LINE, label: "侧边线" },
+    { value: TranslationStyle.LETTER_DIVIDER, label: "信纸分隔" },
     { value: TranslationStyle.MARKER, label: "柔和荧光笔" },
-    { value: TranslationStyle.LETTER_DIVIDER, label: "信纸分隔" }
+    { value: TranslationStyle.UNDERLINE, label: "下划线" },
+    { value: TranslationStyle.SHADOW, label: "阴影" }
 ]
 
 // 触发方式选项

@@ -4,6 +4,7 @@
  */
 
 import { UI_FONT_FAMILY } from "@/constants/fonts"
+import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
 
 import { getTranslationStyleCSS, type TranslationStyleUnion } from "./style"
 import { createTranslationMark } from "./translationMark"
@@ -230,7 +231,7 @@ export function createTranslationContainerElement(
  */
 export function createTranslationDisplayElement(
     text: string,
-    style: TranslationStyleUnion = "highlight"
+    style: TranslationStyleUnion = DEFAULT_TRANSLATION_STYLE
 ): Element {
     // 根据样式选择合适的元素标签
     const translationElement = document.createElement("font")

@@ -19,7 +19,10 @@ import {
     TRANSLATION_STYLE_OPTIONS
 } from "@/constants"
 import { configAtom, updateConfigAtom } from "@/state"
-import type { TranslationStyleType } from "@/types/translationStyle"
+import {
+    DEFAULT_TRANSLATION_STYLE,
+    type TranslationStyleType
+} from "@/types/translationStyle"
 import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
 const SummaryControls = styled.div`
@@ -142,7 +145,7 @@ export const Basic: React.FunctionComponent = () => {
                     <CustomToggle
                         id="enable-viewport-translation"
                         aria-label="按阅读范围翻译"
-                        checked={config.enableViewportTranslation ?? false}
+                        checked={config.enableViewportTranslation ?? true}
                         onChange={checked =>
                             updateConfig({ enableViewportTranslation: checked })
                         }
@@ -198,7 +201,9 @@ export const Basic: React.FunctionComponent = () => {
                     description="选择翻译文本的显示样式"
                 >
                     <CustomSelect
-                        value={config.translationStyle || "highlight"}
+                        value={
+                            config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
+                        }
                         onChange={value =>
                             updateConfig({
                                 translationStyle: value as TranslationStyleType
@@ -208,7 +213,9 @@ export const Basic: React.FunctionComponent = () => {
                         placeholder="选择译文样式"
                     />
                     <StylePreview
-                        style={config.translationStyle || "highlight"}
+                        style={
+                            config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
+                        }
                     />
                 </FormRow>
 

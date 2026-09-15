@@ -28,7 +28,15 @@ export enum TranslationStyle {
     MARKER = "marker",
 
     /** 信纸分隔 - 译文上方细虚线 */
-    LETTER_DIVIDER = "letter-divider"
+    LETTER_DIVIDER = "letter-divider",
+
+    /** 晴空邮喵 - 抱信白猫与蓝白云纹气泡 */
+    BUBBLE_POSTAL = "bubble-postal",
+    BUBBLE_BLUE = "bubble-blue",
+    BUBBLE_PINK = "bubble-pink",
+    BUBBLE_MINT = "bubble-mint",
+    BUBBLE_PURPLE = "bubble-purple",
+    BUBBLE_ORANGE = "bubble-orange"
 }
 
 /**
@@ -46,3 +54,11 @@ export type TranslationStyleType =
     | "side-line"
     | "marker"
     | "letter-divider"
+    | "bubble-postal"
+    | "bubble-blue"
+    | "bubble-pink"
+    | "bubble-mint"
+    | "bubble-purple"
+    | "bubble-orange"
+
+export const DEFAULT_TRANSLATION_STYLE = TranslationStyle.BUBBLE_POSTAL

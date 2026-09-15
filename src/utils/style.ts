@@ -6,6 +6,7 @@ import { UI_FONT_FAMILY } from "../constants/fonts"
  */
 
 import {
+    DEFAULT_TRANSLATION_STYLE,
     TranslationStyle,
     type TranslationStyleType
 } from "../types/translationStyle"
@@ -42,6 +43,63 @@ export function injectCssText(cssText: string) {
 // 为了向后兼容，保留原有的类型别名
 export type TranslationStyleUnion = TranslationStyleType
 
+const bubbleThemes = {
+    [TranslationStyle.BUBBLE_POSTAL]: {
+        color: "#203b57",
+        start: "#eef7ff",
+        end: "#d5eafd",
+        border: "#9ec9e9",
+        radius: "1.25em 1.5em 1.1em 0.65em",
+        description: "晴空邮喵 - 抱信白猫与蓝白云纹，像一封轻轻送达的来信"
+    },
+    [TranslationStyle.BUBBLE_BLUE]: {
+        color: "#183f65",
+        start: "#dff3ff",
+        end: "#bee3ff",
+        border: "#91c9ef",
+        radius: "1.5em 1.5em 1.1em 1.5em",
+        description: "云朵猫猫 - 云端小猫插画与轻柔天空纹理"
+    },
+    [TranslationStyle.BUBBLE_PINK]: {
+        color: "#71354f",
+        start: "#fff0f5",
+        end: "#ffe1ed",
+        border: "#efb5cc",
+        radius: "1.3em 1.3em 0.65em 1.3em",
+        description: "樱花兔兔 - 樱花小兔插画与花瓣粉色纸面"
+    },
+    [TranslationStyle.BUBBLE_MINT]: {
+        color: "#205647",
+        start: "#e5faf2",
+        end: "#d1f3e5",
+        border: "#9dd7bf",
+        radius: "0.85em 1.3em 1.3em 1.3em",
+        description: "森林蛙蛙 - 荷叶小蛙插画与清新森林底纹"
+    },
+    [TranslationStyle.BUBBLE_PURPLE]: {
+        color: "#493774",
+        start: "#eeeaff",
+        end: "#dcdfff",
+        border: "#bbb0e7",
+        radius: "1.1em",
+        description: "星月猫猫 - 月亮小猫插画与梦幻星光"
+    },
+    [TranslationStyle.BUBBLE_ORANGE]: {
+        color: "#704721",
+        start: "#fff5dc",
+        end: "#ffe6be",
+        border: "#e8bd82",
+        radius: "1.4em 1.4em 1.4em 0.65em",
+        description: "布丁小熊 - 布丁小熊插画与奶油格纹"
+    }
+}
+
+function getBubbleTheme(style: TranslationStyleType) {
+    return Object.prototype.hasOwnProperty.call(bubbleThemes, style)
+        ? bubbleThemes[style as keyof typeof bubbleThemes]
+        : undefined
+}
+
 /**
  * 获取翻译样式的CSS文本
  *
@@ -49,7 +107,7 @@ export type TranslationStyleUnion = TranslationStyleType
  * 因此这里的天空蓝 / 纸 / 深蓝灰都必须写字面值，与 theme.scss 的 token 保持一致。
  */
 export function getTranslationStyleCSS(
-    style: TranslationStyleType = TranslationStyle.HIGHLIGHT
+    style: TranslationStyleType = DEFAULT_TRANSLATION_STYLE
 ): string {
     // 字体直接写入译文节点，避免继承宿主网页的字体或文字变换。
     const baseStyle = `
@@ -75,6 +133,55 @@ export function getTranslationStyleCSS(
         padding: 0.3em 0.7em;
         border-radius: 8px;
     `
+
+    const bubble = getBubbleTheme(style)
+    if (bubble) {
+        // 扩展内预览和第三方网页均从扩展包加载插画，不向宿主站点请求资源。
+        const assetPath = `/assets/translation-bubbles/${style}.webp`
+        const assetUrl =
+            typeof chrome !== "undefined" && chrome.runtime?.getURL
+                ? chrome.runtime.getURL(assetPath)
+                : assetPath
+        const textures = {
+            [TranslationStyle.BUBBLE_POSTAL]:
+                "radial-gradient(ellipse at 18% 100%, #ffffffcc 0 28%, transparent 30%)",
+            [TranslationStyle.BUBBLE_BLUE]:
+                "radial-gradient(ellipse at 20% 100%, #ffffffcc 0 25%, transparent 26%)",
+            [TranslationStyle.BUBBLE_PINK]:
+                "radial-gradient(ellipse at 30% 70%, #f3b7d04d 0 12%, transparent 14%)",
+            [TranslationStyle.BUBBLE_MINT]:
+                "radial-gradient(ellipse at 15% 90%, #b3dec766 0 22%, transparent 24%)",
+            [TranslationStyle.BUBBLE_PURPLE]:
+                "radial-gradient(circle, #ffffffdd 0 1.5px, transparent 2px)",
+            [TranslationStyle.BUBBLE_ORANGE]:
+                "repeating-linear-gradient(90deg, #edc48b26 0 8px, transparent 8px 16px)"
+        }
+        return (
+            baseStyle +
+            `
+            display: inline-block;
+            position: relative;
+            overflow: visible;
+            white-space: normal;
+            text-align: start;
+            margin: 0;
+            min-width: min(100%, 12em);
+            min-height: 0;
+            max-width: 100%;
+            padding: 0.3em calc(min(4em, 22%) + 0.7em) 0.3em 0.7em;
+            border: 1px solid ${bubble.border};
+            border-radius: ${bubble.radius};
+            color: ${bubble.color};
+            background-color: ${bubble.start};
+            background-image: url("${assetUrl}"), ${textures[style as keyof typeof textures]}, linear-gradient(145deg, #ffffffee, ${bubble.start} 55%, ${bubble.end});
+            background-size: min(4em, 22%) auto, 32px 14px, 100% 100%;
+            background-position: right 0.3em center, left bottom, center;
+            background-repeat: no-repeat, repeat-x, no-repeat;
+            text-shadow: none;
+            box-shadow: inset 0 0 0 3px #ffffff80, 0 4px 12px ${bubble.border}35;
+        `
+        )
+    }
 
     switch (style) {
         case TranslationStyle.NONE:
@@ -193,8 +300,7 @@ export function getTranslationStyleCSS(
             )
 
         default:
-            // 默认使用高亮样式
-            return getTranslationStyleCSS(TranslationStyle.HIGHLIGHT)
+            return getTranslationStyleCSS(DEFAULT_TRANSLATION_STYLE)
     }
 }
 
@@ -246,6 +352,10 @@ export function getTranslationElementTag(style: TranslationStyleType): string {
  * 获取样式的描述信息
  */
 export function getStyleDescription(style: TranslationStyleType): string {
+    const bubble = getBubbleTheme(style)
+    if (bubble) {
+        return bubble.description
+    }
     switch (style) {
         case TranslationStyle.NONE:
             return "无样式 - 寒蝉全圆体，保留网页文字颜色"

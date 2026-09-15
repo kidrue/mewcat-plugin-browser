@@ -1,5 +1,6 @@
 import { find, reduce } from "ramda"
 
+import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
 import {
     createLoadingELement,
     createTranslationContainerElement,
@@ -48,7 +49,7 @@ export interface ImmersiveTranslatorConfig {
     maxRequestsPerSecond?: number
     /** 单次请求最大文本长度（可选，默认1024） */
     maxTextLengthPerRequest?: number
-    /** 翻译样式（可选，默认highlight） */
+    /** 翻译样式（可选，默认晴空邮喵） */
     translationStyle?: TranslationStyleUnion
     /** 可视区域最小节点阈值（可选，默认20） */
     minVisibleNodesThreshold?: number
@@ -140,7 +141,7 @@ export class ImmersiveTranslator {
     private neverTranslateUrls: string[] = []
 
     /** 翻译样式配置 */
-    private translationStyle: TranslationStyleUnion = "highlight"
+    private translationStyle: TranslationStyleUnion = DEFAULT_TRANSLATION_STYLE
 
     /** 可视区域翻译相关配置 */
     private minVisibleNodesThreshold: number = 20
@@ -186,7 +187,8 @@ export class ImmersiveTranslator {
         this.currentModel = config.currentModel ?? "default"
         this.MAX_CONCURRENT_REQUESTS = config.maxRequestsPerSecond ?? 3
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
-        this.translationStyle = config.translationStyle ?? "highlight"
+        this.translationStyle =
+            config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
         this.enableContext = config.enableContext ?? false
         this.enableViewportTranslation =
             config.enableViewportTranslation ?? false
@@ -305,7 +307,8 @@ export class ImmersiveTranslator {
         this.currentModel = config.currentModel ?? "default"
         this.MAX_CONCURRENT_REQUESTS = config.maxRequestsPerSecond ?? 3
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
-        this.translationStyle = config.translationStyle ?? "highlight"
+        this.translationStyle =
+            config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
         this.neverTranslateLanguages = config.neverTranslateLanguages ?? []
         this.neverTranslateUrls = config.neverTranslateUrls ?? []
         this.translationRuntimeConfig = {

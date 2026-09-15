@@ -1,6 +1,7 @@
 import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import { type BaseModel } from "@/types"
 import { AiRole, type ExtensionConfig } from "@/types/config"
+import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
 import { logEnvironmentInfo } from "@/utils/environment"
 
 // 在非生产环境中输出环境信息
@@ -69,7 +70,7 @@ export const defaultExtensionConfig: ExtensionConfig = {
         "af",
         "zh-TW"
     ],
-    translationStyle: "highlight",
+    translationStyle: DEFAULT_TRANSLATION_STYLE,
     autoTranslateDelay: 700,
 
     // 翻译服务配置 - 生产环境中不包含API密钥
@@ -88,7 +89,7 @@ export const defaultExtensionConfig: ExtensionConfig = {
     // 扩展配置
     extensionEnabled: true,
     cacheEnabled: true,
-    enableViewportTranslation: false,
+    enableViewportTranslation: true,
     currentModel: GOOGLE_TRANSLATE_MODEL_ID,
 
     // AI 思考能力配置

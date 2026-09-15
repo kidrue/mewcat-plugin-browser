@@ -4,8 +4,12 @@ import { describe, expect, it } from "vitest"
 
 import { TRANSLATION_STYLE_OPTIONS } from "@/constants/options"
 import { ImmersiveTranslator } from "@/translation/ImmersiveTranslator"
+import { ExtensionConfigSchema } from "@/types/extensionConfigSchema"
 import { TranslationStyle } from "@/types/translationStyle"
-import { createTranslationDisplayElement } from "@/utils/dom"
+import {
+    createTranslationDisplayElement,
+    setTranslationDisplayContent
+} from "@/utils/dom"
 import {
     getStyleDescription,
     getTranslationElementTag,
@@ -74,6 +78,73 @@ describe("empty page translation results", () => {
 })
 
 describe("additional translation styles", () => {
+    it("orders styles from no decoration to richer visual treatments", () => {
+        expect(TRANSLATION_STYLE_OPTIONS.map(option => option.value)).toEqual([
+            TranslationStyle.NONE,
+            "bubble-postal",
+            TranslationStyle.BUBBLE_BLUE,
+            TranslationStyle.BUBBLE_PINK,
+            TranslationStyle.BUBBLE_MINT,
+            TranslationStyle.BUBBLE_PURPLE,
+            TranslationStyle.BUBBLE_ORANGE,
+            TranslationStyle.HIGHLIGHT,
+            TranslationStyle.BACKGROUND,
+            TranslationStyle.BORDER,
+            TranslationStyle.SIDE_LINE,
+            TranslationStyle.LETTER_DIVIDER,
+            TranslationStyle.MARKER,
+            TranslationStyle.UNDERLINE,
+            TranslationStyle.SHADOW
+        ])
+    })
+
+    it.each([
+        ["bubble-postal", "晴空邮喵（默认）"],
+        ["bubble-blue", "云朵猫猫"],
+        ["bubble-pink", "樱花兔兔"],
+        ["bubble-mint", "森林蛙蛙"],
+        ["bubble-purple", "星月猫猫"],
+        ["bubble-orange", "布丁小熊"]
+    ] as const)(
+        "keeps %s selectable, persistable and decorated after text updates",
+        (value, label) => {
+            expect(TRANSLATION_STYLE_OPTIONS).toContainEqual({ value, label })
+            expect(
+                ExtensionConfigSchema.shape.translationStyle.safeParse(value)
+                    .success
+            ).toBe(true)
+            const element = createTranslationDisplayElement(
+                "<b>初始译文</b>",
+                value
+            ) as HTMLElement
+            expect(element.querySelector(".mewcat-bubble-tail")).toBeNull()
+            const background = element.style.backgroundImage
+            expect(background).toContain(
+                `/assets/translation-bubbles/${value}.webp`
+            )
+            expect(element.style.minHeight).toBe("0")
+            expect(element.style.paddingTop).toBe("0.3em")
+            expect(element.style.paddingBottom).toBe("0.3em")
+            expect(element.style.marginLeft).toBe("0px")
+            expect(element.style.paddingLeft).toBe("0.7em")
+            setTranslationDisplayContent(
+                element,
+                "<a href='#example'>更新译文</a>"
+            )
+            expect(element.textContent).toBe("更新译文")
+            expect(element.querySelector(".mewcat-bubble-tail")).toBeNull()
+            expect(element.style.backgroundImage).toBe(background)
+            expect(element.querySelector("a")?.getAttribute("href")).toBe(
+                "#example"
+            )
+            expect(
+                element.lastElementChild?.classList.contains(
+                    "mewcat-translation-mark"
+                )
+            ).toBe(true)
+        }
+    )
+
     it("offers three distinct styles with the corresponding insertion layout", () => {
         const expected = [
             { value: TranslationStyle.SIDE_LINE, label: "侧边线", block: true },
