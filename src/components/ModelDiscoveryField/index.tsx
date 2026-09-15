@@ -160,8 +160,9 @@ export function ModelDiscoveryField({
 
     if (manualEntry) {
         return (
-            <FieldStack>
+            <FieldStack id={`model-field-${model.id}`} tabIndex={-1}>
                 <ApiKeyInput
+                    id={`model-name-${model.id}`}
                     label="模型名称"
                     value={model.params.modelName}
                     disabledVisitable
@@ -177,7 +178,7 @@ export function ModelDiscoveryField({
     }
 
     return (
-        <FieldStack>
+        <FieldStack id={`model-field-${model.id}`} tabIndex={-1}>
             <NativeSelect
                 id={`model-name-${model.id}`}
                 aria-label="模型名称"

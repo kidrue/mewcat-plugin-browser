@@ -136,6 +136,7 @@ const HelperText = styled.div`
 `
 
 interface ApiKeyInputProps {
+    id?: string
     label: string
     value: string
     disabledVisitable?: boolean
@@ -152,6 +153,7 @@ interface ApiKeyInputProps {
 }
 
 const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
+    id,
     label,
     value,
     onChange,
@@ -237,6 +239,7 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
         <Container>
             <InputWrapper>
                 <Input
+                    id={id}
                     aria-label={label}
                     type={isVisible ? "text" : "password"}
                     value={value}

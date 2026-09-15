@@ -339,6 +339,16 @@ export function hasConfiguredAiModels(aiModelList?: BaseModel[]): boolean {
     return Boolean(aiModelList?.length)
 }
 
+function focusConfigurationField(id: string, field: "api-key" | "model-name") {
+    const target = document.getElementById(`${field}-${id}`)
+    target?.scrollIntoView?.({ block: "center" })
+    if (target instanceof HTMLSelectElement && target.disabled) {
+        document.getElementById(`model-field-${id}`)?.focus()
+        return
+    }
+    target?.focus()
+}
+
 export const TranslateServices: React.FunctionComponent = () => {
     const [config] = useAtom(configAtom)
     const updateConfig = useSetAtom(updateConfigAtom)
@@ -397,7 +407,15 @@ export const TranslateServices: React.FunctionComponent = () => {
 
     const handleTestModel = useCallback(() => {
         if (!currentModelData.params.apiKey.trim()) {
+            focusConfigurationField(currentModelData.id, "api-key")
             return Promise.reject(new Error("请先填写 API Key"))
+        }
+        if (
+            PROVIDER_REGISTRY[currentModelData.type].discovery !== "none" &&
+            !currentModelData.params.modelName?.trim()
+        ) {
+            focusConfigurationField(currentModelData.id, "model-name")
+            return Promise.reject(new Error("请选择模型"))
         }
         return testConfiguredModel(
             currentModelData,
@@ -413,6 +431,30 @@ export const TranslateServices: React.FunctionComponent = () => {
                 modelId
             )
             if (!model) {
+                return
+            }
+
+            if (
+                PROVIDER_REGISTRY[model.type].discovery !== "none" &&
+                !model.params.apiKey.trim()
+            ) {
+                Toast.show({
+                    type: ToastType.WARNING,
+                    message: "请先填写 API Key"
+                })
+                focusConfigurationField(model.id, "api-key")
+                return
+            }
+
+            if (
+                PROVIDER_REGISTRY[model.type].discovery !== "none" &&
+                !model.params.modelName?.trim()
+            ) {
+                Toast.show({
+                    type: ToastType.WARNING,
+                    message: "请选择模型"
+                })
+                focusConfigurationField(model.id, "model-name")
                 return
             }
 
@@ -965,6 +1007,12 @@ export const TranslateServices: React.FunctionComponent = () => {
                                                         }
                                                     >
                                                         <ApiKeyInput
+                                                            id={
+                                                                item ===
+                                                                "apiKey"
+                                                                    ? `api-key-${currentModelData.id}`
+                                                                    : undefined
+                                                            }
                                                             label={
                                                                 fieldConfig.label
                                                             }

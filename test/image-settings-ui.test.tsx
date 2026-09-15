@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     updateConfig: vi.fn(),
     updateAiModelConfig: vi.fn(),
     translateImage: vi.fn(),
+    testConfiguredModel: vi.fn(),
     discovery: {
         models: [],
         isLoading: false,
@@ -84,6 +85,10 @@ vi.mock("@/hooks/useModelDiscovery", () => ({
 
 vi.mock("../src/hooks/useModelDiscovery.ts", () => ({
     useModelDiscovery: () => mocks.discovery
+}))
+
+vi.mock("@/translation/translationService", () => ({
+    testConfiguredModel: mocks.testConfiguredModel
 }))
 
 const act = (
@@ -281,6 +286,7 @@ beforeEach(() => {
     mocks.updateConfig.mockReset()
     mocks.updateAiModelConfig.mockReset()
     mocks.translateImage.mockReset()
+    mocks.testConfiguredModel.mockReset()
     mocks.discovery = {
         models: [],
         isLoading: false,
@@ -887,6 +893,99 @@ describe("custom model visual capability", () => {
         root = await render(<TranslateServices />)
 
         expect(document.body.textContent).not.toContain("支持图片输入")
+    })
+})
+
+describe("translation service model validation", () => {
+    it("prompts for a missing model and focuses its select before testing", async () => {
+        mocks.config = createConfig({
+            aiModelList: [createModel("service", { modelName: "" })],
+            currentModel: "service"
+        })
+        mocks.discovery.models = [
+            {
+                id: "gpt-5",
+                name: "GPT-5",
+                availability: "verified",
+                vision: "supported"
+            }
+        ]
+        const [{ TranslateServices }, { Toast }] = await Promise.all([
+            import("../src/options/TranslateServices"),
+            import("../src/utils/toast")
+        ])
+        const showToast = vi.spyOn(Toast, "show").mockImplementation(() => {})
+        root = await render(<TranslateServices />)
+
+        const select = document.getElementById("model-name-service")
+        expect(select).toBeInstanceOf(HTMLSelectElement)
+        expect((select as HTMLSelectElement).disabled).toBe(false)
+        const testButton = Array.from(document.querySelectorAll("button")).find(
+            button => button.textContent?.trim() === "测试"
+        )!
+        await click(testButton)
+
+        expect(showToast).toHaveBeenCalledWith(
+            expect.objectContaining({ message: "请选择模型" })
+        )
+        expect(document.activeElement).toBe(select)
+        expect(mocks.testConfiguredModel).not.toHaveBeenCalled()
+    })
+
+    it("focuses the manual model name input when the API Key test has no model", async () => {
+        mocks.config = createConfig({
+            aiModelList: [createModel("service", { modelName: "" })],
+            currentModel: "service"
+        })
+        mocks.discovery.manualEntry = true
+        const { TranslateServices } = await import(
+            "../src/options/TranslateServices"
+        )
+        root = await render(<TranslateServices />)
+
+        const modelInput = document.querySelector<HTMLInputElement>(
+            'input[placeholder="请输入自定义接口的模型名称"]'
+        )
+        expect(modelInput).not.toBeNull()
+        const testButton = document
+            .querySelector('input[aria-label$="API Key"]')
+            ?.parentElement?.querySelector<HTMLButtonElement>(
+                "button[title='测试']"
+            )
+        expect(testButton).not.toBeNull()
+        await click(testButton!)
+
+        expect(document.activeElement).toBe(modelInput)
+        expect(document.body.textContent).toContain("请选择模型")
+        expect(mocks.testConfiguredModel).not.toHaveBeenCalled()
+    })
+
+    it("focuses API Key first when the model select is disabled without a key", async () => {
+        mocks.config = createConfig({
+            aiModelList: [
+                createModel("service", { apiKey: "", modelName: "" })
+            ],
+            currentModel: "service"
+        })
+        const [{ TranslateServices }, { Toast }] = await Promise.all([
+            import("../src/options/TranslateServices"),
+            import("../src/utils/toast")
+        ])
+        const showToast = vi.spyOn(Toast, "show").mockImplementation(() => {})
+        root = await render(<TranslateServices />)
+
+        const testButton = Array.from(document.querySelectorAll("button")).find(
+            button => button.textContent?.trim() === "测试"
+        )!
+        await click(testButton)
+
+        expect(showToast).toHaveBeenCalledWith(
+            expect.objectContaining({ message: "请先填写 API Key" })
+        )
+        expect(document.activeElement).toBe(
+            document.querySelector('input[aria-label$="API Key"]')
+        )
+        expect(mocks.testConfiguredModel).not.toHaveBeenCalled()
     })
 })
 
