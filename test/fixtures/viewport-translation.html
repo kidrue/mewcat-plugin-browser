@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+    <meta charset="UTF-8" />
+    <title>阅读范围翻译浏览器验收</title>
+    <style>
+        body {
+            margin: 24px;
+            font: 16px system-ui;
+        }
+        #stage {
+            width: 600px;
+            height: 300px;
+            overflow: auto;
+            border: 2px solid #369;
+        }
+        #stage p {
+            height: 100px;
+            box-sizing: border-box;
+            margin: 0;
+            padding: 12px;
+            border-bottom: 1px solid #aaa;
+        }
+        #report {
+            white-space: pre-wrap;
+        }
+    </style>
+    <h1>阅读范围翻译浏览器验收</h1>
+    <p>
+        使用真实 IntersectionObserver、文本
+        Range、嵌套滚动和模拟翻译响应，不调用外部 API。
+    </p>
+    <button id="run">运行浏览器验收</button>
+    <pre id="report" role="status">尚未运行</pre>
+    <div id="stage"></div>
+    <script type="module" src="./viewport-translation.ts"></script>
+</html>

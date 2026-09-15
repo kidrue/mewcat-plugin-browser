@@ -88,6 +88,7 @@ export const defaultExtensionConfig: ExtensionConfig = {
     // 扩展配置
     extensionEnabled: true,
     cacheEnabled: true,
+    enableViewportTranslation: false,
     currentModel: GOOGLE_TRANSLATE_MODEL_ID,
 
     // AI 思考能力配置

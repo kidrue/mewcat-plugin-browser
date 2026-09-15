@@ -553,13 +553,15 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         prevModelRef.current = config.currentModel
 
         if (immersiveTranslatorRef.current) {
-            await immersiveTranslatorRef.current.updateConfig({
-                ...config,
-                prioritizeVisibleArea: true
-            })
+            const restarted = await immersiveTranslatorRef.current.updateConfig(
+                {
+                    ...config,
+                    prioritizeVisibleArea: true
+                }
+            )
 
             // 如果模型切换且当前正在翻译，清空翻译并重新翻译
-            if (modelChanged && isTranslateRef.current) {
+            if (modelChanged && isTranslateRef.current && !restarted) {
                 console.log(
                     "🔄 [TranslationControlCenter] 检测到模型切换，重新翻译页面"
                 )

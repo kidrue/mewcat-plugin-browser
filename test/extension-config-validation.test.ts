@@ -20,6 +20,11 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it("defaults reading-range translation off and preserves a stored opt-in", () => {
+        expect(repairExtensionConfig({}, defaultExtensionConfig).enableViewportTranslation).toBe(false)
+        expect(repairExtensionConfig({ ...defaultExtensionConfig, enableViewportTranslation: true }, defaultExtensionConfig).enableViewportTranslation).toBe(true)
+        expect(repairExtensionConfig({ ...defaultExtensionConfig, enableViewportTranslation: "true" }, defaultExtensionConfig).enableViewportTranslation).toBe(false)
+    })
     it("preserves the image switch across concurrent config updates and reload", async () => {
         const { createStore } = await import("jotai")
         const { configAtom, updateConfigAtom } = await import(

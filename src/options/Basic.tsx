@@ -133,6 +133,23 @@ export const Basic: React.FunctionComponent = () => {
                 </FormRow>
             </OptionsSection>
 
+            <OptionsSection title="阅读翻译" artwork="desk" icon="book">
+                <FormRow
+                    label="按阅读范围翻译"
+                    description="仅翻译当前屏及上下各一屏，快速滚动时暂停新请求，停下后优先翻译正在阅读的内容，减少额度消耗。"
+                    controlId="enable-viewport-translation"
+                >
+                    <CustomToggle
+                        id="enable-viewport-translation"
+                        aria-label="按阅读范围翻译"
+                        checked={config.enableViewportTranslation ?? false}
+                        onChange={checked =>
+                            updateConfig({ enableViewportTranslation: checked })
+                        }
+                    />
+                </FormRow>
+            </OptionsSection>
+
             <OptionsSection title="页面总结" artwork="desk" icon="book">
                 <FormRow
                     label="自动总结页面"

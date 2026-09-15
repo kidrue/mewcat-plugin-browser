@@ -62,7 +62,6 @@ export function getTranslationStyleCSS(
         word-spacing: normal;
         text-transform: none;
         text-indent: 0;
-        white-space: pre-wrap;
         word-break: normal;
         overflow-wrap: anywhere;
         box-sizing: border-box;

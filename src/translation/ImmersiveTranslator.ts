@@ -35,6 +35,7 @@ import {
     translateBatch as translateWithService,
     type TranslationRuntimeConfig
 } from "./translationService"
+import { ViewportTranslationScheduler } from "./ViewportTranslationScheduler"
 
 /**
  * ImmersiveTranslator 构造函数配置
@@ -53,6 +54,8 @@ export interface ImmersiveTranslatorConfig {
     minVisibleNodesThreshold?: number
     /** 是否优先翻译可视区域（可选，默认true） */
     prioritizeVisibleArea?: boolean
+    /** 是否按当前屏及上下各一屏动态调度（默认 false） */
+    enableViewportTranslation?: boolean
     /** 永不翻译的语言列表（可选） */
     neverTranslateLanguages?: string[]
     /** 总是翻译的语言列表（可选） */
@@ -128,6 +131,7 @@ export class ImmersiveTranslator {
 
     /** document.body 监听器，用于检测新增的未翻译节点 */
     private bodyObserver: MutationObserver | null = null
+    private bodyRefreshTimer: ReturnType<typeof setTimeout> | undefined
 
     /** 永不翻译的语言列表 */
     private neverTranslateLanguages: string[] = []
@@ -146,6 +150,10 @@ export class ImmersiveTranslator {
 
     /** 翻译任务中断标志 */
     private isTranslationAborted = false
+    private translationSession = 0
+    private enableViewportTranslation = false
+    private viewportScheduler: ViewportTranslationScheduler | null = null
+    private legacyInFlight = new Set<string>()
 
     /** DOM 插入批次大小（每批插入的节点数量） */
     private readonly DOM_INSERT_BATCH_SIZE = 20
@@ -180,6 +188,8 @@ export class ImmersiveTranslator {
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
         this.translationStyle = config.translationStyle ?? "highlight"
         this.enableContext = config.enableContext ?? false
+        this.enableViewportTranslation =
+            config.enableViewportTranslation ?? false
         this.translationRuntimeConfig = {
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
@@ -270,6 +280,27 @@ export class ImmersiveTranslator {
      * 更新配置
      */
     public async updateConfig(config: ImmersiveTranslatorConfig) {
+        const previousRuntime = this.translationRuntimeConfig
+        const restartReadingSession = Boolean(
+            this.viewportScheduler &&
+                !this.isTranslationAborted &&
+                (this.targetLanguage !== config.targetLanguage ||
+                    this.currentModel !== (config.currentModel ?? "default") ||
+                    previousRuntime.aiRole !== config.aiRole ||
+                    Boolean(previousRuntime.enableThinking) !==
+                        Boolean(config.enableThinking) ||
+                    JSON.stringify(
+                        previousRuntime.aiModelList.find(
+                            model => model.id === previousRuntime.currentModel
+                        )
+                    ) !==
+                        JSON.stringify(
+                            config.aiModelList.find(
+                                model => model.id === config.currentModel
+                            )
+                        ))
+        )
+        if (restartReadingSession) this.clearAllTranslations()
         this.targetLanguage = config.targetLanguage
         this.currentModel = config.currentModel ?? "default"
         this.MAX_CONCURRENT_REQUESTS = config.maxRequestsPerSecond ?? 3
@@ -283,6 +314,134 @@ export class ImmersiveTranslator {
             aiRole: config.aiRole,
             enableThinking: config.enableThinking
         }
+        this.enableViewportTranslation =
+            config.enableViewportTranslation ?? false
+        if (restartReadingSession) {
+            await this.startImmersiveTranslation()
+            return true
+        }
+        if (this.viewportScheduler) {
+            this.viewportScheduler.setViewportOnly(
+                this.enableViewportTranslation
+            )
+        } else if (
+            this.enableViewportTranslation &&
+            !this.isTranslationAborted &&
+            this.sourceTextNodes.length
+        ) {
+            this.createViewportScheduler()
+            this.clearLoadingForNodeIds(
+                this.sourceTextNodes
+                    .filter(node => !this.legacyInFlight.has(node.id))
+                    .map(node => node.id)
+            )
+            this.viewportScheduler.add(
+                this.sourceTextNodes.filter(node => {
+                    const display = this.translationNodes.find(
+                        item => item.id === node.id
+                    )
+                    return (
+                        !node.translateText &&
+                        display?.status !== "translated" &&
+                        display?.status !== "error" &&
+                        !this.legacyInFlight.has(node.id)
+                    )
+                })
+            )
+            this.startBodyObserver()
+        }
+        return false
+    }
+
+    private createViewportScheduler(): void {
+        const session = this.translationSession
+        const runtime = this.translationRuntimeConfig
+        const targetLanguage = this.targetLanguage
+        const cache = this.translationCache
+        const modelId = this.currentModel
+        const sourceLanguage = this.detectedLanguage
+        const cacheKey = (node: TranslationNode): CacheKeyParams => ({
+            text: node.originText,
+            sourceLang: sourceLanguage,
+            targetLang: targetLanguage,
+            modelId,
+            aiRole: runtime.aiRole
+        })
+        this.viewportScheduler = new ViewportTranslationScheduler({
+            viewportOnly: this.enableViewportTranslation,
+            getLimits: () => ({
+                maxRequestsPerSecond: this.MAX_CONCURRENT_REQUESTS,
+                maxTextLengthPerRequest: this.MAX_REQUEST_BYTES,
+                maxConcurrent: Math.max(
+                    0,
+                    Math.floor(this.MAX_CONCURRENT_REQUESTS) -
+                        this.legacyInFlight.size
+                )
+            }),
+            readCache: async node => (cache ? cache.get(cacheKey(node)) : null),
+            writeCache: async (node, text) => {
+                if (
+                    cache &&
+                    session === this.translationSession &&
+                    !this.isTranslationAborted
+                ) {
+                    await cache.set(cacheKey(node), text)
+                }
+            },
+            translate: async nodes => {
+                this.createTranslationContainers(nodes)
+                this.showLoadingByIds(nodes.map(node => node.id))
+                // Reading mode deliberately avoids the unused full-page summary request.
+                const result = await translateWithService(
+                    runtime,
+                    [
+                        {
+                            role: "user",
+                            content: nodes
+                                .map(node => node.originText)
+                                .join("\n\n%%\n\n")
+                        }
+                    ],
+                    targetLanguage,
+                    { pageTitle: document.title }
+                )
+                return splitTranslationResults(result, nodes.length)
+            },
+            render: results => {
+                if (
+                    session !== this.translationSession ||
+                    this.isTranslationAborted
+                )
+                    return
+                this.createTranslationContainers(results.map(item => item.node))
+                for (const { node, text } of results) {
+                    const source = this.sourceTextNodes.find(
+                        item => item.id === node.id
+                    )
+                    if (source) source.translateText = text
+                }
+                this.clearLoadingForNodeIds(results.map(item => item.node.id))
+                this.renderTranslationResults(
+                    results.map(({ node, text }) => ({ id: node.id, text }))
+                )
+            },
+            onError: (error, nodes) => {
+                if (
+                    session !== this.translationSession ||
+                    this.isTranslationAborted
+                )
+                    return
+                this.clearLoadingForNodeIds(nodes.map(node => node.id))
+                this.addErrorForBatch(
+                    error instanceof Error ? error.message : String(error),
+                    nodes.map(node => ({
+                        id: node.id,
+                        role: "user",
+                        content: node.originText
+                    }))
+                )
+            }
+        })
     }
 
     /**
@@ -378,6 +537,7 @@ export class ImmersiveTranslator {
      * @returns Promise<boolean> 翻译是否成功执行
      */
     public async startImmersiveTranslation(): Promise<boolean> {
+        let session: number
         // 🕐 开始性能监控
         this.performanceMonitor?.start(
             "ImmersiveTranslator.startImmersiveTranslation"
@@ -387,6 +547,7 @@ export class ImmersiveTranslator {
             // 第一步：清空所有翻译状态和DOM修改
             this.performanceMonitor?.startStage("清空翻译状态")
             this.clearAllTranslations()
+            session = this.translationSession
             this.performanceMonitor?.endStage()
 
             // 🟢 重置中断标志，允许新的翻译任务执行
@@ -435,6 +596,17 @@ export class ImmersiveTranslator {
                     reason: "未找到需要翻译的内容"
                 })
                 return false
+            }
+
+            if (this.enableViewportTranslation) {
+                this.createViewportScheduler()
+                this.viewportScheduler.add(this.sourceTextNodes)
+                this.performanceMonitor?.end({
+                    success: true,
+                    totalNodes: this.sourceTextNodes.length,
+                    strategy: "reading-range"
+                })
+                return true
             }
 
             // 第四步：创建并插入翻译容器节点
@@ -488,16 +660,18 @@ export class ImmersiveTranslator {
             }
             throw error
         } finally {
-            // 🔴 只有在未中断的情况下才启动监听器
-            if (!this.isTranslationAborted) {
-                // 清理所有loading节点
-                this.clearAllLoadingNodes()
-                // 启动 DOM 变化监听器
-                // 启动 body 监听器，检测新增节点
-                this.startBodyObserver()
-            } else {
-                // 如果已中断，只清理loading节点，不启动监听器
-                this.clearAllLoadingNodes()
+            if (session === this.translationSession) {
+                // 🔴 只有在未中断的情况下才启动监听器
+                if (!this.isTranslationAborted) {
+                    // 清理所有loading节点
+                    if (!this.viewportScheduler) this.clearAllLoadingNodes()
+                    // 启动 DOM 变化监听器
+                    // 启动 body 监听器，检测新增节点
+                    this.startBodyObserver()
+                } else {
+                    // 如果已中断，只清理loading节点，不启动监听器
+                    this.clearAllLoadingNodes()
+                }
             }
         }
     }
@@ -794,8 +968,10 @@ export class ImmersiveTranslator {
         }
 
         this.isProcessingRenderQueue = true
+        const session = this.translationSession
 
         const processBatch = () => {
+            if (session !== this.translationSession) return
             // 检查是否已中断
             if (this.isTranslationAborted) {
                 this.renderQueue = []
@@ -839,7 +1015,7 @@ export class ImmersiveTranslator {
     private renderBatch(batch: { id: string; text: string }[]) {
         batch.forEach(({ id: nodeId, text: translateText }) => {
             // 验证翻译文本是否有效
-            if (!translateText || typeof translateText !== "string") {
+            if (typeof translateText !== "string") {
                 console.warn(
                     `[ImmersiveTranslator] 跳过无效的翻译文本: nodeId=${nodeId}, text=${translateText}`
                 )
@@ -854,9 +1030,10 @@ export class ImmersiveTranslator {
                 node => node.id === nodeId
             )
             // 清除对应的加载动画 - 使用loadingNodeList管理
-            if (translateNode) {
-                this.clearLoadingForNodeIds([nodeId])
+            if (!translateNode) {
+                return
             }
+            this.clearLoadingForNodeIds([nodeId])
 
             // 如果翻译结果与原文相同（忽略大小写），跳过渲染
             if (
@@ -870,9 +1047,28 @@ export class ImmersiveTranslator {
             const processedText =
                 this.replaceStayOriginalPlaceholders(translateText)
 
-            // 再次验证处理后的文本
-            if (!processedText || processedText.trim() === "") {
+            // 按 HTML 解析后的文本判空，空标签和空白实体也不展示译文样式。
+            const content = document.createElement("template")
+            content.innerHTML = processedText
+            if (!content.content.textContent?.trim()) {
+                if (translateNode.translate) {
+                    safeRemoveElement(translateNode.translate)
+                }
+                translateNode.translate = undefined
+                translateNode.status = "translated"
+                translateNode.container.setAttribute("hidden", "")
+                ;(translateNode.container as HTMLElement).style.setProperty(
+                    "display",
+                    "none",
+                    "important"
+                )
                 return
+            }
+
+            if (translateNode.container.hasAttribute("hidden")) {
+                translateNode.container.removeAttribute("hidden")
+                ;(translateNode.container as HTMLElement).style.display =
+                    sourceNode.insertTagType === "br" ? "block" : ""
             }
 
             const fontElement = translateNode.translate
@@ -899,6 +1095,10 @@ export class ImmersiveTranslator {
     public clearAllTranslations() {
         // 🔴 设置中断标志，停止所有正在执行的翻译任务
         this.isTranslationAborted = true
+        this.translationSession++
+        this.viewportScheduler?.destroy()
+        this.viewportScheduler = null
+        this.legacyInFlight.clear()
 
         // 🔴 清空渲染队列，停止分批渲染
         this.renderQueue = []
@@ -977,6 +1177,7 @@ export class ImmersiveTranslator {
         }))
 
         this.isTranslationAborted = true
+        this.viewportScheduler?.destroy()
         await abortAllTranslations()
 
         if (!this.translationCache || cacheParams.length === 0) {
@@ -1099,6 +1300,14 @@ export class ImmersiveTranslator {
         } = {}
     ): Promise<boolean> {
         const { checkCache = true, useConcurrentGroups = false } = options
+        const session = this.translationSession
+        const isCurrent = () =>
+            session === this.translationSession && !this.isTranslationAborted
+
+        if (this.viewportScheduler && isCurrent()) {
+            this.viewportScheduler.add(nodes, !checkCache)
+            return true
+        }
 
         // 🔴 检查是否已中断
         if (this.isTranslationAborted) {
@@ -1148,6 +1357,7 @@ export class ImmersiveTranslator {
 
             // 并行执行所有缓存查询
             const cacheResults = await Promise.all(cacheQueries)
+            if (!isCurrent() || this.viewportScheduler) return false
 
             // 处理缓存结果
             this.performanceMonitor?.startStage("处理缓存结果")
@@ -1197,7 +1407,7 @@ export class ImmersiveTranslator {
         }
 
         // 🔴 再次检查是否已中断
-        if (this.isTranslationAborted) {
+        if (!isCurrent() || this.viewportScheduler) {
             return false
         }
 
@@ -1242,13 +1452,16 @@ export class ImmersiveTranslator {
 
         const translateBatch = async (messageBatch: Message[]) => {
             // 🔴 在每个批次执行前检查中断标志
-            if (this.isTranslationAborted) {
+            if (!isCurrent() || this.viewportScheduler) {
                 // 清理当前批次的 loading 状态
                 this.clearLoadingForNodeIds(messageBatch.map(v => v.id))
                 return
             }
 
             try {
+                messageBatch.forEach(message =>
+                    this.legacyInFlight.add(message.id)
+                )
                 const requestMessageContent = messageBatch
                     .map(v => v.content)
                     .join("\n\n%%\n\n")
@@ -1268,7 +1481,7 @@ export class ImmersiveTranslator {
                 totalApiCalls++
 
                 // 🔴 翻译完成后再次检查中断标志
-                if (this.isTranslationAborted) {
+                if (!isCurrent()) {
                     this.clearLoadingForNodeIds(messageBatch.map(v => v.id))
                     return
                 }
@@ -1298,13 +1511,20 @@ export class ImmersiveTranslator {
                 options.onBatchComplete?.(messageBatch)
             } catch (error) {
                 // 🔴 如果是中断导致的错误，不显示错误提示
-                if (this.isTranslationAborted) {
+                if (!isCurrent()) {
                     this.clearLoadingForNodeIds(messageBatch.map(v => v.id))
                     return
                 }
 
                 this.clearLoadingForNodeIds(messageBatch.map(v => v.id))
                 this.addErrorForBatch(error.message, messageBatch)
+            } finally {
+                if (isCurrent()) {
+                    messageBatch.forEach(message =>
+                        this.legacyInFlight.delete(message.id)
+                    )
+                    this.viewportScheduler?.add([])
+                }
             }
         }
 
@@ -1314,7 +1534,7 @@ export class ImmersiveTranslator {
                 this.controlConcurrentRequests(batchedMessages)
             for (const group of concurrentGroups) {
                 // 🔴 在每个并发组执行前检查中断标志
-                if (this.isTranslationAborted) {
+                if (!isCurrent() || this.viewportScheduler) {
                     break
                 }
 
@@ -1325,7 +1545,7 @@ export class ImmersiveTranslator {
             // 顺序执行（用于重新翻译）
             for (const messageBatch of batchedMessages) {
                 // 🔴 在每个批次执行前检查中断标志
-                if (this.isTranslationAborted) {
+                if (!isCurrent() || this.viewportScheduler) {
                     break
                 }
 
@@ -1429,6 +1649,11 @@ export class ImmersiveTranslator {
     private startBodyObserver(): void {
         // 如果已经有监听器在运行，先停止
         this.stopBodyObserver()
+
+        if (this.viewportScheduler) {
+            this.startReadingBodyObserver()
+            return
+        }
 
         // 创建 MutationObserver
         this.bodyObserver = new MutationObserver(async mutations => {
@@ -1534,10 +1759,121 @@ export class ImmersiveTranslator {
      * 停止 document.body 监听器
      */
     private stopBodyObserver(): void {
+        clearTimeout(this.bodyRefreshTimer)
+        this.bodyRefreshTimer = undefined
         if (this.bodyObserver) {
             this.bodyObserver.disconnect()
             this.bodyObserver = null
         }
+    }
+
+    private startReadingBodyObserver(): void {
+        const session = this.translationSession
+        const isTranslationElement = (node: Node) => {
+            const element = node instanceof Element ? node : node.parentElement
+            return Boolean(element?.closest("[data-translate-id]"))
+        }
+        this.bodyObserver = new MutationObserver(mutations => {
+            if (
+                this.isTranslationAborted ||
+                session !== this.translationSession
+            )
+                return
+            const relevant = mutations.some(mutation => {
+                if (isTranslationElement(mutation.target)) return false
+                return (
+                    mutation.type !== "childList" ||
+                    [...mutation.addedNodes, ...mutation.removedNodes].some(
+                        node => !isTranslationElement(node)
+                    )
+                )
+            })
+            if (!relevant || this.bodyRefreshTimer !== undefined) return
+            this.bodyRefreshTimer = setTimeout(() => {
+                this.bodyRefreshTimer = undefined
+                if (
+                    session !== this.translationSession ||
+                    this.isTranslationAborted
+                )
+                    return
+                const { result, stayOriginalMap } =
+                    this.domSelector.extractTargetTextNodes()
+                this.stayOriginalMap = stayOriginalMap
+                const existing = new Map(
+                    this.sourceTextNodes.map(node => [node.id, node])
+                )
+                const displays = new Map(
+                    this.translationNodes.map(node => [node.id, node])
+                )
+                const changed = result.filter(node => {
+                    const old = existing.get(node.id)
+                    return (
+                        !old ||
+                        old.container !== node.container ||
+                        old.originText !== node.originText ||
+                        old.textNodes?.length !== node.textNodes?.length ||
+                        node.textNodes?.some(
+                            (text, index) =>
+                                text.element !== old.textNodes?.[index]?.element
+                        ) ||
+                        displays.get(node.id)?.container.isConnected === false
+                    )
+                })
+                for (const node of changed) {
+                    const old = existing.get(node.id)
+                    node.translateText =
+                        old?.originText === node.originText
+                            ? old.translateText
+                            : undefined
+                }
+                const replacedIds = new Set(changed.map(node => node.id))
+                const retainedIds = new Set(result.map(node => node.id))
+                const detachedIds = new Set(
+                    this.sourceTextNodes
+                        .filter(
+                            node =>
+                                !node.container.isConnected ||
+                                !retainedIds.has(node.id)
+                        )
+                        .map(node => node.id)
+                )
+                const obsolete = (id: string) =>
+                    replacedIds.has(id) || detachedIds.has(id)
+                this.translationNodes = this.translationNodes.filter(
+                    display => {
+                        if (!obsolete(display.id)) return true
+                        safeRemoveElement(display.container)
+                        return false
+                    }
+                )
+                this.renderQueue = this.renderQueue.filter(
+                    item => !obsolete(item.id)
+                )
+                this.sourceTextNodes = this.sourceTextNodes
+                    .filter(node => !obsolete(node.id))
+                    .concat(changed)
+                this.viewportScheduler?.remove(Array.from(detachedIds))
+                const restored = changed.filter(node => node.translateText)
+                this.createTranslationContainers(restored)
+                this.renderTranslationResults(
+                    restored.map(node => ({
+                        id: node.id,
+                        text: node.translateText
+                    }))
+                )
+                this.viewportScheduler?.add(
+                    changed.filter(node => !node.translateText)
+                )
+            }, 50)
+        })
+        if (document.body)
+            this.bodyObserver.observe(document.body, {
+                childList: true,
+                subtree: true,
+                characterData: true,
+                attributes: true,
+                attributeFilter: ["class", "style", "hidden", "open"]
+            })
     }
 
     /**

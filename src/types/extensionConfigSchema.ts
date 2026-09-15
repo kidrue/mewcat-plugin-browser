@@ -44,6 +44,7 @@ const extensionConfigShape = {
     cacheEnabled: z.boolean().optional(),
     minVisibleNodesThreshold: z.number().finite().nonnegative().optional(),
     prioritizeVisibleArea: z.boolean().optional(),
+    enableViewportTranslation: z.boolean().optional(),
     autoTranslateDelay: z.number().finite().nonnegative(),
     currentModel: z.string().optional(),
     customProtectionRegexps: z.array(z.string()).optional(),

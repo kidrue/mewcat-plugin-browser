@@ -74,6 +74,9 @@ export interface ExtensionConfig {
     /** 是否优先翻译可视区域 */
     prioritizeVisibleArea?: boolean
 
+    /** 仅翻译当前屏及上下各一屏，快速滚动时暂停新请求（默认 false） */
+    enableViewportTranslation?: boolean
+
     /** 网页自动翻译延迟时间（毫秒） */
     autoTranslateDelay: number
 

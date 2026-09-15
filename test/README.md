@@ -1,5 +1,19 @@
 # 测试目录说明
 
+## 按阅读范围翻译验收
+
+设置入口：基础设置 → 阅读翻译 → 按阅读范围翻译，默认关闭。
+
+自动回归（也已纳入 `pnpm check`）：
+
+```bash
+pnpm exec vitest run --config test/vitest.image-translation.config.ts test/viewport-translation-scheduler.test.ts test/viewport-translation.test.ts
+```
+
+真实浏览器几何验收：运行 `pnpm exec vite --config test/vite.viewport.config.ts`，打开 <http://127.0.0.1:5178/viewport-translation.html> 并点击“运行浏览器验收”。该页面使用生产调度器和模拟翻译响应，不消耗第三方 API 额度；覆盖三屏边界、快速滚动暂停、停下后补译、内部容器尺寸变化和销毁清理。
+
+2026-09-15 验证记录：27 项调度及集成测试、5 项真实浏览器验收、完整 `pnpm check` 和本地生产构建通过。审查发现的同文本节点重建、已删除原文残留任务、缓存等待期间过期结果渲染均已加入回归测试。
+
 ## 目录结构
 
 ```

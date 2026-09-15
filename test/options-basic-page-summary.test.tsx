@@ -81,6 +81,14 @@ async function renderBasic() {
 }
 
 describe("options page summary setting", () => {
+    it("offers opt-in reading-range translation independently of summary settings", async () => {
+        await renderBasic()
+        const toggle = document.querySelector<HTMLInputElement>('input[role="switch"][aria-label="按阅读范围翻译"]')
+        expect(toggle).not.toBeNull()
+        expect(toggle?.checked).toBe(false)
+        await act(async () => toggle?.click())
+        expect(mocks.updateConfig).toHaveBeenCalledWith({ enableViewportTranslation: true })
+    })
     it("shows the saved summary state independently and writes its own field", async () => {
         await renderBasic()
 
