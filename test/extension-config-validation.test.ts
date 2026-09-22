@@ -7,6 +7,8 @@ import type { ExtensionConfig } from "../src/types/config"
 import { repairExtensionConfig } from "../src/types/extensionConfigSchema"
 import { normalizeImageTranslationSelection } from "../src/utils/visionModels"
 
+vi.mock("@/messaging", () => import("./mocks/config-messaging"))
+
 const validModel = {
     id: "model-1",
     type: AiModel_Platform_Enum.OPENAI,
@@ -43,9 +45,25 @@ describe("extension config validation", () => {
     )
 
     it("defaults reading-range translation on and preserves a stored opt-out", () => {
-        expect(repairExtensionConfig({}, defaultExtensionConfig).enableViewportTranslation).toBe(true)
-        expect(repairExtensionConfig({ ...defaultExtensionConfig, enableViewportTranslation: true }, defaultExtensionConfig).enableViewportTranslation).toBe(true)
-        expect(repairExtensionConfig({ ...defaultExtensionConfig, enableViewportTranslation: "true" }, defaultExtensionConfig).enableViewportTranslation).toBe(true)
+        expect(
+            repairExtensionConfig({}, defaultExtensionConfig)
+                .enableViewportTranslation
+        ).toBe(true)
+        expect(
+            repairExtensionConfig(
+                { ...defaultExtensionConfig, enableViewportTranslation: true },
+                defaultExtensionConfig
+            ).enableViewportTranslation
+        ).toBe(true)
+        expect(
+            repairExtensionConfig(
+                {
+                    ...defaultExtensionConfig,
+                    enableViewportTranslation: "true"
+                },
+                defaultExtensionConfig
+            ).enableViewportTranslation
+        ).toBe(true)
     })
     it("preserves the image switch across concurrent config updates and reload", async () => {
         const { createStore } = await import("jotai")
@@ -69,7 +87,7 @@ describe("extension config validation", () => {
             })
         try {
             const store = createStore()
-            await store.set(configAtom, persisted)
+            await store.get(configAtom)
             await Promise.all([
                 store.set(updateConfigAtom, {
                     enableImageTranslateButton: true
@@ -286,7 +304,7 @@ describe("extension config validation", () => {
         })
     })
 
-    it("writes a repaired stored config back before returning it", async () => {
+    it("repairs a stored config for the reader without writing an old snapshot back", async () => {
         const setItem = vi.fn(async () => undefined)
         const adapter = createTranslationServiceStorageAdapter({
             getItem: vi.fn(async () => ({
@@ -306,7 +324,35 @@ describe("extension config validation", () => {
         expect(result.targetLanguage).toBe(
             defaultExtensionConfig.targetLanguage
         )
-        expect(setItem).toHaveBeenCalledWith("extension-config", result)
+        expect(setItem).not.toHaveBeenCalled()
+    })
+
+    it("does not let a delayed repair notification overwrite newer settings", async () => {
+        let persisted = {
+            ...defaultExtensionConfig,
+            selectionTriggerMode: "shift"
+        }
+        let notify: (value: ExtensionConfig) => void = () => undefined
+        const adapter = createTranslationServiceStorageAdapter({
+            getItem: async () => persisted as ExtensionConfig,
+            setItem: async (_key, value) => {
+                persisted = value
+            },
+            removeItem: async () => undefined,
+            subscribe: (_key, callback) => {
+                notify = callback
+                return () => undefined
+            }
+        })
+        const callback = vi.fn()
+        adapter.subscribe("extension-config", callback, defaultExtensionConfig)
+        notify({
+            ...defaultExtensionConfig,
+            targetLanguage: null
+        } as unknown as ExtensionConfig)
+        await Promise.resolve()
+        expect(persisted.selectionTriggerMode).toBe("shift")
+        expect(callback).toHaveBeenCalledWith(defaultExtensionConfig)
     })
 
     it("preserves legacy model fields until the existing migration runs", async () => {

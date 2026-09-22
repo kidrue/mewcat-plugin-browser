@@ -1,7 +1,7 @@
 import { atom, useAtomValue } from "jotai"
-import { atomWithStorage } from "jotai/utils"
-import { clone, equals, findIndex, mergeDeepRight } from "ramda"
 
+import { sendMessage } from "@/messaging"
+import type { ConfigUpdateRequest } from "@/messaging/protocol"
 import type { BaseModel } from "@/types"
 import { type DeepPartial, type ExtensionConfig } from "@/types/config"
 
@@ -9,37 +9,59 @@ import { defaultExtensionConfig } from "./constants"
 import { createTranslationServiceStorageAdapter } from "./translationService"
 import { chromeStorageAdapter } from "./util"
 
-// import { chromeStorageAdapter } from "./util"
-
 const configStorageAdapter =
     createTranslationServiceStorageAdapter(chromeStorageAdapter)
+const readConfig = () =>
+    configStorageAdapter.getItem("extension-config", defaultExtensionConfig)
 
-// 配置原子
-export const configAtom = atomWithStorage<ExtensionConfig>(
-    "extension-config",
-    defaultExtensionConfig,
-    configStorageAdapter,
-    {
-        getOnInit: true
-    }
+// This atom is only a local view. Persistence always goes through the worker.
+const configValueAtom = atom<ExtensionConfig | Promise<ExtensionConfig>>(
+    readConfig()
 )
+configValueAtom.onMount = setValue => {
+    let active = true
+    const unsubscribe = configStorageAdapter.subscribe(
+        "extension-config",
+        value => {
+            setValue(value)
+        },
+        defaultExtensionConfig
+    )
+    // Refresh after being unmounted; ignore reads overtaken by a storage event.
+    const refreshed = readConfig()
+    setValue(refreshed)
+    void refreshed.then(
+        value => {
+            if (active) {
+                setValue(current => (current === refreshed ? value : current))
+            }
+        },
+        () => undefined
+    )
+    return () => {
+        active = false
+        unsubscribe()
+    }
+}
 
-export const extensionConfigAtom = atom(async get => {
-    return get(configAtom)
-})
+export const configAtom = atom(get => get(configValueAtom))
+export const extensionConfigAtom = atom(async get => get(configAtom))
 
-// Serialize read-modify-write operations per store, including persistence.
+// Preserve submission/response order within each store. Cross-context writes
+// are serialized separately by the worker, never from this cache.
 const configWriteQueueAtom = atom<Promise<unknown>>(Promise.resolve())
 const mutateConfigAtom = atom(
     null,
-    (get, set, update: (config: ExtensionConfig) => ExtensionConfig) => {
+    (get, set, request: ConfigUpdateRequest) => {
         const pending = get(configWriteQueueAtom)
             .catch(() => undefined)
             .then(async () => {
-                const current = await get(configAtom)
-                const next = update(current)
-                if (!equals(current, next)) {
-                    await set(configAtom, next)
+                const before = get(configValueAtom)
+                const next = await sendMessage("update-config", request)
+                // A newer storage event may arrive before this reply. Mounted
+                // readers receive saves through the subscription as well.
+                if (get(configValueAtom) === before) {
+                    set(configValueAtom, next)
                 }
                 return next
             })
@@ -51,42 +73,13 @@ const mutateConfigAtom = atom(
 export const updateConfigAtom = atom(
     null,
     (_get, set, updates: DeepPartial<ExtensionConfig>) =>
-        set(
-            mutateConfigAtom,
-            current =>
-                mergeDeepRight(clone(current), updates) as ExtensionConfig
-        )
+        set(mutateConfigAtom, { type: "patch", updates })
 )
 
-// 添加一个修改ai模型配置的原子方法
 export const updateAiModelConfigAtom = atom(
     null,
-    async (
-        _get,
-        set,
-        updates: { id: string } & DeepPartial<BaseModel>
-    ): Promise<ExtensionConfig> => {
-        return set(mutateConfigAtom, currentConfig => {
-            const aiModelList = currentConfig.aiModelList
-            const aiModelIndex = findIndex(
-                model => model.id === updates.id,
-                aiModelList
-            )
-            if (aiModelIndex === -1) {
-                return currentConfig
-            }
-            const updatedModel = mergeDeepRight(
-                clone(aiModelList[aiModelIndex]),
-                updates
-            )
-            const newAiModelList = aiModelList.map((model, index) =>
-                index === aiModelIndex ? updatedModel : model
-            )
-            return { ...currentConfig, aiModelList: newAiModelList }
-        })
-    }
+    (_get, set, updates: { id: string } & DeepPartial<BaseModel>) =>
+        set(mutateConfigAtom, { type: "model", updates })
 )
 
-export const useConfig = () => {
-    return useAtomValue(configAtom)
-}
+export const useConfig = () => useAtomValue(configAtom)

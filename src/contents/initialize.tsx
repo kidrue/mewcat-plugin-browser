@@ -20,7 +20,7 @@ const Initialize: React.FunctionComponent = () => {
         const detected = franc(htmlText)
         const normalizedLang = getEnhancedLanguageCode(detected, htmlText)
         if (normalizedLang && normalizedLang !== "und") {
-            updateConfig({ detectedLanguage: normalizedLang })
+            await updateConfig({ detectedLanguage: normalizedLang })
         }
     }, [updateConfig])
 

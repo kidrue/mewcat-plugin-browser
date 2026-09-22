@@ -8,6 +8,7 @@ import { handleModelGatewayStreamPort } from "./messages/model-gateway-stream"
 import { handleStructuredTranslateImage } from "./messages/structured-image-translation"
 import { handleTranslateImage } from "./messages/translate-image"
 import { handleTranslateRequest } from "./messages/translate-request"
+import { handleUpdateConfig } from "./messages/update-config"
 
 const CONTEXT_MENU_ID = "immersive-translate"
 
@@ -42,6 +43,13 @@ async function handleToggleImmersiveTranslate(tabId: number) {
 }
 
 export function registerExtensionMessages(register = onMessage) {
+    register("update-config", message =>
+        monitorBackgroundHandler(
+            "update-config",
+            () => handleUpdateConfig(message.data),
+            message.sender.tab?.url
+        )
+    )
     register("canvas-hook-event", message =>
         monitorBackgroundHandler(
             "canvas-hook-event",
