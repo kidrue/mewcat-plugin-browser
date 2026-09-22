@@ -851,6 +851,44 @@ describe("image translation settings", () => {
 })
 
 describe("custom model visual capability", () => {
+    it("filters the configured model directory by model name", async () => {
+        mocks.config = createConfig({
+            aiModelList: [
+                createModel("openai-service", { modelName: "gpt-5" }),
+                createModel("bailian-service", {
+                    type: AiModel_Platform_Enum.BAILIAN,
+                    modelName: "qwen-plus"
+                })
+            ],
+            currentModel: "openai-service"
+        })
+        const { TranslateServices } = await import(
+            "../src/options/TranslateServices"
+        )
+        root = await render(<TranslateServices />)
+
+        const searchInput = document.querySelector<HTMLInputElement>(
+            'input[aria-label="搜索已添加模型"]'
+        )
+        expect(searchInput).not.toBeNull()
+        if (!searchInput) return
+
+        const directory = searchInput.closest("section")
+        expect(directory?.textContent).toContain("openai-service label")
+        expect(directory?.textContent).toContain("bailian-service label")
+
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(
+                window.HTMLInputElement.prototype,
+                "value"
+            )?.set?.call(searchInput, "QWEN")
+            Simulate.change(searchInput)
+        })
+
+        expect(directory?.textContent).not.toContain("openai-service label")
+        expect(directory?.textContent).toContain("bailian-service label")
+    })
+
     it("shows the custom toggle and saves only capabilities.vision", async () => {
         mocks.config = createConfig({
             aiModelList: [
@@ -1003,6 +1041,7 @@ describe("config persistence contract", () => {
         vi.doUnmock("jotai")
         vi.doUnmock("@/state/config")
         vi.doUnmock("../src/state/config.ts")
+        vi.doMock("@/messaging", () => import("./mocks/config-messaging"))
         vi.doMock("#imports", () => ({
             storage: {
                 getItem: vi.fn(async () => storedConfig),

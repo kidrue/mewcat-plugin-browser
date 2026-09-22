@@ -86,6 +86,43 @@ const ModelDirectory = styled(OptionsSection)`
     margin-bottom: 0;
 `
 
+const ModelSearchInput = styled.input`
+    width: 100%;
+    height: 36px;
+    margin-bottom: var(--space-3);
+    padding: 0 var(--space-3);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-fast);
+
+    &::placeholder {
+        color: var(--text-tertiary);
+    }
+
+    &:hover {
+        border-color: var(--gray-400);
+    }
+
+    &:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px var(--seal-ring);
+    }
+`
+
+const EmptyModelSearchResult = styled.div`
+    padding: var(--space-4) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+`
+
 const ModelList = styled.div`
     display: flex;
     flex-direction: column;
@@ -354,6 +391,7 @@ export const TranslateServices: React.FunctionComponent = () => {
     const updateConfig = useSetAtom(updateConfigAtom)
     const updateAiModelConfig = useSetAtom(updateAiModelConfigAtom)
     const [dragId, setDragId] = useState<string | null>(null)
+    const [modelSearchQuery, setModelSearchQuery] = useState("")
     const [activeId, setActiveId] = useState<string>(
         config?.aiModelList?.[0]?.id
     )
@@ -781,6 +819,19 @@ export const TranslateServices: React.FunctionComponent = () => {
     }, [activeId, config?.aiModelList])
 
     const hasModels = hasConfiguredAiModels(config?.aiModelList)
+    const filteredModels = React.useMemo(() => {
+        const models = config?.aiModelList || []
+        const normalizedQuery = modelSearchQuery.trim().toLocaleLowerCase()
+        if (!normalizedQuery) {
+            return models
+        }
+        return models.filter(model =>
+            [model.name, model.params.modelName, platformNameMap[model.type]]
+                .join(" ")
+                .toLocaleLowerCase()
+                .includes(normalizedQuery)
+        )
+    }, [config?.aiModelList, modelSearchQuery])
 
     return (
         <>
@@ -819,6 +870,15 @@ export const TranslateServices: React.FunctionComponent = () => {
                         description="选择模型编辑配置，拖动调整顺序。"
                         rightSection={<AddModel onItemClick={handleAddModel} />}
                     >
+                        <ModelSearchInput
+                            type="search"
+                            aria-label="搜索已添加模型"
+                            value={modelSearchQuery}
+                            onChange={event =>
+                                setModelSearchQuery(event.target.value)
+                            }
+                            placeholder="搜索已添加模型"
+                        />
                         <DndContext
                             onDragEnd={onDragEnd}
                             onDragStart={onDragStart}
@@ -826,15 +886,11 @@ export const TranslateServices: React.FunctionComponent = () => {
                             sensors={sensors}
                         >
                             <SortableContext
-                                items={
-                                    config?.aiModelList.map(
-                                        model => model.id
-                                    ) || []
-                                }
+                                items={filteredModels.map(model => model.id)}
                                 strategy={verticalListSortingStrategy}
                             >
                                 <ModelList>
-                                    {config?.aiModelList?.map(model => (
+                                    {filteredModels.map(model => (
                                         <LeftPanelItem
                                             key={model.id}
                                             id={model.id}
@@ -855,6 +911,11 @@ export const TranslateServices: React.FunctionComponent = () => {
                                             }
                                         />
                                     ))}
+                                    {filteredModels.length === 0 && (
+                                        <EmptyModelSearchResult role="status">
+                                            未找到匹配的模型
+                                        </EmptyModelSearchResult>
+                                    )}
                                 </ModelList>
                             </SortableContext>
                         </DndContext>

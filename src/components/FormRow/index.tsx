@@ -67,6 +67,7 @@ const Field = styled.div`
     min-width: 0;
     display: flex;
     flex-direction: column;
+    align-items: flex-start;
     gap: var(--space-2);
 
     @media (max-width: 900px) {

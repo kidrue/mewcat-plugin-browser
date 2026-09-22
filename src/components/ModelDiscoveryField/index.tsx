@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
 
 import { useModelDiscovery } from "@/hooks/useModelDiscovery"
@@ -13,6 +13,47 @@ const FieldStack = styled.div`
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+`
+
+const SearchInput = styled.input`
+    width: 100%;
+    height: 36px;
+    padding: 0 var(--space-3);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-family: var(--font-family);
+    font-size: var(--font-size-sm);
+    transition: all var(--transition-fast);
+
+    &::placeholder {
+        color: var(--text-tertiary);
+    }
+
+    &:hover:not(:disabled) {
+        border-color: var(--gray-400);
+    }
+
+    &:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px var(--seal-ring);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background: var(--gray-100);
+    }
+`
+
+const EmptySearchResult = styled.div`
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
 `
 
 const FieldMeta = styled.div`
@@ -87,7 +128,8 @@ export function toModelCapabilityPatch(
 
 export function buildModelSelectionOptions(
     models: DiscoveredModel[],
-    currentModelName: string
+    currentModelName: string,
+    searchQuery = ""
 ): ModelSelectionOption[] {
     const discoveredOptions = models.map(model => ({
         value: model.id,
@@ -95,19 +137,26 @@ export function buildModelSelectionOptions(
             model.availability === "catalog" ? " · 目录" : ""
         }`
     }))
-    if (
+    const options =
         currentModelName.trim() &&
         !models.some(model => model.id === currentModelName)
-    ) {
-        return [
-            {
-                value: currentModelName,
-                label: `${currentModelName}（当前模型未返回）`
-            },
-            ...discoveredOptions
-        ]
+            ? [
+                  {
+                      value: currentModelName,
+                      label: `${currentModelName}（当前模型未返回）`
+                  },
+                  ...discoveredOptions
+              ]
+            : discoveredOptions
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
+    if (!normalizedQuery) {
+        return options
     }
-    return discoveredOptions
+    return options.filter(option =>
+        `${option.value} ${option.label}`
+            .toLocaleLowerCase()
+            .includes(normalizedQuery)
+    )
 }
 
 interface ModelDiscoveryFieldProps {
@@ -127,19 +176,29 @@ export function ModelDiscoveryField({
     const { models, isLoading, errorMessage, manualEntry, refresh } =
         useModelDiscovery(model)
     const apiKey = model.params.apiKey.trim()
+    const [searchQuery, setSearchQuery] = useState("")
 
     useEffect(() => {
         onChangeRef.current = onChange
     }, [onChange])
 
     const options = useMemo(
-        () => buildModelSelectionOptions(models, model.params.modelName),
-        [model.params.modelName, models]
+        () =>
+            buildModelSelectionOptions(
+                models,
+                model.params.modelName,
+                searchQuery
+            ),
+        [model.params.modelName, models, searchQuery]
     )
     const selectedModel = models.find(
         discovered => discovered.id === model.params.modelName
     )
     const vision = selectedModel?.vision ?? "unknown"
+
+    useEffect(() => {
+        setSearchQuery("")
+    }, [model.id])
 
     useEffect(() => {
         if (!selectedModel) {
@@ -179,6 +238,16 @@ export function ModelDiscoveryField({
 
     return (
         <FieldStack id={`model-field-${model.id}`} tabIndex={-1}>
+            {models.length > 0 && (
+                <SearchInput
+                    type="search"
+                    aria-label="搜索可用模型"
+                    value={searchQuery}
+                    disabled={isLoading}
+                    onChange={event => setSearchQuery(event.target.value)}
+                    placeholder="搜索可用模型"
+                />
+            )}
             <NativeSelect
                 id={`model-name-${model.id}`}
                 aria-label="模型名称"
@@ -202,6 +271,11 @@ export function ModelDiscoveryField({
                     )
                 }}
             />
+            {searchQuery.trim() && options.length === 0 && (
+                <EmptySearchResult role="status">
+                    未找到匹配的模型
+                </EmptySearchResult>
+            )}
             <FieldMeta>
                 <CapabilityBadge $vision={vision}>
                     {getVisionCapabilityLabel(vision)}

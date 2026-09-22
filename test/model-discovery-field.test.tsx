@@ -103,6 +103,30 @@ describe("model discovery field", () => {
         ])
     })
 
+    it("filters discovered models by model id and display name", () => {
+        const models = [
+            {
+                id: "gpt-5-mini",
+                name: "GPT-5 Mini",
+                availability: "verified" as const,
+                vision: "supported" as const
+            },
+            {
+                id: "qwen-plus",
+                name: "Qwen Plus",
+                availability: "verified" as const,
+                vision: "unsupported" as const
+            }
+        ]
+
+        expect(buildModelSelectionOptions(models, "", "QWEN")).toEqual([
+            { value: "qwen-plus", label: "Qwen Plus · 仅文本" }
+        ])
+        expect(buildModelSelectionOptions(models, "", "mini")).toEqual([
+            { value: "gpt-5-mini", label: "GPT-5 Mini · 支持图片" }
+        ])
+    })
+
     it("maps discovered vision metadata to persisted model capabilities", () => {
         expect(toModelCapabilityPatch("supported")).toEqual({ vision: true })
         expect(toModelCapabilityPatch("unsupported")).toEqual({
