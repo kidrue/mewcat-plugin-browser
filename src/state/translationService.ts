@@ -1,6 +1,7 @@
-import { equals } from "ramda"
-
-import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import {
+    GOOGLE_TRANSLATE_MODEL_ID,
+    MICROSOFT_TRANSLATE_MODEL_ID
+} from "@/constants/translationServices"
 import { migrateLegacyModel } from "@/model-management/catalog"
 import type { BaseModel } from "@/types"
 import type { ExtensionConfig } from "@/types/config"
@@ -39,8 +40,11 @@ const isUsableModel = (model: BaseModel): boolean =>
 export function resolveTranslationServiceId(
     config: TranslationServiceSelectionConfig
 ): string {
-    if (config.currentModel === GOOGLE_TRANSLATE_MODEL_ID) {
-        return GOOGLE_TRANSLATE_MODEL_ID
+    if (
+        config.currentModel === GOOGLE_TRANSLATE_MODEL_ID ||
+        config.currentModel === MICROSOFT_TRANSLATE_MODEL_ID
+    ) {
+        return config.currentModel
     }
 
     const currentModel = config.aiModelList.find(
@@ -77,7 +81,7 @@ export function migrateTranslationServiceModels<
         : ({ ...config, aiModelList } as T)
 }
 
-const normalizeStoredConfig = (
+export const normalizeStoredConfig = (
     config: unknown,
     defaults: ExtensionConfig
 ): ExtensionConfig =>
@@ -89,31 +93,14 @@ const normalizeStoredConfig = (
         )
     )
 
-const configsEqual = (left: unknown, right: ExtensionConfig): boolean => {
-    try {
-        // Storage may reorder object keys; only actual value changes need repair.
-        return equals(left, right)
-    } catch {
-        return false
-    }
-}
-
 export function createTranslationServiceStorageAdapter(
     storageAdapter: TranslationServiceStorageAdapter
 ): TranslationServiceStorageAdapter {
     return {
         async getItem(key, initialValue) {
             const storedConfig = await storageAdapter.getItem(key, initialValue)
-            const normalizedConfig = normalizeStoredConfig(
-                storedConfig,
-                initialValue
-            )
-
-            if (!configsEqual(storedConfig, normalizedConfig)) {
-                await storageAdapter.setItem(key, normalizedConfig)
-            }
-
-            return normalizedConfig
+            // Readers must not persist snapshots that may already be stale.
+            return normalizeStoredConfig(storedConfig, initialValue)
         },
         setItem(key, value) {
             return storageAdapter.setItem(
@@ -132,9 +119,6 @@ export function createTranslationServiceStorageAdapter(
                         value,
                         initialValue
                     )
-                    if (!configsEqual(value, normalizedConfig)) {
-                        void storageAdapter.setItem(key, normalizedConfig)
-                    }
                     callback(normalizedConfig)
                 },
                 initialValue
@@ -151,6 +135,7 @@ export function getTranslationServiceOptions(
             value: GOOGLE_TRANSLATE_MODEL_ID,
             label: "Google Translate"
         },
+        { value: MICROSOFT_TRANSLATE_MODEL_ID, label: "微软翻译（免费）" },
         ...aiModelList.filter(isUsableModel).map(model => ({
             value: model.id,
             label: model.name || "未命名模型"

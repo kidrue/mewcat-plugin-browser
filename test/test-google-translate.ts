@@ -120,11 +120,10 @@ const migratedConfig = await migrationAdapter.getItem(
     defaultExtensionConfig
 )
 assert.equal(migratedConfig.currentModel, GOOGLE_TRANSLATE_MODEL_ID)
-assert.equal(persistedConfigs.length, 1)
 assert.equal(
-    persistedConfigs[0]?.currentModel,
-    GOOGLE_TRANSLATE_MODEL_ID,
-    "A normalized legacy selection must be persisted back to extension storage"
+    persistedConfigs.length,
+    0,
+    "Reading a legacy selection must not write a possibly stale snapshot back"
 )
 
 assert.deepEqual(
@@ -135,6 +134,7 @@ assert.deepEqual(
     ]),
     [
         { value: GOOGLE_TRANSLATE_MODEL_ID, label: "Google Translate" },
+        { value: "microsoft-translate", label: "微软翻译（免费）" },
         { value: configuredModel.id, label: configuredModel.name }
     ],
     "Service selectors must show Google and only usable AI models"

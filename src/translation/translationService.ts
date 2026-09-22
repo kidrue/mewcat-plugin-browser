@@ -1,4 +1,7 @@
-import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import {
+    GOOGLE_TRANSLATE_MODEL_ID,
+    MICROSOFT_TRANSLATE_MODEL_ID
+} from "@/constants/translationServices"
 import type {
     ModelGatewayStreamOptions,
     ModelGatewayStreamSender
@@ -11,6 +14,7 @@ import {
     GoogleTranslator,
     type TranslateRequestSender
 } from "./GoogleTranslator"
+import { MicrosoftTranslator } from "./MicrosoftTranslator"
 import {
     abortModelTranslations,
     buildModelSummary,
@@ -38,6 +42,7 @@ export interface TranslationServiceDependencies {
     modelGatewaySender?: ModelGatewaySender
     modelGatewayStreamSender?: ModelGatewayStreamSender
     googleRequestSender?: TranslateRequestSender
+    microsoftRequestSender?: TranslateRequestSender
 }
 
 export class ConceptExplanationUnavailableError extends Error {
@@ -66,7 +71,8 @@ const getSelectedModel = (
     config: TranslationRuntimeConfig
 ): BaseModel | undefined => {
     const serviceId = resolveTranslationServiceId(config)
-    return serviceId === GOOGLE_TRANSLATE_MODEL_ID
+    return serviceId === GOOGLE_TRANSLATE_MODEL_ID ||
+        serviceId === MICROSOFT_TRANSLATE_MODEL_ID
         ? undefined
         : config.aiModelList.find(model => model.id === serviceId)
 }
@@ -107,6 +113,11 @@ export async function translateText(
     options: TranslationCallOptions = {},
     dependencies: TranslationServiceDependencies = {}
 ): Promise<string> {
+    if (resolveTranslationServiceId(config) === MICROSOFT_TRANSLATE_MODEL_ID) {
+        return new MicrosoftTranslator(
+            dependencies.microsoftRequestSender
+        ).translateText(messages, targetLanguage)
+    }
     const model = getSelectedModel(config)
     if (!model) {
         return getGoogleTranslator(dependencies).translateText(
@@ -134,6 +145,11 @@ export async function translateBatch(
     options: TranslationCallOptions = {},
     dependencies: TranslationServiceDependencies = {}
 ): Promise<string> {
+    if (resolveTranslationServiceId(config) === MICROSOFT_TRANSLATE_MODEL_ID) {
+        return new MicrosoftTranslator(
+            dependencies.microsoftRequestSender
+        ).translateBatch(messages, targetLanguage)
+    }
     const model = getSelectedModel(config)
     if (!model) {
         return getGoogleTranslator(dependencies).translateBatch(

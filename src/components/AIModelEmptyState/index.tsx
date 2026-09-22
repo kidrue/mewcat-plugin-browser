@@ -59,7 +59,8 @@ export function AIModelEmptyState({ onItemClick }: AIModelEmptyStateProps) {
             <EmptyStateMark aria-hidden="true" />
             <EmptyStateTitle>添加你的第一个 AI 模型</EmptyStateTitle>
             <EmptyStateDescription>
-                配置 AI 模型可获得更灵活的翻译能力；未添加时仍会使用 Google 翻译
+                配置 AI 模型可获得更灵活的翻译能力；也可直接使用 Google
+                或微软免费翻译
             </EmptyStateDescription>
             <AddModel label="添加 AI 模型" onItemClick={onItemClick} />
         </EmptyStatePanel>

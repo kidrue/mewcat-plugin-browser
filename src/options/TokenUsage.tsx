@@ -343,7 +343,7 @@ export const TokenUsage: React.FC = () => {
                 artwork="archive"
                 icon="ledger"
                 title="用量明细"
-                description="保留近 30 天的记录，按日期、模型、功能和来源汇总。Google Translate、DeepL 与 DeepLX 不计入 token 统计。"
+                description="保留近 30 天的记录，按日期、模型、功能和来源汇总。Google Translate、微软翻译、DeepL 与 DeepLX 不计入 token 统计。"
             >
                 {loadError ? (
                     <ErrorMessage role="alert">

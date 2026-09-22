@@ -1,6 +1,7 @@
 import type {
     AiHttpRequestConfig,
     GoogleTranslateRequestConfig,
+    MicrosoftTranslateRequestConfig,
     TranslationEngineRequestConfig,
     UnifiedRequestBody,
     UnifiedResponse
@@ -11,6 +12,7 @@ import {
     normalizeGoogleTranslateTimeout,
     parseGoogleTranslateResponse
 } from "../lib/google-translate"
+import { requestMicrosoftTranslation } from "../lib/microsoft-translate"
 
 // ============================================================================
 // 全局配置和工具
@@ -240,6 +242,32 @@ async function handleGoogleTranslateRequest(
 // 中断请求处理器
 // ============================================================================
 
+async function handleMicrosoftTranslateRequest(
+    config: MicrosoftTranslateRequestConfig
+): Promise<UnifiedResponse> {
+    const timeout =
+        config.timeout === undefined || !Number.isFinite(config.timeout)
+            ? 30_000
+            : Math.max(1, Math.min(30_000, Math.trunc(config.timeout)))
+    const [controller, timeoutId] = createAbortController(timeout)
+    try {
+        return sendSuccess(
+            await requestMicrosoftTranslation(config, controller.signal)
+        )
+    } catch (error) {
+        if (controller.signal.aborted) {
+            throw new Error(
+                timedOutAbortControllers.has(controller)
+                    ? "微软翻译请求超时"
+                    : "微软翻译请求已取消"
+            )
+        }
+        throw error
+    } finally {
+        cleanupAbortController(controller, timeoutId)
+    }
+}
+
 /** 中断所有活动请求 */
 function handleAbortRequest(): UnifiedResponse {
     activeAbortControllers.forEach(controller => controller.abort())
@@ -262,6 +290,8 @@ export async function handleTranslateRequest(
                 return await handleTranslationEngineRequest(body.config)
             case "google_translate":
                 return await handleGoogleTranslateRequest(body.config)
+            case "microsoft_translate":
+                return await handleMicrosoftTranslateRequest(body.config)
             case "abort":
                 return handleAbortRequest()
             default:
