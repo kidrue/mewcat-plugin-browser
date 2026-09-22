@@ -1,87 +1,61 @@
 import React from "react"
 import styled from "styled-components"
 
+import { RUNNING_CAT_CSS, RUNNING_CAT_SVG } from "@/utils/runningCat"
+
 interface LoadingDotsProps {
-    /** 是否显示loading动画 */
+    /** 是否显示加载动画 */
     loading?: boolean
-    /** 点的颜色，默认为白色 */
+    /** 地面阴影的颜色，默认为白色；小猫保持参考图的三花配色 */
     color?: string
-    /** 点的大小，默认为6px */
+    /** 保留原加载点的尺寸参数，用于计算小猫宽度 */
     size?: number
-    /** 点之间的间距，默认为4px */
+    /** 保留原加载点的间距参数，用于计算小猫宽度 */
     gap?: number
-    /** 动画时长，默认为1.2秒 */
+    /** 奔跑周期，默认为 0.72 秒 */
     duration?: number
 }
 
-const SCxLoadingContainer = styled.div.withConfig({
-    shouldForwardProp: prop => prop !== "loading"
-})<{ loading: boolean; gap: number }>`
-    display: ${props => (props.loading ? "flex" : "none")};
+const SCxLoadingContainer = styled.span`
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: ${props => props.gap}px;
+    flex-shrink: 0;
+    vertical-align: middle;
+    line-height: 0;
+
+    ${RUNNING_CAT_CSS.replace(/\.mewcat-running-cat/g, "&")}
 `
 
-const SCxLoadingDot = styled.div<{
-    delay: number
-    color: string
-    size: number
-    duration: number
-}>`
-    width: ${props => props.size}px;
-    height: ${props => props.size}px;
-    border-radius: var(--radius-full);
-    background: ${props => props.color};
-    animation: pulse ${props => props.duration}s ease-in-out infinite;
-    animation-delay: ${props => props.delay}s;
-
-    @keyframes pulse {
-        0%,
-        80%,
-        100% {
-            transform: scale(0.8);
-            opacity: 0.5;
-        }
-        40% {
-            transform: scale(1.2);
-            opacity: 1;
-        }
-    }
-`
-
-/**
- * 通用的加载点动画组件
- * 三个点依次脉冲闪烁，提供优雅的加载反馈
- */
+/** 保留原组件接口，让所有使用加载点的界面统一显示奔跑小猫。 */
 const LoadingDots: React.FC<LoadingDotsProps> = ({
     loading = false,
     color = "white",
     size = 6,
     gap = 4,
-    duration = 1.2
+    duration = 0.72
 }) => {
+    if (!loading) {
+        return null
+    }
+
+    const width = Math.max(40, size * 3 + gap * 2)
+
     return (
-        <SCxLoadingContainer loading={loading} gap={gap}>
-            <SCxLoadingDot
-                delay={0}
-                color={color}
-                size={size}
-                duration={duration}
-            />
-            <SCxLoadingDot
-                delay={0.2}
-                color={color}
-                size={size}
-                duration={duration}
-            />
-            <SCxLoadingDot
-                delay={0.4}
-                color={color}
-                size={size}
-                duration={duration}
-            />
-        </SCxLoadingContainer>
+        <SCxLoadingContainer
+            className="mewcat-running-cat"
+            role="status"
+            aria-label="加载中"
+            style={
+                {
+                    color,
+                    width,
+                    height: (width * 40) / 64,
+                    "--mewcat-cat-duration": `${Math.max(0.2, duration)}s`
+                } as React.CSSProperties
+            }
+            dangerouslySetInnerHTML={{ __html: RUNNING_CAT_SVG }}
+        />
     )
 }
 

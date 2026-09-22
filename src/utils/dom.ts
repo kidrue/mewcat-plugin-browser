@@ -6,6 +6,7 @@
 import { UI_FONT_FAMILY } from "@/constants/fonts"
 import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
 
+import { RUNNING_CAT_CSS, RUNNING_CAT_SVG } from "./runningCat"
 import { getTranslationStyleCSS, type TranslationStyleUnion } from "./style"
 import { createTranslationMark } from "./translationMark"
 
@@ -258,34 +259,30 @@ export function setTranslationDisplayContent(element: Element, text: string) {
 }
 
 export function createLoadingELement(size = 30) {
-    // 创建旋转的loading元素
+    const width = Math.max(40, size * 2)
     const spinner = document.createElement("div")
-    spinner.className = "meow-loading"
+    spinner.className = "mewcat-running-cat"
+    spinner.setAttribute("role", "status")
+    spinner.setAttribute("aria-label", "翻译中")
     spinner.style.cssText = `
-            width: ${size}px;
-            height: ${size}px;
-            border: 2px solid #e4ddcd;
-            border-top: 2px solid #2878c8;
-            border-radius: 50%;
+            width: ${width}px;
+            height: ${(width * 40) / 64}px;
+            color: #2878c8;
             display: inline-block;
-            animation: spin 1s linear infinite;
+            vertical-align: middle;
+            line-height: 0;
         `
+    spinner.innerHTML = RUNNING_CAT_SVG
 
-    // 创建动画样式
-    const styleSheet = document.createElement("style")
-    styleSheet.setAttribute("data-meow-loading-stylesheet", "1")
-
+    // 一个页面中的多个段落共用同一份动画样式。
     const isCreatedLoadingStyleSheet = document.querySelector(
-        "[data-meow-loading-stylesheet]"
+        "[data-mewcat-loading-stylesheet]"
     )
 
     if (!isCreatedLoadingStyleSheet) {
-        styleSheet.textContent = `
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        `
+        const styleSheet = document.createElement("style")
+        styleSheet.setAttribute("data-mewcat-loading-stylesheet", "1")
+        styleSheet.textContent = RUNNING_CAT_CSS
         document.head.appendChild(styleSheet)
     }
 
