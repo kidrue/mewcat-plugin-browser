@@ -3,6 +3,20 @@ import reactHooks from "eslint-plugin-react-hooks"
 import tseslint from "typescript-eslint"
 
 export default [
+    {
+        ignores: [
+            "**/node_modules/**",
+            ".plasmo/**/*",
+            "**/dist/**",
+            "**/build/**/*",
+            "**/assets/**",
+            "**/vendor/*.min.js",
+            "**/*.config.js",
+            "**/*.config.mjs",
+            "**/scripts/**",
+            "**/test/**"
+        ]
+    },
     js.configs.recommended,
     ...tseslint.configs.recommended,
     {
@@ -45,18 +59,6 @@ export default [
             "no-else-return": ["warn", { allowElseIf: false }], // allowElseIf: false 彻底禁用 else if
             // 可选：强制 if 加花括号（避免单行 if 语法歧义）
             curly: ["warn", "all"]
-        },
-        ignores: [
-            "**/node_modules/**",
-            ".plasmo/**/*",
-            "**/dist/**",
-            "**/build/**/*",
-            "**/assets/**",
-            "**/vendor/*.min.js",
-            "**/*.config.js",
-            "**/*.config.mjs",
-            "**/scripts/**",
-            "**/test/**"
-        ]
+        }
     }
 ]

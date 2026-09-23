@@ -6,6 +6,7 @@ export const GOOGLE_TRANSLATE_MODEL_ID = "google-translate"
 export const MICROSOFT_TRANSLATE_MODEL_ID = "microsoft-translate"
 export const MEWCAT_TRANSLATE_MODEL_ID = "mewcat-translate"
 export const MEWCAT_SERVICE_ORIGIN = "https://api.mewcat.kidrue.top"
+// cspell:ignore Kmtl
 export const MEWCAT_SIGNING_THUMBPRINT =
     "2PwINHNph8uVzKJ2nJqxQIKmtl3AJ_mvG9Pz5hYbV1A"
 export const MEWCAT_TRANSLATE_TIMEOUT_MS = 45_000

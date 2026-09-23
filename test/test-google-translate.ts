@@ -6,7 +6,10 @@ import {
     parseGoogleTranslateResponse
 } from "../src/background/lib/google-translate"
 import { handleTranslateRequest } from "../src/background/messages/translate-request"
-import { GOOGLE_TRANSLATE_MODEL_ID } from "../src/constants/translationServices"
+import {
+    GOOGLE_TRANSLATE_MODEL_ID,
+    MEWCAT_TRANSLATE_MODEL_ID
+} from "../src/constants/translationServices"
 import { defaultExtensionConfig } from "../src/state/constants"
 import {
     createTranslationServiceStorageAdapter,
@@ -135,9 +138,13 @@ assert.deepEqual(
     [
         { value: GOOGLE_TRANSLATE_MODEL_ID, label: "Google Translate" },
         { value: "microsoft-translate", label: "微软翻译（免费）" },
+        {
+            value: MEWCAT_TRANSLATE_MODEL_ID,
+            label: "mewCat AI 翻译（免费）"
+        },
         { value: configuredModel.id, label: configuredModel.name }
     ],
-    "Service selectors must show Google and only usable AI models"
+    "Service selectors must show built-in services and only usable AI models"
 )
 
 let selectedTextTargetLanguage = ""
