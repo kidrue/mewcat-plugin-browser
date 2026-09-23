@@ -50,7 +50,8 @@ const ERROR_MESSAGES: Record<string, string> = {
     UPSTREAM_UNAVAILABLE: "免费翻译服务暂时不可用",
     UPSTREAM_INVALID_RESPONSE: "免费翻译服务返回了无效结果",
     UPSTREAM_TIMEOUT: "免费翻译服务响应超时",
-    KEYS_UNAVAILABLE: "无法连接免费翻译服务"
+    KEYS_UNAVAILABLE: "无法连接免费翻译服务",
+    REQUEST_REJECTED: "无法连接免费翻译服务"
 }
 
 class ManualAbortError extends Error {
@@ -72,15 +73,31 @@ const mapServiceError = (error: unknown): Error => {
     if (typeof candidate.code === "string" && ERROR_MESSAGES[candidate.code]) {
         return new Error(ERROR_MESSAGES[candidate.code])
     }
-    if (candidate.name === "TimeoutError") {
+    if (
+        typeof candidate.code === "string" &&
+        /^ERR_(?:JOSE|JWE|JWK|JWS|JWT)/.test(candidate.code)
+    ) {
+        return new Error("mewCat 服务身份校验失败")
+    }
+    if (candidate.name === "TimeoutError" || candidate.name === "AbortError") {
         return new Error("mewCat 翻译请求超时")
     }
     const message =
         typeof candidate.message === "string" ? candidate.message : ""
-    if (/指纹|签名|公钥|fingerprint|signature/i.test(message)) {
+    if (
+        /指纹|签名|公钥|响应关联|时间校验|验签|解密|加密信封|响应状态不一致|响应译文数量不正确|fingerprint|signature|decrypt|encryption header|JWE|JWS/i.test(
+            message
+        )
+    ) {
         return new Error("mewCat 服务身份校验失败")
     }
-    return error instanceof Error ? error : new Error("免费翻译服务请求失败")
+    if (
+        error instanceof TypeError &&
+        /fetch|network|load failed|network\s*error/i.test(message)
+    ) {
+        return new Error("无法连接免费翻译服务")
+    }
+    return new Error("免费翻译服务请求失败")
 }
 
 export const createMewCatService = (

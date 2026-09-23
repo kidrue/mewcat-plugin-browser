@@ -86,7 +86,7 @@ describe("mewCat background 服务", () => {
 
         await expect(
             service.translate({ texts: ["one"], targetLanguage: "zh-CN" })
-        ).rejects.toThrow("temporary")
+        ).rejects.toThrow("免费翻译服务请求失败")
         await expect(
             service.translate({ texts: ["one"], targetLanguage: "zh-CN" })
         ).resolves.toEqual(["一"])
@@ -142,8 +142,26 @@ describe("mewCat background 服务", () => {
 
     it.each([
         [new DOMException("timeout", "TimeoutError"), "mewCat 翻译请求超时"],
+        [new DOMException("aborted", "AbortError"), "mewCat 翻译请求超时"],
+        [new TypeError("Failed to fetch"), "无法连接免费翻译服务"],
         [
             new Error("服务器公钥与固定指纹不一致"),
+            "mewCat 服务身份校验失败"
+        ],
+        [
+            new Error("服务器响应关联或时间校验失败"),
+            "mewCat 服务身份校验失败"
+        ],
+        [
+            Object.assign(new Error("decrypt details"), {
+                code: "ERR_JWE_DECRYPTION_FAILED"
+            }),
+            "mewCat 服务身份校验失败"
+        ],
+        [
+            Object.assign(new Error("signature details"), {
+                code: "ERR_JWS_SIGNATURE_VERIFICATION_FAILED"
+            }),
             "mewCat 服务身份校验失败"
         ]
     ])("映射 SDK 错误：%s", async (error, message) => {
