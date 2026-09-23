@@ -1,6 +1,6 @@
 # mewCat Free Translation Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 取消 `mewCat-service` 的邀请码授权，并让 Chrome 扩展通过自动设备注册使用开发者部署的免费 AI 翻译服务。
 
@@ -45,7 +45,7 @@
 - Consumes: 现有 `Store.atomic()`、`Client.keyThumbprint` 和 `calculateJwkThumbprint()`。
 - Produces: `Store.registerClient(name: string, signing: JWK, encryption: JWK): Promise<Client>`；相同签名/加密公钥返回已有客户端。
 
-- [ ] **Step 1: 将 Store 测试改成无邀请码注册并添加迁移保留测试**
+- [x] **Step 1: 将 Store 测试改成无邀请码注册并添加迁移保留测试**
 
 在 `tests/store.test.ts` 中把辅助函数改为：
 
@@ -78,7 +78,7 @@ it('相同设备可恢复原 clientId，不能更换响应公钥或恢复已撤�
 
 新增迁移用例：先只执行 `20260920000000_init/migration.sql`，插入带 `registrationTokenHash` 的客户端，再执行新迁移，断言原 `id`、公钥和 `revokedAt` 保留，并且 `Invitation` 表和 `registrationTokenHash` 列均不存在。
 
-- [ ] **Step 2: 运行 Store 测试并确认失败**
+- [x] **Step 2: 运行 Store 测试并确认失败**
 
 ```powershell
 Set-Location C:\project\mewCat-service
@@ -87,7 +87,7 @@ npx vitest run tests/store.test.ts
 
 Expected: FAIL，错误包含 `registerClient` 参数不匹配、邀请码校验失败或新迁移文件不存在。
 
-- [ ] **Step 3: 更新 Prisma schema 和 SQLite 迁移**
+- [x] **Step 3: 更新 Prisma schema 和 SQLite 迁移**
 
 将 `Client` 改为：
 
@@ -129,7 +129,7 @@ PRAGMA foreign_keys=ON;
 PRAGMA defer_foreign_keys=OFF;
 ```
 
-- [ ] **Step 4: 实现无邀请码的 `Store.registerClient()` 并更新迁移测试辅助器**
+- [x] **Step 4: 实现无邀请码的 `Store.registerClient()` 并更新迁移测试辅助器**
 
 删除 `randomBytes`、`hashToken()` 和 `issueInvitation()`。注册核心逻辑为：
 
@@ -158,7 +158,7 @@ async registerClient(name: string, signing: JWK, encryption: JWK) {
 
 更新 `tests/helpers.ts`，按目录名排序并依次执行所有 `prisma/migrations/*/migration.sql`，确保测试数据库包含完整迁移链。
 
-- [ ] **Step 5: 运行 Store 测试与 Prisma 生成**
+- [x] **Step 5: 运行 Store 测试与 Prisma 生成**
 
 ```powershell
 npm run db:generate
@@ -167,7 +167,7 @@ npx vitest run tests/store.test.ts
 
 Expected: PASS，迁移用例证明旧客户端保留且邀请码结构消失。
 
-- [ ] **Step 6: 提交服务端数据模型改动**
+- [x] **Step 6: 提交服务端数据模型改动**
 
 ```powershell
 git add prisma/schema.prisma prisma/migrations/20260923000000_remove_invitations/migration.sql src/store.ts tests/helpers.ts tests/store.test.ts
@@ -189,7 +189,7 @@ git commit -m "refactor(auth): 移除邀请码数据模型"
 - Consumes: Task 1 的 `Store.registerClient(name, signingKey, encryptionKey)`。
 - Produces: `TranslationClient.register(name?: string): Promise<string>`；注册业务数据不含 `invitation`。
 
-- [ ] **Step 1: 先把 API 与 SDK 测试改为无邀请码调用**
+- [x] **Step 1: 先把 API 与 SDK 测试改为无邀请码调用**
 
 在 `tests/app.test.ts` 的 `register()` helper 中发送：
 
@@ -199,7 +199,7 @@ git commit -m "refactor(auth): 移除邀请码数据模型"
 
 在 `tests/client.test.ts` 使用 `await client.register('chorme-translate')`。将响应丢失恢复用例改为使用同一个持久化 `state` 两次调用 `register()`，断言数据库只有一个客户端。添加严格对象测试：额外发送 `invitation` 字段得到 `400 INVALID_REQUEST`。在 `tests/ingress.test.ts` 明确断言 `REGISTRATIONS_PER_IP_PER_DAY` 仍限制公开注册。
 
-- [ ] **Step 2: 运行测试并确认失败**
+- [x] **Step 2: 运行测试并确认失败**
 
 ```powershell
 npx vitest run tests/app.test.ts tests/client.test.ts tests/ingress.test.ts
@@ -207,7 +207,7 @@ npx vitest run tests/app.test.ts tests/client.test.ts tests/ingress.test.ts
 
 Expected: FAIL，注册 schema 仍要求 `invitation`，SDK 仍把第一个参数作为邀请码。
 
-- [ ] **Step 3: 修改注册 schema 与 Fastify route**
+- [x] **Step 3: 修改注册 schema 与 Fastify route**
 
 ```ts
 export const registrationSchema = z.strictObject({
@@ -225,7 +225,7 @@ const client = await store.registerClient(data.name, data.signingKey, data.encry
 
 其余注册 IP 日限额和加密响应逻辑不变。
 
-- [ ] **Step 4: 修改浏览器 SDK 注册接口**
+- [x] **Step 4: 修改浏览器 SDK 注册接口**
 
 ```ts
 async register(name = 'chorme-translate'): Promise<string> {
@@ -243,7 +243,7 @@ async register(name = 'chorme-translate'): Promise<string> {
 }
 ```
 
-- [ ] **Step 5: 运行目标测试和 SDK 构建**
+- [x] **Step 5: 运行目标测试和 SDK 构建**
 
 先将 `build:client` 改成生成可 vendoring 的压缩 ESM：
 
@@ -259,7 +259,7 @@ npm run build:client
 
 Expected: 全部 PASS；生成的声明签名为 `register(name?: string): Promise<string>`。
 
-- [ ] **Step 6: 提交服务端协议改动**
+- [x] **Step 6: 提交服务端协议改动**
 
 ```powershell
 git add src/contracts.ts src/app.ts client/index.ts package.json tests/app.test.ts tests/client.test.ts tests/ingress.test.ts
@@ -282,7 +282,7 @@ git commit -m "feat(auth): 支持设备无邀请码注册"
 - Consumes: Task 2 的无邀请码注册契约。
 - Produces: 管理 CLI 仅包含 `keys | clients | revoke <clientId> | cleanup`；文档示例调用 `client.register('mewCat Chrome Extension')`。
 
-- [ ] **Step 1: 删除 CLI 的 `invite` 分支**
+- [x] **Step 1: 删除 CLI 的 `invite` 分支**
 
 帮助文字改为：
 
@@ -292,7 +292,7 @@ console.log('命令：keys | clients | revoke <clientId> | cleanup');
 
 允许命令集合改为 `['clients', 'revoke', 'cleanup']`，删除整个 `case 'invite'`。
 
-- [ ] **Step 2: 更新公开文档中的注册示例与安全说明**
+- [x] **Step 2: 更新公开文档中的注册示例与安全说明**
 
 文档统一使用：
 
@@ -306,7 +306,7 @@ if (!saved?.clientId) {
 
 删除邀请码生成、有效期、哈希存储和 `INVALID_INVITATION`；把防滥用描述改为“公开设备注册 + 注册 IP 日限额 + 设备/IP/全站翻译额度”。`.env.example` 保留 `REGISTRATIONS_PER_IP_PER_DAY=10`，注释说明它限制公开设备注册。
 
-- [ ] **Step 3: 扫描残留邀请码引用**
+- [x] **Step 3: 扫描残留邀请码引用**
 
 ```powershell
 rg -n "invitation|invite|邀请码|INVALID_INVITATION|registrationTokenHash|Invitation" src client scripts prisma README.md docs tests .env.example -g "!docs/superpowers/**"
@@ -314,7 +314,7 @@ rg -n "invitation|invite|邀请码|INVALID_INVITATION|registrationTokenHash|Invi
 
 Expected: 无输出。
 
-- [ ] **Step 4: 运行服务端完整验证**
+- [x] **Step 4: 运行服务端完整验证**
 
 ```powershell
 npm test
@@ -325,7 +325,7 @@ npm run smoke
 
 Expected: 全部退出码为 0，`dist/client/mewcat.js` 为最新无邀请码 SDK。
 
-- [ ] **Step 5: 提交服务端文档与 CLI 改动**
+- [x] **Step 5: 提交服务端文档与 CLI 改动**
 
 ```powershell
 git add scripts/admin.ts README.md docs/api.md docs/protocol.md docs/deploy-aliyun.md docs/github-actions-deploy.md docs/implementation-progress.md .env.example
@@ -347,7 +347,7 @@ git commit -m "docs(auth): 更新公开设备注册流程"
 - Consumes: Task 2 生成的 `C:\project\mewCat-service\dist\client\mewcat.js`。
 - Produces: `createMewCatService(dependencies?): { translate(input: MewCatTranslateInput): Promise<string[]>; abortAll(): void }` 和进程级 `mewCatService` 单例。
 
-- [ ] **Step 1: 为自动注册、并发初始化、错误恢复和中止写失败测试**
+- [x] **Step 1: 为自动注册、并发初始化、错误恢复和中止写失败测试**
 
 测试使用注入的 SDK adapter，不加载真实网络 bundle。核心断言：
 
@@ -367,7 +367,7 @@ expect(second).toEqual(['二']);
 
 再覆盖：已有 `clientId` 不注册；初始化失败后下一次调用可重试；`QUOTA_EXCEEDED` 只调用一次 translate；`abortAll()` 产生“mewCat 翻译请求已取消”；SDK超时产生“mewCat 翻译请求超时”；公钥指纹错误产生“mewCat 服务身份校验失败”。
 
-- [ ] **Step 2: 运行 background 服务测试并确认失败**
+- [x] **Step 2: 运行 background 服务测试并确认失败**
 
 ```powershell
 Set-Location C:\project\chorme-translate
@@ -376,7 +376,7 @@ pnpm exec vitest run --config test/vitest.image-translation.config.ts test/mewca
 
 Expected: FAIL，模块 `src/background/lib/mewcat-service.ts` 不存在。
 
-- [ ] **Step 3: 同步本地 SDK 产物与类型声明**
+- [x] **Step 3: 同步本地 SDK 产物与类型声明**
 
 ```powershell
 Copy-Item -LiteralPath 'C:\project\mewCat-service\dist\client\mewcat.js' -Destination 'C:\project\chorme-translate\src\vendor\mewcat.min.js'
@@ -421,7 +421,7 @@ export function saveClientState(serviceOrigin: string, state: MewCatClientState)
 
 `.prettierignore` 添加 `src/vendor/mewcat.min.js`；`eslint.config.mjs` 的 `ignores` 添加 `"**/vendor/*.min.js"`。cspell 已通过 `**/*.min.js` 忽略生成产物。业务代码从 `@/vendor/mewcat.min.js` 导入 SDK，避免格式化或 lint 改写生成文件。
 
-- [ ] **Step 4: 添加固定服务常量和 SDK 生命周期管理器**
+- [x] **Step 4: 添加固定服务常量和 SDK 生命周期管理器**
 
 `src/constants/translationServices.ts` 添加：
 
@@ -453,7 +453,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 普通 `Error` 若包含固定指纹或签名校验失败信息，统一返回“mewCat 服务身份校验失败”，不得回退接受响应。
 
-- [ ] **Step 5: 运行 background 服务测试**
+- [x] **Step 5: 运行 background 服务测试**
 
 ```powershell
 pnpm exec vitest run --config test/vitest.image-translation.config.ts test/mewcat-background-service.test.ts
@@ -461,7 +461,7 @@ pnpm exec vitest run --config test/vitest.image-translation.config.ts test/mewca
 
 Expected: PASS，所有失败场景的 translate 调用次数均为 1。
 
-- [ ] **Step 6: 格式化并提交 SDK 生命周期模块**
+- [x] **Step 6: 格式化并提交 SDK 生命周期模块**
 
 ```powershell
 pnpm format
@@ -482,7 +482,7 @@ git commit -m "feat(translation): 集成免费翻译客户端"
 - Consumes: Task 4 的 `mewCatService.translate()` 与 `abortAll()`。
 - Produces: `RequestType.MEWCAT_TRANSLATE`、`MewCatTranslateRequestConfig`、`MewCatTranslator implements TranslatorInterface`。
 
-- [ ] **Step 1: 写请求路由、边界分片、空白保留和错误响应测试**
+- [x] **Step 1: 写请求路由、边界分片、空白保留和错误响应测试**
 
 测试 sender 捕获每次请求的 `config.texts` 并逐项原样返回。边界输入：
 
@@ -497,7 +497,7 @@ const messages = [
 
 background 路由测试断言 `MEWCAT_TRANSLATE` 返回 `{ translations: ['你好'] }`；`ABORT` 同时调用 Task 4 的 `abortAll()`。
 
-- [ ] **Step 2: 运行翻译器测试并确认失败**
+- [x] **Step 2: 运行翻译器测试并确认失败**
 
 ```powershell
 pnpm exec vitest run --config test/vitest.image-translation.config.ts test/mewcat-translate.test.ts
@@ -505,7 +505,7 @@ pnpm exec vitest run --config test/vitest.image-translation.config.ts test/mewca
 
 Expected: FAIL，`MewCatTranslator` 和 `RequestType.MEWCAT_TRANSLATE` 不存在。
 
-- [ ] **Step 3: 扩展类型化请求协议和 background handler**
+- [x] **Step 3: 扩展类型化请求协议和 background handler**
 
 `src/types/request.ts` 添加：
 
@@ -528,7 +528,7 @@ case RequestType.MEWCAT_TRANSLATE:
 
 `handleAbortRequest()` 在中止现有 controller 后调用 `mewCatService.abortAll()`。
 
-- [ ] **Step 4: 实现 `MewCatTranslator` 的计划/执行分离**
+- [x] **Step 4: 实现 `MewCatTranslator` 的计划/执行分离**
 
 ```ts
 const BATCH_SEPARATOR = '\n\n%%\n\n';
@@ -557,7 +557,7 @@ if (!Array.isArray(translations) || !translations.every(item => typeof item === 
 }
 ```
 
-- [ ] **Step 5: 运行翻译器与现有免费服务回归测试**
+- [x] **Step 5: 运行翻译器与现有免费服务回归测试**
 
 ```powershell
 pnpm exec vitest run --config test/vitest.image-translation.config.ts test/mewcat-translate.test.ts test/microsoft-translate.test.ts
@@ -566,7 +566,7 @@ pnpm test:google
 
 Expected: 全部 PASS。
 
-- [ ] **Step 6: 把 mewCat 测试加入常规门禁并提交**
+- [x] **Step 6: 把 mewCat 测试加入常规门禁并提交**
 
 将脚本改为：
 
@@ -595,7 +595,7 @@ git commit -m "feat(translation): 支持免费服务分片翻译"
 - Consumes: Task 5 的 `MewCatTranslator` 和 `MEWCAT_TRANSLATE_MODEL_ID`。
 - Produces: `resolveTranslationServiceId()`、`getTranslationServiceOptions()`、`translateText()` 和 `translateBatch()` 对内置 mewCat 服务的完整支持。
 
-- [ ] **Step 1: 添加服务选择和路由失败测试**
+- [x] **Step 1: 添加服务选择和路由失败测试**
 
 在 `test/mewcat-translate.test.ts` 添加：
 
@@ -615,7 +615,7 @@ expect(getTranslationServiceOptions([])).toContainEqual({
 
 通过注入 `mewcatRequestSender` 断言 `translateText()` 与 `translateBatch()` 都发出 `RequestType.MEWCAT_TRANSLATE`，且不调用 model gateway。`translation-service.test.ts` 增加断言：选择 mewCat 时概念解释仍回退到第一个可用生成式模型，`hasAITranslationEnabled()` 返回 `false`。
 
-- [ ] **Step 2: 运行服务选择测试并确认失败**
+- [x] **Step 2: 运行服务选择测试并确认失败**
 
 ```powershell
 pnpm exec vitest run --config test/vitest.image-translation.config.ts test/mewcat-translate.test.ts test/translation-service.test.ts
@@ -623,7 +623,7 @@ pnpm exec vitest run --config test/vitest.image-translation.config.ts test/mewca
 
 Expected: FAIL，当前配置修复回退到 Google，运行时也没有 mewCat 分支。
 
-- [ ] **Step 3: 扩展内置服务识别与选项**
+- [x] **Step 3: 扩展内置服务识别与选项**
 
 `resolveTranslationServiceId()` 将三个内置 ID 视为有效选择；`getTranslationServiceOptions()` 在 Microsoft 之后加入：
 
@@ -636,7 +636,7 @@ Expected: FAIL，当前配置修复回退到 Google，运行时也没有 mewCat 
 
 `getSelectedModel()` 对三个内置 ID 均返回 `undefined`，避免误入 Google fallback。
 
-- [ ] **Step 4: 添加运行时翻译路由和依赖注入**
+- [x] **Step 4: 添加运行时翻译路由和依赖注入**
 
 `TranslationServiceDependencies` 添加：
 
@@ -655,7 +655,7 @@ if (resolveTranslationServiceId(config) === MEWCAT_TRANSLATE_MODEL_ID) {
 
 `translateBatch()` 使用对应的 `translateBatch()`。`hasAITranslationEnabled()` 继续只根据生成式 `BaseModel` 返回 true。更新 `TokenUsage.tsx` 说明文字，把 mewCat 免费翻译列入“不计入 AI token 统计”的服务。
 
-- [ ] **Step 5: 运行服务层测试、格式化和类型检查**
+- [x] **Step 5: 运行服务层测试、格式化和类型检查**
 
 ```powershell
 pnpm format
@@ -665,7 +665,7 @@ pnpm typecheck
 
 Expected: 全部 PASS。
 
-- [ ] **Step 6: 提交服务选择与路由改动**
+- [x] **Step 6: 提交服务选择与路由改动**
 
 ```powershell
 git add src/state/translationService.ts src/translation/translationService.ts src/options/TokenUsage.tsx test/mewcat-translate.test.ts test/translation-service.test.ts
@@ -682,11 +682,13 @@ git commit -m "feat(translation): 接入 mewCat 免费翻译服务"
 - Consumes: Tasks 1–6 的完整服务端与扩展实现。
 - Produces: 可部署的服务端、可发布的扩展构建和与实现一致的项目文档。
 
-- [ ] **Step 1: 更新扩展文档中的服务列表和默认配置说明**
+- [x] **Step 1: 更新扩展文档中的服务列表和默认配置说明**
 
 README 说明 mewCat 是内置免费文本翻译服务：首次使用自动创建设备身份；身份保存在 IndexedDB；生产 endpoint 固定；不需要 API Key 或邀请码；默认服务仍为 Google；该服务不支持图片翻译、摘要和概念解释。
 
 - [ ] **Step 2: 校验生产公钥指纹与 CORS 部署配置**
+
+执行结果（2026-09-23）：公开 `/v1/keys` 的签名指纹与固定值一致；正式扩展 Origin 的公钥请求和注册预检均返回 `403`。需先将生产 `ALLOWED_ORIGINS` 更新为 `chrome-extension://dbginmjacelgagkfhjkhcbajnaalolfp` 并部署本次服务端版本，因此本步骤保持未完成。
 
 在部署主机使用现有密钥文件只读计算 `signingKey` 指纹，不重新生成密钥：
 
@@ -703,7 +705,7 @@ docker compose run --rm migrate node --input-type=module -e "import { calculateJ
 
 确认生产 `.env` 的 `ALLOWED_ORIGINS` 包含正式 `chrome-extension://dbginmjacelgagkfhjkhcbajnaalolfp`；本地开发 origin 只加入开发环境，不扩大生产白名单。若指纹不同，停止扩展发布，先查明服务器密钥是否轮换，并通过代码评审更新固定常量。
 
-- [ ] **Step 3: 运行服务端完整门禁**
+- [x] **Step 3: 运行服务端完整门禁**
 
 ```powershell
 Set-Location C:\project\mewCat-service
@@ -715,7 +717,7 @@ npm run smoke
 
 Expected: 全部退出码为 0。
 
-- [ ] **Step 4: 运行扩展完整门禁和生产构建**
+- [x] **Step 4: 运行扩展完整门禁和生产构建**
 
 ```powershell
 Set-Location C:\project\chorme-translate
@@ -726,7 +728,7 @@ pnpm build
 
 Expected: 全部退出码为 0；生产 ZIP成功生成；构建输出不包含远程脚本引用、邀请码字符串或服务端私钥。
 
-- [ ] **Step 5: 检查两个仓库的差异边界**
+- [x] **Step 5: 检查两个仓库的差异边界**
 
 ```powershell
 git -C C:\project\mewCat-service status --short
@@ -737,7 +739,7 @@ git -C C:\project\chorme-translate log -5 --oneline
 
 Expected: 服务端仅包含本计划提交；扩展原有 `package.json`、`.codex/config.toml`、`.codex/hooks.json` 用户改动仍被保留且未被意外提交。若 `package.json` 的测试脚本 hunk已作为 Task 5 提交，其他既有 hunk仍留在工作区。
 
-- [ ] **Step 6: 提交扩展文档更新**
+- [x] **Step 6: 提交扩展文档更新**
 
 ```powershell
 git add README.md docs/superpowers/plans/2026-09-23-mewcat-free-translation.md
@@ -745,6 +747,8 @@ git commit -m "docs(translation): 记录免费翻译服务接入"
 ```
 
 - [ ] **Step 7: 执行人工验收**
+
+待生产服务完成部署与 CORS 更新后执行。
 
 1. 新安装选择“mewCat AI 翻译（免费）”，第一次翻译无需邀请码并成功返回。
 2. 同时触发页面翻译和划词翻译，不出现重复设备或注册冲突。

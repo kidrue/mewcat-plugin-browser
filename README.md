@@ -16,9 +16,12 @@
 - **HTML标准翻译**：基于HTML标准的网页翻译
 - **沉浸式翻译**：智能识别页面布局，保持原有排版风格
 - **默认 Google Translate**：首次安装无需 API Key 即可翻译，也可切换到已配置的 AI 模型
+- **mewCat AI 翻译（免费）**：可选的开发者部署文本翻译服务，无需 API Key 或邀请码
 - **通用翻译器**：支持多种翻译 API 服务
 
 > Google Translate 默认通道使用 Google 网页端非公开接口。使用该服务时，待翻译文本会发送到 Google；接口可能受到限流或变更影响。
+
+> mewCat AI 翻译使用固定生产服务 `https://api.mewcat.kidrue.top`。首次使用时自动创建设备身份，并将不可导出的设备密钥保存在 IndexedDB；待翻译文本会加密发送到该服务，再由服务端翻译供应商处理。它不需要 API Key 或邀请码，不用于图片翻译、页面总结或概念解释。默认翻译服务仍为 Google Translate。
 
 ### 高级特性
 
@@ -165,7 +168,7 @@ pnpm package
 
 ### 统一模型网关
 
-- 默认使用 Google Translate，并支持切换已配置的 AI 模型
+- 默认使用 Google Translate，并支持切换 mewCat 免费翻译或已配置的 AI 模型
 - 保留现有用户的可用模型选择；无可用模型时回退到 Google Translate
 - 使用 xsAI 统一文本、结构化图片输出和 OpenAI-compatible 调用
 - API Key 填写后自动获取模型列表，并持久化文本/图片能力元数据
