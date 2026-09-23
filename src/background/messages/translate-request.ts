@@ -1,6 +1,7 @@
 import type {
     AiHttpRequestConfig,
     GoogleTranslateRequestConfig,
+    MewCatTranslateRequestConfig,
     MicrosoftTranslateRequestConfig,
     TranslationEngineRequestConfig,
     UnifiedRequestBody,
@@ -12,6 +13,7 @@ import {
     normalizeGoogleTranslateTimeout,
     parseGoogleTranslateResponse
 } from "../lib/google-translate"
+import { mewCatService } from "../lib/mewcat-service"
 import { requestMicrosoftTranslation } from "../lib/microsoft-translate"
 
 // ============================================================================
@@ -268,10 +270,19 @@ async function handleMicrosoftTranslateRequest(
     }
 }
 
+async function handleMewCatTranslateRequest(
+    config: MewCatTranslateRequestConfig
+): Promise<UnifiedResponse> {
+    return sendSuccess({
+        translations: await mewCatService.translate(config)
+    })
+}
+
 /** 中断所有活动请求 */
 function handleAbortRequest(): UnifiedResponse {
     activeAbortControllers.forEach(controller => controller.abort())
     activeAbortControllers.clear()
+    mewCatService.abortAll()
     return sendSuccess("All requests aborted")
 }
 
@@ -292,6 +303,8 @@ export async function handleTranslateRequest(
                 return await handleGoogleTranslateRequest(body.config)
             case "microsoft_translate":
                 return await handleMicrosoftTranslateRequest(body.config)
+            case "mewcat_translate":
+                return await handleMewCatTranslateRequest(body.config)
             case "abort":
                 return handleAbortRequest()
             default:

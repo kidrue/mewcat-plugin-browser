@@ -15,6 +15,7 @@ export enum RequestType {
     /** 无密钥 Google Translate 网页端请求 */
     GOOGLE_TRANSLATE = "google_translate",
     MICROSOFT_TRANSLATE = "microsoft_translate",
+    MEWCAT_TRANSLATE = "mewcat_translate",
     /** 中断所有请求 */
     ABORT = "abort"
 }
@@ -65,10 +66,20 @@ export interface MicrosoftTranslateRequestConfig {
     timeout?: number
 }
 
+export interface MewCatTranslateRequestConfig {
+    texts: string[]
+    targetLanguage: string
+    sourceLanguage?: string
+}
+
 /**
  * 统一请求体
  */
 export type UnifiedRequestBody =
+    | {
+          type: RequestType.MEWCAT_TRANSLATE
+          config: MewCatTranslateRequestConfig
+      }
     | {
           type: RequestType.MICROSOFT_TRANSLATE
           config: MicrosoftTranslateRequestConfig
