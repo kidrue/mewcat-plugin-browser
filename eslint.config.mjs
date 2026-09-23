@@ -52,6 +52,7 @@ export default [
             "**/dist/**",
             "**/build/**/*",
             "**/assets/**",
+            "**/vendor/*.min.js",
             "**/*.config.js",
             "**/*.config.mjs",
             "**/scripts/**",
