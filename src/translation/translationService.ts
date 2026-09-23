@@ -1,5 +1,6 @@
 import {
     GOOGLE_TRANSLATE_MODEL_ID,
+    MEWCAT_TRANSLATE_MODEL_ID,
     MICROSOFT_TRANSLATE_MODEL_ID
 } from "@/constants/translationServices"
 import type {
@@ -14,6 +15,7 @@ import {
     GoogleTranslator,
     type TranslateRequestSender
 } from "./GoogleTranslator"
+import { MewCatTranslator } from "./MewCatTranslator"
 import { MicrosoftTranslator } from "./MicrosoftTranslator"
 import {
     abortModelTranslations,
@@ -43,6 +45,7 @@ export interface TranslationServiceDependencies {
     modelGatewayStreamSender?: ModelGatewayStreamSender
     googleRequestSender?: TranslateRequestSender
     microsoftRequestSender?: TranslateRequestSender
+    mewcatRequestSender?: TranslateRequestSender
 }
 
 export class ConceptExplanationUnavailableError extends Error {
@@ -72,7 +75,8 @@ const getSelectedModel = (
 ): BaseModel | undefined => {
     const serviceId = resolveTranslationServiceId(config)
     return serviceId === GOOGLE_TRANSLATE_MODEL_ID ||
-        serviceId === MICROSOFT_TRANSLATE_MODEL_ID
+        serviceId === MICROSOFT_TRANSLATE_MODEL_ID ||
+        serviceId === MEWCAT_TRANSLATE_MODEL_ID
         ? undefined
         : config.aiModelList.find(model => model.id === serviceId)
 }
@@ -113,9 +117,15 @@ export async function translateText(
     options: TranslationCallOptions = {},
     dependencies: TranslationServiceDependencies = {}
 ): Promise<string> {
-    if (resolveTranslationServiceId(config) === MICROSOFT_TRANSLATE_MODEL_ID) {
+    const serviceId = resolveTranslationServiceId(config)
+    if (serviceId === MICROSOFT_TRANSLATE_MODEL_ID) {
         return new MicrosoftTranslator(
             dependencies.microsoftRequestSender
+        ).translateText(messages, targetLanguage)
+    }
+    if (serviceId === MEWCAT_TRANSLATE_MODEL_ID) {
+        return new MewCatTranslator(
+            dependencies.mewcatRequestSender
         ).translateText(messages, targetLanguage)
     }
     const model = getSelectedModel(config)
@@ -145,9 +155,15 @@ export async function translateBatch(
     options: TranslationCallOptions = {},
     dependencies: TranslationServiceDependencies = {}
 ): Promise<string> {
-    if (resolveTranslationServiceId(config) === MICROSOFT_TRANSLATE_MODEL_ID) {
+    const serviceId = resolveTranslationServiceId(config)
+    if (serviceId === MICROSOFT_TRANSLATE_MODEL_ID) {
         return new MicrosoftTranslator(
             dependencies.microsoftRequestSender
+        ).translateBatch(messages, targetLanguage)
+    }
+    if (serviceId === MEWCAT_TRANSLATE_MODEL_ID) {
+        return new MewCatTranslator(
+            dependencies.mewcatRequestSender
         ).translateBatch(messages, targetLanguage)
     }
     const model = getSelectedModel(config)

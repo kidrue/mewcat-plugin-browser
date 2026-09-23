@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { GOOGLE_TRANSLATE_MODEL_ID } from "../src/constants/translationServices"
+import {
+    GOOGLE_TRANSLATE_MODEL_ID,
+    MEWCAT_TRANSLATE_MODEL_ID
+} from "../src/constants/translationServices"
 import type { ModelGatewayRequest } from "../src/messaging/modelGatewayContracts"
 import {
     ConceptExplanationUnavailableError,
@@ -335,6 +338,67 @@ describe("functional translation service", () => {
 
         expect(result).toBe("你好")
         expect(modelGatewayCalled).toBe(false)
+    })
+
+    it("routes mewCat text and batch translation without invoking the model gateway", async () => {
+        let modelGatewayCalled = false
+        const requests: RequestType[] = []
+        const dependencies = {
+            modelGatewaySender: async () => {
+                modelGatewayCalled = true
+                return { success: true as const, text: "wrong" }
+            },
+            mewcatRequestSender: async request => {
+                requests.push(request.type)
+                const texts =
+                    request.type === RequestType.MEWCAT_TRANSLATE
+                        ? request.config.texts
+                        : []
+                return {
+                    success: true,
+                    content: { translations: texts.map(() => "你好") }
+                }
+            }
+        }
+        const config = createConfig(MEWCAT_TRANSLATE_MODEL_ID)
+
+        await expect(
+            translateText(
+                config,
+                [{ role: "user", content: "Hello" }],
+                "zh-CN",
+                {},
+                dependencies
+            )
+        ).resolves.toBe("你好")
+        await expect(
+            translateBatch(
+                config,
+                [{ role: "user", content: "Hello" }],
+                "zh-CN",
+                {},
+                dependencies
+            )
+        ).resolves.toBe("你好")
+        expect(requests).toEqual([
+            RequestType.MEWCAT_TRANSLATE,
+            RequestType.MEWCAT_TRANSLATE
+        ])
+        expect(modelGatewayCalled).toBe(false)
+    })
+
+    it("mewCat 翻译不计为 AI 用量，概念解释仍使用可用 LLM", async () => {
+        let request: ModelGatewayRequest | undefined
+        const config = createConfig(MEWCAT_TRANSLATE_MODEL_ID)
+        expect(hasAITranslationEnabled(config)).toBe(false)
+
+        await explainConcept(config, { text: "Ada Lovelace" }, "zh-CN", {
+            modelGatewaySender: async value => {
+                request = value
+                return { success: true, text: "类别：人物" }
+            }
+        })
+        expect(request).toMatchObject({ model: { id: "ai-model" } })
     })
 
     it("reports AI usage only for a selected LLM model", () => {

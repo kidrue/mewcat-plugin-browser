@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { handleTranslateRequest } from "@/background/messages/translate-request"
+import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import {
+    getTranslationServiceOptions,
+    resolveTranslationServiceId
+} from "@/state/translationService"
 import type { TranslateRequestSender } from "@/translation/GoogleTranslator"
 import {
     createMewCatBatches,
@@ -110,6 +115,21 @@ describe("MewCatTranslator", () => {
                 "zh-CN"
             )
         ).rejects.toThrow("mewCat 翻译返回了无法识别的响应")
+    })
+})
+
+describe("mewCat 服务选择", () => {
+    it("保留内置服务 ID 并显示免费服务选项", () => {
+        expect(
+            resolveTranslationServiceId({
+                currentModel: MEWCAT_TRANSLATE_MODEL_ID,
+                aiModelList: []
+            })
+        ).toBe(MEWCAT_TRANSLATE_MODEL_ID)
+        expect(getTranslationServiceOptions([])).toContainEqual({
+            value: MEWCAT_TRANSLATE_MODEL_ID,
+            label: "mewCat AI 翻译（免费）"
+        })
     })
 })
 

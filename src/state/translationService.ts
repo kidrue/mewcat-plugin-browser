@@ -1,5 +1,6 @@
 import {
     GOOGLE_TRANSLATE_MODEL_ID,
+    MEWCAT_TRANSLATE_MODEL_ID,
     MICROSOFT_TRANSLATE_MODEL_ID
 } from "@/constants/translationServices"
 import { migrateLegacyModel } from "@/model-management/catalog"
@@ -42,7 +43,8 @@ export function resolveTranslationServiceId(
 ): string {
     if (
         config.currentModel === GOOGLE_TRANSLATE_MODEL_ID ||
-        config.currentModel === MICROSOFT_TRANSLATE_MODEL_ID
+        config.currentModel === MICROSOFT_TRANSLATE_MODEL_ID ||
+        config.currentModel === MEWCAT_TRANSLATE_MODEL_ID
     ) {
         return config.currentModel
     }
@@ -136,6 +138,10 @@ export function getTranslationServiceOptions(
             label: "Google Translate"
         },
         { value: MICROSOFT_TRANSLATE_MODEL_ID, label: "微软翻译（免费）" },
+        {
+            value: MEWCAT_TRANSLATE_MODEL_ID,
+            label: "mewCat AI 翻译（免费）"
+        },
         ...aiModelList.filter(isUsableModel).map(model => ({
             value: model.id,
             label: model.name || "未命名模型"
