@@ -379,7 +379,7 @@ export function hasConfiguredAiModels(aiModelList?: BaseModel[]): boolean {
 function focusConfigurationField(id: string, field: "api-key" | "model-name") {
     const target = document.getElementById(`${field}-${id}`)
     target?.scrollIntoView?.({ block: "center" })
-    if (target instanceof HTMLSelectElement && target.disabled) {
+    if (target?.matches(":disabled")) {
         document.getElementById(`model-field-${id}`)?.focus()
         return
     }

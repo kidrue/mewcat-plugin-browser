@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef } from "react"
 import styled from "styled-components"
 
 import { useModelDiscovery } from "@/hooks/useModelDiscovery"
@@ -7,53 +7,12 @@ import { PROVIDER_REGISTRY } from "@/model-management/providers"
 import type { BaseModel } from "@/types/aiModel"
 
 import ApiKeyInput from "../ApiKeyInput"
-import NativeSelect from "../NativeSelect"
+import Select from "../Select"
 
 const FieldStack = styled.div`
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-`
-
-const SearchInput = styled.input`
-    width: 100%;
-    height: 36px;
-    padding: 0 var(--space-3);
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    color: var(--text-primary);
-    font-family: var(--font-family);
-    font-size: var(--font-size-sm);
-    transition: all var(--transition-fast);
-
-    &::placeholder {
-        color: var(--text-tertiary);
-    }
-
-    &:hover:not(:disabled) {
-        border-color: var(--gray-400);
-    }
-
-    &:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px var(--seal-ring);
-    }
-
-    &:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        background: var(--gray-100);
-    }
-`
-
-const EmptySearchResult = styled.div`
-    padding: var(--space-2) var(--space-3);
-    border-radius: var(--radius-md);
-    background: var(--bg-tertiary);
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
 `
 
 const FieldMeta = styled.div`
@@ -176,29 +135,19 @@ export function ModelDiscoveryField({
     const { models, isLoading, errorMessage, manualEntry, refresh } =
         useModelDiscovery(model)
     const apiKey = model.params.apiKey.trim()
-    const [searchQuery, setSearchQuery] = useState("")
 
     useEffect(() => {
         onChangeRef.current = onChange
     }, [onChange])
 
     const options = useMemo(
-        () =>
-            buildModelSelectionOptions(
-                models,
-                model.params.modelName,
-                searchQuery
-            ),
-        [model.params.modelName, models, searchQuery]
+        () => buildModelSelectionOptions(models, model.params.modelName),
+        [model.params.modelName, models]
     )
     const selectedModel = models.find(
         discovered => discovered.id === model.params.modelName
     )
     const vision = selectedModel?.vision ?? "unknown"
-
-    useEffect(() => {
-        setSearchQuery("")
-    }, [model.id])
 
     useEffect(() => {
         if (!selectedModel) {
@@ -238,17 +187,10 @@ export function ModelDiscoveryField({
 
     return (
         <FieldStack id={`model-field-${model.id}`} tabIndex={-1}>
-            {models.length > 0 && (
-                <SearchInput
-                    type="search"
-                    aria-label="搜索可用模型"
-                    value={searchQuery}
-                    disabled={isLoading}
-                    onChange={event => setSearchQuery(event.target.value)}
-                    placeholder="搜索可用模型"
-                />
-            )}
-            <NativeSelect
+            <Select
+                key={model.id}
+                searchPlaceholder="搜索可用模型"
+                emptyMessage="未找到匹配的模型"
                 id={`model-name-${model.id}`}
                 aria-label="模型名称"
                 value={model.params.modelName}
@@ -261,7 +203,8 @@ export function ModelDiscoveryField({
                         : "填写 API Key 后自动获取模型"
                 }
                 disabled={!apiKey || isLoading || options.length === 0}
-                onChange={value => {
+                onChange={selected => {
+                    const value = String(selected)
                     const discovered = models.find(item => item.id === value)
                     onChange(
                         value,
@@ -271,11 +214,6 @@ export function ModelDiscoveryField({
                     )
                 }}
             />
-            {searchQuery.trim() && options.length === 0 && (
-                <EmptySearchResult role="status">
-                    未找到匹配的模型
-                </EmptySearchResult>
-            )}
             <FieldMeta>
                 <CapabilityBadge $vision={vision}>
                     {getVisionCapabilityLabel(vision)}

@@ -956,8 +956,8 @@ describe("translation service model validation", () => {
         root = await render(<TranslateServices />)
 
         const select = document.getElementById("model-name-service")
-        expect(select).toBeInstanceOf(HTMLSelectElement)
-        expect((select as HTMLSelectElement).disabled).toBe(false)
+        expect(select).toBeInstanceOf(HTMLButtonElement)
+        expect((select as HTMLButtonElement).disabled).toBe(false)
         const testButton = Array.from(document.querySelectorAll("button")).find(
             button => button.textContent?.trim() === "测试"
         )!

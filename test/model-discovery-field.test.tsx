@@ -162,16 +162,28 @@ describe("model discovery field", () => {
             await vi.advanceTimersByTimeAsync(400)
         })
 
-        const select = document.querySelector("select")!
+        const select = document.querySelector<HTMLButtonElement>(
+            '[aria-label="模型名称"]'
+        )!
         expect(mocks.discoverModels).toHaveBeenCalledWith(
             expect.objectContaining({ apiKey: "secret", isOfficial: true }),
             {},
             expect.any(AbortSignal)
         )
         expect(select.disabled).toBe(false)
+        expect(
+            document.querySelector('input[aria-label="搜索可用模型"]')
+        ).toBeNull()
+        await act(async () => select.click())
+        expect(
+            document.querySelector(
+                '[role="dialog"] input[aria-label="搜索可用模型"]'
+            )
+        ).not.toBeNull()
         await act(async () => {
-            select.value = "vision-model"
-            select.dispatchEvent(new Event("change", { bubbles: true }))
+            document
+                .querySelector<HTMLButtonElement>('[role="option"]')!
+                .click()
         })
         expect(onChange).toHaveBeenCalledWith("vision-model", {
             vision: true
