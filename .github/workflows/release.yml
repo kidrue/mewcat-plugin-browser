@@ -149,15 +149,15 @@ jobs:
         run: |
           mkdir -p dist-assets
 
-          # scripts/package-with-date.js 产出的文件名带日期后缀，
-          # 这里统一改名为带版本号的形式再上传
-          ZIP="$(ls .output/chrome-mv3-prod-*.zip 2>/dev/null | head -n 1)"
-          if [ -z "$ZIP" ]; then
-            echo "::error::未找到构建产物 .output/chrome-mv3-prod-*.zip"
+          # 本地产物包含扩展名称、版本和时间；CI 保留固定资产名以复用 draft。
+          ZIP="$(find .output -maxdepth 1 -type f -name "mewCat-${VERSION}-*.zip" -print -quit)"
+          CRX="$(find release -maxdepth 1 -type f -name "mewCat-${VERSION}-*.crx" -print -quit)"
+          if [ -z "$ZIP" ] || [ -z "$CRX" ]; then
+            echo "::error::未找到 mewCat-${VERSION} 的 ZIP 或 CRX 构建产物"
             exit 1
           fi
           cp "$ZIP" "dist-assets/mewcat-v${VERSION}.zip"
-          cp "release/mewcat-v${VERSION}.crx" "dist-assets/mewcat-v${VERSION}.crx"
+          cp "$CRX" "dist-assets/mewcat-v${VERSION}.crx"
 
           (
             cd dist-assets

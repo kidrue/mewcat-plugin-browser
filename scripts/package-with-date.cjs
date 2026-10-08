@@ -1,26 +1,21 @@
 #!/usr/bin/env node
 
-/** 使用 WXT 打包，并为生产 ZIP 增加日期后缀。 */
+/** 使用 WXT 打包，并以扩展名称、版本及北京时间命名生产 ZIP。 */
 
 const { execSync } = require("child_process")
 const fs = require("fs")
 const path = require("path")
+const { createArtifactFileName } = require("./artifact-name.cjs")
 
-const getDateSuffix = () => {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = String(now.getMonth() + 1).padStart(2, "0")
-    const day = String(now.getDate()).padStart(2, "0")
-    return `${year}${month}${day}`
-}
-
-try {
-    console.log("📦 Running wxt zip...")
-    execSync("pnpm exec wxt zip", { stdio: "inherit" })
-
-    const outputDir = path.join(process.cwd(), ".output")
+function renameProductionZip(outputDir, now = new Date()) {
     const source = path.join(outputDir, "chrome-mv3-prod.zip")
-    const fileName = `chrome-mv3-prod-${getDateSuffix()}.zip`
+    const manifest = JSON.parse(
+        fs.readFileSync(
+            path.join(outputDir, "chrome-mv3", "manifest.json"),
+            "utf8"
+        )
+    )
+    const fileName = createArtifactFileName(manifest, "zip", now)
     const destination = path.join(outputDir, fileName)
 
     if (!fs.existsSync(source)) {
@@ -31,8 +26,21 @@ try {
     }
 
     fs.renameSync(source, destination)
-    console.log(`✅ Package created successfully: .output/${fileName}`)
-} catch (error) {
-    console.error("❌ Error during packaging:", error.message)
-    process.exit(1)
+    return destination
+}
+
+module.exports = { renameProductionZip }
+
+if (require.main === module) {
+    try {
+        console.log("📦 Running wxt zip...")
+        execSync("pnpm exec wxt zip", { stdio: "inherit" })
+        const destination = renameProductionZip(
+            path.join(process.cwd(), ".output")
+        )
+        console.log(`✅ Package created successfully: ${destination}`)
+    } catch (error) {
+        console.error("❌ Error during packaging:", error.message)
+        process.exit(1)
+    }
 }

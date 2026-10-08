@@ -24,8 +24,8 @@ pnpm crx
 `pnpm build` 会先执行 WXT 生产构建，再生成商店上传包：
 
 - 解压目录：`.output/chrome-mv3`
-- 发布包：`.output/chrome-mv3-prod-YYYYMMDD.zip`
-- CRX：`release/mewcat-v<version>.crx`
+- 发布包：`.output/mewCat-<version>-YYYYMMDD HHmmss.zip`（北京时间）
+- CRX：`release/mewCat-<version>-YYYYMMDD HHmmss.crx`（北京时间）
 
 ## 可选代码混淆
 

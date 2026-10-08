@@ -15,13 +15,12 @@
 const ChromeExtension = require("crx")
 const path = require("path")
 const fs = require("fs")
+const { createArtifactFileName } = require("./artifact-name.cjs")
 
 const ROOT_DIR = path.resolve(__dirname, "..")
 const SOURCE_DIR = path.join(ROOT_DIR, ".output/chrome-mv3")
 const OUTPUT_DIR = path.join(ROOT_DIR, "release")
 const PRIVATE_KEY_PATH = path.join(ROOT_DIR, "key.pem")
-
-const { version } = require("../package.json")
 
 const readPrivateKey = () => {
     const fromEnv = process.env.CRX_PRIVATE_KEY
@@ -55,7 +54,13 @@ const packCrx = async () => {
     // 真正产出 crx Buffer 的是 pack()
     const loaded = await builder.load(SOURCE_DIR)
     const crxBuffer = await loaded.pack()
-    const crxPath = path.join(OUTPUT_DIR, `mewcat-v${version}.crx`)
+    const manifest = JSON.parse(
+        fs.readFileSync(path.join(SOURCE_DIR, "manifest.json"), "utf8")
+    )
+    const crxPath = path.join(
+        OUTPUT_DIR,
+        createArtifactFileName(manifest, "crx")
+    )
 
     fs.mkdirSync(OUTPUT_DIR, { recursive: true })
     fs.writeFileSync(crxPath, crxBuffer)
