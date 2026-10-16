@@ -110,32 +110,36 @@ const getConceptExplanationModel = (
 const getGoogleTranslator = (dependencies: TranslationServiceDependencies) =>
     new GoogleTranslator(dependencies.googleRequestSender)
 
-export async function translateText(
+function translateWithService(
+    method: "translateText" | "translateBatch",
     config: TranslationRuntimeConfig,
     messages: Message[],
     targetLanguage: string,
-    options: TranslationCallOptions = {},
-    dependencies: TranslationServiceDependencies = {}
+    options: TranslationCallOptions,
+    dependencies: TranslationServiceDependencies
 ): Promise<string> {
     const serviceId = resolveTranslationServiceId(config)
     if (serviceId === MICROSOFT_TRANSLATE_MODEL_ID) {
-        return new MicrosoftTranslator(
-            dependencies.microsoftRequestSender
-        ).translateText(messages, targetLanguage)
+        return new MicrosoftTranslator(dependencies.microsoftRequestSender)[
+            method
+        ](messages, targetLanguage)
     }
     if (serviceId === MEWCAT_TRANSLATE_MODEL_ID) {
-        return new MewCatTranslator(
-            dependencies.mewcatRequestSender
-        ).translateText(messages, targetLanguage)
-    }
-    const model = getSelectedModel(config)
-    if (!model) {
-        return getGoogleTranslator(dependencies).translateText(
+        return new MewCatTranslator(dependencies.mewcatRequestSender)[method](
             messages,
             targetLanguage
         )
     }
-    return translateModelText(
+    const model = getSelectedModel(config)
+    if (!model) {
+        return getGoogleTranslator(dependencies)[method](
+            messages,
+            targetLanguage
+        )
+    }
+    const translateModel =
+        method === "translateText" ? translateModelText : translateModelBatch
+    return translateModel(
         model,
         messages,
         targetLanguage,
@@ -148,6 +152,23 @@ export async function translateText(
     )
 }
 
+export async function translateText(
+    config: TranslationRuntimeConfig,
+    messages: Message[],
+    targetLanguage: string,
+    options: TranslationCallOptions = {},
+    dependencies: TranslationServiceDependencies = {}
+): Promise<string> {
+    return translateWithService(
+        "translateText",
+        config,
+        messages,
+        targetLanguage,
+        options,
+        dependencies
+    )
+}
+
 export async function translateBatch(
     config: TranslationRuntimeConfig,
     messages: Message[],
@@ -155,34 +176,13 @@ export async function translateBatch(
     options: TranslationCallOptions = {},
     dependencies: TranslationServiceDependencies = {}
 ): Promise<string> {
-    const serviceId = resolveTranslationServiceId(config)
-    if (serviceId === MICROSOFT_TRANSLATE_MODEL_ID) {
-        return new MicrosoftTranslator(
-            dependencies.microsoftRequestSender
-        ).translateBatch(messages, targetLanguage)
-    }
-    if (serviceId === MEWCAT_TRANSLATE_MODEL_ID) {
-        return new MewCatTranslator(
-            dependencies.mewcatRequestSender
-        ).translateBatch(messages, targetLanguage)
-    }
-    const model = getSelectedModel(config)
-    if (!model) {
-        return getGoogleTranslator(dependencies).translateBatch(
-            messages,
-            targetLanguage
-        )
-    }
-    return translateModelBatch(
-        model,
+    return translateWithService(
+        "translateBatch",
+        config,
         messages,
         targetLanguage,
-        {
-            aiRole: config.aiRole,
-            enableThinking: config.enableThinking,
-            pageTitle: options.pageTitle
-        },
-        dependencies.modelGatewaySender
+        options,
+        dependencies
     )
 }
 

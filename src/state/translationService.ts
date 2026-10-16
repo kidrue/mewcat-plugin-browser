@@ -135,7 +135,7 @@ export function getTranslationServiceOptions(
     return [
         {
             value: GOOGLE_TRANSLATE_MODEL_ID,
-            label: "Google Translate"
+            label: "Google Translate（免费）"
         },
         { value: MICROSOFT_TRANSLATE_MODEL_ID, label: "微软翻译（免费）" },
         {

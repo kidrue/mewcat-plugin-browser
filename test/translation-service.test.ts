@@ -2,14 +2,17 @@ import { describe, expect, it } from "vitest"
 
 import {
     GOOGLE_TRANSLATE_MODEL_ID,
-    MEWCAT_TRANSLATE_MODEL_ID
+    MEWCAT_TRANSLATE_MODEL_ID,
+    MICROSOFT_TRANSLATE_MODEL_ID
 } from "../src/constants/translationServices"
 import type { ModelGatewayRequest } from "../src/messaging/modelGatewayContracts"
+import type { TranslateRequestSender } from "../src/translation/GoogleTranslator"
 import {
     ConceptExplanationUnavailableError,
     explainConcept,
     getConceptExplanationErrorMessage,
     hasAITranslationEnabled,
+    streamConceptExplanation,
     translateBatch,
     translateText,
     type TranslationRuntimeConfig
@@ -40,6 +43,153 @@ const createConfig = (
 })
 
 describe("functional translation service", () => {
+    it.each([
+        { name: "text", translate: translateText, separator: "\n" },
+        { name: "batch", translate: translateBatch, separator: "\n\n%%\n\n" }
+    ])(
+        "preserves built-in $name translation request boundaries",
+        async ({ translate, separator }) => {
+            for (const serviceId of [
+                GOOGLE_TRANSLATE_MODEL_ID,
+                MICROSOFT_TRANSLATE_MODEL_ID
+            ]) {
+                const sender: TranslateRequestSender = async request => {
+                    expect(request.type).toBe(
+                        serviceId === GOOGLE_TRANSLATE_MODEL_ID
+                            ? RequestType.GOOGLE_TRANSLATE
+                            : RequestType.MICROSOFT_TRANSLATE
+                    )
+                    expect(request.config).toEqual({
+                        text: `first${separator}second`,
+                        targetLanguage: "ja",
+                        timeout: 30_000
+                    })
+                    return { success: true, content: "翻译结果" }
+                }
+                await expect(
+                    translate(
+                        createConfig(serviceId),
+                        [
+                            { role: "user", content: "first" },
+                            { role: "user", content: "second" }
+                        ],
+                        "ja",
+                        {},
+                        {
+                            googleRequestSender: sender,
+                            microsoftRequestSender: sender
+                        }
+                    )
+                ).resolves.toBe("翻译结果")
+            }
+        }
+    )
+
+    it.each([
+        {
+            name: "text",
+            translate: translateText,
+            feature: "selection-translation"
+        },
+        {
+            name: "batch",
+            translate: translateBatch,
+            feature: "page-translation"
+        }
+    ])(
+        "preserves AI $name translation options and request type",
+        async ({ translate, feature }) => {
+            await expect(
+                translate(
+                    { ...createConfig(), enableThinking: true },
+                    [{ role: "user", content: "Hello" }],
+                    "zh-CN",
+                    { pageTitle: "Example" },
+                    {
+                        modelGatewaySender: async request => {
+                            expect(request).toMatchObject({
+                                type: "generate",
+                                model,
+                                feature,
+                                enableThinking: true
+                            })
+                            if (request.type === "generate") {
+                                expect(request.messages[0].content).toContain(
+                                    "简体中文"
+                                )
+                                expect(request.messages[1]).toEqual({
+                                    role: "user",
+                                    content: "Hello"
+                                })
+                                if (feature === "page-translation") {
+                                    expect(
+                                        request.messages[0].content
+                                    ).toContain("Example")
+                                }
+                            }
+                            return { success: true, text: "你好" }
+                        }
+                    }
+                )
+            ).resolves.toBe("你好")
+        }
+    )
+
+    it("returns streamed explanation text while forwarding stream options", async () => {
+        const signal = new AbortController().signal
+        const deltas: string[] = []
+        const onDelta = (text: string) => {
+            deltas.push(text)
+        }
+        await expect(
+            streamConceptExplanation(
+                createConfig(),
+                { text: "Ada Lovelace" },
+                "zh-CN",
+                { signal, onDelta },
+                {
+                    modelGatewayStreamSender: async (request, options) => {
+                        expect(request).toMatchObject({
+                            feature: "concept-explanation",
+                            enableThinking: false
+                        })
+                        expect(options.signal).toBe(signal)
+                        expect(options.onDelta).toBe(onDelta)
+                        options.onDelta("类别：人物")
+                        return { success: true, text: "类别：人物" }
+                    }
+                }
+            )
+        ).resolves.toBe("类别：人物")
+        expect(deltas).toEqual(["类别：人物"])
+    })
+
+    it("preserves streamed gateway error code, message and status", async () => {
+        await expect(
+            streamConceptExplanation(
+                createConfig(),
+                { text: "Ada Lovelace" },
+                "zh-CN",
+                { onDelta: () => {} },
+                {
+                    modelGatewayStreamSender: async () => ({
+                        success: false,
+                        error: {
+                            code: "AUTHENTICATION_FAILED",
+                            message: "认证失败",
+                            status: 401
+                        }
+                    })
+                }
+            )
+        ).rejects.toMatchObject({
+            name: "ModelGatewayClientError",
+            code: "AUTHENTICATION_FAILED",
+            message: "认证失败",
+            status: 401
+        })
+    })
+
     it("maps unknown concept explanation failures to a safe UI message", () => {
         expect(
             getConceptExplanationErrorMessage(

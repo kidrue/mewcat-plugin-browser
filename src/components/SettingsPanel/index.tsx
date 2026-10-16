@@ -1,7 +1,7 @@
 import { useAtom, useSetAtom } from "jotai"
 import styled, { css } from "styled-components"
 
-import { AUTO_DETECT_OPTION, languages } from "@/constants"
+import { AUTO_DETECT_OPTION, EXTENSION_INFO, languages } from "@/constants"
 import {
     configAtom,
     getTranslationServiceOptions,
@@ -10,6 +10,7 @@ import {
 import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
 import BrandLogo from "../BrandLogo"
+import GitHubIcon from "../GitHubIcon"
 import NativeSelect from "../NativeSelect"
 import { SkyBackdrop, SkyMascot } from "../SkyArtwork"
 import CustomToggle from "../Switch"
@@ -421,6 +422,26 @@ const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
               `}
 `
 
+const RepositoryLink = styled.a`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: fit-content;
+    margin: var(--space-3) auto 0;
+    padding: var(--space-1);
+    color: var(--text-secondary);
+
+    &:hover {
+        color: var(--primary-hover);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 4px;
+        border-radius: var(--radius-sm);
+    }
+`
+
 const GearPath = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="3" />
@@ -644,6 +665,17 @@ function SettingsPanel({
                 <GearPath />
                 高级设置
             </SettingsButton>
+            {variant === "embedded" && (
+                <RepositoryLink
+                    href={EXTENSION_INFO.repositoryUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="GitHub 项目"
+                    title="在新标签页打开 GitHub 项目"
+                >
+                    <GitHubIcon />
+                </RepositoryLink>
+            )}
         </PanelContainer>
     )
 }

@@ -3,9 +3,6 @@ import { transformWithOxc } from "vite"
 import { configDefaults, defineConfig } from "vitest/config"
 
 export default defineConfig({
-    test: {
-        exclude: [...configDefaults.exclude, ".worktrees/**"]
-    },
     plugins: [
         {
             name: "test-tsx-transform",

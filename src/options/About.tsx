@@ -3,6 +3,7 @@ import * as React from "react"
 import styled from "styled-components"
 
 import { InfoDisplay, OptionsSection, ToggleRow } from "@/components"
+import GitHubIcon from "@/components/GitHubIcon"
 import {
     OptionsCardGrid,
     OptionsPageIntro
@@ -34,6 +35,25 @@ const Details = styled.div`
 
     @media (max-width: 560px) {
         grid-template-columns: 1fr;
+    }
+`
+
+const RepositoryLink = styled.a`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: var(--space-4);
+    padding: var(--space-1);
+    color: var(--primary-color);
+
+    &:hover {
+        color: var(--primary-hover);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 4px;
+        border-radius: var(--radius-sm);
     }
 `
 
@@ -141,6 +161,15 @@ export const About: React.FunctionComponent = () => {
                             type="strong"
                         />
                     </Details>
+                    <RepositoryLink
+                        href={EXTENSION_INFO.repositoryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="GitHub 仓库"
+                        title="在新标签页打开 GitHub 仓库"
+                    >
+                        <GitHubIcon />
+                    </RepositoryLink>
                 </OptionsSection>
                 <OptionsSection
                     artwork="archive"

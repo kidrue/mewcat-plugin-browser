@@ -137,21 +137,6 @@ function isFailure(
     return "success" in value
 }
 
-function safeDevLog(_metadata: {
-    requestIdSuffix?: string
-    capturePath?: string
-    width?: number
-    height?: number
-    bytes?: number
-    code?: SafeErrorCode
-    cacheHit?: boolean
-}): void {
-    if (import.meta.env.DEV) {
-        // Deliberately accept only already-sanitized scalar metadata.
-        void _metadata
-    }
-}
-
 function closePixelBuffer(buffer: VisionPixelBuffer | null): void {
     ;(buffer as ClosableVisionPixelBuffer | null)?.close?.()
 }
@@ -237,29 +222,12 @@ export function createStructuredImageTranslationHandler(
                         }
                     )
                 }
-                safeDevLog({
-                    requestIdSuffix: request.requestId?.slice(-6),
-                    capturePath: captured.capturePath,
-                    width: prepared.sourceWidth,
-                    height: prepared.sourceHeight,
-                    bytes: captured.blob.size,
-                    cacheHit: response.success && response.result.cacheHit
-                })
             }
         } catch (error) {
             response = failure(mapError(error))
         }
 
         await deps.sendBackup(sender, request, response).catch(() => {})
-        if (response.success === false) {
-            safeDevLog({
-                requestIdSuffix: request.requestId?.slice(-6),
-                code:
-                    response.errorCode === "TRANSLATION_FAILED"
-                        ? "INTERNAL_ERROR"
-                        : (response.errorCode as SafeErrorCode)
-            })
-        }
         return response
     }
 }

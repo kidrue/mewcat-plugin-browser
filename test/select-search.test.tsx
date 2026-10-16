@@ -124,7 +124,7 @@ it("does not open a disabled select", async () => {
 it("focuses search on opening and clears it after an outside click", async () => {
     const trigger = await render({ withinPortal: true })
     const input = await search("中文")
-    expect(document.activeElement).toBe(input)
+    await vi.waitFor(() => expect(document.activeElement).toBe(input))
     await act(async () => {
         document.body.dispatchEvent(
             new MouseEvent("pointerdown", { bubbles: true })

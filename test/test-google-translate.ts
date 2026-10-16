@@ -136,7 +136,7 @@ assert.deepEqual(
         createModel("missing-key-model", { apiKey: "" })
     ]),
     [
-        { value: GOOGLE_TRANSLATE_MODEL_ID, label: "Google Translate" },
+        { value: GOOGLE_TRANSLATE_MODEL_ID, label: "Google Translate（免费）" },
         { value: "microsoft-translate", label: "微软翻译（免费）" },
         {
             value: MEWCAT_TRANSLATE_MODEL_ID,

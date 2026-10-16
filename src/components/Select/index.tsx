@@ -222,7 +222,11 @@ const Select: React.FC<SelectProps> = ({
     const selectedOption = multiple
         ? null
         : options.find(option => option.value === value)
-    const selectedValues = multiple ? (Array.isArray(value) ? value : []) : []
+    const selectedValues: (string | number)[] = multiple
+        ? Array.isArray(value)
+            ? value
+            : []
+        : []
 
     const dropDownWidth =
         containerRef.current?.getBoundingClientRect().width ?? 0
@@ -248,12 +252,9 @@ const Select: React.FC<SelectProps> = ({
 
     const handleSelect = (option: Option) => {
         if (multiple) {
-            const currentValues = Array.isArray(value)
-                ? (value as (string | number)[])
-                : []
-            const newValues = currentValues.includes(option.value)
-                ? currentValues.filter(v => v !== option.value)
-                : [...currentValues, option.value]
+            const newValues = selectedValues.includes(option.value)
+                ? selectedValues.filter(v => v !== option.value)
+                : [...selectedValues, option.value]
             onChange(newValues as string[] | number[])
         } else {
             onChange(option.value)
@@ -342,21 +343,9 @@ const Select: React.FC<SelectProps> = ({
                                 aria-multiselectable={multiple || undefined}
                             >
                                 {filteredOptions.map((option, index) => {
-                                    const optionValue = option.value
-                                    const currentValue = multiple
-                                        ? (selectedValues as (
-                                              | string
-                                              | number
-                                          )[])
-                                        : value
                                     const isSelected = multiple
-                                        ? (
-                                              currentValue as (
-                                                  | string
-                                                  | number
-                                              )[]
-                                          ).includes(optionValue)
-                                        : optionValue === currentValue
+                                        ? selectedValues.includes(option.value)
+                                        : option.value === value
                                     return (
                                         <Option
                                             key={String(option.value)}

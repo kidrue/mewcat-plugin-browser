@@ -313,15 +313,8 @@ export function shouldInsertAsBlock(style: TranslationStyleType): boolean {
         case TranslationStyle.UNDERLINE:
         case TranslationStyle.SHADOW:
         case TranslationStyle.MARKER:
-            // 这些样式可以内联显示
             return false
-        case TranslationStyle.HIGHLIGHT:
-        case TranslationStyle.BACKGROUND:
-        case TranslationStyle.BORDER:
-        case TranslationStyle.SIDE_LINE:
-        case TranslationStyle.LETTER_DIVIDER:
         default:
-            // 这些样式需要块级显示
             return true
     }
 }
@@ -330,22 +323,7 @@ export function shouldInsertAsBlock(style: TranslationStyleType): boolean {
  * 获取翻译容器的标签类型
  */
 export function getTranslationElementTag(style: TranslationStyleType): string {
-    switch (style) {
-        case TranslationStyle.NONE:
-        case TranslationStyle.UNDERLINE:
-        case TranslationStyle.SHADOW:
-        case TranslationStyle.MARKER:
-            // 内联样式使用span
-            return "span"
-        case TranslationStyle.HIGHLIGHT:
-        case TranslationStyle.BACKGROUND:
-        case TranslationStyle.BORDER:
-        case TranslationStyle.SIDE_LINE:
-        case TranslationStyle.LETTER_DIVIDER:
-        default:
-            // 块级样式使用div
-            return "div"
-    }
+    return shouldInsertAsBlock(style) ? "div" : "span"
 }
 
 /**

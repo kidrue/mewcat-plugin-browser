@@ -70,6 +70,7 @@ export const DISABLED_SITES_OPTIONS = [
 export const EXTENSION_INFO = {
     version: `v${packageVersion}`,
     author: "kidrue",
+    repositoryUrl: "https://github.com/kidrue/chorme-translate",
     description: "智能网页翻译助手，支持多种翻译引擎和划词翻译"
 }
 
