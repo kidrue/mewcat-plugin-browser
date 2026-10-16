@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai"
-import React, { startTransition, useMemo, useState } from "react"
+import React, { startTransition, useMemo, useRef, useState } from "react"
 import { ErrorBoundary } from "react-error-boundary"
 import styled from "styled-components"
 
@@ -219,6 +219,7 @@ const HeroAction = styled.button`
 `
 
 const IndexOptions: React.FunctionComponent = () => {
+    const mainContentRef = useRef<HTMLElement>(null)
     const [activeTab, setActiveTab] = useState("basic")
     const config = useAtomValue(configAtom)
 
@@ -278,7 +279,10 @@ const IndexOptions: React.FunctionComponent = () => {
                 />
             </SidebarWrapper>
 
-            <MainContent className="content options-scrollbar">
+            <MainContent
+                ref={mainContentRef}
+                className="content options-scrollbar"
+            >
                 <OptionsContentHeader
                     title="译趣喵"
                     version={EXTENSION_INFO.version}
@@ -325,6 +329,20 @@ const IndexOptions: React.FunctionComponent = () => {
                     {renderContent()}
                 </ErrorBoundary>
             </MainContent>
+            <button
+                type="button"
+                className="mewcat-curtain-handle"
+                aria-label="滚动到底部"
+                title="滚动到底部"
+                onClick={() => {
+                    const content = mainContentRef.current
+                    if (content) {
+                        content.scrollTo({ top: content.scrollHeight })
+                    }
+                }}
+            >
+                <span className="mewcat-curtain-ring" aria-hidden="true" />
+            </button>
         </Container>
     )
 }

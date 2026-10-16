@@ -48,6 +48,100 @@ a {
         rgba(126, 190, 235, 0.12),
         transparent 30rem
     );
+
+    > .content {
+        scroll-behavior: smooth;
+
+        @media (min-width: 901px) {
+            > header {
+                padding-inline-end: var(--space-6);
+            }
+        }
+    }
+}
+
+.mewcat-curtain-handle {
+    position: fixed;
+    top: 3px;
+    right: 4px;
+    z-index: var(--z-dropdown);
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    width: 44px;
+    height: 88px;
+    padding: 0 0 6px;
+    border: 0;
+    border-radius: 0 0 var(--radius-full) var(--radius-full);
+    background: transparent;
+    color: var(--primary-color);
+    cursor: pointer;
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 40px;
+        width: 2px;
+        background: repeating-linear-gradient(
+            to bottom,
+            var(--primary-muted) 0 3px,
+            var(--sky-line) 3px 6px
+        );
+        transform-origin: top;
+        transition: transform var(--transition-fast);
+    }
+
+    &:hover,
+    &:active {
+        &::before {
+            transform: scaleY(1.06);
+        }
+
+        .mewcat-curtain-ring {
+            border-color: var(--primary-color);
+            background: var(--primary-light);
+            transform: translateY(3px);
+        }
+    }
+}
+
+.mewcat-curtain-ring {
+    position: relative;
+    width: 30px;
+    height: 36px;
+    border: 2px solid var(--primary-muted);
+    border-radius: 50% 50% 45% 45%;
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow-sm);
+    pointer-events: none;
+    transition:
+        transform var(--transition-fast),
+        border-color var(--transition-fast),
+        background var(--transition-fast);
+
+    &::before {
+        content: "";
+        position: absolute;
+        top: -5px;
+        left: calc(50% - 4px);
+        width: 8px;
+        height: 5px;
+        border-radius: var(--radius-sm);
+        background: var(--primary-muted);
+    }
+
+    &::after {
+        content: "";
+        position: absolute;
+        top: 10px;
+        left: calc(50% - 4px);
+        width: 8px;
+        height: 8px;
+        border-right: 2px solid currentColor;
+        border-bottom: 2px solid currentColor;
+        transform: rotate(45deg);
+    }
 }
 
 @supports (animation-timeline: scroll()) and
@@ -130,5 +224,13 @@ a {
     // 仅随滚动更新进度，没有自动播放；保留其完整滚动范围。
     .options-container::before {
         animation-duration: auto !important;
+    }
+
+    .mewcat-curtain-handle:hover,
+    .mewcat-curtain-handle:active {
+        &::before,
+        .mewcat-curtain-ring {
+            transform: none;
+        }
     }
 }
