@@ -24,6 +24,7 @@ import { recordTokenUsage } from "@/token-usage/storage"
 import type { TokenUsageEvent } from "@/token-usage/types"
 import { AiModel_Platform_Enum, type BaseModel } from "@/types/aiModel"
 
+import { withFailureCause } from "../lib/failure-cause"
 import { normalizeModelStreamResponse } from "../lib/model-stream-response"
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1000
@@ -133,7 +134,7 @@ const getEndpointSelection = (model: BaseModel) => ({
     officialEndpointId: model.params.officialEndpointId
 })
 
-const mapGatewayError = (
+const buildGatewayFailure = (
     error: unknown,
     controller: AbortController,
     model: BaseModel
@@ -185,6 +186,13 @@ const mapGatewayError = (
         status
     )
 }
+
+const mapGatewayError = (
+    error: unknown,
+    controller: AbortController,
+    model: BaseModel
+): ModelGatewayFailureResponse =>
+    withFailureCause(buildGatewayFailure(error, controller, model), error)
 
 async function handleGenerate(
     request: ModelGatewayGenerateRequest,
@@ -465,13 +473,25 @@ async function handleTranslationEngine(
                 isDeepLX
                     ? {
                           text: request.texts.join("\n"),
-                          source_lang: "auto",
+                          source_lang:
+                              request.sourceLanguage &&
+                              request.sourceLanguage !== "auto"
+                                  ? toDeepLLanguageCode(request.sourceLanguage)
+                                  : "auto",
                           target_lang: toDeepLLanguageCode(
                               request.targetLanguage
                           )
                       }
                     : {
                           text: request.texts,
+                          ...(request.sourceLanguage &&
+                          request.sourceLanguage !== "auto"
+                              ? {
+                                    source_lang: toDeepLLanguageCode(
+                                        request.sourceLanguage
+                                    )
+                                }
+                              : {}),
                           target_lang: toDeepLLanguageCode(
                               request.targetLanguage
                           )

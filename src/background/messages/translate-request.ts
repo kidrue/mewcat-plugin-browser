@@ -8,6 +8,7 @@ import type {
     UnifiedResponse
 } from "@/types/request"
 
+import { withFailureCause } from "../lib/failure-cause"
 import {
     createGoogleTranslateForm,
     normalizeGoogleTranslateTimeout,
@@ -311,7 +312,7 @@ export async function handleTranslateRequest(
                 throw new Error("Unsupported request type")
         }
     } catch (error) {
-        return sendError(error)
+        return withFailureCause(sendError(error), error)
     }
 }
 

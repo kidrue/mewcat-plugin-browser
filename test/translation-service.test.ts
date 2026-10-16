@@ -43,6 +43,59 @@ const createConfig = (
 })
 
 describe("functional translation service", () => {
+    it("adds an explicit source language to generative model instructions", async () => {
+        const requests: ModelGatewayRequest[] = []
+        await translateText(
+            { ...createConfig(), sourceLanguage: "fr" },
+            [{ role: "user", content: "Bonjour" }],
+            "zh-CN",
+            {},
+            {
+                modelGatewaySender: async request => {
+                    requests.push(request)
+                    return { success: true, text: "你好" }
+                }
+            }
+        )
+        expect(requests[0]).toMatchObject({
+            type: "generate",
+            messages: expect.arrayContaining([
+                expect.objectContaining({
+                    role: "system",
+                    content: expect.stringContaining("源语言：fr")
+                })
+            ])
+        })
+    })
+    it.each([
+        GOOGLE_TRANSLATE_MODEL_ID,
+        MICROSOFT_TRANSLATE_MODEL_ID,
+        MEWCAT_TRANSLATE_MODEL_ID
+    ])("passes an explicit source language to %s", async serviceId => {
+        const requests: unknown[] = []
+        const sender: TranslateRequestSender = async request => {
+            requests.push(request)
+            return {
+                success: true,
+                content:
+                    request.type === RequestType.MEWCAT_TRANSLATE
+                        ? { translations: ["你好"] }
+                        : "你好"
+            }
+        }
+        await translateText(
+            { ...createConfig(serviceId, []), sourceLanguage: "fr" },
+            [{ role: "user", content: "Bonjour" }],
+            "zh-CN",
+            {},
+            {
+                googleRequestSender: sender,
+                microsoftRequestSender: sender,
+                mewcatRequestSender: sender
+            }
+        )
+        expect(requests[0]).toMatchObject({ config: { sourceLanguage: "fr" } })
+    })
     it.each([
         { name: "text", translate: translateText, separator: "\n" },
         { name: "batch", translate: translateBatch, separator: "\n\n%%\n\n" }

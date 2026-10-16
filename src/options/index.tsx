@@ -1,5 +1,11 @@
 import { useAtomValue } from "jotai"
-import React, { startTransition, useMemo, useRef, useState } from "react"
+import React, {
+    startTransition,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from "react"
 import { ErrorBoundary } from "react-error-boundary"
 import styled from "styled-components"
 
@@ -7,10 +13,13 @@ import { EXTENSION_INFO, languages, NAVIGATION_ITEMS } from "@/constants"
 
 import "@/styles/options.scss"
 
+import { useSetAtom } from "jotai"
+
 import { ErrorFallback } from "@/components/ErrorFallback"
+import ReadingGuide from "@/components/ReadingGuide"
 import { SkyBackdrop, SkyMascot } from "@/components/SkyArtwork"
 import { captureExtensionException } from "@/monitoring"
-import { configAtom } from "@/state"
+import { configAtom, updateConfigAtom } from "@/state"
 
 import OptionsContentHeader from "../components/OptionsContentHeader"
 import OptionsSidebar from "../components/OptionsSidebar"
@@ -57,8 +66,8 @@ const MainContent = styled.main`
 const Hero = styled.section`
     position: relative;
     isolation: isolate;
-    min-height: 340px;
-    margin-bottom: var(--space-8);
+    min-height: 130px;
+    margin-bottom: var(--space-5);
     overflow: hidden;
     border: 1px solid var(--border-color);
     border-radius: 24px;
@@ -66,7 +75,7 @@ const Hero = styled.section`
     box-shadow: var(--shadow-lg);
 
     @media (max-width: 700px) {
-        min-height: 300px;
+        min-height: 130px;
     }
 `
 
@@ -114,10 +123,10 @@ const HeroCopy = styled.div`
     position: relative;
     z-index: 3;
     max-width: 600px;
-    padding: 52px 44px 44px;
+    padding: 20px 24px;
 
     @media (max-width: 700px) {
-        padding: var(--space-8) var(--space-6) var(--space-7);
+        padding: 16px;
     }
 `
 
@@ -142,10 +151,10 @@ const HeroEyebrow = styled.span`
 
 const HeroTitle = styled.h2`
     max-width: 520px;
-    margin: var(--space-5) 0 var(--space-4);
+    margin: 8px 0;
     color: var(--text-primary);
     font-family: var(--font-display);
-    font-size: clamp(30px, 4vw, 44px);
+    font-size: clamp(18px, 2vw, 24px);
     font-weight: var(--font-weight-semibold);
     letter-spacing: 0.04em;
     line-height: 1.28;
@@ -155,7 +164,7 @@ const HeroDescription = styled.p`
     max-width: 450px;
     margin: 0;
     color: var(--text-secondary);
-    font-size: var(--font-size-lg);
+    font-size: var(--font-size-sm);
     line-height: var(--line-height-relaxed);
 `
 
@@ -164,7 +173,7 @@ const HeroFooter = styled.div`
     align-items: center;
     flex-wrap: wrap;
     gap: var(--space-3);
-    margin-top: var(--space-7);
+    margin-top: 12px;
 `
 
 const HeroStatus = styled.span`
@@ -220,8 +229,18 @@ const HeroAction = styled.button`
 
 const IndexOptions: React.FunctionComponent = () => {
     const mainContentRef = useRef<HTMLElement>(null)
-    const [activeTab, setActiveTab] = useState("basic")
+    const tabFromHash = () =>
+        NAVIGATION_ITEMS.some(item => item.id === location.hash.slice(1))
+            ? location.hash.slice(1)
+            : "basic"
+    const [activeTab, setActiveTab] = useState(tabFromHash)
     const config = useAtomValue(configAtom)
+    const updateConfig = useSetAtom(updateConfigAtom)
+    useEffect(() => {
+        const listener = () => setActiveTab(tabFromHash())
+        window.addEventListener("hashchange", listener)
+        return () => window.removeEventListener("hashchange", listener)
+    }, [])
 
     const renderContent = () => {
         switch (activeTab) {
@@ -273,6 +292,7 @@ const IndexOptions: React.FunctionComponent = () => {
                     onTabChange={id => {
                         startTransition(() => {
                             setActiveTab(id)
+                            window.location.hash = id
                         })
                     }}
                     className="sidebar"
@@ -308,13 +328,25 @@ const IndexOptions: React.FunctionComponent = () => {
                                 </HeroStatus>
                                 <HeroAction
                                     type="button"
-                                    onClick={() => setActiveTab("translation")}
+                                    onClick={() => {
+                                        setActiveTab("translation")
+                                        window.location.hash = "translation"
+                                    }}
                                 >
                                     查看翻译服务
                                 </HeroAction>
                             </HeroFooter>
                         </HeroCopy>
                     </Hero>
+                )}
+                {activeTab === "basic" && (
+                    <ReadingGuide
+                        helpOnly
+                        targetLanguage={config.targetLanguage}
+                        onTargetLanguageChange={language =>
+                            updateConfig({ targetLanguage: language })
+                        }
+                    />
                 )}
                 <ErrorBoundary
                     fallbackRender={ErrorFallback}

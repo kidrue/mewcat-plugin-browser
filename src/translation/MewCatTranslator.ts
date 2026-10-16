@@ -70,7 +70,8 @@ export class MewCatTranslator implements TranslatorInterface {
 
     constructor(
         private readonly requestSender: TranslateRequestSender = request =>
-            sendMessage("translate-request", request)
+            sendMessage("translate-request", request),
+        private readonly sourceLanguage?: string
     ) {}
 
     private async translateSegments(
@@ -85,7 +86,10 @@ export class MewCatTranslator implements TranslatorInterface {
                 type: RequestType.MEWCAT_TRANSLATE,
                 config: {
                     texts: pieces.map(piece => piece.text),
-                    targetLanguage
+                    targetLanguage,
+                    ...(this.sourceLanguage && this.sourceLanguage !== "auto"
+                        ? { sourceLanguage: this.sourceLanguage }
+                        : {})
                 }
             })
             if (!response.success) {

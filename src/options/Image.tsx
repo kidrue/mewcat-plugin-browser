@@ -9,6 +9,7 @@ import {
     OptionsSection,
     Switch
 } from "@/components"
+import FeatureAvailability from "@/components/FeatureAvailability"
 import { OptionsPageIntro } from "@/components/OptionsPageLayout"
 import { useModelDiscovery } from "@/hooks/useModelDiscovery"
 import { translateStructuredImageViaBackground } from "@/services/imageTranslation"
@@ -234,6 +235,11 @@ export const Image: React.FunctionComponent = () => {
                 title="图片翻译"
                 description="配置好视觉模型后，即可在网页图片上开启快捷翻译。"
             >
+                <FeatureAvailability
+                    available={hasSelectedModel}
+                    saved={config.enableImageTranslateButton}
+                    section="image"
+                />
                 <FormRow
                     label="图片上显示快捷翻译按钮"
                     description="鼠标悬浮在图片上时显示翻译按钮，点击可翻译图片"

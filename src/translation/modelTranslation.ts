@@ -17,11 +17,13 @@ import {
 } from "@/types"
 
 export interface TranslationMessageOptions {
+    sourceLanguage?: string
     batch: boolean
     pageTitle?: string
 }
 
 export interface ModelTranslationOptions {
+    sourceLanguage?: string
     aiRole: AiRole
     enableThinking?: boolean
     pageTitle?: string
@@ -79,9 +81,16 @@ export function buildTranslationMessages(
         ? `${RULE_PROMPT.replace("{{title}}", options.pageTitle ?? "")}
 请将以下文本翻译成${targetLanguageName}：`
         : `请将以下文本翻译成${targetLanguageName}，仅返回翻译结果，保持原格式：`
+    const sourcePrompt =
+        options.sourceLanguage && options.sourceLanguage !== "auto"
+            ? `\n源语言：${options.sourceLanguage}`
+            : ""
 
     return [
-        { role: "system", content: `${rolePrompt}\n${taskPrompt}` },
+        {
+            role: "system",
+            content: `${rolePrompt}\n${taskPrompt}${sourcePrompt}`
+        },
         ...messages.map(toGatewayMessage)
     ]
 }
@@ -202,6 +211,7 @@ const translateWithModel = (
         return requestText(
             {
                 type: "translate-engine",
+                sourceLanguage: options.sourceLanguage,
                 model,
                 texts: messages.map(message => message.content).filter(Boolean),
                 targetLanguage
@@ -218,7 +228,11 @@ const translateWithModel = (
                 messages,
                 targetLanguage,
                 options.aiRole,
-                { batch, pageTitle: options.pageTitle }
+                {
+                    batch,
+                    pageTitle: options.pageTitle,
+                    sourceLanguage: options.sourceLanguage
+                }
             ),
             enableThinking: options.enableThinking
         },

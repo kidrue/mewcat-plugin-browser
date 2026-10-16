@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from "react"
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
 import Markdown, { type Components } from "react-markdown"
 import { useAsyncRetry } from "react-use"
 import styled from "styled-components"
@@ -14,7 +14,9 @@ import {
     getConceptExplanationErrorMessage,
     translateText as translateWithService
 } from "@/translation/translationService"
+import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
+import FeatureAvailability from "../FeatureAvailability"
 import LoadingDots from "../LoadingDots"
 import TranslationMark from "../TranslationMark"
 
@@ -93,6 +95,7 @@ const SCxActions = styled.div`
     padding-top: 8px;
     border-top: 1px solid #e3eef7;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
 `
@@ -256,13 +259,24 @@ export const TranslateTextPanel: React.FunctionComponent<
     TranslateTextPanelProps
 > = ({ data, pageTitle, context, active = true, onFinished }) => {
     const config = useConfig()
+    const canExplain = hasUsablePageSummaryModel(config.aiModelList)
+    const [copyNotice, setCopyNotice] = useState("")
+    const copyVersion = useRef(0)
+    useEffect(() => {
+        copyVersion.current++
+        setCopyNotice("")
+        return () => {
+            copyVersion.current++
+        }
+    }, [data])
 
     const {
         value: translateText,
         loading,
-        error
+        error,
+        retry
     } = useAsyncRetry(async () => {
-        if (!data) {
+        if (!data || !active) {
             return
         }
         const result = await translateSelectedText(
@@ -275,7 +289,7 @@ export const TranslateTextPanel: React.FunctionComponent<
         )
 
         return result
-    }, [data, config])
+    }, [data, config, active])
 
     const [explanationState, requestExplanation] = useConceptExplanation(
         config,
@@ -341,13 +355,29 @@ export const TranslateTextPanel: React.FunctionComponent<
                         <SCxLoadingText>翻译中...</SCxLoadingText>
                     </SCxLoadingContainer>
                 )}
-                {error && <SCxErrorText>{error.message} </SCxErrorText>}
+                {error && (
+                    <SCxErrorText role="alert">
+                        {error.message}{" "}
+                        <button
+                            type="button"
+                            onClick={retry}
+                            disabled={loading || !active}
+                        >
+                            重试翻译
+                        </button>
+                    </SCxErrorText>
+                )}
             </SCxTranslationContent>
 
             <SCxActions>
                 <SCxExplainButton
                     type="button"
-                    disabled={!data || !active || explanationState.loading}
+                    disabled={
+                        !data ||
+                        !active ||
+                        !canExplain ||
+                        explanationState.loading
+                    }
                     onClick={() => void requestExplanation()}
                 >
                     {explanationState.loading
@@ -357,7 +387,31 @@ export const TranslateTextPanel: React.FunctionComponent<
                           : "解释概念"}
                 </SCxExplainButton>
                 <SCxActionHint>使用已配置的 AI 模型</SCxActionHint>
+                {translateText && !error && !loading && (
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            const version = copyVersion.current
+                            try {
+                                await navigator.clipboard.writeText(
+                                    translateText
+                                )
+                                if (version === copyVersion.current)
+                                    setCopyNotice("已复制")
+                            } catch {
+                                if (version === copyVersion.current)
+                                    setCopyNotice(
+                                        "复制失败，请选中译文手动复制。"
+                                    )
+                            }
+                        }}
+                    >
+                        复制译文
+                    </button>
+                )}
             </SCxActions>
+            {!canExplain && <FeatureAvailability available={false} />}
+            {copyNotice && <p role="status">{copyNotice}</p>}
 
             {explanationState.error && (
                 <SCxErrorText>

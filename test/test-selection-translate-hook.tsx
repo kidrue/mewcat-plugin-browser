@@ -307,6 +307,25 @@ await act(async () => {
 assert.equal(latestHook!.state.isVisible, true)
 
 await act(async () => {
+    latestHook!.actions.togglePinned()
+})
+assert.equal(latestHook!.pinned, true)
+const pinnedText = latestHook!.state.text
+await dragSelect(0, 9)
+assert.equal(latestHook!.state.text, pinnedText, "固定后新选区不应覆盖内容")
+await act(async () => {
+    outside.dispatchEvent(new window.MouseEvent("mousedown", { bubbles: true }))
+})
+assert.equal(latestHook!.state.isVisible, true, "固定后外部点击不应关闭")
+await act(async () => {
+    latestHook!.actions.hideAll()
+})
+assert.equal(latestHook!.pinned, false)
+window.getSelection()?.removeAllRanges()
+await dragSelect(0, 9)
+assert.equal(latestHook!.state.text, "Selection")
+
+await act(async () => {
     root.unmount()
 })
 dom.window.close()

@@ -16,6 +16,7 @@ export interface ModelGatewayGenerateRequest {
 }
 
 export interface ModelGatewayTranslateEngineRequest {
+    sourceLanguage?: string
     type: "translate-engine"
     model: BaseModel
     texts: string[]

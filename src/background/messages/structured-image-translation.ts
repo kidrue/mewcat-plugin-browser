@@ -36,6 +36,7 @@ import {
     isVisionCapableModel
 } from "@/utils/visionModels"
 
+import { withFailureCause } from "../lib/failure-cause"
 import { captureImageForTranslation } from "./translate-image"
 
 type ImageTranslationConfig = Pick<
@@ -224,7 +225,7 @@ export function createStructuredImageTranslationHandler(
                 }
             }
         } catch (error) {
-            response = failure(mapError(error))
+            response = withFailureCause(failure(mapError(error)), error)
         }
 
         await deps.sendBackup(sender, request, response).catch(() => {})

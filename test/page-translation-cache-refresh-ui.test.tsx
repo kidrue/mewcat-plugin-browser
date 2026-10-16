@@ -56,6 +56,11 @@ vi.mock("../src/hooks/useDrag", () => ({
 
 vi.mock("../src/translation/ImmersiveTranslator", () => ({
     ImmersiveTranslator: class {
+        setSourceLanguage() {}
+        getReadingProgress() {
+            return { translated: 0, failed: 0, busy: false }
+        }
+        async retryFailedTranslations() {}
         async startImmersiveTranslation() {
             mocks.calls.push("translate")
             return mocks.translate()
@@ -98,6 +103,8 @@ async function click(element: Element) {
 }
 
 beforeEach(() => {
+    mocks.config.alwaysTranslateUrls = []
+    mocks.config.currentModel = "google-translate"
     mocks.calls.length = 0
     mocks.clearCache.mockReset().mockResolvedValue(2)
     mocks.translate.mockReset().mockResolvedValue(true)
@@ -135,6 +142,138 @@ afterEach(async () => {
 })
 
 describe("translation button cache refresh", () => {
+    it("ignores unrelated extension messages without claiming their response channel", async () => {
+        const { default: TranslationControlCenter } = await import(
+            "../src/contents/TranslationControlCenter"
+        )
+        await act(async () => root?.render(<TranslationControlCenter />))
+        const listeners = vi
+            .mocked(chrome.runtime.onMessage.addListener)
+            .mock.calls.map(call => call[0])
+        for (const listener of listeners) {
+            expect(
+                listener(
+                    { type: "OTHER_FEATURE_MESSAGE" },
+                    {} as chrome.runtime.MessageSender,
+                    () => {}
+                )
+            ).toBeUndefined()
+        }
+    })
+    it("ignores a failed refresh after a newer translation has started", async () => {
+        const { default: TranslationControlCenter } = await import(
+            "../src/contents/TranslationControlCenter"
+        )
+        await act(async () => root?.render(<TranslationControlCenter />))
+        await click(shadowRoot.querySelector('[aria-label="开启翻译"]')!)
+        let reject!: (error: Error) => void
+        mocks.translate.mockReturnValueOnce(
+            new Promise<boolean>((_resolve, r) => {
+                reject = r
+            })
+        )
+        await click(
+            shadowRoot.querySelector('[aria-label="清除当前页缓存并重新翻译"]')!
+        )
+        const listeners = vi
+            .mocked(chrome.runtime.onMessage.addListener)
+            .mock.calls.map(call => call[0])
+        const send = (action: string) => {
+            for (const listener of listeners)
+                listener(
+                    { type: "MEWCAT_PAGE_ACTION", action },
+                    {} as chrome.runtime.MessageSender,
+                    () => {}
+                )
+        }
+        await act(async () => send("clear"))
+        expect(
+            shadowRoot.querySelector('[aria-label="开启翻译"]')
+        ).not.toBeNull()
+        await act(async () => send("start"))
+        const errorLog = vi.spyOn(console, "error").mockImplementation(() => {})
+        await act(async () => reject(new Error("obsolete request")))
+        errorLog.mockRestore()
+        expect(
+            shadowRoot.querySelector('[aria-label="清理翻译"]')
+        ).not.toBeNull()
+        expect(mocks.showToast).not.toHaveBeenCalled()
+    })
+    it("starts the new model while the old model request is still pending", async () => {
+        let resolve!: (value: boolean) => void
+        mocks.translate.mockReturnValueOnce(
+            new Promise<boolean>(r => {
+                resolve = r
+            })
+        )
+        const { default: TranslationControlCenter } = await import(
+            "../src/contents/TranslationControlCenter"
+        )
+        await act(async () => root?.render(<TranslationControlCenter />))
+        await click(shadowRoot.querySelector('[aria-label="开启翻译"]')!)
+        mocks.config = { ...mocks.config, currentModel: "microsoft-translate" }
+        await act(async () => root?.render(<TranslationControlCenter />))
+        expect(mocks.translate).toHaveBeenCalledTimes(2)
+        await act(async () => resolve(true))
+        expect(
+            shadowRoot.querySelector('[aria-label="清理翻译"]')
+        ).not.toBeNull()
+    })
+    it("keeps the original when cache clearing finishes after a clear action", async () => {
+        const { default: TranslationControlCenter } = await import(
+            "../src/contents/TranslationControlCenter"
+        )
+        await act(async () => root?.render(<TranslationControlCenter />))
+        await click(shadowRoot.querySelector('[aria-label="开启翻译"]')!)
+        let resolve!: (value: number) => void
+        mocks.clearCache.mockReturnValueOnce(
+            new Promise<number>(r => {
+                resolve = r
+            })
+        )
+        await click(
+            shadowRoot.querySelector('[aria-label="清除当前页缓存并重新翻译"]')!
+        )
+        const listeners = vi
+            .mocked(chrome.runtime.onMessage.addListener)
+            .mock.calls.map(call => call[0])
+        await act(async () => {
+            for (const listener of listeners)
+                listener(
+                    { type: "MEWCAT_PAGE_ACTION", action: "clear" },
+                    {} as chrome.runtime.MessageSender,
+                    () => {}
+                )
+        })
+        await act(async () => resolve(2))
+        expect(mocks.translate).toHaveBeenCalledTimes(1)
+    })
+    it("does not restart automatic translation after showing the original during navigation", async () => {
+        vi.useFakeTimers()
+        mocks.config.alwaysTranslateUrls = [window.location.hostname]
+        const { default: TranslationControlCenter } = await import(
+            "../src/contents/TranslationControlCenter"
+        )
+        await act(async () => root?.render(<TranslationControlCenter />))
+        await act(async () => vi.advanceTimersByTimeAsync(700))
+        expect(mocks.translate).toHaveBeenCalledTimes(1)
+        window.history.pushState(null, "", "/next-article")
+        const listeners = vi
+            .mocked(chrome.runtime.onMessage.addListener)
+            .mock.calls.map(call => call[0])
+        const send = (message: unknown) => {
+            for (const listener of listeners)
+                listener(message, {} as chrome.runtime.MessageSender, () => {})
+        }
+        await act(async () => send({ type: "TAB_UPDATED" }))
+        await act(async () =>
+            send({ type: "MEWCAT_PAGE_ACTION", action: "clear" })
+        )
+        await act(async () => vi.advanceTimersByTimeAsync(1000))
+        expect(mocks.translate).toHaveBeenCalledTimes(1)
+        window.history.replaceState(null, "", "/")
+        vi.useRealTimers()
+    })
     it("uses the generated extension icon as the floating translation logo", async () => {
         const { default: TranslationControlCenter } = await import(
             "../src/contents/TranslationControlCenter"

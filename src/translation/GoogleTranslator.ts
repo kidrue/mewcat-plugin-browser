@@ -18,7 +18,8 @@ export class GoogleTranslator implements TranslatorInterface {
     readonly provider = GOOGLE_TRANSLATE_MODEL_ID
 
     constructor(
-        private readonly requestSender: TranslateRequestSender = sendTranslateRequest
+        private readonly requestSender: TranslateRequestSender = sendTranslateRequest,
+        private readonly sourceLanguage?: string
     ) {}
 
     private async requestTranslation(
@@ -34,6 +35,9 @@ export class GoogleTranslator implements TranslatorInterface {
             config: {
                 text,
                 targetLanguage,
+                ...(this.sourceLanguage && this.sourceLanguage !== "auto"
+                    ? { sourceLanguage: this.sourceLanguage }
+                    : {}),
                 timeout: 30_000
             }
         })

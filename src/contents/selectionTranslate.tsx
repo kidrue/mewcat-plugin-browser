@@ -29,7 +29,7 @@ const SCxContainer = styled.div.withConfig({
     position: fixed;
     width: min(338px, calc(100vw - 16px));
     min-height: 120px;
-    /* max-height: 300px; */
+    max-height: min(70vh, 600px);
     z-index: 99999;
     background: #ffffff;
     border-radius: var(--radius-xl);
@@ -109,7 +109,10 @@ const SCxCloseButton = styled.button`
     }
 `
 
-const SCxContent = styled.div``
+const SCxContent = styled.div`
+    min-height: 0;
+    overflow-y: auto;
+`
 
 const SelectionTranslate = () => {
     const [config] = useAtom(configAtom)
@@ -121,6 +124,7 @@ const SelectionTranslate = () => {
     // 使用划词翻译 Hook
     const {
         state,
+        pinned,
         dotRef,
         containerRef,
         actions,
@@ -189,12 +193,25 @@ const SelectionTranslate = () => {
                                         marginLeft: "4px"
                                     }}
                                 >
-                                    ( {triggerModelLabel}-{interactionModeLabel}
+                                    ( {triggerModelLabel}
+                                    {selectionConfig.triggerMode === "dot"
+                                        ? `-${interactionModeLabel}`
+                                        : ""}
                                     )
                                 </span>
                             )}
                         </SCxTitle>
-                        <SCxCloseButton onClick={actions.hideAll}>
+                        <button
+                            type="button"
+                            aria-pressed={pinned}
+                            onClick={actions.togglePinned}
+                        >
+                            {pinned ? "取消固定" : "固定"}
+                        </button>
+                        <SCxCloseButton
+                            aria-label="关闭划词面板"
+                            onClick={actions.hideAll}
+                        >
                             <Icon name="close" size={12} />
                         </SCxCloseButton>
                     </SCxHeader>

@@ -30,6 +30,7 @@ import {
 } from "./modelTranslation"
 
 export interface TranslationRuntimeConfig {
+    sourceLanguage?: string
     currentModel?: string
     aiModelList: BaseModel[]
     aiRole: AiRole
@@ -120,22 +121,23 @@ function translateWithService(
 ): Promise<string> {
     const serviceId = resolveTranslationServiceId(config)
     if (serviceId === MICROSOFT_TRANSLATE_MODEL_ID) {
-        return new MicrosoftTranslator(dependencies.microsoftRequestSender)[
-            method
-        ](messages, targetLanguage)
+        return new MicrosoftTranslator(
+            dependencies.microsoftRequestSender,
+            config.sourceLanguage
+        )[method](messages, targetLanguage)
     }
     if (serviceId === MEWCAT_TRANSLATE_MODEL_ID) {
-        return new MewCatTranslator(dependencies.mewcatRequestSender)[method](
-            messages,
-            targetLanguage
-        )
+        return new MewCatTranslator(
+            dependencies.mewcatRequestSender,
+            config.sourceLanguage
+        )[method](messages, targetLanguage)
     }
     const model = getSelectedModel(config)
     if (!model) {
-        return getGoogleTranslator(dependencies)[method](
-            messages,
-            targetLanguage
-        )
+        return new GoogleTranslator(
+            dependencies.googleRequestSender,
+            config.sourceLanguage
+        )[method](messages, targetLanguage)
     }
     const translateModel =
         method === "translateText" ? translateModelText : translateModelBatch
@@ -146,7 +148,8 @@ function translateWithService(
         {
             aiRole: config.aiRole,
             enableThinking: config.enableThinking,
-            pageTitle: options.pageTitle
+            pageTitle: options.pageTitle,
+            sourceLanguage: config.sourceLanguage
         },
         dependencies.modelGatewaySender
     )

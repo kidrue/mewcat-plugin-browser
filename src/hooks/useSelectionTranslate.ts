@@ -42,6 +42,12 @@ export function useSelectionTranslate<T extends HTMLElement>({
     const dotRef = useRef<T>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const ignoreMouseUpRef = useRef(false)
+    const [pinned, setPinned] = useState(false)
+    const pinnedRef = useRef(false)
+    const togglePinned = useCallback(() => {
+        pinnedRef.current = !pinnedRef.current
+        setPinned(pinnedRef.current)
+    }, [])
     const selectionAtMouseDownRef = useRef<SelectionSnapshot | null>(null)
     const [state, setState] = useState<SelectionState>({
         text: "",
@@ -160,6 +166,8 @@ export function useSelectionTranslate<T extends HTMLElement>({
 
     // 隐藏所有
     const hideAll = useCallback(() => {
+        pinnedRef.current = false
+        setPinned(false)
         setState(prev => ({
             ...prev,
             text: "",
@@ -197,6 +205,7 @@ export function useSelectionTranslate<T extends HTMLElement>({
             }
         }
         const handleKeyUp = (e: KeyboardEvent) => {
+            if (pinnedRef.current) return
             // 根据配置的触发模式检查对应的按键
             const triggerKeyText = e.key.toUpperCase()
             // 检查是否为精确的 Shift 触发
@@ -229,6 +238,7 @@ export function useSelectionTranslate<T extends HTMLElement>({
             return
         }
         const handleMouseDown = (e: MouseEvent) => {
+            if (pinnedRef.current) return
             selectionAtMouseDownRef.current = getSelectionSnapshot(
                 window.getSelection()
             )
@@ -243,6 +253,7 @@ export function useSelectionTranslate<T extends HTMLElement>({
         }
 
         const handleMouseUp = (e: MouseEvent) => {
+            if (pinnedRef.current) return
             if (ignoreMouseUpRef.current) {
                 ignoreMouseUpRef.current = false
                 selectionAtMouseDownRef.current = null
@@ -307,10 +318,12 @@ export function useSelectionTranslate<T extends HTMLElement>({
     }, [hideAll, shouldTrigger, triggerMode])
 
     return {
+        pinned,
         state,
         dotRef,
         containerRef,
         actions: {
+            togglePinned,
             hideAll,
             onDotClick,
             onDotHover,

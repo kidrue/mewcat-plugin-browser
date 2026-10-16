@@ -11,6 +11,7 @@ export type PageSummaryRenderState =
     | { status: "empty" | "error" | "unavailable" }
 
 export interface PageSummaryHandle {
+    open(): void
     update(state: PageSummaryRenderState): void
     remove(): void
 }
@@ -69,11 +70,13 @@ export function renderPageSummary(
     close.textContent = "×"
     close.setAttribute("aria-label", "关闭页面总结")
     close.onclick = () => dialog.close()
-    trigger.onclick = () => {
+    const open = () => {
+        launcher.hidden = false
         if (!dialog.open) {
             dialog.showModal()
         }
     }
+    trigger.onclick = open
     dialog.addEventListener("click", event => {
         if (event.target !== dialog) {
             return
@@ -117,5 +120,5 @@ export function renderPageSummary(
     }
 
     update(state)
-    return { update, remove: () => host.remove() }
+    return { update, open, remove: () => host.remove() }
 }

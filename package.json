@@ -3,7 +3,7 @@
     "displayName": "mewCat",
     "private": true,
     "type": "module",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "packageManager": "pnpm@10.20.0",
     "scripts": {
         "predev": "node scripts/check-legacy-output.cjs",
@@ -22,7 +22,7 @@
         "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",
         "format:check": "prettier --debug-check \"src/**/*.{ts,tsx,js,jsx,json,css,scss}\"",
         "format:diff": "prettier -w \"src/translation/DOMTraverser.ts\"",
-        "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm check:hotlink-rules && pnpm spell && pnpm test:google && pnpm test:microsoft && pnpm test:selection && pnpm test:chrome-web-store && pnpm test:image",
+        "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm check:hotlink-rules && pnpm spell && pnpm test:google && pnpm test:microsoft && pnpm test:selection && pnpm test:chrome-web-store && pnpm test:image && pnpm test:reading && pnpm test:sentry",
         "check:all": "pnpm typecheck && pnpm lint && pnpm format:check",
         "spell": "cspell \"**/*.{ts,tsx,js,scss,css,jsx,md}\"",
         "knip": "knip",
@@ -31,6 +31,9 @@
         "zip:prod": " pnpm clean:prod:zip && pnpm package",
         "clean:prod:zip": "rimraf \".output/chrome-mv3-prod*.zip\" \".output/mewCat-*.zip\"",
         "test:rpc": "npx tsx ./test/test-rpc.ts",
+        "test:reading": "vitest run --config test/vitest.image-translation.config.ts test/reading-actions.test.ts test/reading-guide.test.tsx test/sidepanel-reading.test.tsx test/page-reading-controls.test.tsx test/page-summary-manual.test.ts",
+        "test:sentry": "vitest run --config test/vitest.image-translation.config.ts test/sentry-real-sdk.test.ts test/sentry-worker-sdk.test.ts",
+        "sentry:smoke": "tsx scripts/sentry-smoke-test.ts",
         "test:rpc:web": "node ./test/test-server.mjs",
         "test:401": "npx tsx ./test/test-401-interceptor.ts",
         "test:google": "npx tsx ./test/test-google-translate.ts",
@@ -39,7 +42,7 @@
         "test:chrome-web-store": "node --test test/chrome-web-store-publish.test.cjs test/sentry-build.test.cjs test/package-artifacts.test.cjs",
         "test:image": "vitest run --config test/vitest.image-translation.config.ts test/background-image-translation.test.ts test/brand-logo-ui.test.tsx test/config-persistence.test.ts test/extension-config-validation.test.ts test/extension-version.test.ts test/image-translation-contracts.test.ts test/image-translation-content.test.tsx test/image-translation-controller.test.ts test/image-translation-overlay.test.ts test/image-translation-preprocess-cache.test.ts test/image-translation-providers.test.ts test/image-translation-service.test.ts test/image-settings-ui.test.tsx test/model-discovery.test.tsx test/model-discovery-field.test.tsx test/select-search.test.tsx test/options-basic-page-summary.test.tsx test/page-summary-content.test.ts test/page-summary-model.test.ts test/page-summary-prompt.test.ts test/page-summary-renderer.test.ts test/page-translation-cache-refresh-ui.test.tsx test/page-translation-cache-refresh.test.ts test/page-translation-cache-role.test.ts test/settings-panel-page-summary.test.tsx test/sentry-background-reporting.test.ts test/sentry-entrypoints.test.tsx test/sentry-monitoring.test.ts test/storage-names.test.ts test/token-usage.test.ts test/token-usage-ui.test.tsx test/translation-style-options.test.ts test/vision-models.test.ts test/viewport-translation-scheduler.test.ts test/viewport-translation.test.ts",
         "sync:hotlink-rules": "node scripts/sync-hotlink-sites-from-immersive.cjs",
-        "check:hotlink-rules": "node scripts/sync-hotlink-sites-from-immersive.cjs --check"
+        "check:hotlink-rules": "node --test test/hotlink-generation.test.cjs && node scripts/sync-hotlink-sites-from-immersive.cjs --check"
     },
     "dependencies": {
         "@connectrpc/connect": "2.1.0",

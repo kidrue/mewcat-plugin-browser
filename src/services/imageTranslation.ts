@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid"
 
 import { sendMessage } from "@/messaging"
+import { BackgroundResponseError } from "@/messaging/BackgroundResponseError"
 import {
     isEmptyTranslateImageSuccessResponse,
     isTranslateImageResponse
@@ -78,7 +79,12 @@ export function translateStructuredImageViaBackground(params: {
         const handleResponse = (response: unknown) => {
             if (isEmptyTranslateImageSuccessResponse(response)) {
                 settle(() =>
-                    reject(new Error(strictImageErrorMessages.NO_TEXT))
+                    reject(
+                        new BackgroundResponseError(
+                            "NO_TEXT",
+                            strictImageErrorMessages.NO_TEXT
+                        )
+                    )
                 )
                 return
             }
@@ -91,7 +97,8 @@ export function translateStructuredImageViaBackground(params: {
             }
             settle(() =>
                 reject(
-                    new Error(
+                    new BackgroundResponseError(
+                        response.errorCode,
                         strictImageErrorMessages[response.errorCode] ||
                             "图片翻译失败"
                     )

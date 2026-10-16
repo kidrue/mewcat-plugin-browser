@@ -10,7 +10,8 @@ export class MicrosoftTranslator implements TranslatorInterface {
 
     constructor(
         private readonly requestSender: TranslateRequestSender = request =>
-            sendMessage("translate-request", request)
+            sendMessage("translate-request", request),
+        private readonly sourceLanguage?: string
     ) {}
 
     private async requestTranslation(
@@ -22,7 +23,14 @@ export class MicrosoftTranslator implements TranslatorInterface {
         }
         const response = await this.requestSender({
             type: RequestType.MICROSOFT_TRANSLATE,
-            config: { text, targetLanguage, timeout: 30_000 }
+            config: {
+                text,
+                targetLanguage,
+                ...(this.sourceLanguage && this.sourceLanguage !== "auto"
+                    ? { sourceLanguage: this.sourceLanguage }
+                    : {}),
+                timeout: 30_000
+            }
         })
         if (!response.success) {
             throw new Error(response.error || "微软翻译请求失败")

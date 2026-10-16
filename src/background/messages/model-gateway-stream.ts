@@ -9,6 +9,7 @@ import {
 import { PROVIDER_REGISTRY } from "@/model-management/providers"
 import { BaseModelSchema } from "@/types/extensionConfigSchema"
 
+import { monitorBackgroundHandler } from "../lib/monitor-background-handler"
 import {
     handleModelGatewayStream,
     type ModelGatewayDependencies
@@ -96,13 +97,18 @@ export function handleModelGatewayStreamPort(
         clearTimeout(startTimeoutId)
         // An open port alone does not keep an MV3 worker alive while a model thinks.
         heartbeatId = setInterval(() => post({ type: "heartbeat" }), 20_000)
-        void handleModelGatewayStream(
-            parsed.data.request,
-            {
-                signal: controller.signal,
-                onDelta: text => post({ type: "delta", text })
-            },
-            dependencies
+        void monitorBackgroundHandler(
+            "model-gateway-stream",
+            () =>
+                handleModelGatewayStream(
+                    parsed.data.request,
+                    {
+                        signal: controller.signal,
+                        onDelta: text => post({ type: "delta", text })
+                    },
+                    dependencies
+                ),
+            port.sender?.tab?.url
         ).then(finish, () =>
             finish({
                 success: false,

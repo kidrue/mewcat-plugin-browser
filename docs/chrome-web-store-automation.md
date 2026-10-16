@@ -108,6 +108,8 @@ gcloud iam workload-identity-pools providers describe "${PROVIDER_ID}" \
 
 IAM 配置可能需要几分钟才能生效。
 
+开发者中心的登录与 `gcloud auth login` 相互独立。若找不到 Account 页面，先登录 [Chrome Web Store Developer Dashboard](https://chrome.google.com/webstore/devconsole)，确认选中了拥有该扩展的发布者，再按 [服务账号官方说明](https://developer.chrome.com/docs/webstore/service-accounts) 查找服务账号绑定入口。新版界面可先查看左侧“发布者 → 设置”。服务账号绑定完成后，才能验证其读取商店状态和提交审核的权限。
+
 ## 3. 配置 GitHub Actions Variables
 
 进入仓库 **Settings → Secrets and variables → Actions → Variables**，添加：
@@ -125,7 +127,7 @@ IAM 配置可能需要几分钟才能生效。
 
 生产构建启用 Sentry 错误诊断。GitHub Actions Variables 需要配置 `WXT_SENTRY_DSN`、`SENTRY_ORG`、`SENTRY_PROJECT`，Secret 需要配置 `SENTRY_AUTH_TOKEN`。本地可把这些值放在不提交的 `.env.local`。构建会生成隐藏 Source Map，上传到 Sentry 后从 ZIP/CRX 中移除；缺少任一项配置时 CI 拒绝发布。`SENTRY_AUTH_TOKEN` 仅用于构建，不进入扩展运行时。
 
-商店数据使用披露需要与扩展行为一致：生产环境会把错误堆栈、浏览网页的完整 URL（包括查询参数和片段）、错误发生前的点击与滚动等 Replay 活动发送给 Sentry，用于复现和修复故障。Replay 遮盖所有文字和输入，并阻挡媒体；扩展不主动上报账号、手机号、Cookie、API Key、翻译原文、译文、Prompt、图片或请求体。完整 URL 仍可能包含敏感信息，商店后台应按浏览历史与用户活动等实际数据类别披露，并在隐私政策中说明第三方 Sentry 处理和诊断用途。代码文档不代替商店后台的人工披露更新。
+商店数据使用披露需要与扩展行为一致：生产环境会把错误堆栈、浏览网页的完整 URL（包括查询参数和片段）发送给 Sentry，用于定位和修复故障。网页 content script 与 background 不启用 Replay；Replay 仅用于 popup、options、sidepanel 中错误发生前的交互，并遮盖所有文字和输入、阻挡媒体。扩展不主动上报账号、手机号、Cookie、API Key、翻译原文、译文、Prompt、图片或请求体。完整 URL 仍可能包含敏感信息，商店后台应按浏览历史与用户活动等实际数据类别披露，并在隐私政策中说明第三方 Sentry 处理和诊断用途。代码文档不代替商店后台的人工披露更新。上报复验步骤见 [Sentry 上报修复与验证](sentry-reporting-verification.md)。
 
 1. 修改 `package.json` 的 `version`，版本必须高于商店当前版本。
 2. 提交并推送到 `main`。
@@ -137,6 +139,14 @@ IAM 配置可能需要几分钟才能生效。
 若工作流中途失败，重新运行同一提交即可：工作流会从 draft Release 下载 recovery bundle、校验哈希并恢复原始 ZIP/CRX，确保商店与 GitHub Release 始终使用同一份产物。若 draft 创建时连 recovery bundle 都未上传成功，自动化会清理这个尚不可能触发过商店发布的不完整 draft，再从同一提交重建。脚本发现相同版本已提交或已发布时会跳过重复上传；后续提交若仍使用同一版本，工作流会拒绝覆盖并要求先升级 `package.json.version`。
 
 ## 本地测试
+
+### 临时文件清理
+
+发布任务使用 GitHub 托管 runner，无需在自己的服务器缓存安装包。工作流无论成功或失败，都会清理工作目录中的 `key.pem`、`.output/`、`release/` 和 `dist-assets/`；GitHub Release 中的固定产物继续保留，失败重试时复用同一份 ZIP。清理本地临时产物不会删除远端历史版本。
+
+### 跨平台生成检查
+
+站点规则生成器统一使用 `/` 记录源文件路径，并规范化 Windows 与 Linux 的换行符。`pnpm check:hotlink-rules` 同时验证跨平台生成结果，避免 Windows 本地通过、GitHub Linux runner 报告生成文件过期。
 
 自动测试不会访问 Chrome Web Store，也不需要任何凭据：
 

@@ -87,7 +87,10 @@ vi.mock("../src/hooks/useModelDiscovery.ts", () => ({
     useModelDiscovery: () => mocks.discovery
 }))
 
-vi.mock("@/translation/translationService", () => ({
+vi.mock("@/translation/translationService", async importOriginal => ({
+    ...(await importOriginal<
+        typeof import("@/translation/translationService")
+    >()),
     testConfiguredModel: mocks.testConfiguredModel
 }))
 

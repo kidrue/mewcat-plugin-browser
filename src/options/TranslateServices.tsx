@@ -32,6 +32,7 @@ import {
 } from "@/components"
 import { AddModel } from "@/components/AddModel"
 import { AIModelEmptyState } from "@/components/AIModelEmptyState"
+import FeatureAvailability from "@/components/FeatureAvailability"
 import { ModelDiscoveryField } from "@/components/ModelDiscoveryField"
 import {
     OptionsCardGrid,
@@ -55,6 +56,7 @@ import { testConfiguredModel } from "@/translation/translationService"
 import type { AiModel_Platform_Enum } from "@/types"
 import { AiRole, type BaseModel } from "@/types"
 import { getModelByModelList, isModelThinkingCapable } from "@/utils/llmModel"
+import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 import { Toast, ToastType } from "@/utils/toast"
 import { isVisionCapableModel } from "@/utils/visionModels"
 
@@ -1273,11 +1275,37 @@ export const TranslateServices: React.FunctionComponent = () => {
                         description="结合网页上下文提升翻译效果，需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长"
                     >
                         <Switch
-                            checked={config.enableContext || false}
+                            checked={
+                                hasUsablePageSummaryModel(
+                                    config.aiModelList.filter(
+                                        model =>
+                                            model.id === config.currentModel
+                                    )
+                                ) &&
+                                (config.enableContext || false)
+                            }
+                            disabled={
+                                !hasUsablePageSummaryModel(
+                                    config.aiModelList.filter(
+                                        model =>
+                                            model.id === config.currentModel
+                                    )
+                                )
+                            }
                             onChange={checked =>
                                 updateConfig({ enableContext: checked })
                             }
                         />
+                        {!hasUsablePageSummaryModel(
+                            config.aiModelList.filter(
+                                model => model.id === config.currentModel
+                            )
+                        ) && (
+                            <FeatureAvailability
+                                available={false}
+                                saved={config.enableContext}
+                            />
+                        )}
                     </FormRow>
                 </OptionsSection>
                 <OptionsSection

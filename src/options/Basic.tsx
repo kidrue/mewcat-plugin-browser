@@ -12,6 +12,7 @@ import {
     Tooltip,
     UrlManager
 } from "@/components"
+import FeatureAvailability from "@/components/FeatureAvailability"
 import Icon from "@/components/Icon"
 import {
     DEFAULT_VALUES,
@@ -163,7 +164,11 @@ export const Basic: React.FunctionComponent = () => {
                         <CustomToggle
                             id="enable-page-summary"
                             aria-label="自动总结页面"
-                            checked={config.enablePageSummary ?? false}
+                            checked={
+                                hasUsableGenerativeModel &&
+                                (config.enablePageSummary ?? false)
+                            }
+                            disabled={!hasUsableGenerativeModel}
                             onChange={checked =>
                                 updateConfig({ enablePageSummary: checked })
                             }
@@ -183,9 +188,10 @@ export const Basic: React.FunctionComponent = () => {
                         </Tooltip>
                     </SummaryControls>
                     {!hasUsableGenerativeModel && (
-                        <small role="status">
-                            请先配置可用的生成式 AI 模型；开关状态会保留。
-                        </small>
+                        <FeatureAvailability
+                            available={false}
+                            saved={config.enablePageSummary}
+                        />
                     )}
                 </FormRow>
             </OptionsSection>

@@ -83,11 +83,15 @@ async function renderBasic() {
 describe("options page summary setting", () => {
     it("offers opt-in reading-range translation independently of summary settings", async () => {
         await renderBasic()
-        const toggle = document.querySelector<HTMLInputElement>('input[role="switch"][aria-label="按阅读范围翻译"]')
+        const toggle = document.querySelector<HTMLInputElement>(
+            'input[role="switch"][aria-label="按阅读范围翻译"]'
+        )
         expect(toggle).not.toBeNull()
         expect(toggle?.checked).toBe(true)
         await act(async () => toggle?.click())
-        expect(mocks.updateConfig).toHaveBeenCalledWith({ enableViewportTranslation: false })
+        expect(mocks.updateConfig).toHaveBeenCalledWith({
+            enableViewportTranslation: false
+        })
     })
     it("shows the saved summary state independently and writes its own field", async () => {
         await renderBasic()
@@ -124,8 +128,8 @@ describe("options page summary setting", () => {
         const toggle = document.querySelector<HTMLInputElement>(
             'input[role="switch"][aria-label="自动总结页面"]'
         )
-        expect(toggle?.checked).toBe(true)
-        expect(toggle?.disabled).toBe(false)
+        expect(toggle?.checked).toBe(false)
+        expect(toggle?.disabled).toBe(true)
         expect(document.body.textContent).toContain(
             "请先配置可用的生成式 AI 模型"
         )

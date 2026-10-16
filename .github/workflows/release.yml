@@ -270,7 +270,9 @@ jobs:
         run: |
           gh release edit "v${VERSION}" --draft=false --prerelease
 
-      # 无论成功失败都清掉私钥，避免残留在 runner 工作区
-      - name: Remove signing key
+      # 无论成功失败都清理本次任务的私钥和临时产物，远端 Release 保留用于重试。
+      - name: Remove temporary release files
         if: always()
-        run: rm -f key.pem
+        run: |
+          rm -f -- "$GITHUB_WORKSPACE/key.pem"
+          rm -rf -- "$GITHUB_WORKSPACE/.output" "$GITHUB_WORKSPACE/release" "$GITHUB_WORKSPACE/dist-assets"

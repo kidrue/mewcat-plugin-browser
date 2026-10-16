@@ -133,8 +133,8 @@ describe("quick settings page summary setting", () => {
         const toggle = document.querySelector<HTMLInputElement>(
             'input[role="switch"][aria-label="自动总结页面"]'
         )
-        expect(toggle?.checked).toBe(true)
-        expect(toggle?.disabled).toBe(false)
+        expect(toggle?.checked).toBe(false)
+        expect(toggle?.disabled).toBe(true)
         expect(document.body.textContent).toContain(
             "请先配置可用的生成式 AI 模型"
         )
@@ -154,9 +154,9 @@ describe("quick settings page summary setting", () => {
 
         await renderSettingsPanel()
 
-        const settingsButton = document.querySelector<HTMLButtonElement>(
-            "button"
-        )
+        const settingsButton = Array.from(
+            document.querySelectorAll("button")
+        ).find(button => button.textContent?.trim() === "高级设置")
         expect(settingsButton).not.toBeNull()
 
         await act(async () => settingsButton?.click())

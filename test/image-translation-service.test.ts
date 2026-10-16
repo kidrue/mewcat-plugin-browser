@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { BackgroundResponseError } from "@/messaging/BackgroundResponseError"
 import { translateStructuredImageViaBackground } from "@/services/imageTranslation"
 
 const { sendMessage } = vi.hoisted(() => ({ sendMessage: vi.fn() }))
@@ -275,7 +276,10 @@ describe("strict image translation content service", () => {
             }
 
             await expect(pending).rejects.toEqual(
-                new Error("图片中未识别到可翻译文字")
+                new BackgroundResponseError(
+                    "NO_TEXT",
+                    "图片中未识别到可翻译文字"
+                )
             )
             expectCleanedUp(request.requestId)
             expect(vi.getTimerCount()).toBe(0)
@@ -348,7 +352,9 @@ describe("strict image translation content service", () => {
             })
             const request = getRequest()
 
-            await expect(pending).rejects.toEqual(new Error(expectedMessage))
+            await expect(pending).rejects.toEqual(
+                new BackgroundResponseError(errorCode, expectedMessage)
+            )
             expectCleanedUp(request.requestId)
             expect(vi.getTimerCount()).toBe(0)
         }
@@ -398,7 +404,10 @@ describe("strict image translation content service", () => {
             }
         })
         await expect(pending).rejects.toEqual(
-            new Error("请求过于频繁，请稍后重试")
+            new BackgroundResponseError(
+                "RATE_LIMITED",
+                "请求过于频繁，请稍后重试"
+            )
         )
         primary.resolve({ success: true, result: strictResult })
         await Promise.resolve()

@@ -3,6 +3,10 @@ import styled, { css } from "styled-components"
 
 import { AUTO_DETECT_OPTION, EXTENSION_INFO, languages } from "@/constants"
 import {
+    websiteRulePatch,
+    type PageActionExecutor
+} from "@/reading/pageActions"
+import {
     configAtom,
     getTranslationServiceOptions,
     updateConfigAtom
@@ -10,9 +14,13 @@ import {
 import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
 import BrandLogo from "../BrandLogo"
+import FeatureAvailability from "../FeatureAvailability"
 import GitHubIcon from "../GitHubIcon"
 import NativeSelect from "../NativeSelect"
+import PageReadingControls from "../PageReadingControls"
+import ReadingGuide from "../ReadingGuide"
 import { SkyBackdrop, SkyMascot } from "../SkyArtwork"
+import SummaryPageButton from "../SummaryPageButton"
 import CustomToggle from "../Switch"
 import Tooltip from "../Tooltip"
 
@@ -178,7 +186,7 @@ const SummaryInfo = styled.div`
     gap: var(--space-1);
 `
 
-const AvailabilityHint = styled.small`
+const AvailabilityHint = styled.div`
     color: var(--text-tertiary);
     font-size: var(--font-size-xs);
     line-height: var(--line-height-normal);
@@ -343,6 +351,9 @@ const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
                   border-radius: var(--radius-xl);
                   border: 1px solid var(--border-color);
                   box-shadow: var(--shadow-xl);
+                  max-height: min(80vh, 720px);
+                  overflow-y: auto;
+                  overscroll-behavior: contain;
               `
             : css`
                   position: relative;
@@ -450,6 +461,7 @@ const GearPath = () => (
 )
 
 interface SettingsPanelProps {
+    executePageAction?: PageActionExecutor
     currentTabUrl?: URL
     /** floating = 悬浮球纸面面板；embedded = popup 插画背景与设置卡片 */
     variant?: "floating" | "embedded"
@@ -457,6 +469,7 @@ interface SettingsPanelProps {
 
 function SettingsPanel({
     currentTabUrl,
+    executePageAction,
     variant = "floating"
 }: SettingsPanelProps) {
     const [config] = useAtom(configAtom)
@@ -472,6 +485,9 @@ function SettingsPanel({
     const modelOptions = getTranslationServiceOptions(config.aiModelList || [])
     const hasUsableGenerativeModel = hasUsablePageSummaryModel(
         config.aiModelList
+    )
+    const contextAvailable = hasUsablePageSummaryModel(
+        config.aiModelList.filter(model => model.id === config.currentModel)
     )
 
     const handleToggleTranslation = (checked: boolean) => {
@@ -496,22 +512,6 @@ function SettingsPanel({
 
     const handleCurrentModelChange = (value: string) => {
         updateConfig({ currentModel: value })
-    }
-
-    const handleAddTranslationSite = () => {
-        if (!currentTabUrl?.hostname) {
-            return
-        }
-        updateConfig({
-            alwaysTranslateUrls: isAlwayTranslateSite
-                ? config.alwaysTranslateUrls?.filter(
-                      url => url !== currentTabUrl?.hostname
-                  )
-                : [
-                      ...(config.alwaysTranslateUrls || []),
-                      currentTabUrl?.hostname
-                  ]
-        })
     }
 
     const handleOpenSettings = () => {
@@ -551,6 +551,18 @@ function SettingsPanel({
                     <HeaderMascot />
                 )}
             </Header>
+            {variant === "embedded" && (
+                <ReadingGuide
+                    targetLanguage={config.targetLanguage}
+                    onTargetLanguageChange={language =>
+                        updateConfig({ targetLanguage: language })
+                    }
+                />
+            )}
+            {executePageAction && (
+                <PageReadingControls execute={executePageAction} />
+            )}
+            <SummaryPageButton available={hasUsableGenerativeModel} />
 
             <Section>
                 <ListItem>
@@ -564,6 +576,12 @@ function SettingsPanel({
                 <ListItem>
                     <ListItemLabel>
                         AI 智能上下文
+                        {!contextAvailable && (
+                            <FeatureAvailability
+                                available={false}
+                                saved={config.enableContext}
+                            />
+                        )}
                         <Tooltip
                             content="结合网页上下文提升翻译效果。需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长。"
                             position="top"
@@ -574,7 +592,10 @@ function SettingsPanel({
                     </ListItemLabel>
                     <CustomToggle
                         aria-label="AI 智能上下文"
-                        checked={config.enableContext ?? false}
+                        checked={
+                            contextAvailable && (config.enableContext ?? false)
+                        }
+                        disabled={!contextAvailable}
                         onChange={handleToggleContext}
                     />
                 </ListItem>
@@ -591,23 +612,56 @@ function SettingsPanel({
                             </Tooltip>
                         </ListItemLabel>
                         {!hasUsableGenerativeModel && (
-                            <AvailabilityHint role="status">
-                                请先配置可用的生成式 AI 模型；开关状态会保留。
+                            <AvailabilityHint>
+                                <FeatureAvailability
+                                    available={false}
+                                    saved={config.enablePageSummary}
+                                />
                             </AvailabilityHint>
                         )}
                     </SummaryInfo>
                     <CustomToggle
                         aria-label="自动总结页面"
-                        checked={config.enablePageSummary ?? false}
+                        checked={
+                            hasUsableGenerativeModel &&
+                            (config.enablePageSummary ?? false)
+                        }
+                        disabled={!hasUsableGenerativeModel}
                         onChange={handleTogglePageSummary}
                     />
                 </ListItem>
                 <ListItem>
-                    <ListItemLabel>总是翻译此网站</ListItemLabel>
-                    <CustomToggle
-                        aria-label="总是翻译此网站"
-                        checked={isAlwayTranslateSite}
-                        onChange={handleAddTranslationSite}
+                    <ListItemLabel>此网站自动翻译</ListItemLabel>
+                    <NativeSelect
+                        aria-label="此网站自动翻译"
+                        disabled={
+                            !currentTabUrl ||
+                            !/^https?:$/.test(currentTabUrl.protocol)
+                        }
+                        value={
+                            config.neverTranslateUrls?.includes(
+                                currentTabUrl?.hostname ?? ""
+                            )
+                                ? "never"
+                                : isAlwayTranslateSite
+                                  ? "always"
+                                  : "default"
+                        }
+                        options={[
+                            { value: "default", label: "跟随语言设置" },
+                            { value: "always", label: "总是自动翻译" },
+                            { value: "never", label: "不自动翻译" }
+                        ]}
+                        onChange={rule => {
+                            if (currentTabUrl?.hostname)
+                                void updateConfig(
+                                    websiteRulePatch(
+                                        config,
+                                        currentTabUrl.hostname,
+                                        rule
+                                    )
+                                )
+                        }}
                     />
                 </ListItem>
                 <ListItem>
@@ -626,28 +680,32 @@ function SettingsPanel({
             </Section>
 
             <LanguageRow>
-                <LanguageBox>
-                    <LanguageLabel>网页语言</LanguageLabel>
-                    <NativeSelect
-                        aria-label="网页语言"
-                        value={config.detectedLanguage}
-                        disabled
-                        onChange={handleDetectedLanguageChange}
-                        options={languageOptions}
-                        placeholder="检测中..."
-                        size="sm"
-                    />
-                </LanguageBox>
-                <ArrowIcon aria-hidden="true">
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                    >
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                </ArrowIcon>
+                {!executePageAction && (
+                    <LanguageBox>
+                        <LanguageLabel>网页语言</LanguageLabel>
+                        <NativeSelect
+                            aria-label="网页语言"
+                            value={config.detectedLanguage}
+                            disabled
+                            onChange={handleDetectedLanguageChange}
+                            options={languageOptions}
+                            placeholder="检测中..."
+                            size="sm"
+                        />
+                    </LanguageBox>
+                )}
+                {!executePageAction && (
+                    <ArrowIcon aria-hidden="true">
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <path d="M5 12h14M12 5l7 7-7 7" />
+                        </svg>
+                    </ArrowIcon>
+                )}
                 <LanguageBox>
                     <LanguageLabelRight>目标语言</LanguageLabelRight>
                     <NativeSelect

@@ -17,4 +17,6 @@ export interface CaptureContext {
     feature: string
     operation: string
     pageUrl?: string
+    errorCode?: string
+    status?: number
 }

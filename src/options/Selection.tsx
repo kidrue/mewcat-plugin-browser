@@ -61,11 +61,20 @@ export const Selection: React.FunctionComponent = () => {
                 >
                     <FormRow
                         label="触发方式"
-                        description="选择划词翻译的触发方式"
+                        description={
+                            config.selectionTriggerMode === "dot"
+                                ? "选中文字后，点击或悬停翻译圆点。"
+                                : config.selectionTriggerMode === "shift"
+                                  ? "选中文字后，按下并松开 Shift。"
+                                  : config.selectionTriggerMode === "ctrl"
+                                    ? "选中文字后，按下并松开 Ctrl。"
+                                    : "选中文字后，直接显示译文。"
+                        }
                         controlId="selection-trigger-mode"
                     >
                         <NativeSelect
                             id="selection-trigger-mode"
+                            disabled={!config.isSelectedTranslate}
                             aria-describedby="selection-trigger-mode-description"
                             value={config.selectionTriggerMode || "direct"}
                             onChange={value =>
@@ -82,26 +91,31 @@ export const Selection: React.FunctionComponent = () => {
                         />
                     </FormRow>
 
-                    <FormRow
-                        label="交互方式"
-                        description="选择如何激活翻译面板"
-                        controlId="selection-interaction-mode"
-                    >
-                        <NativeSelect
-                            id="selection-interaction-mode"
-                            aria-describedby="selection-interaction-mode-description"
-                            value={config.selectionInteractionMode || "click"}
-                            onChange={value =>
-                                updateConfig({
-                                    selectionInteractionMode: value as
-                                        | "click"
-                                        | "hover"
-                                })
-                            }
-                            options={INTERACTION_MODE_OPTIONS}
-                            placeholder="选择交互方式"
-                        />
-                    </FormRow>
+                    {config.selectionTriggerMode === "dot" && (
+                        <FormRow
+                            label="交互方式"
+                            description="选择如何激活翻译面板"
+                            controlId="selection-interaction-mode"
+                        >
+                            <NativeSelect
+                                id="selection-interaction-mode"
+                                disabled={!config.isSelectedTranslate}
+                                aria-describedby="selection-interaction-mode-description"
+                                value={
+                                    config.selectionInteractionMode || "click"
+                                }
+                                onChange={value =>
+                                    updateConfig({
+                                        selectionInteractionMode: value as
+                                            | "click"
+                                            | "hover"
+                                    })
+                                }
+                                options={INTERACTION_MODE_OPTIONS}
+                                placeholder="选择交互方式"
+                            />
+                        </FormRow>
+                    )}
                 </OptionsSection>
                 <OptionsSection
                     artwork="garden"
@@ -113,6 +127,7 @@ export const Selection: React.FunctionComponent = () => {
                         description="在这些网站上不启用划词翻译"
                     >
                         <CustomSelect
+                            disabled={!config.isSelectedTranslate}
                             value={config.selectionDisabledSites || []}
                             onChange={value =>
                                 updateConfig({

@@ -30,7 +30,6 @@ import { type TranslationNode } from "./DOMTraverser"
 import type { MutationObserverManager } from "./MutationObserverManager"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 import {
-    abortAllTranslations,
     buildAiSummary,
     hasAITranslationEnabled,
     translateBatch as translateWithService,
@@ -91,6 +90,39 @@ interface DisplayElementNode {
  * 支持增量翻译、状态管理和完整的清理机制
  */
 export class ImmersiveTranslator {
+    private manualSession = false
+    public setSourceLanguage(language: string): void {
+        this.detectedLanguage = language
+        this.translationRuntimeConfig = {
+            ...this.translationRuntimeConfig,
+            sourceLanguage: language
+        }
+    }
+
+    public getReadingProgress() {
+        const nodes = this.translationNodes.filter(
+            node => node.container.isConnected
+        )
+        return {
+            translated: nodes.filter(node => node.status === "translated")
+                .length,
+            failed: nodes.filter(node => node.status === "error").length,
+            busy:
+                this.viewportScheduler?.hasPendingReadingTasks() ??
+                nodes.some(node => node.status === "loading")
+        }
+    }
+
+    public async retryFailedTranslations(): Promise<void> {
+        await this.retranslateNodeIds(
+            this.translationNodes
+                .filter(
+                    node =>
+                        node.status === "error" && node.container.isConnected
+                )
+                .map(node => node.id)
+        )
+    }
     /** 翻译结果节点列表，用于在原位置插入翻译文本的DOM元素 */
     public translationNodes: DisplayElementNode[] = []
 
@@ -113,7 +145,7 @@ export class ImmersiveTranslator {
     private targetLanguage: string = "zh-CN"
 
     /** 识别到网页的语言（需要被翻译的语言） */
-    private detectedLanguage: string = "en"
+    private detectedLanguage: string = "auto"
 
     /** 同一时间最大并行翻译请求数，避免过多并发导致服务器压力 */
     private MAX_CONCURRENT_REQUESTS = 3
@@ -193,6 +225,7 @@ export class ImmersiveTranslator {
         this.enableViewportTranslation =
             config.enableViewportTranslation ?? false
         this.translationRuntimeConfig = {
+            sourceLanguage: this.detectedLanguage,
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
             aiRole: config.aiRole,
@@ -312,6 +345,7 @@ export class ImmersiveTranslator {
         this.neverTranslateLanguages = config.neverTranslateLanguages ?? []
         this.neverTranslateUrls = config.neverTranslateUrls ?? []
         this.translationRuntimeConfig = {
+            sourceLanguage: this.detectedLanguage,
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
             aiRole: config.aiRole,
@@ -539,7 +573,11 @@ export class ImmersiveTranslator {
      * 包括内容提取、智能分批、异步翻译和结果展示
      * @returns Promise<boolean> 翻译是否成功执行
      */
-    public async startImmersiveTranslation(): Promise<boolean> {
+    public async startImmersiveTranslation(
+        options: { manual?: boolean } = {}
+    ): Promise<boolean> {
+        this.manualSession = options.manual ?? this.manualSession
+        this.domSelector.setManualTranslation(this.manualSession)
         let session: number
         // 🕐 开始性能监控
         this.performanceMonitor?.start(
@@ -559,6 +597,7 @@ export class ImmersiveTranslator {
             // 检查当前网站是否在永不翻译列表中
             this.performanceMonitor?.startStage("URL检查")
             if (
+                !this.manualSession &&
                 matchUrlPatternList(
                     this.neverTranslateUrls,
                     window.location.href
@@ -575,7 +614,10 @@ export class ImmersiveTranslator {
 
             // 检查检测到的语言是否在永不翻译列表中
             this.performanceMonitor?.startStage("语言检查")
-            if (this.isDetectedLanguageNeverTranslate()) {
+            if (
+                !this.manualSession &&
+                this.isDetectedLanguageNeverTranslate()
+            ) {
                 this.performanceMonitor?.endStage({ result: "rejected" })
                 this.performanceMonitor?.end({
                     success: false,
@@ -1107,8 +1149,7 @@ export class ImmersiveTranslator {
         this.renderQueue = []
         this.isProcessingRenderQueue = false
 
-        // 🔴 中断所有正在进行的翻译请求
-        void abortAllTranslations()
+        // 后台取消 API 影响所有标签页；此处通过 session 丢弃过期结果，避免打断其他页面。
 
         // 停止 body 监听器
         this.stopBodyObserver()
@@ -1181,7 +1222,7 @@ export class ImmersiveTranslator {
 
         this.isTranslationAborted = true
         this.viewportScheduler?.destroy()
-        await abortAllTranslations()
+        this.translationSession++
 
         if (!this.translationCache || cacheParams.length === 0) {
             return 0

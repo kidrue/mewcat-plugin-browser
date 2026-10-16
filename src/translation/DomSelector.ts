@@ -54,6 +54,10 @@ export class DomSelector {
 
     /** 检测到的语言 */
     private detectedLanguage: string = ""
+    private manualTranslation = false
+    public setManualTranslation(enabled: boolean): void {
+        this.manualTranslation = enabled
+    }
 
     /**  */
     private mergedRule: TranslationRule
@@ -475,6 +479,7 @@ export class DomSelector {
         if (!node.originText) {
             return false
         }
+        if (this.manualTranslation) return true
 
         // 优化：如果没有配置语言过滤规则，直接返回 true
         if (

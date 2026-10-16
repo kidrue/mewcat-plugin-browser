@@ -99,6 +99,25 @@ const requested = () =>
     service.translate.mock.calls.map(call => call[1][0].content)
 
 describe("viewport translation integration", () => {
+    it("allows an explicit translation on an excluded site and preserves its rules", async () => {
+        makeNode("Manual reading", 0)
+        translator = new ImmersiveTranslator({
+            ...config,
+            neverTranslateUrls: ["localhost"]
+        })
+        await translator.startImmersiveTranslation({ manual: true })
+        await vi.advanceTimersByTimeAsync(100)
+        expect(requested()).toContain("Manual reading")
+        expect(translator.getReadingProgress().translated).toBe(1)
+    })
+    it("keeps manual source language in the actual translation runtime", async () => {
+        makeNode("Bonjour", 0)
+        translator = new ImmersiveTranslator(config)
+        translator.setSourceLanguage("fr")
+        await translator.startImmersiveTranslation()
+        await vi.advanceTimersByTimeAsync(100)
+        expect(service.translate.mock.calls[0][0].sourceLanguage).toBe("fr")
+    })
     it("keeps real DOM extraction stable after translation markup and later mutations", async () => {
         vi.mocked(DomSelector.prototype.initialize).mockRestore()
         vi.mocked(DomSelector.prototype.extractTargetTextNodes).mockRestore()

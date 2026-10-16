@@ -1,6 +1,5 @@
-import { clone } from "ramda"
 import * as React from "react"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import styled from "styled-components"
 
 import "@/styles/theme.scss"
@@ -352,74 +351,104 @@ const LoadingBox = styled.div`
 // ============================================
 
 const SlidePanel: React.FunctionComponent = () => {
+    const config = useConfig()
     const [inputText, setInputText] = useState("")
     const [result, setResult] = useState("")
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState("")
     const [copied, setCopied] = useState(false)
     const [sourceLang, setSourceLang] = useState("auto")
-    const [targetLang, setTargetLang] = useState("zh-CN")
-    const abortRef = useRef<AbortController | null>(null)
-
-    const config = useConfig()
+    const [targetLang, setTargetLang] = useState(config.targetLanguage)
+    const requestRef = useRef(0)
+    const [notice, setNotice] = useState("")
+    const copyTimer = useRef<ReturnType<typeof setTimeout>>()
+    const invalidate = useCallback(() => {
+        requestRef.current++
+        setLoading(false)
+        setResult("")
+        setError("")
+        setNotice("")
+        setCopied(false)
+    }, [])
+    useEffect(
+        () => () => {
+            requestRef.current++
+            clearTimeout(copyTimer.current)
+        },
+        []
+    )
 
     const sourceOptions = [AUTO_DETECT_OPTION, ...languages.languages]
     const targetOptions = languages.languages
 
     const handlePaste = useCallback(async () => {
+        const request = requestRef.current
         try {
             const text = await navigator.clipboard.readText()
+            if (request !== requestRef.current) return
+            invalidate()
             setInputText(text)
         } catch {
-            // clipboard permission denied, user can type manually
+            if (request === requestRef.current)
+                setNotice(
+                    "无法读取剪贴板，请使用 Ctrl+V（Mac 使用 ⌘V）手动粘贴。"
+                )
         }
-    }, [])
+    }, [invalidate])
 
     const handleTranslate = useCallback(async () => {
         const text = inputText.trim()
         if (!text || loading) return
 
-        abortRef.current?.abort()
-        abortRef.current = new AbortController()
+        const request = ++requestRef.current
 
         setLoading(true)
         setError("")
         setResult("")
 
         try {
-            const newConfig = clone(config)
-            if (sourceLang !== "auto") {
-                newConfig.detectedLanguage = sourceLang
-            }
+            const newConfig = { ...config, sourceLanguage: sourceLang }
 
             const translated = await translateText(
                 newConfig,
                 [{ role: "user", content: text }],
                 targetLang
             )
-            setResult(translated || "")
+            if (request === requestRef.current) setResult(translated || "")
         } catch (e) {
-            if ((e as Error)?.name !== "AbortError") {
+            if (
+                request === requestRef.current &&
+                (e as Error)?.name !== "AbortError"
+            ) {
                 setError((e as Error)?.message || "翻译失败，请重试")
             }
         } finally {
-            setLoading(false)
+            if (request === requestRef.current) setLoading(false)
         }
     }, [inputText, loading, config, sourceLang, targetLang])
 
     const handleSwapLang = useCallback(() => {
         if (sourceLang === "auto") return
+        invalidate()
         setSourceLang(targetLang)
         setTargetLang(sourceLang)
         setInputText(result)
         setResult("")
-    }, [sourceLang, targetLang, result])
+    }, [sourceLang, targetLang, result, invalidate])
 
     const handleCopy = useCallback(async () => {
         if (!result) return
-        await navigator.clipboard.writeText(result)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
+        const request = requestRef.current
+        try {
+            await navigator.clipboard.writeText(result)
+            if (request !== requestRef.current) return
+            setCopied(true)
+            clearTimeout(copyTimer.current)
+            copyTimer.current = setTimeout(() => setCopied(false), 1500)
+        } catch {
+            if (request === requestRef.current)
+                setNotice("复制失败，请选中译文手动复制。")
+        }
     }, [result])
 
     const handleKeyDown = useCallback(
@@ -447,7 +476,10 @@ const SlidePanel: React.FunctionComponent = () => {
                     <LangBox>
                         <NativeSelect
                             value={sourceLang}
-                            onChange={setSourceLang}
+                            onChange={value => {
+                                invalidate()
+                                setSourceLang(value)
+                            }}
                             options={sourceOptions}
                             placeholder="源语言"
                             size="sm"
@@ -470,7 +502,10 @@ const SlidePanel: React.FunctionComponent = () => {
                     <LangBox>
                         <NativeSelect
                             value={targetLang}
-                            onChange={setTargetLang}
+                            onChange={value => {
+                                invalidate()
+                                setTargetLang(value)
+                            }}
                             options={targetOptions}
                             placeholder="目标语言"
                             size="sm"
@@ -481,7 +516,10 @@ const SlidePanel: React.FunctionComponent = () => {
                 <TextAreaWrapper>
                     <StyledTextarea
                         value={inputText}
-                        onChange={e => setInputText(e.target.value)}
+                        onChange={e => {
+                            invalidate()
+                            setInputText(e.target.value)
+                        }}
                         onKeyDown={handleKeyDown}
                         placeholder="输入或粘贴要翻译的文本…&#10;Ctrl+Enter 快速翻译"
                         rows={5}
@@ -489,6 +527,7 @@ const SlidePanel: React.FunctionComponent = () => {
                     {inputText && (
                         <ClearButton
                             onClick={() => {
+                                invalidate()
                                 setInputText("")
                                 setResult("")
                                 setError("")
@@ -546,6 +585,7 @@ const SlidePanel: React.FunctionComponent = () => {
                 </ActionRow>
 
                 <Divider />
+                {notice && <p role="status">{notice}</p>}
 
                 <ResultBox>
                     {loading ? (

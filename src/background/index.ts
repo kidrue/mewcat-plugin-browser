@@ -163,10 +163,68 @@ export function registerBackgroundListeners() {
     })
 
     chrome.runtime.onMessage.addListener(
-        (message: { type?: string; isTranslate?: boolean }) => {
+        (message: { type?: string }, sender, respond) => {
+            if (message.type !== "SUMMARIZE_PAGE") return
+            const run = async () => {
+                const tab =
+                    sender.tab ??
+                    (
+                        await chrome.tabs.query({
+                            active: true,
+                            currentWindow: true
+                        })
+                    )[0]
+                if (!tab?.id || !tab.url || !/^https?:/.test(tab.url)) {
+                    respond({
+                        success: false,
+                        message: "此页面不支持总结，请打开普通网页。"
+                    })
+                    return
+                }
+                chrome.tabs.sendMessage(
+                    tab.id,
+                    { type: "MEWCAT_SUMMARY_ACTION", pageUrl: tab.url },
+                    { frameId: 0 },
+                    result => {
+                        const error = chrome.runtime.lastError
+                        respond(
+                            error || !result
+                                ? {
+                                      success: false,
+                                      message:
+                                          "无法连接当前页，请刷新网页后重试。"
+                                  }
+                                : result
+                        )
+                    }
+                )
+            }
+            void run().catch(() =>
+                respond({ success: false, message: "无法读取当前页，请重试。" })
+            )
+            return true
+        }
+    )
+    chrome.runtime.onMessage.addListener(
+        (
+            message: {
+                type?: string
+                isTranslate?: boolean
+                section?: string
+            },
+            sender
+        ) => {
             if (message.type === "OPEN_OPTIONS") {
                 chrome.tabs.create(
-                    { url: chrome.runtime.getURL("options.html") },
+                    {
+                        url:
+                            chrome.runtime.getURL("options.html") +
+                            (["translation", "image", "basic"].includes(
+                                message.section ?? ""
+                            )
+                                ? `#${message.section}`
+                                : "")
+                    },
                     () => {
                         if (chrome.runtime.lastError) {
                             console.error(
@@ -183,9 +241,17 @@ export function registerBackgroundListeners() {
                 message.type === "TRANSLATE_END" &&
                 typeof message.isTranslate === "boolean"
             ) {
-                chrome.contextMenus.update(CONTEXT_MENU_ID, {
-                    title: message.isTranslate ? "关闭翻译" : "开启翻译"
-                })
+                chrome.tabs.query(
+                    { active: true, currentWindow: true },
+                    tabs => {
+                        if (sender.tab?.id !== tabs[0]?.id) {
+                            return
+                        }
+                        chrome.contextMenus.update(CONTEXT_MENU_ID, {
+                            title: message.isTranslate ? "关闭翻译" : "开启翻译"
+                        })
+                    }
+                )
             }
         }
     )

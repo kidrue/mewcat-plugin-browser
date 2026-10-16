@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
@@ -10,7 +11,7 @@ const mocks = vi.hoisted(() => ({
         targetLanguage: "zh-CN",
         detectedLanguage: "auto",
         aiRole: "DEFAULT",
-        aiModelList: [],
+        aiModelList: [{ id: "configured-model" }],
         selectionTriggerMode: "direct",
         autoTranslateDelay: 700
     } as ExtensionConfig,
@@ -23,6 +24,7 @@ vi.mock("@/state/config", () => ({
 }))
 
 vi.mock("@/translation/translationService", () => ({
+    isConfiguredGenerativeModel: () => true,
     translateText: mocks.translateText,
     explainConcept: mocks.explainConcept,
     streamConceptExplanation: mocks.explainConcept,
@@ -113,6 +115,49 @@ afterEach(async () => {
 })
 
 describe("selection concept explanation panel", () => {
+    it("retries a failed translation without selecting the text again", async () => {
+        mocks.translateText.mockRejectedValueOnce(
+            new Error("temporary failure")
+        )
+        const { TranslateTextPanel } = await import(
+            "../src/components/TranslateTextPanel"
+        )
+        root = createRoot(document.querySelector<HTMLDivElement>("#host")!)
+        await act(async () =>
+            root?.render(<TranslateTextPanel data="same selection" />)
+        )
+        await flushEffects()
+        const retry = [...document.querySelectorAll("button")].find(
+            button => button.textContent === "重试翻译"
+        )
+        expect(retry).toBeDefined()
+        await act(async () => retry!.click())
+        await flushEffects()
+        expect(mocks.translateText).toHaveBeenCalledTimes(2)
+        expect(document.body.textContent).toContain("凡尔赛条约")
+        expect(document.body.textContent).not.toContain("temporary failure")
+    })
+    it("copies the translated text with feedback", async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined)
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText }
+        })
+        const { TranslateTextPanel } = await import(
+            "../src/components/TranslateTextPanel"
+        )
+        root = createRoot(document.querySelector<HTMLDivElement>("#host")!)
+        await act(async () =>
+            root?.render(<TranslateTextPanel data="same selection" />)
+        )
+        await flushEffects()
+        const copy = [...document.querySelectorAll("button")].find(
+            button => button.textContent === "复制译文"
+        )!
+        await act(async () => copy.click())
+        expect(writeText).toHaveBeenCalledWith("凡尔赛条约")
+        expect(document.body.textContent).toContain("已复制")
+    })
     it("isolates replaced selections and cancels an unmounted request", async () => {
         const first = deferred<string>()
         const second = deferred<string>()

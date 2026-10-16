@@ -38,6 +38,17 @@ interface ScrollSample {
 
 /** One queue for initial, incremental and explicitly retried page content. */
 export class ViewportTranslationScheduler {
+    public hasPendingReadingTasks(): boolean {
+        return Array.from(this.tasks.values()).some(
+            task =>
+                task.node.container.isConnected &&
+                (task.state === "preparing" ||
+                    task.state === "inflight" ||
+                    (task.state === "pending" &&
+                        (!this.viewportOnly ||
+                            Boolean(getReadingPosition(task.node)))))
+        )
+    }
     private tasks = new Map<string, Task>()
     private tasksByElement = new Map<Element, Set<Task>>()
     private candidates = new Set<Element>()
