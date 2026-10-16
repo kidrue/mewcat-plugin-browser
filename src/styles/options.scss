@@ -50,6 +50,41 @@ a {
     );
 }
 
+@supports (animation-timeline: scroll()) and
+    (timeline-scope: --mewcat-options-scroll) {
+    .options-container {
+        timeline-scope: --mewcat-options-scroll;
+
+        > .content {
+            scroll-timeline: --mewcat-options-scroll block;
+        }
+
+        &::before {
+            content: "";
+            position: fixed;
+            inset: 0 0 auto;
+            z-index: var(--z-dropdown);
+            height: 3px;
+            pointer-events: none;
+            background: linear-gradient(
+                90deg,
+                var(--primary-muted),
+                var(--primary-color)
+            );
+            transform: scaleX(0);
+            transform-origin: left;
+            animation: mewcat-options-scroll-progress auto linear both;
+            animation-timeline: --mewcat-options-scroll;
+        }
+    }
+
+    @keyframes mewcat-options-scroll-progress {
+        to {
+            transform: scaleX(1);
+        }
+    }
+}
+
 // 滚动条：细，与纸面同色系，不抢注意力
 .options-scrollbar {
     &::-webkit-scrollbar {
@@ -90,5 +125,10 @@ a {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+
+    // 仅随滚动更新进度，没有自动播放；保留其完整滚动范围。
+    .options-container::before {
+        animation-duration: auto !important;
     }
 }
