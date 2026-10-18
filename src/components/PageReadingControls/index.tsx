@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react"
 import styled from "styled-components"
 
 import { AUTO_DETECT_OPTION, languages } from "@/constants"
-import type {
-    PageAction,
-    PageActionExecutor,
-    ReadingState
-} from "@/reading/pageActions"
+import {
+    readingStatusLabels as labels,
+    usePageReadingControls
+} from "@/hooks/usePageReadingControls"
+import type { PageActionExecutor } from "@/reading/pageActions"
 
 import NativeSelect from "../NativeSelect"
 
@@ -35,79 +34,14 @@ const Box = styled.section`
         margin: 0;
     }
 `
-const labels = {
-    idle: "尚未翻译",
-    translating: "翻译中…",
-    complete: "当前阅读区域已处理",
-    partial: "部分内容翻译失败",
-    unavailable: "当前页不可用"
-}
 
 export default function PageReadingControls({
     execute
 }: {
     execute: PageActionExecutor
 }) {
-    const [state, setState] = useState<ReadingState>()
-    const [pending, setPending] = useState(false)
-    const revision = useRef(0)
-    useEffect(() => {
-        let active = true
-        let timer: ReturnType<typeof setTimeout>
-        const poll = async () => {
-            const version = revision.current
-            try {
-                const next = await execute({
-                    type: "MEWCAT_PAGE_ACTION",
-                    action: "status"
-                })
-                if (active && version === revision.current) setState(next)
-            } catch {
-                if (active && version === revision.current)
-                    setState({
-                        status: "unavailable",
-                        translated: 0,
-                        failed: 0,
-                        reason: "无法连接当前页，请刷新后重试。"
-                    })
-            } finally {
-                if (active) timer = setTimeout(() => void poll(), 1000)
-            }
-        }
-        void poll()
-        return () => {
-            active = false
-            revision.current++
-            clearTimeout(timer)
-        }
-    }, [execute])
-    const run = useCallback(
-        async (action: PageAction, sourceLanguage?: string) => {
-            const version = ++revision.current
-            setPending(true)
-            try {
-                const next = await execute({
-                    type: "MEWCAT_PAGE_ACTION",
-                    action,
-                    sourceLanguage
-                })
-                if (version === revision.current) setState(next)
-            } catch {
-                if (version === revision.current)
-                    setState({
-                        status: "unavailable",
-                        translated: 0,
-                        failed: 0,
-                        reason: "操作失败，请重试。"
-                    })
-            } finally {
-                if (version === revision.current) setPending(false)
-            }
-        },
-        [execute]
-    )
-    const unavailable = !state || state.status === "unavailable"
-    const active = state && !["idle", "unavailable"].includes(state.status)
+    const { state, pending, run, unavailable, active } =
+        usePageReadingControls(execute)
     return (
         <Box aria-label="当前页翻译">
             <p role="status">

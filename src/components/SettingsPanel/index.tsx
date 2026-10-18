@@ -3,6 +3,10 @@ import styled, { css } from "styled-components"
 
 import { AUTO_DETECT_OPTION, EXTENSION_INFO, languages } from "@/constants"
 import {
+    readingStatusLabels,
+    usePageReadingControls
+} from "@/hooks/usePageReadingControls"
+import {
     websiteRulePatch,
     type PageActionExecutor
 } from "@/reading/pageActions"
@@ -14,10 +18,10 @@ import {
 import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 
 import BrandLogo from "../BrandLogo"
+import Button from "../Button"
 import FeatureAvailability from "../FeatureAvailability"
 import GitHubIcon from "../GitHubIcon"
 import NativeSelect from "../NativeSelect"
-import PageReadingControls from "../PageReadingControls"
 import ReadingGuide from "../ReadingGuide"
 import { SkyBackdrop, SkyMascot } from "../SkyArtwork"
 import SummaryPageButton from "../SummaryPageButton"
@@ -224,6 +228,7 @@ const ModelSelectWrapper = styled.div`
 
 const LanguageRow = styled.div`
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-end;
     gap: var(--space-3);
     margin-top: var(--space-1);
@@ -453,6 +458,48 @@ const RepositoryLink = styled.a`
     }
 `
 
+const ReadingActions = styled.div`
+    width: 100%;
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    p {
+        margin: 0 0 var(--space-2);
+        line-height: var(--line-height-normal);
+    }
+`
+
+const ActionRow = styled.div`
+    display: flex;
+    gap: var(--space-2);
+    > button,
+    > div {
+        flex: 1;
+        min-width: 0;
+    }
+`
+
+const MoreActions = styled.details`
+    width: 100%;
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    summary {
+        width: fit-content;
+        cursor: pointer;
+        padding: var(--space-1) 0;
+    }
+    summary:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+    > div {
+        padding-top: var(--space-2);
+    }
+    label {
+        display: block;
+        margin-bottom: var(--space-2);
+    }
+`
+
 const GearPath = () => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="3" />
@@ -474,6 +521,7 @@ function SettingsPanel({
 }: SettingsPanelProps) {
     const [config] = useAtom(configAtom)
     const updateConfig = useSetAtom(updateConfigAtom)
+    const reading = usePageReadingControls(executePageAction)
 
     const languageOptions = [AUTO_DETECT_OPTION, ...languages.languages]
     const targetLanguageOptions = languages.languages
@@ -530,6 +578,36 @@ function SettingsPanel({
         }
     }
 
+    const websiteRuleSelector = (
+        <NativeSelect
+            aria-label="此网站自动翻译"
+            size="sm"
+            disabled={
+                !currentTabUrl || !/^https?:$/.test(currentTabUrl.protocol)
+            }
+            value={
+                config.neverTranslateUrls?.includes(
+                    currentTabUrl?.hostname ?? ""
+                )
+                    ? "never"
+                    : isAlwayTranslateSite
+                      ? "always"
+                      : "default"
+            }
+            options={[
+                { value: "default", label: "跟随语言设置" },
+                { value: "always", label: "总是自动翻译" },
+                { value: "never", label: "不自动翻译" }
+            ]}
+            onChange={rule => {
+                if (currentTabUrl?.hostname)
+                    void updateConfig(
+                        websiteRulePatch(config, currentTabUrl.hostname, rule)
+                    )
+            }}
+        />
+    )
+
     return (
         <PanelContainer $variant={variant}>
             {variant === "embedded" && (
@@ -551,19 +629,6 @@ function SettingsPanel({
                     <HeaderMascot />
                 )}
             </Header>
-            {variant === "embedded" && (
-                <ReadingGuide
-                    targetLanguage={config.targetLanguage}
-                    onTargetLanguageChange={language =>
-                        updateConfig({ targetLanguage: language })
-                    }
-                />
-            )}
-            {executePageAction && (
-                <PageReadingControls execute={executePageAction} />
-            )}
-            <SummaryPageButton available={hasUsableGenerativeModel} />
-
             <Section>
                 <ListItem>
                     <ListItemLabel>启用划词翻译</ListItemLabel>
@@ -576,12 +641,6 @@ function SettingsPanel({
                 <ListItem>
                     <ListItemLabel>
                         AI 智能上下文
-                        {!contextAvailable && (
-                            <FeatureAvailability
-                                available={false}
-                                saved={config.enableContext}
-                            />
-                        )}
                         <Tooltip
                             content="结合网页上下文提升翻译效果。需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长。"
                             position="top"
@@ -612,11 +671,8 @@ function SettingsPanel({
                             </Tooltip>
                         </ListItemLabel>
                         {!hasUsableGenerativeModel && (
-                            <AvailabilityHint>
-                                <FeatureAvailability
-                                    available={false}
-                                    saved={config.enablePageSummary}
-                                />
+                            <AvailabilityHint role="status">
+                                请先配置可用的生成式 AI 模型；开关状态会保留。
                             </AvailabilityHint>
                         )}
                     </SummaryInfo>
@@ -631,34 +687,21 @@ function SettingsPanel({
                     />
                 </ListItem>
                 <ListItem>
-                    <ListItemLabel>此网站自动翻译</ListItemLabel>
-                    <NativeSelect
-                        aria-label="此网站自动翻译"
+                    <ListItemLabel>总是翻译此网站</ListItemLabel>
+                    <CustomToggle
+                        aria-label="总是翻译此网站"
+                        checked={Boolean(isAlwayTranslateSite)}
                         disabled={
                             !currentTabUrl ||
                             !/^https?:$/.test(currentTabUrl.protocol)
                         }
-                        value={
-                            config.neverTranslateUrls?.includes(
-                                currentTabUrl?.hostname ?? ""
-                            )
-                                ? "never"
-                                : isAlwayTranslateSite
-                                  ? "always"
-                                  : "default"
-                        }
-                        options={[
-                            { value: "default", label: "跟随语言设置" },
-                            { value: "always", label: "总是自动翻译" },
-                            { value: "never", label: "不自动翻译" }
-                        ]}
-                        onChange={rule => {
+                        onChange={checked => {
                             if (currentTabUrl?.hostname)
                                 void updateConfig(
                                     websiteRulePatch(
                                         config,
                                         currentTabUrl.hostname,
-                                        rule
+                                        checked ? "always" : "default"
                                     )
                                 )
                         }}
@@ -680,32 +723,40 @@ function SettingsPanel({
             </Section>
 
             <LanguageRow>
-                {!executePageAction && (
-                    <LanguageBox>
-                        <LanguageLabel>网页语言</LanguageLabel>
-                        <NativeSelect
-                            aria-label="网页语言"
-                            value={config.detectedLanguage}
-                            disabled
-                            onChange={handleDetectedLanguageChange}
-                            options={languageOptions}
-                            placeholder="检测中..."
-                            size="sm"
-                        />
-                    </LanguageBox>
-                )}
-                {!executePageAction && (
-                    <ArrowIcon aria-hidden="true">
-                        <svg
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                        >
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
-                    </ArrowIcon>
-                )}
+                <LanguageBox>
+                    <LanguageLabel>网页语言</LanguageLabel>
+                    <NativeSelect
+                        aria-label="网页语言"
+                        value={
+                            executePageAction
+                                ? (reading.state?.sourceLanguage ?? "auto")
+                                : config.detectedLanguage
+                        }
+                        disabled={
+                            !executePageAction ||
+                            reading.unavailable ||
+                            reading.pending
+                        }
+                        onChange={
+                            executePageAction
+                                ? value => void reading.run("source", value)
+                                : handleDetectedLanguageChange
+                        }
+                        options={languageOptions}
+                        placeholder="检测中..."
+                        size="sm"
+                    />
+                </LanguageBox>
+                <ArrowIcon aria-hidden="true">
+                    <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                </ArrowIcon>
                 <LanguageBox>
                     <LanguageLabelRight>目标语言</LanguageLabelRight>
                     <NativeSelect
@@ -717,6 +768,80 @@ function SettingsPanel({
                         size="sm"
                     />
                 </LanguageBox>
+                <ReadingActions>
+                    {executePageAction && reading.state?.status !== "idle" && (
+                        <p role="status">
+                            {reading.state
+                                ? readingStatusLabels[reading.state.status]
+                                : "正在读取当前页…"}
+                            {!!reading.state?.translated &&
+                                ` · 已翻译 ${reading.state.translated} 段`}
+                            {!!reading.state?.failed &&
+                                `，失败 ${reading.state.failed} 段`}
+                        </p>
+                    )}
+                    <ActionRow>
+                        {executePageAction && (
+                            <Button
+                                htmlType="button"
+                                size="sm"
+                                fullWidth
+                                disabled={
+                                    reading.unavailable || reading.pending
+                                }
+                                onClick={() =>
+                                    void reading.run(
+                                        reading.active ? "clear" : "start"
+                                    )
+                                }
+                            >
+                                {reading.active ? "显示原文" : "翻译当前页"}
+                            </Button>
+                        )}
+                        <SummaryPageButton
+                            available={hasUsableGenerativeModel}
+                            compact
+                        />
+                    </ActionRow>
+                    {!!reading.state?.failed && (
+                        <Button
+                            htmlType="button"
+                            type="ghost"
+                            size="sm"
+                            disabled={reading.pending}
+                            onClick={() => void reading.run("retry")}
+                        >
+                            重试失败内容
+                        </Button>
+                    )}
+                </ReadingActions>
+
+                <MoreActions>
+                    <summary>更多页面设置与使用引导</summary>
+                    <div>
+                        {reading.state?.reason && (
+                            <p role="status">{reading.state.reason}</p>
+                        )}
+                        <label>此网站自动翻译{websiteRuleSelector}</label>
+                        {!contextAvailable && (
+                            <FeatureAvailability
+                                available={false}
+                                saved={
+                                    config.enableContext ||
+                                    config.enablePageSummary
+                                }
+                            />
+                        )}
+                        {variant === "embedded" && (
+                            <ReadingGuide
+                                targetLanguage={config.targetLanguage}
+                                onTargetLanguageChange={language =>
+                                    updateConfig({ targetLanguage: language })
+                                }
+                            />
+                        )}
+                    </div>
+                </MoreActions>
             </LanguageRow>
 
             <SettingsButton onClick={handleOpenSettings}>

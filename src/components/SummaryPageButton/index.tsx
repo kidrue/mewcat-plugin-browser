@@ -9,9 +9,11 @@ import Button from "../Button"
 import FeatureAvailability from "../FeatureAvailability"
 
 export default function SummaryPageButton({
-    available
+    available,
+    compact = false
 }: {
     available: boolean
+    compact?: boolean
 }) {
     const [pending, setPending] = useState(false)
     const [result, setResult] = useState<SummaryActionResult>()
@@ -23,11 +25,12 @@ export default function SummaryPageButton({
         }
     }, [])
     return (
-        <div style={{ padding: "8px 0" }}>
+        <div style={{ padding: compact ? 0 : "8px 0" }}>
             <Button
                 htmlType="button"
                 type="secondary"
                 fullWidth
+                size={compact ? "sm" : "md"}
                 disabled={!available || pending}
                 onClick={async () => {
                     setPending(true)
@@ -41,7 +44,9 @@ export default function SummaryPageButton({
             >
                 {pending ? "正在总结…" : "总结本页"}
             </Button>
-            {!available && <FeatureAvailability available={false} />}
+            {!available && !compact && (
+                <FeatureAvailability available={false} />
+            )}
             {result && <p role="status">{result.message}</p>}
             {result?.needsConfiguration && (
                 <FeatureAvailability available={false} />

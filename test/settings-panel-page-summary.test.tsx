@@ -4,6 +4,7 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type { PageActionExecutor } from "../src/reading/pageActions"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 import type { ExtensionConfig } from "../src/types/config"
 
@@ -87,15 +88,52 @@ afterEach(async () => {
     }
 })
 
-async function renderSettingsPanel() {
+async function renderSettingsPanel(executePageAction?: PageActionExecutor) {
     const { default: SettingsPanel } = await import(
         "../src/components/SettingsPanel"
     )
     root = createRoot(document.querySelector<HTMLDivElement>("#host")!)
-    await act(async () => root?.render(<SettingsPanel variant="embedded" />))
+    await act(async () =>
+        root?.render(
+            <SettingsPanel
+                variant="embedded"
+                currentTabUrl={new URL("https://example.com/article")}
+                executePageAction={executePageAction}
+            />
+        )
+    )
 }
 
 describe("quick settings page summary setting", () => {
+    it("keeps the original language row interactive and applies its override only to the current page", async () => {
+        const execute = vi
+            .fn<PageActionExecutor>()
+            .mockImplementation(async request => ({
+                status: "idle",
+                translated: 0,
+                failed: 0,
+                sourceLanguage: request.sourceLanguage ?? "auto"
+            }))
+        await renderSettingsPanel(execute)
+        const source = document.querySelector<HTMLSelectElement>(
+            'select[aria-label="网页语言"]'
+        )
+        expect(source).not.toBeNull()
+        expect(source?.disabled).toBe(false)
+        await act(async () => {
+            source!.value = "ja"
+            source!.dispatchEvent(new Event("change", { bubbles: true }))
+        })
+        expect(execute).toHaveBeenLastCalledWith({
+            type: "MEWCAT_PAGE_ACTION",
+            action: "source",
+            sourceLanguage: "ja"
+        })
+        expect(mocks.updateConfig).not.toHaveBeenCalled()
+        expect(
+            document.querySelector('input[aria-label="总是翻译此网站"]')
+        ).not.toBeNull()
+    })
     it("uses the saved summary state instead of context and writes its own field", async () => {
         await renderSettingsPanel()
 
