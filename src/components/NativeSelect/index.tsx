@@ -45,6 +45,7 @@ const SelectArrow = styled.span`
 `
 
 const StyledSelect = styled.select<{ $size: string }>`
+    box-sizing: border-box;
     width: 100%;
     height: ${props => {
         switch (props.$size) {

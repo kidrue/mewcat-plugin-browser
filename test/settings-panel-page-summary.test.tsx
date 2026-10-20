@@ -105,6 +105,22 @@ async function renderSettingsPanel(executePageAction?: PageActionExecutor) {
 }
 
 describe("quick settings page summary setting", () => {
+    it("shows the active page's detected language instead of the saved global language", async () => {
+        mocks.config = createConfig({ detectedLanguage: "zh-CN" })
+        await renderSettingsPanel(async () => ({
+            status: "idle",
+            translated: 0,
+            failed: 0,
+            sourceLanguage: "en"
+        }))
+        const source = document.querySelector<HTMLSelectElement>(
+            'select[aria-label="网页语言"]'
+        )!
+        expect(source.value).toBe("en")
+        expect(source.selectedOptions[0].textContent).toBe("英语")
+        expect(mocks.updateConfig).not.toHaveBeenCalled()
+    })
+
     it("keeps the original language row interactive and applies its override only to the current page", async () => {
         const execute = vi
             .fn<PageActionExecutor>()

@@ -1,10 +1,9 @@
-import { franc } from "franc"
 import { useSetAtom } from "jotai"
 import React, { useEffect } from "react"
 import { useAsyncRetry } from "react-use"
 
 import { updateConfigAtom } from "../state"
-import { getEnhancedLanguageCode } from "../utils/francLanguageMap"
+import { detectPageLanguage } from "../utils/detectPageLanguage"
 
 export const getShadowHostId = () => "mewcat-overlay-init"
 
@@ -16,10 +15,8 @@ const Initialize: React.FunctionComponent = () => {
     const updateConfig = useSetAtom(updateConfigAtom)
     // 加载网站时解析其语言
     const { retry } = useAsyncRetry(async () => {
-        const htmlText = document.documentElement.innerText
-        const detected = franc(htmlText)
-        const normalizedLang = getEnhancedLanguageCode(detected, htmlText)
-        if (normalizedLang && normalizedLang !== "und") {
+        const normalizedLang = detectPageLanguage()
+        if (normalizedLang) {
             await updateConfig({ detectedLanguage: normalizedLang })
         }
     }, [updateConfig])

@@ -4,6 +4,10 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import type {
+    PageActionRequest,
+    ReadingState
+} from "../src/reading/pageActions"
 import type { ExtensionConfig } from "../src/types/config"
 
 const mocks = vi.hoisted(() => ({
@@ -103,6 +107,7 @@ async function click(element: Element) {
 }
 
 beforeEach(() => {
+    mocks.config.detectedLanguage = "auto"
     mocks.config.alwaysTranslateUrls = []
     mocks.config.currentModel = "google-translate"
     mocks.calls.length = 0
@@ -139,6 +144,106 @@ afterEach(async () => {
         await act(async () => root?.unmount())
         root = undefined
     }
+})
+
+const englishArticle =
+    "The researchers published a detailed report about the development of new technology. " +
+    "Their findings explain how people can use these tools to understand the world and share information."
+const chineseArticle =
+    "这是一个关于科学技术发展的中文网页，我们可以在这里阅读研究报告，了解新的发现和更多信息。"
+
+async function renderPage(text: string) {
+    const article = document.createElement("article")
+    article.textContent = text
+    document.body.prepend(article)
+    const { default: TranslationControlCenter } = await import(
+        "../src/contents/TranslationControlCenter"
+    )
+    await act(async () => root?.render(<TranslationControlCenter />))
+    return article
+}
+
+async function pageAction(
+    action: PageActionRequest["action"],
+    sourceLanguage?: string
+): Promise<ReadingState> {
+    let state: ReadingState
+    await act(async () => {
+        state = await new Promise<ReadingState>(resolve => {
+            for (const [listener] of vi.mocked(
+                chrome.runtime.onMessage.addListener
+            ).mock.calls) {
+                listener(
+                    { type: "MEWCAT_PAGE_ACTION", action, sourceLanguage },
+                    {} as chrome.runtime.MessageSender,
+                    resolve
+                )
+            }
+        })
+    })
+    return state!
+}
+
+describe("page source language detection", () => {
+    it("returns the current page language instead of another tab's saved language", async () => {
+        mocks.config.detectedLanguage = "zh-CN"
+        await renderPage(englishArticle)
+        expect((await pageAction("status")).sourceLanguage).toBe("en")
+    })
+
+    it("preserves a manual override and detects again when automatic mode is selected", async () => {
+        await renderPage(englishArticle)
+        expect((await pageAction("source", "ja")).sourceLanguage).toBe("ja")
+        expect((await pageAction("status")).sourceLanguage).toBe("ja")
+        expect((await pageAction("source", "auto")).sourceLanguage).toBe("en")
+    })
+
+    it("waits for readable content instead of treating an empty page as English", async () => {
+        const article = await renderPage("")
+        expect((await pageAction("status")).sourceLanguage).toBe("auto")
+        article.textContent = chineseArticle.repeat(3)
+        expect((await pageAction("status")).sourceLanguage).toBe("zh-CN")
+    })
+
+    it("keeps the detected source language when translated text appears", async () => {
+        const article = await renderPage(englishArticle)
+        expect((await pageAction("status")).sourceLanguage).toBe("en")
+        await pageAction("start")
+        article.textContent = chineseArticle.repeat(3)
+        expect((await pageAction("status")).sourceLanguage).toBe("en")
+    })
+
+    it("does not detect translated text when the original language was unknown", async () => {
+        const article = await renderPage("1234")
+        expect((await pageAction("start")).sourceLanguage).toBe("auto")
+        article.textContent = chineseArticle.repeat(3)
+        expect((await pageAction("status")).sourceLanguage).toBe("auto")
+    })
+
+    it("detects new content arriving after the SPA URL update", async () => {
+        const originalUrl = location.href
+        const article = await renderPage(englishArticle)
+        expect((await pageAction("status")).sourceLanguage).toBe("en")
+        try {
+            history.replaceState(null, "", "/different-language")
+            await act(async () => {
+                for (const [listener] of vi.mocked(
+                    chrome.runtime.onMessage.addListener
+                ).mock.calls) {
+                    listener(
+                        { type: "TAB_UPDATED" },
+                        {} as chrome.runtime.MessageSender,
+                        () => {}
+                    )
+                }
+            })
+            expect((await pageAction("status")).sourceLanguage).toBe("en")
+            article.textContent = chineseArticle.repeat(3)
+            expect((await pageAction("status")).sourceLanguage).toBe("zh-CN")
+        } finally {
+            history.replaceState(null, "", originalUrl)
+        }
+    })
 })
 
 describe("translation button cache refresh", () => {

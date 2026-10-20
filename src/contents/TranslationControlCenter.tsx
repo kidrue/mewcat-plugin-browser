@@ -18,6 +18,7 @@ import Tooltip from "../components/Tooltip"
 import { useDrag } from "../hooks/useDrag"
 import { configAtom } from "../state"
 import { ImmersiveTranslator } from "../translation/ImmersiveTranslator"
+import { detectPageLanguage } from "../utils/detectPageLanguage"
 import { Toast, ToastType } from "../utils/toast"
 
 import "@/styles/theme.scss"
@@ -306,10 +307,21 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         active: false,
         busy: false,
         source: "auto",
+        detectedSource: undefined as string | undefined,
         paused: false,
         generation: 0,
         reason: ""
     })
+    const resolveSourceLanguage = useCallback(() => {
+        if (pageSession.current.source !== "auto") {
+            return pageSession.current.source
+        }
+        // 翻译期间保留原文语言；未翻译时允许异步加载的正文更新检测结果。
+        if (!pageSession.current.active) {
+            pageSession.current.detectedSource = detectPageLanguage()
+        }
+        return pageSession.current.detectedSource ?? "auto"
+    }, [])
     const [isTranslate, setIsTranslate] = React.useState(false)
     const [loading, setLoading] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
@@ -400,52 +412,59 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     }, [])
 
     // 开始翻译任务
-    const doTranslate = useCallback(async (manual = false) => {
-        const immersiveTranslator = immersiveTranslatorRef.current
-        if (!immersiveTranslator) {
-            console.error("ImmersiveTranslator not initialized")
-            return false
-        }
+    const doTranslate = useCallback(
+        async (manual = false) => {
+            const immersiveTranslator = immersiveTranslatorRef.current
+            if (!immersiveTranslator) {
+                console.error("ImmersiveTranslator not initialized")
+                return false
+            }
 
-        if (pageSession.current.busy) return true
-        const generation = ++pageSession.current.generation
-        pageSession.current.active = true
-        pageSession.current.busy = true
-        pageSession.current.reason = ""
-        setLoading(true)
-        immersiveTranslator.setSourceLanguage(pageSession.current.source)
-        try {
-            setIsTranslate(true)
-            const res = await immersiveTranslator.startImmersiveTranslation({
-                manual
-            })
-            if (!res && generation === pageSession.current.generation) {
-                pageSession.current.active = false
-                pageSession.current.reason =
-                    "未开始翻译，请检查网站规则或页面是否有可翻译内容。"
-                setIsTranslate(false)
+            if (pageSession.current.busy) return true
+            const sourceLanguage = resolveSourceLanguage()
+            const generation = ++pageSession.current.generation
+            pageSession.current.active = true
+            pageSession.current.busy = true
+            pageSession.current.reason = ""
+            setLoading(true)
+            immersiveTranslator.setSourceLanguage(sourceLanguage)
+            try {
+                setIsTranslate(true)
+                const res = await immersiveTranslator.startImmersiveTranslation(
+                    {
+                        manual
+                    }
+                )
+                if (!res && generation === pageSession.current.generation) {
+                    pageSession.current.active = false
+                    pageSession.current.reason =
+                        "未开始翻译，请检查网站规则或页面是否有可翻译内容。"
+                    setIsTranslate(false)
+                }
+                return res
+            } catch (err) {
+                captureExtensionException(err, {
+                    feature: "page-translation",
+                    operation: "translate",
+                    pageUrl: location.href
+                })
+                console.error("Translation failed:", err)
+                if (generation === pageSession.current.generation) {
+                    pageSession.current.active = false
+                    pageSession.current.reason =
+                        "翻译失败，请重试或切换翻译服务。"
+                    setIsTranslate(false)
+                }
+                return false
+            } finally {
+                if (generation === pageSession.current.generation) {
+                    pageSession.current.busy = false
+                    setLoading(false)
+                }
             }
-            return res
-        } catch (err) {
-            captureExtensionException(err, {
-                feature: "page-translation",
-                operation: "translate",
-                pageUrl: location.href
-            })
-            console.error("Translation failed:", err)
-            if (generation === pageSession.current.generation) {
-                pageSession.current.active = false
-                pageSession.current.reason = "翻译失败，请重试或切换翻译服务。"
-                setIsTranslate(false)
-            }
-            return false
-        } finally {
-            if (generation === pageSession.current.generation) {
-                pageSession.current.busy = false
-                setLoading(false)
-            }
-        }
-    }, [])
+        },
+        [resolveSourceLanguage]
+    )
 
     const onClearTranslate = useCallback((preserveRefresh = false) => {
         if (!preserveRefresh) {
@@ -580,7 +599,10 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 const active = pageSession.current.active
                 onClearTranslate()
                 pageSession.current.source = request.sourceLanguage!
-                engine.setSourceLanguage(pageSession.current.source)
+                if (request.sourceLanguage === "auto") {
+                    pageSession.current.detectedSource = undefined
+                }
+                engine.setSourceLanguage(resolveSourceLanguage())
                 if (active) {
                     pageSession.current.paused = false
                     void doTranslate(true)
@@ -594,11 +616,11 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                     progress.translated,
                     progress.failed
                 ),
-                sourceLanguage: pageSession.current.source,
+                sourceLanguage: resolveSourceLanguage(),
                 reason: pageSession.current.reason
             }
         },
-        [doTranslate, onClearTranslate]
+        [doTranslate, onClearTranslate, resolveSourceLanguage]
     )
     const executePageActionRef = useLatest(executePageAction)
     useEffect(() => {
@@ -774,6 +796,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 clearTimeout(timer)
                 onClearTranslate()
                 pageSession.current.source = "auto"
+                pageSession.current.detectedSource = undefined
                 pageSession.current.paused = false
                 locationHrefRef.current = href
                 setCurrentTabUrl(new URL(href))
