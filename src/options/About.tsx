@@ -3,6 +3,7 @@ import * as React from "react"
 import styled from "styled-components"
 
 import { InfoDisplay, OptionsSection, ToggleRow } from "@/components"
+import FeedbackButton from "@/components/FeedbackButton"
 import GitHubIcon from "@/components/GitHubIcon"
 import {
     OptionsCardGrid,
@@ -42,7 +43,6 @@ const RepositoryLink = styled.a`
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    margin-top: var(--space-4);
     padding: var(--space-1);
     color: var(--primary-color);
 
@@ -55,6 +55,14 @@ const RepositoryLink = styled.a`
         outline-offset: 4px;
         border-radius: var(--radius-sm);
     }
+`
+
+const InfoActions = styled.div`
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
 `
 
 const Note = styled.p`
@@ -161,15 +169,18 @@ export const About: React.FunctionComponent = () => {
                             type="strong"
                         />
                     </Details>
-                    <RepositoryLink
-                        href={EXTENSION_INFO.repositoryUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="GitHub 仓库"
-                        title="在新标签页打开 GitHub 仓库"
-                    >
-                        <GitHubIcon />
-                    </RepositoryLink>
+                    <InfoActions>
+                        <FeedbackButton />
+                        <RepositoryLink
+                            href={EXTENSION_INFO.repositoryUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="GitHub 仓库"
+                            title="在新标签页打开 GitHub 仓库"
+                        >
+                            <GitHubIcon />
+                        </RepositoryLink>
+                    </InfoActions>
                 </OptionsSection>
                 <OptionsSection
                     artwork="archive"

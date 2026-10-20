@@ -20,6 +20,7 @@ import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
 import BrandLogo from "../BrandLogo"
 import Button from "../Button"
 import FeatureAvailability from "../FeatureAvailability"
+import FeedbackButton from "../FeedbackButton"
 import GitHubIcon from "../GitHubIcon"
 import NativeSelect from "../NativeSelect"
 import ReadingGuide from "../ReadingGuide"
@@ -438,12 +439,21 @@ const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
               `}
 `
 
+const FooterActions = styled.div`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+`
+
 const RepositoryLink = styled.a`
     display: flex;
     align-items: center;
     justify-content: center;
     width: fit-content;
-    margin: var(--space-3) auto 0;
+    margin: 0;
     padding: var(--space-1);
     color: var(--text-secondary);
 
@@ -849,15 +859,18 @@ function SettingsPanel({
                 高级设置
             </SettingsButton>
             {variant === "embedded" && (
-                <RepositoryLink
-                    href={EXTENSION_INFO.repositoryUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="GitHub 项目"
-                    title="在新标签页打开 GitHub 项目"
-                >
-                    <GitHubIcon />
-                </RepositoryLink>
+                <FooterActions>
+                    <FeedbackButton />
+                    <RepositoryLink
+                        href={EXTENSION_INFO.repositoryUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="GitHub 项目"
+                        title="在新标签页打开 GitHub 项目"
+                    >
+                        <GitHubIcon />
+                    </RepositoryLink>
+                </FooterActions>
             )}
         </PanelContainer>
     )

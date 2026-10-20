@@ -6,6 +6,7 @@ import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
 import { handleModelGatewayRequest } from "./messages/model-gateway"
 import { handleModelGatewayStreamPort } from "./messages/model-gateway-stream"
 import { handleStructuredTranslateImage } from "./messages/structured-image-translation"
+import { handleSubmitFeedback } from "./messages/submit-feedback"
 import { handleTranslateImage } from "./messages/translate-image"
 import { handleTranslateRequest } from "./messages/translate-request"
 import { handleUpdateConfig } from "./messages/update-config"
@@ -43,6 +44,13 @@ async function handleToggleImmersiveTranslate(tabId: number) {
 }
 
 export function registerExtensionMessages(register = onMessage) {
+    // 反馈正文和联系邮箱不进入通用错误上报链路。
+    register("submit-feedback", message =>
+        handleSubmitFeedback(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
+        )
+    )
     register("update-config", message =>
         monitorBackgroundHandler(
             "update-config",

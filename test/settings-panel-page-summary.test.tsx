@@ -74,7 +74,10 @@ beforeEach(() => {
                 getURL: vi.fn((path: string) => path),
                 sendMessage: vi.fn()
             },
-            tabs: { create: vi.fn() }
+            tabs: {
+                create: vi.fn().mockResolvedValue({}),
+                query: vi.fn().mockResolvedValue([])
+            }
         }
     })
     mocks.config = createConfig()
@@ -105,6 +108,39 @@ async function renderSettingsPanel(executePageAction?: PageActionExecutor) {
 }
 
 describe("quick settings page summary setting", () => {
+    it("opens the independent feedback page from the popup", async () => {
+        await renderSettingsPanel()
+        const feedback = [...document.querySelectorAll("button")].find(button =>
+            button.textContent?.includes("意见反馈")
+        )
+        expect(feedback).toBeDefined()
+        await act(async () => feedback?.click())
+        expect(chrome.tabs.create).toHaveBeenCalledWith({
+            url: "feedback.html"
+        })
+    })
+
+    it("offers the same feedback page from About and reuses an open draft tab", async () => {
+        const { About } = await import("../src/options/About")
+        const update = vi.fn().mockResolvedValue({})
+        const focus = vi.fn().mockResolvedValue({})
+        vi.mocked(chrome.tabs.query).mockResolvedValue([
+            { id: 5, windowId: 2, url: "feedback.html" } as chrome.tabs.Tab
+        ])
+        Object.assign(chrome.tabs, { update })
+        Object.assign(chrome, { windows: { update: focus } })
+        root = createRoot(document.querySelector<HTMLDivElement>("#host")!)
+        await act(async () => root?.render(<About />))
+        const feedback = [...document.querySelectorAll("button")].find(button =>
+            button.textContent?.includes("意见反馈")
+        )
+        expect(feedback).toBeDefined()
+        await act(async () => feedback?.click())
+        expect(update).toHaveBeenCalledWith(5, { active: true })
+        expect(focus).toHaveBeenCalledWith(2, { focused: true })
+        expect(chrome.tabs.create).not.toHaveBeenCalled()
+    })
+
     it("shows the active page's detected language instead of the saved global language", async () => {
         mocks.config = createConfig({ detectedLanguage: "zh-CN" })
         await renderSettingsPanel(async () => ({

@@ -1,6 +1,7 @@
 import type { BaseModel } from "@/types/aiModel"
 import type { CanvasHookError } from "@/types/canvas-hook"
 import type { DeepPartial, ExtensionConfig } from "@/types/config"
+import type { FeedbackResponse, FeedbackSubmission } from "@/types/feedback"
 import type { UnifiedRequestBody, UnifiedResponse } from "@/types/request"
 
 import type { ImageTranslationErrorCode } from "./imageTranslationContracts"
@@ -126,6 +127,7 @@ export type ConfigUpdateRequest =
     | { type: "model"; updates: { id: string } & DeepPartial<BaseModel> }
 
 export interface ExtensionProtocolMap {
+    "submit-feedback"(data: FeedbackSubmission): FeedbackResponse
     "update-config"(data: ConfigUpdateRequest): ExtensionConfig
     "canvas-hook-event"(data: CanvasHookEventRequest): CanvasHookEventResponse
     "inject-main-world-hook"(

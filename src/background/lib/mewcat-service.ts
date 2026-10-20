@@ -3,6 +3,7 @@ import {
     MEWCAT_SIGNING_THUMBPRINT,
     MEWCAT_TRANSLATE_TIMEOUT_MS
 } from "@/constants/translationServices"
+import { FEEDBACK_ERROR_MESSAGES } from "@/types/feedback"
 import * as bundledSdk from "@/vendor/mewcat.min.js"
 import type {
     MewCatClientState,
@@ -104,38 +105,17 @@ export const createMewCatService = (
     dependencies: MewCatServiceDependencies = {}
 ) => {
     const sdk = dependencies.sdk ?? (bundledSdk as MewCatSdkAdapter)
-    const fetchImpl = dependencies.fetchImpl ?? fetch
+    const fetchImpl =
+        dependencies.fetchImpl ?? globalThis.fetch.bind(globalThis)
     const activeControllers = new Set<AbortController>()
-    const manuallyAborted = new WeakSet<AbortController>()
     let initializationPromise: Promise<MewCatTranslationClient> | undefined
-
-    const controlledFetch = (async (
-        input: RequestInfo | URL,
-        init: RequestInit = {}
-    ) => {
-        const controller = new AbortController()
-        activeControllers.add(controller)
-        const signal = init.signal
-            ? AbortSignal.any([init.signal, controller.signal])
-            : controller.signal
-        try {
-            return await fetchImpl(input, { ...init, signal })
-        } catch (error) {
-            if (manuallyAborted.has(controller)) {
-                throw new ManualAbortError()
-            }
-            throw error
-        } finally {
-            activeControllers.delete(controller)
-        }
-    }) as typeof fetch
 
     const initialize = async () => {
         const saved = await sdk.loadClientState(MEWCAT_SERVICE_ORIGIN)
         const client = await sdk.TranslationClient.connect({
             baseUrl: MEWCAT_SERVICE_ORIGIN,
             ...(saved ? { state: saved } : {}),
-            fetcher: controlledFetch,
+            fetcher: fetchImpl,
             pinnedSigningThumbprint: MEWCAT_SIGNING_THUMBPRINT,
             timeoutMs: MEWCAT_TRANSLATE_TIMEOUT_MS
         })
@@ -151,7 +131,8 @@ export const createMewCatService = (
         return client
     }
 
-    const getClient = () => {
+    const getClient = (signal?: AbortSignal) => {
+        signal?.throwIfAborted()
         if (!initializationPromise) {
             const pending = initialize()
             initializationPromise = pending
@@ -161,14 +142,36 @@ export const createMewCatService = (
                 }
             })
         }
-        return initializationPromise
+        const pending = initializationPromise
+        if (!signal) {
+            return pending
+        }
+        // 单个调用可停止等待，但共享注册继续供其他翻译或反馈调用复用。
+        return new Promise<MewCatTranslationClient>((resolve, reject) => {
+            const abort = () => reject(signal.reason)
+            signal.addEventListener("abort", abort, { once: true })
+            void pending.then(
+                client => {
+                    signal.removeEventListener("abort", abort)
+                    resolve(client)
+                },
+                error => {
+                    signal.removeEventListener("abort", abort)
+                    reject(error)
+                }
+            )
+        })
     }
 
     return {
         async translate(input: MewCatTranslateInput): Promise<string[]> {
+            const controller = new AbortController()
+            activeControllers.add(controller)
             try {
-                const client = await getClient()
+                const client = await getClient(controller.signal)
+                controller.signal.throwIfAborted()
                 const requestOptions: MewCatRequestOptions = {
+                    signal: controller.signal,
                     timeoutMs: input.timeoutMs ?? MEWCAT_TRANSLATE_TIMEOUT_MS
                 }
                 const result = await client.translate(
@@ -181,13 +184,60 @@ export const createMewCatService = (
                 )
                 return result.translations
             } catch (error) {
+                if (controller.signal.aborted) {
+                    throw new ManualAbortError()
+                }
                 throw mapServiceError(error)
+            } finally {
+                activeControllers.delete(controller)
+            }
+        },
+        async submitFeedback(input: {
+            message: string
+            replyEmail?: string
+            extensionVersion: string
+        }): Promise<{ accepted: true }> {
+            try {
+                const signal = AbortSignal.timeout(30_000)
+                const client = await getClient(signal)
+                return await client.submitFeedback(input, {
+                    signal,
+                    timeoutMs: 30_000
+                })
+            } catch (error) {
+                const candidate = (
+                    error && typeof error === "object" ? error : {}
+                ) as { code?: string; name?: string; status?: number }
+                if (
+                    candidate.code === "REQUEST_REJECTED" &&
+                    candidate.status === 404
+                ) {
+                    throw new Error(
+                        FEEDBACK_ERROR_MESSAGES.FEEDBACK_UNAVAILABLE
+                    )
+                }
+                const message =
+                    typeof candidate.code === "string" &&
+                    Object.prototype.hasOwnProperty.call(
+                        FEEDBACK_ERROR_MESSAGES,
+                        candidate.code
+                    ) &&
+                    FEEDBACK_ERROR_MESSAGES[candidate.code]
+                if (message) {
+                    throw new Error(message)
+                }
+                if (
+                    candidate.name === "TimeoutError" ||
+                    candidate.name === "AbortError"
+                ) {
+                    throw new Error(FEEDBACK_ERROR_MESSAGES.FEEDBACK_TIMEOUT)
+                }
+                throw new Error(FEEDBACK_ERROR_MESSAGES.NETWORK_FAILURE)
             }
         },
         abortAll() {
             for (const controller of activeControllers) {
-                manuallyAborted.add(controller)
-                controller.abort()
+                controller.abort(new ManualAbortError())
             }
         }
     }

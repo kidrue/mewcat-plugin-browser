@@ -19,6 +19,14 @@ export interface MewCatTranslationClient {
         },
         options?: MewCatRequestOptions
     ): Promise<{ translations: string[] }>
+    submitFeedback(
+        input: {
+            message: string
+            replyEmail?: string
+            extensionVersion: string
+        },
+        options?: MewCatRequestOptions
+    ): Promise<{ accepted: true }>
 }
 
 export class TranslationError extends Error {
