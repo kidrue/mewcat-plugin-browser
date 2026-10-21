@@ -3,7 +3,7 @@
     "displayName": "mewCat",
     "private": true,
     "type": "module",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "scripts": {
         "predev": "pnpm -w build:packages && node scripts/check-legacy-output.cjs",
         "dev": "node ../../scripts/run-with-env.mjs dev:raw",
