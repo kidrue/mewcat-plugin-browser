@@ -254,7 +254,7 @@ export class DomSelector {
 
     /**
      * 清理文本中的占位符标签
-     * 根据 stayOriginalMap 中的 key 移除对应的占位符标签
+     * 移除保留原文的占位符，保留富文本标签中的可翻译文本用于去重。
      *
      * 占位符格式：
      * 1. @数字# - 如 @1#, @2# (stayOriginalSelectors 生成)
@@ -281,13 +281,13 @@ export class DomSelector {
                 // 直接替换占位符为空字符串
                 cleanedText = cleanedText.replace(new RegExp(key, "g"), "")
             } else {
-                // 处理 <标签名数字>...</标签名数字> 格式的占位符
-                // 匹配模式：<key>任意内容</key> 或 <key> </key> 或 <key></key>
+                // 只移除富文本包装标签；链接文本仍属于待翻译内容。
+                // 清空标签内的文字会把不同的纯链接段落都当作空文本去重。
                 const tagPattern = new RegExp(
-                    `<${key}>\\s*<\\/${key}>|<${key}>[\\s\\S]*?<\\/${key}>`,
+                    `<${key}>([\\s\\S]*?)<\\/${key}>`,
                     "g"
                 )
-                cleanedText = cleanedText.replace(tagPattern, "")
+                cleanedText = cleanedText.replace(tagPattern, "$1")
             }
         }
 

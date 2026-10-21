@@ -2468,6 +2468,9 @@
                 "[app-name='blackbird-search'] [data-hpc='true']",
                 ".topic-box > a > p:nth-of-type(2)",
                 "[data-testid=\"listitem-title-link\"]",
+                "[data-testid=\"issue-listitem-title-link\"]",
+                ".dashboard-changelog__title",
+                ".dashboard-changelog a",
                 "#repo-content-turbo-frame p",
                 "#repo-content-turbo-frame h4",
                 "[aria-label=\"card content\"] .flex-column > div:nth-child(2)",
@@ -2540,7 +2543,7 @@
                 ".timeline-comment-header",
                 ".review-thread-reply",
                 ".codeRepository",
-                "a[data-hovercard-type]",
+                "a[data-hovercard-type]:not([data-hovercard-type='issue'])",
                 "[title='Label: Private']",
                 "[aria-label*='language']",
                 ".js-suggested-changes-blob.diff-view"
