@@ -110,10 +110,10 @@ async function renderSettingsPanel(executePageAction?: PageActionExecutor) {
 describe("quick settings page summary setting", () => {
     it("opens the independent feedback page from the popup", async () => {
         await renderSettingsPanel()
-        const feedback = [...document.querySelectorAll("button")].find(button =>
-            button.textContent?.includes("意见反馈")
+        const feedback = document.querySelector<HTMLButtonElement>(
+            'button[aria-label="意见反馈"]'
         )
-        expect(feedback).toBeDefined()
+        expect(feedback).not.toBeNull()
         await act(async () => feedback?.click())
         expect(chrome.tabs.create).toHaveBeenCalledWith({
             url: "feedback.html"

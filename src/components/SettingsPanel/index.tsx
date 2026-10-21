@@ -439,32 +439,54 @@ const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
               `}
 `
 
-const FooterActions = styled.div`
+const HeaderActions = styled.div`
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
     display: flex;
     align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: var(--space-3);
-    margin-top: var(--space-3);
+    gap: var(--space-2);
+
+    [role="alert"] {
+        position: absolute;
+        top: calc(100% + var(--space-2));
+        right: 0;
+        width: 220px;
+        padding: var(--space-2);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--bg-secondary);
+        color: var(--text-primary);
+        font-size: var(--font-size-xs);
+    }
 `
 
 const RepositoryLink = styled.a`
     display: flex;
     align-items: center;
     justify-content: center;
-    width: fit-content;
+    width: 32px;
+    height: 32px;
     margin: 0;
-    padding: var(--space-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
     color: var(--text-secondary);
 
+    svg {
+        width: 20px;
+        height: 20px;
+    }
+
     &:hover {
+        background: var(--primary-light);
         color: var(--primary-hover);
     }
 
     &:focus-visible {
         outline: 2px solid var(--primary-color);
-        outline-offset: 4px;
-        border-radius: var(--radius-sm);
+        outline-offset: 2px;
     }
 `
 
@@ -631,6 +653,20 @@ function SettingsPanel({
                     <HeaderTitle>译趣喵</HeaderTitle>
                     <HeaderSubtitle>晴空来信 · 智能翻译助手</HeaderSubtitle>
                 </HeaderInfo>
+                {variant === "embedded" && (
+                    <HeaderActions>
+                        <RepositoryLink
+                            href={EXTENSION_INFO.repositoryUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="GitHub 项目"
+                            title="在新标签页打开 GitHub 项目"
+                        >
+                            <GitHubIcon />
+                        </RepositoryLink>
+                        <FeedbackButton iconOnly />
+                    </HeaderActions>
+                )}
                 {variant === "embedded" ? (
                     <PopupPortrait aria-hidden="true">
                         <SkyMascot />
@@ -858,20 +894,6 @@ function SettingsPanel({
                 <GearPath />
                 高级设置
             </SettingsButton>
-            {variant === "embedded" && (
-                <FooterActions>
-                    <FeedbackButton />
-                    <RepositoryLink
-                        href={EXTENSION_INFO.repositoryUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        aria-label="GitHub 项目"
-                        title="在新标签页打开 GitHub 项目"
-                    >
-                        <GitHubIcon />
-                    </RepositoryLink>
-                </FooterActions>
-            )}
         </PanelContainer>
     )
 }
