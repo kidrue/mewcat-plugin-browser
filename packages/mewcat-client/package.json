@@ -1,0 +1,30 @@
+{
+    "name": "@mewcat/client",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "files": [
+        "dist"
+    ],
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.json && esbuild src/index.ts --bundle --minify --platform=browser --format=esm --target=chrome120 --outfile=dist/mewcat.js",
+        "dev": "tsc -p tsconfig.json --watch",
+        "check": "tsc -p tsconfig.json --noEmit"
+    },
+    "dependencies": {
+        "@mewcat/protocol": "workspace:*",
+        "jose": "6.2.12",
+        "zod": "4.6.5"
+    },
+    "devDependencies": {
+        "typescript": "5.9.3",
+        "@types/node": "22.20.4",
+        "esbuild": "0.28.2"
+    }
+}

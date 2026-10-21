@@ -1,0 +1,8 @@
+# 配合发布包中的 compose.yaml 使用；所有镜像由 CI 上传，不在服务器构建。
+services:
+  migrate:
+    image: mewcat-tools:${MEWCAT_IMAGE_TAG:?缺少镜像版本}
+    pull_policy: never
+  api:
+    image: mewcat-api:${MEWCAT_IMAGE_TAG:?缺少镜像版本}
+    pull_policy: never

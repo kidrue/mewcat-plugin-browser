@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  moduleFormat = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Client {
+  id            String   @id @default(uuid())
+  name          String
+  signingKey    String
+  encryptionKey String
+  keyThumbprint String   @unique
+  createdAt     DateTime @default(now())
+  revokedAt     DateTime?
+  nonces        Nonce[]
+  requests      TranslationRequest[]
+}
+
+model Nonce {
+  clientId  String
+  value     String
+  expiresAt DateTime
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@id([clientId, value])
+  @@index([expiresAt])
+}
+
+model UsageBucket {
+  key       String   @id
+  used      Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model TranslationRequest {
+  id               String   @id @default(uuid())
+  clientId         String
+  createdAt        DateTime @default(now())
+  inputCharacters  Int
+  status           String   @default("pending")
+  promptTokens     Int?
+  completionTokens Int?
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([clientId, createdAt])
+}

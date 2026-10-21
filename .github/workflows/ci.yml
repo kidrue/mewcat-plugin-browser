@@ -1,0 +1,101 @@
+name: CI
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: {}
+permissions:
+  contents: read
+env:
+  MEWCAT_LOAD_LOCAL_ENV: "false"
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  changes:
+    runs-on: ubuntu-24.04
+    outputs:
+      extension: ${{ steps.paths.outputs.extension }}
+      service: ${{ steps.paths.outputs.service }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+      - id: paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/affected-projects.mjs "$BASE_SHA" "$HEAD_SHA"
+  workspace:
+    runs-on: ubuntu-24.04
+    steps:
+      - &a1
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - &a2
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - &a3
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: pnpm
+      - &a4
+        name: 安装 workspace 依赖
+        run: pnpm install --frozen-lockfile
+      - run: pnpm test:workspace
+  extension:
+    needs: changes
+    if: needs.changes.outputs.extension == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - *a1
+      - *a2
+      - *a3
+      - *a4
+      - name: 扩展检查和验证构建
+        run: pnpm build:packages && pnpm --filter @mewcat/extension check && pnpm build:verify extension
+  service:
+    needs: changes
+    if: needs.changes.outputs.service == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: 安装 workspace 依赖
+        run: pnpm install --frozen-lockfile
+      - name: 后端检查、验证构建与容器验收
+        run: |-
+          pnpm build:packages
+          pnpm --filter @mewcat/service check
+          pnpm build:verify service
+          pnpm --filter @mewcat/service smoke
+          pnpm --filter @mewcat/service test:docker
+          docker build --target tools -t mewcat-tools:ci -f apps/service/Dockerfile .
+          docker build --target runtime -t mewcat-api:ci -f apps/service/Dockerfile .
+          node scripts/container-smoke.mjs
+  result:
+    name: CI 结果
+    needs:
+      - changes
+      - workspace
+      - extension
+      - service
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - name: 汇总受影响项目的验证结果
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: "node -e 'const jobs=JSON.parse(process.env.RESULTS); const bad=Object.entries(jobs).filter(([,job])=>![\"success\",\"skipped\"].includes(job.result)); if(bad.length){console.error(bad.map(([name,job])=>name+\": \"+job.result).join(\"\\n\"));process.exit(1)}'"
