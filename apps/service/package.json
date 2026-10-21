@@ -1,0 +1,69 @@
+{
+    "name": "@mewcat/service",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "engines": {
+        "node": ">=22.12.0"
+    },
+    "scripts": {
+        "dev": "node ../../scripts/run-with-env.mjs dev:raw",
+        "build": "node ../../scripts/run-with-env.mjs build:raw",
+        "start": "node ../../scripts/run-with-env.mjs start:raw",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "smoke": "node scripts/smoke.mjs",
+        "db:generate": "node ../../scripts/run-with-env.mjs db:generate:raw",
+        "db:migrate": "node ../../scripts/run-with-env.mjs db:migrate:raw",
+        "db:studio": "node ../../scripts/run-with-env.mjs db:studio:raw",
+        "admin": "node ../../scripts/run-with-env.mjs admin:raw",
+        "postinstall": "prisma generate",
+        "check": "pnpm typecheck && pnpm test",
+        "test:docker": "node ../../scripts/require-docker.mjs && vitest run tests/runtime-config.test.ts",
+        "dev:raw": "tsx watch src/server.ts",
+        "start:raw": "node dist/src/server.js",
+        "build:raw": "prisma generate && tsc -p tsconfig.build.json && node dist/scripts/export-allowed-origins.js",
+        "db:generate:raw": "prisma generate",
+        "db:migrate:raw": "tsx scripts/prepare-db.ts && prisma migrate deploy",
+        "db:studio:raw": "prisma studio",
+        "admin:raw": "tsx scripts/admin.ts"
+    },
+    "dependencies": {
+        "@fastify/cors": "11.3.0",
+        "@fastify/helmet": "13.1.1",
+        "@fastify/rate-limit": "10.3.0",
+        "@prisma/adapter-better-sqlite3": "7.10.0",
+        "@prisma/client": "7.10.0",
+        "fastify": "5.12.5",
+        "ipaddr.js": "2.5.0",
+        "nodemailer": "10.1.7",
+        "zod": "4.6.5",
+        "@mewcat/protocol": "workspace:*",
+        "jose": "6.2.12"
+    },
+    "devDependencies": {
+        "@types/node": "22.20.4",
+        "@types/nodemailer": "8.0.2",
+        "@types/smtp-server": "3.5.13",
+        "esbuild": "0.28.2",
+        "fake-indexeddb": "6.2.5",
+        "prisma": "7.10.0",
+        "smtp-server": "3.20.2",
+        "tsx": "4.23.13",
+        "typescript": "5.9.3",
+        "vite": "7.3.6",
+        "vitest": "4.1.11",
+        "@mewcat/client": "workspace:*"
+    },
+    "files": [
+        "dist",
+        "config",
+        "prisma",
+        "prisma.config.ts",
+        "scripts",
+        "src",
+        "tsconfig.json",
+        "tsconfig.build.json"
+    ]
+}

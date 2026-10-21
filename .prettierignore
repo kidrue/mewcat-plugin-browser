@@ -1,1 +1,7 @@
-src/vendor/mewcat.min.js
+**/node_modules
+**/dist
+**/secrets
+**/data
+**/src/generated
+**/.wxt
+**/.output

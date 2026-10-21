@@ -1,0 +1,168 @@
+name: 后端构建与部署
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/service/**
+      - packages/**
+      - scripts/**
+      - tests/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - .npmrc
+      - prettier.config.mjs
+      - .prettierignore
+      - eslint.config.mjs
+      - tsconfig.json
+      - .github/workflows/ci.yml
+      - .github/workflows/deploy-service.yml
+      - .dockerignore
+  workflow_dispatch: {}
+permissions:
+  contents: read
+env:
+  MEWCAT_LOAD_LOCAL_ENV: "false"
+concurrency:
+  group: service-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      IMAGE_PLATFORM: ${{ vars.ALIYUN_PLATFORM || 'linux/amd64' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: 安装 workspace 依赖
+        run: pnpm install --frozen-lockfile
+      - name: 后端质量检查
+        run: pnpm test:workspace && pnpm build:packages && pnpm --filter @mewcat/service check && pnpm build:verify service && pnpm --filter @mewcat/service smoke && pnpm --filter @mewcat/service test:docker
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - name: 构建应用及迁移镜像
+        run: |
+          docker buildx build --platform "$IMAGE_PLATFORM" --target tools --load -t "mewcat-tools:$GITHUB_SHA" -f apps/service/Dockerfile .
+          docker buildx build --platform "$IMAGE_PLATFORM" --target runtime --load -t "mewcat-api:$GITHUB_SHA" -f apps/service/Dockerfile .
+          mkdir -p bundle
+          docker save "mewcat-tools:$GITHUB_SHA" "mewcat-api:$GITHUB_SHA" | gzip > bundle/images.tar.gz
+          cp apps/service/compose.yaml apps/service/deploy/compose.images.yaml apps/service/deploy/deploy.sh apps/service/deploy/cleanup-images.sh bundle/
+          split -n l/8 -d -a 2 bundle/images.tar.gz bundle/images.tar.gz.part-
+          rm bundle/images.tar.gz
+
+          node apps/service/dist/scripts/export-allowed-origins.js > bundle/allowed-origins.env
+      - name: 上传后端构建产物
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: service-${{ github.sha }}
+          path: bundle/
+          if-no-files-found: error
+          retention-days: 7
+  deploy:
+    if: github.ref == 'refs/heads/main' && vars.SERVICE_DEPLOY_ENABLED == 'true'
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    environment: production
+    concurrency:
+      group: aliyun-production
+      cancel-in-progress: false
+    env:
+      DEPLOY_HOST: ${{ secrets.ALIYUN_HOST }}
+      DEPLOY_USER: ${{ secrets.ALIYUN_USER }}
+      DEPLOY_PORT: ${{ vars.ALIYUN_SSH_PORT || '22' }}
+      DEPLOY_PATH: ${{ vars.ALIYUN_DEPLOY_PATH || '/opt/mewCat-service' }}
+      COMPOSE_PROJECT: ${{ vars.ALIYUN_COMPOSE_PROJECT || 'mewcat-service' }}
+      IMAGE_PLATFORM: ${{ vars.ALIYUN_PLATFORM || 'linux/amd64' }}
+    steps:
+      - name: 下载已验证的部署产物
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: service-${{ github.sha }}
+          path: bundle/
+      - name: 加载构建中的扩展来源白名单
+        run: cat bundle/allowed-origins.env >> "$GITHUB_ENV"
+      - name: 配置 SSH 并检查部署参数
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.ALIYUN_SSH_KNOWN_HOSTS }}
+        run: |
+          [[ "$DEPLOY_HOST" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]*$ ]]
+          [[ "$DEPLOY_USER" =~ ^[a-z_][a-z0-9_-]*$ ]]
+          [[ "$DEPLOY_PORT" =~ ^[0-9]+$ ]]
+          [[ "$DEPLOY_PATH" =~ ^/[a-zA-Z0-9_/-]+$ && "$DEPLOY_PATH" != / ]]
+          [[ "$COMPOSE_PROJECT" =~ ^[a-z0-9][a-z0-9_-]*$ ]]
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519 ~/.ssh/known_hosts
+      - name: 上传镜像并部署
+        env:
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+          SILICONFLOW_BASE_URL: ${{ vars.SILICONFLOW_BASE_URL || 'https://api.siliconflow.cn/v1' }}
+          SILICONFLOW_MODEL: ${{ vars.SILICONFLOW_MODEL || 'deepseek-ai/DeepSeek-V4-Flash' }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          SMTP_FROM: ${{ secrets.SMTP_FROM }}
+          FEEDBACK_TO: ${{ secrets.FEEDBACK_TO }}
+        run: |
+          test -n "$SILICONFLOW_API_KEY"
+          [[ "$SILICONFLOW_API_KEY" != *$'\n'* && "$SILICONFLOW_API_KEY" != *$'\r'* ]]
+          [[ "$SILICONFLOW_API_KEY" =~ ^sk-[a-zA-Z0-9._-]+$ ]]
+          [[ "$SILICONFLOW_BASE_URL" =~ ^https://[^[:space:]]+$ ]]
+          [[ "$SILICONFLOW_MODEL" =~ ^[a-zA-Z0-9._/-]+$ ]]
+          test -n "$ALLOWED_ORIGINS"
+          if [[ -n "$SMTP_HOST$SMTP_PORT$SMTP_SECURE$SMTP_USER$SMTP_PASS$SMTP_FROM$FEEDBACK_TO" ]]; then
+            for key in SMTP_HOST SMTP_PORT SMTP_SECURE SMTP_USER SMTP_PASS SMTP_FROM FEEDBACK_TO; do
+              value="${!key}"
+              if [[ -z "$value" || "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+                echo "SMTP 配置缺失或包含换行：$key" >&2
+                exit 1
+              fi
+            done
+          fi
+          remote="$DEPLOY_USER@$DEPLOY_HOST"
+          incoming="/tmp/mewcat-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          ssh_opts=(-p "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          scp_opts=(-P "$DEPLOY_PORT" -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=20 -o ServerAliveInterval=30 -o ServerAliveCountMax=6)
+          ssh "${ssh_opts[@]}" "$remote" "umask 077; mkdir '$incoming'"
+          tar -C bundle --exclude='images.tar.gz.part-*' -czf - . | ssh "${ssh_opts[@]}" "$remote" "tar -xzf - -C '$incoming'"
+          pids=()
+          for part in bundle/images.tar.gz.part-*; do
+            scp "${scp_opts[@]}" "$part" "$remote:$incoming/" &
+            pids+=("$!")
+          done
+          failed=0
+          for pid in "${pids[@]}"; do
+            if ! wait "$pid"; then failed=1; fi
+          done
+          test "$failed" -eq 0
+          ssh "${ssh_opts[@]}" "$remote" "cat '$incoming'/images.tar.gz.part-* > '$incoming/images.tar.gz'"
+          {
+            printf 'SILICONFLOW_API_KEY=%s\n' "$SILICONFLOW_API_KEY"
+            printf 'SILICONFLOW_BASE_URL=%s\n' "$SILICONFLOW_BASE_URL"
+            printf 'SILICONFLOW_MODEL=%s\n' "$SILICONFLOW_MODEL"
+            printf 'ALLOWED_ORIGINS=%s\n' "$ALLOWED_ORIGINS"
+            if [[ -n "$SMTP_HOST" ]]; then
+              for key in SMTP_HOST SMTP_PORT SMTP_SECURE SMTP_USER SMTP_PASS SMTP_FROM FEEDBACK_TO; do
+                printf '%s=%s\n' "$key" "${!key}"
+              done
+            fi
+          } | ssh "${ssh_opts[@]}" "$remote" "umask 077; cat > '$incoming/runtime.env'"
+          ssh "${ssh_opts[@]}" "$remote" "bash '$incoming/deploy.sh' '$DEPLOY_PATH' '$COMPOSE_PROJECT' '$GITHUB_SHA' '$incoming'"
+      - name: 清理 Runner SSH 私钥
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519

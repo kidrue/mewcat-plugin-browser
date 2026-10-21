@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "target": "ES2023",
+        "module": "NodeNext",
+        "moduleResolution": "NodeNext",
+        "lib": ["ES2023", "DOM", "DOM.Iterable"],
+        "strict": true,
+        "noUncheckedIndexedAccess": true,
+        "exactOptionalPropertyTypes": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "forceConsistentCasingInFileNames": true,
+        "verbatimModuleSyntax": true,
+        "outDir": "dist",
+        "rootDir": ".",
+        "declaration": true,
+        "sourceMap": true
+    },
+    "include": [
+        "src/**/*.ts",
+        "scripts/**/*.ts",
+        "tests/**/*.ts",
+        "prisma.config.ts",
+        "vitest.config.ts"
+    ]
+}

@@ -19,3 +19,14 @@ dist-assets/
 
 # Codex 设计讨论生成的本地可视化草图
 .superpowers/
+
+# Monorepo local state
+.env*
+!.env.example
+**/dist/
+**/coverage/
+**/secrets/
+**/data/
+**/src/generated/
+*.db
+*.db-*

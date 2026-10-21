@@ -1,0 +1,15 @@
+node_modules
+dist
+src/generated
+.git
+.env
+.env.*
+secrets
+data
+coverage
+.superpowers
+.deploy
+.deploy.lock
+*.db
+*.db-*
+*.log

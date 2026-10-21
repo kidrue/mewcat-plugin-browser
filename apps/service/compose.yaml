@@ -1,0 +1,43 @@
+services:
+  migrate:
+    build:
+      context: ../..
+      dockerfile: apps/service/Dockerfile
+      target: tools
+    environment:
+      DATABASE_URL: file:/app/data/mewcat.db
+    volumes:
+      - database:/app/data
+    restart: "no"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/service/Dockerfile
+      target: runtime
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: file:/app/data/mewcat.db
+      KEYS_FILE: /app/secrets/server-keys.json
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-}"
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - database:/app/data
+      - ./secrets:/app/secrets:ro
+    restart: unless-stopped
+    stop_grace_period: 45s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  database:
