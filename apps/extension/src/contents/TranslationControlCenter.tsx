@@ -18,6 +18,10 @@ import Tooltip from "../components/Tooltip"
 import { useDrag } from "../hooks/useDrag"
 import { configAtom } from "../state"
 import { ImmersiveTranslator } from "../translation/ImmersiveTranslator"
+import {
+    DEFAULT_PARAGRAPH_SHORTCUT,
+    installParagraphShortcut
+} from "../translation/paragraphShortcut"
 import { detectPageLanguage } from "../utils/detectPageLanguage"
 import { Toast, ToastType } from "../utils/toast"
 
@@ -521,6 +525,10 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 if (pageSession.current.generation !== generation) {
                     return
                 }
+                if (immersiveTranslator.getTranslationScope() === "paragraph") {
+                    await immersiveTranslator.restartParagraphTranslations()
+                    return
+                }
                 onClearTranslate(true)
                 pageSession.current.paused = false
 
@@ -581,7 +589,11 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                     reason: "页面已变化，请重新打开翻译面板。"
                 }
             if (request.action === "clear") onClearTranslate()
-            if (request.action === "start" && !pageSession.current.active) {
+            if (
+                request.action === "start" &&
+                (!pageSession.current.active ||
+                    engine.getTranslationScope() === "paragraph")
+            ) {
                 pageSession.current.paused = false
                 void doTranslate(true)
             }
@@ -597,7 +609,9 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                     ))
             ) {
                 const active = pageSession.current.active
-                onClearTranslate()
+                const paragraph =
+                    active && engine.getTranslationScope() === "paragraph"
+                if (!paragraph) onClearTranslate()
                 pageSession.current.source = request.sourceLanguage!
                 if (request.sourceLanguage === "auto") {
                     pageSession.current.detectedSource = undefined
@@ -605,7 +619,12 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 engine.setSourceLanguage(resolveSourceLanguage())
                 if (active) {
                     pageSession.current.paused = false
-                    void doTranslate(true)
+                    if (paragraph)
+                        void engine.restartParagraphTranslations().catch(() => {
+                            pageSession.current.reason =
+                                "段落翻译失败，请重试。"
+                        })
+                    else void doTranslate(true)
                 }
             }
             const progress = engine.getReadingProgress()
@@ -719,8 +738,60 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     })
     const previousSettingsKey = useRef(settingsKey)
     useEffect(() => {
+        if (
+            config.extensionEnabled === false ||
+            config.enableParagraphTranslation === false
+        )
+            return
+        return installParagraphShortcut(
+            config.paragraphTranslationShortcut ?? DEFAULT_PARAGRAPH_SHORTCUT,
+            target => {
+                const engine = immersiveTranslatorRef.current
+                if (!engine || refreshing) return
+                const generation = pageSession.current.generation
+                engine.setSourceLanguage(resolveSourceLanguage())
+                const wasActive = pageSession.current.active
+                pageSession.current.active = true
+                pageSession.current.paused = false
+                setIsTranslate(true)
+                void engine
+                    .translateParagraph(target)
+                    .then(translated => {
+                        if (generation !== pageSession.current.generation)
+                            return
+                        if (
+                            !translated &&
+                            !wasActive &&
+                            !engine.translationNodes.length
+                        ) {
+                            pageSession.current.active = false
+                            setIsTranslate(false)
+                        }
+                    })
+                    .catch(error => {
+                        captureExtensionException(error, {
+                            feature: "page-translation",
+                            operation: "paragraph-translate",
+                            pageUrl: location.href
+                        })
+                        Toast.show({
+                            type: ToastType.ERROR,
+                            message: "段落翻译失败，请重试或切换翻译服务"
+                        })
+                    })
+            }
+        )
+    }, [
+        config.extensionEnabled,
+        config.enableParagraphTranslation,
+        config.paragraphTranslationShortcut,
+        refreshing,
+        resolveSourceLanguage
+    ])
+    useEffect(() => {
         const engine = immersiveTranslatorRef.current
         const restart =
+            engine?.getTranslationScope() === "page" &&
             previousSettingsKey.current !== settingsKey &&
             pageSession.current.active &&
             !pageSession.current.paused

@@ -3,7 +3,7 @@
     "displayName": "mewCat",
     "private": true,
     "type": "module",
-    "version": "1.0.5",
+    "version": "1.1.0",
     "scripts": {
         "predev": "pnpm -w build:packages && node scripts/check-legacy-output.cjs",
         "dev": "node ../../scripts/run-with-env.mjs dev:raw",
@@ -30,7 +30,7 @@
         "clean:prod:zip": "rimraf \".output/chrome-mv3-prod*.zip\" \".output/mewCat-*.zip\"",
         "test:rpc": "npx tsx ./test/test-rpc.ts",
         "test:feedback": "vitest run --config test/vitest.image-translation.config.ts test/feedback-background.test.ts test/feedback-page.test.tsx test/mewcat-background-service.test.ts",
-        "test:reading": "vitest run --config test/vitest.image-translation.config.ts test/reading-actions.test.ts test/reading-guide.test.tsx test/sidepanel-reading.test.tsx test/page-reading-controls.test.tsx test/page-summary-manual.test.ts",
+        "test:reading": "vitest run --config test/vitest.image-translation.config.ts test/reading-actions.test.ts test/reading-guide.test.tsx test/sidepanel-reading.test.tsx test/page-reading-controls.test.tsx test/page-summary-manual.test.ts test/paragraph-translation.test.ts test/paragraph-shortcut.test.ts",
         "test:sentry": "vitest run --config test/vitest.image-translation.config.ts test/sentry-real-sdk.test.ts test/sentry-worker-sdk.test.ts",
         "sentry:smoke": "node ../../scripts/run-with-env.mjs sentry:smoke:raw",
         "test:rpc:web": "node ./test/test-server.mjs",

@@ -1,4 +1,5 @@
 import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/translation/paragraphShortcut"
 import { type BaseModel } from "@/types"
 import { AiRole, type ExtensionConfig } from "@/types/config"
 import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
@@ -71,6 +72,9 @@ export const defaultExtensionConfig: ExtensionConfig = {
         "zh-TW"
     ],
     translationStyle: DEFAULT_TRANSLATION_STYLE,
+    translationDisplayMode: "bilingual",
+    enableParagraphTranslation: true,
+    paragraphTranslationShortcut: DEFAULT_PARAGRAPH_SHORTCUT,
     autoTranslateDelay: 700,
 
     // 翻译服务配置 - 生产环境中不包含API密钥

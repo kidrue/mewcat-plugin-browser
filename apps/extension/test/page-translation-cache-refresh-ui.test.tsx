@@ -26,7 +26,9 @@ const mocks = vi.hoisted(() => ({
     clearCache: vi.fn().mockResolvedValue(2),
     translate: vi.fn().mockResolvedValue(true),
     showToast: vi.fn(),
-    updateConfig: vi.fn().mockResolvedValue(undefined)
+    updateConfig: vi.fn().mockResolvedValue(undefined),
+    scope: "paragraph" as "page" | "paragraph",
+    paragraph: vi.fn().mockResolvedValue(true)
 }))
 
 vi.mock("jotai", () => ({
@@ -60,12 +62,24 @@ vi.mock("../src/hooks/useDrag", () => ({
 
 vi.mock("../src/translation/ImmersiveTranslator", () => ({
     ImmersiveTranslator: class {
+        translationNodes = []
+        getTranslationScope() {
+            return mocks.scope
+        }
+        async translateParagraph(target: Element) {
+            mocks.calls.push("paragraph")
+            return mocks.paragraph(target)
+        }
+        async restartParagraphTranslations() {
+            mocks.calls.push("restart-paragraph")
+        }
         setSourceLanguage() {}
         getReadingProgress() {
             return { translated: 0, failed: 0, busy: false }
         }
         async retryFailedTranslations() {}
         async startImmersiveTranslation() {
+            mocks.scope = "page"
             mocks.calls.push("translate")
             return mocks.translate()
         }
@@ -76,6 +90,7 @@ vi.mock("../src/translation/ImmersiveTranslator", () => ({
         }
 
         clearAllTranslations() {
+            mocks.scope = "paragraph"
             mocks.calls.push("clear-translations")
         }
 
@@ -107,9 +122,13 @@ async function click(element: Element) {
 }
 
 beforeEach(() => {
+    mocks.scope = "paragraph"
+    mocks.paragraph.mockReset().mockResolvedValue(true)
     mocks.config.detectedLanguage = "auto"
     mocks.config.alwaysTranslateUrls = []
     mocks.config.currentModel = "google-translate"
+    mocks.config.paragraphTranslationShortcut = "Alt+KeyQ"
+    mocks.config.enableParagraphTranslation = true
     mocks.calls.length = 0
     mocks.clearCache.mockReset().mockResolvedValue(2)
     mocks.translate.mockReset().mockResolvedValue(true)
@@ -140,6 +159,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
+    delete (document as Partial<Document>).elementFromPoint
     if (root) {
         await act(async () => root?.unmount())
         root = undefined
@@ -183,6 +203,63 @@ async function pageAction(
     })
     return state!
 }
+
+describe("paragraph shortcut controller", () => {
+    async function trigger(target: Element, code = "KeyQ", altKey = true) {
+        Object.defineProperty(document, "elementFromPoint", {
+            configurable: true,
+            value: () => target
+        })
+        await act(async () => {
+            target.dispatchEvent(
+                new MouseEvent("mousemove", {
+                    bubbles: true,
+                    clientX: 30,
+                    clientY: 40
+                })
+            )
+            document.dispatchEvent(
+                new KeyboardEvent("keydown", { bubbles: true, code, altKey })
+            )
+            await Promise.resolve()
+        })
+    }
+    it("keeps paragraph scope when changing the source language or refreshing translations", async () => {
+        const article = await renderPage(englishArticle)
+        await trigger(article)
+        expect(mocks.paragraph).toHaveBeenCalledWith(article)
+        await pageAction("source", "ja")
+        const button = shadowRoot.querySelector('[aria-label="清理翻译"]')!
+        await act(async () =>
+            button.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+        )
+        await click(
+            shadowRoot.querySelector('[aria-label="清除当前页缓存并重新翻译"]')!
+        )
+        expect(mocks.calls).toEqual([
+            "paragraph",
+            "restart-paragraph",
+            "clear-cache",
+            "restart-paragraph"
+        ])
+    })
+    it("applies changed shortcuts and disables the listener when the feature is switched off", async () => {
+        const article = await renderPage(englishArticle)
+        const { default: TranslationControlCenter } = await import(
+            "../src/contents/TranslationControlCenter"
+        )
+        mocks.config.paragraphTranslationShortcut = "KeyW"
+        await act(async () => root?.render(<TranslationControlCenter />))
+        await trigger(article)
+        expect(mocks.paragraph).not.toHaveBeenCalled()
+        await trigger(article, "KeyW", false)
+        expect(mocks.paragraph).toHaveBeenCalledTimes(1)
+        mocks.config.enableParagraphTranslation = false
+        await act(async () => root?.render(<TranslationControlCenter />))
+        await trigger(article, "KeyW", false)
+        expect(mocks.paragraph).toHaveBeenCalledTimes(1)
+    })
+})
 
 describe("page source language detection", () => {
     it("returns the current page language instead of another tab's saved language", async () => {

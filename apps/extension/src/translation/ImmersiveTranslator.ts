@@ -18,7 +18,7 @@ import {
 import { isDevelopment } from "@/utils/environment"
 
 import { type Message } from "../types"
-import type { ExtensionConfig } from "../types/config"
+import type { ExtensionConfig, TranslationDisplayMode } from "../types/config"
 import {
     createDefaultCache,
     type CacheKeyParams,
@@ -28,6 +28,7 @@ import { DebugManager } from "./DebugManager"
 import { DomSelector } from "./DomSelector"
 import { type TranslationNode } from "./DOMTraverser"
 import type { MutationObserverManager } from "./MutationObserverManager"
+import { hideOriginalContent, restoreOriginalContent } from "./originalContent"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 import {
     buildAiSummary,
@@ -50,6 +51,8 @@ export interface ImmersiveTranslatorConfig {
     maxTextLengthPerRequest?: number
     /** 翻译样式（可选，默认晴空邮喵） */
     translationStyle?: TranslationStyleUnion
+    /** 网页译文显示方式，默认双语对照 */
+    translationDisplayMode?: TranslationDisplayMode
     /** 可视区域最小节点阈值（可选，默认20） */
     minVisibleNodesThreshold?: number
     /** 是否优先翻译可视区域（可选，默认true） */
@@ -81,6 +84,7 @@ interface DisplayElementNode {
     loading?: Element
     error?: Element
     translate?: Element
+    originalWrappers?: HTMLElement[]
     status: "loading" | "error" | "translated" | "default"
 }
 
@@ -91,6 +95,82 @@ interface DisplayElementNode {
  */
 export class ImmersiveTranslator {
     private manualSession = false
+    private translationScope: "page" | "paragraph" = "paragraph"
+    private paragraphTargets = new Set<HTMLElement>()
+    private domReady: Promise<void>
+
+    public getTranslationScope(): "page" | "paragraph" {
+        return this.translationScope
+    }
+
+    public async translateParagraph(target: Element): Promise<boolean> {
+        const session = this.translationSession
+        await this.domReady
+        if (session !== this.translationSession) return false
+        const { result, stayOriginalMap } =
+            this.domSelector.extractParagraphTextNodes(target)
+        if (!result.length) return false
+        this.isTranslationAborted = false
+        const pending: TranslationNode[] = []
+        let skipCache = false
+        for (const node of result) {
+            const previous = this.sourceTextNodes.find(
+                item => item.id === node.id
+            )
+            const display = this.translationNodes.find(
+                item => item.id === node.id
+            )
+            if (previous?.originText === node.originText && display) {
+                if (display.status === "loading" || display.translate) {
+                    continue
+                }
+                if (display.status === "default") {
+                    pending.push(previous)
+                    continue
+                }
+                if (display.status === "error") {
+                    await this.retranslateNodeIds([node.id])
+                    continue
+                }
+                skipCache = true
+            }
+            if (previous) {
+                restoreOriginalContent(display?.originalWrappers)
+                if (display) safeRemoveElement(display.container)
+                this.sourceTextNodes = this.sourceTextNodes.filter(
+                    item => item.id !== node.id
+                )
+                this.translationNodes = this.translationNodes.filter(
+                    item => item.id !== node.id
+                )
+                this.renderQueue = this.renderQueue.filter(
+                    item => item.id !== node.id
+                )
+                this.viewportScheduler?.remove([node.id])
+            }
+            node.stayOriginalMap = stayOriginalMap
+            this.paragraphTargets.add(node.container)
+            this.sourceTextNodes.push(node)
+            pending.push(node)
+        }
+        this.createTranslationContainers(pending)
+        if (this.translationScope === "paragraph" && !this.viewportScheduler)
+            this.createViewportScheduler(false)
+        this.startBodyObserver()
+        if (pending.length)
+            await this.executeTranslation(pending, { checkCache: !skipCache })
+        return true
+    }
+
+    public async restartParagraphTranslations(): Promise<void> {
+        const targets = Array.from(this.paragraphTargets)
+        this.clearAllTranslations()
+        const session = this.translationSession
+        for (const target of targets) {
+            if (session !== this.translationSession) return
+            if (target.isConnected) await this.translateParagraph(target)
+        }
+    }
     public setSourceLanguage(language: string): void {
         this.detectedLanguage = language
         this.translationRuntimeConfig = {
@@ -174,6 +254,7 @@ export class ImmersiveTranslator {
 
     /** 翻译样式配置 */
     private translationStyle: TranslationStyleUnion = DEFAULT_TRANSLATION_STYLE
+    private translationDisplayMode: TranslationDisplayMode = "bilingual"
 
     /** 可视区域翻译相关配置 */
     private minVisibleNodesThreshold: number = 20
@@ -221,6 +302,8 @@ export class ImmersiveTranslator {
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
         this.translationStyle =
             config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
+        this.translationDisplayMode =
+            config.translationDisplayMode ?? "bilingual"
         this.enableContext = config.enableContext ?? false
         this.enableViewportTranslation =
             config.enableViewportTranslation ?? false
@@ -255,7 +338,7 @@ export class ImmersiveTranslator {
         }
 
         // 异步初始化 DOM 选择器
-        this.initializeDomSelector(config.debug)
+        this.domReady = this.initializeDomSelector(config.debug)
 
         // 🕐 初始化性能监控器（仅开发环境）
         if (isDevelopment()) {
@@ -315,9 +398,21 @@ export class ImmersiveTranslator {
      * 更新配置
      */
     public async updateConfig(config: ImmersiveTranslatorConfig) {
+        const displayMode = config.translationDisplayMode ?? "bilingual"
+        if (displayMode !== this.translationDisplayMode) {
+            this.translationDisplayMode = displayMode
+            for (const display of this.translationNodes) {
+                const source = this.sourceTextNodes.find(
+                    node => node.id === display.id
+                )
+                if (source) this.updateOriginalVisibility(source, display)
+            }
+        }
         const previousRuntime = this.translationRuntimeConfig
         const restartReadingSession = Boolean(
-            this.viewportScheduler &&
+            (this.viewportScheduler ||
+                (this.translationScope === "paragraph" &&
+                    this.sourceTextNodes.length)) &&
                 !this.isTranslationAborted &&
                 (this.targetLanguage !== config.targetLanguage ||
                     this.currentModel !== (config.currentModel ?? "default") ||
@@ -335,6 +430,10 @@ export class ImmersiveTranslator {
                             )
                         ))
         )
+        const paragraphTargets =
+            this.translationScope === "paragraph"
+                ? Array.from(this.paragraphTargets)
+                : null
         if (restartReadingSession) this.clearAllTranslations()
         this.targetLanguage = config.targetLanguage
         this.currentModel = config.currentModel ?? "default"
@@ -354,14 +453,23 @@ export class ImmersiveTranslator {
         this.enableViewportTranslation =
             config.enableViewportTranslation ?? false
         if (restartReadingSession) {
-            await this.startImmersiveTranslation()
+            if (paragraphTargets) {
+                const session = this.translationSession
+                for (const target of paragraphTargets) {
+                    if (session !== this.translationSession) return false
+                    if (target.isConnected)
+                        await this.translateParagraph(target)
+                }
+            } else await this.startImmersiveTranslation()
             return true
         }
         if (this.viewportScheduler) {
             this.viewportScheduler.setViewportOnly(
-                this.enableViewportTranslation
+                this.translationScope === "page" &&
+                    this.enableViewportTranslation
             )
         } else if (
+            this.translationScope === "page" &&
             this.enableViewportTranslation &&
             !this.isTranslationAborted &&
             this.sourceTextNodes.length
@@ -390,7 +498,9 @@ export class ImmersiveTranslator {
         return false
     }
 
-    private createViewportScheduler(): void {
+    private createViewportScheduler(
+        viewportOnly = this.enableViewportTranslation
+    ): void {
         const session = this.translationSession
         const runtime = this.translationRuntimeConfig
         const targetLanguage = this.targetLanguage
@@ -405,7 +515,7 @@ export class ImmersiveTranslator {
             aiRole: runtime.aiRole
         })
         this.viewportScheduler = new ViewportTranslationScheduler({
-            viewportOnly: this.enableViewportTranslation,
+            viewportOnly,
             getLimits: () => ({
                 maxRequestsPerSecond: this.MAX_CONCURRENT_REQUESTS,
                 maxTextLengthPerRequest: this.MAX_REQUEST_BYTES,
@@ -588,6 +698,7 @@ export class ImmersiveTranslator {
             // 第一步：清空所有翻译状态和DOM修改
             this.performanceMonitor?.startStage("清空翻译状态")
             this.clearAllTranslations()
+            this.translationScope = "page"
             session = this.translationSession
             this.performanceMonitor?.endStage()
 
@@ -882,9 +993,12 @@ export class ImmersiveTranslator {
      * @param translateText 翻译后的文本
      * @returns 处理后的 HTML 字符串
      */
-    private replaceStayOriginalPlaceholders(translateText: string): string {
+    private replaceStayOriginalPlaceholders(
+        translateText: string,
+        stayOriginalMap = this.stayOriginalMap
+    ): string {
         // 如果没有需要保持原样的元素，直接返回
-        if (Object.keys(this.stayOriginalMap).length === 0) {
+        if (Object.keys(stayOriginalMap).length === 0) {
             return translateText
         }
 
@@ -893,7 +1007,7 @@ export class ImmersiveTranslator {
         tempContainer.innerHTML = translateText
 
         // 遍历 stayOriginalMap，替换占位符
-        Object.entries(this.stayOriginalMap).forEach(([key, element]) => {
+        Object.entries(stayOriginalMap).forEach(([key, element]) => {
             // 检查 key 是否是占位符 ID（格式：@数字#）
             if (key.startsWith("@") && key.endsWith("#")) {
                 // 处理 stayOriginal 类型的占位符（直接替换）
@@ -1089,8 +1203,10 @@ export class ImmersiveTranslator {
             }
 
             // 处理包含链接的翻译文本
-            const processedText =
-                this.replaceStayOriginalPlaceholders(translateText)
+            const processedText = this.replaceStayOriginalPlaceholders(
+                translateText,
+                sourceNode.stayOriginalMap
+            )
 
             // 按 HTML 解析后的文本判空，空标签和空白实体也不展示译文样式。
             const content = document.createElement("template")
@@ -1101,6 +1217,8 @@ export class ImmersiveTranslator {
                 }
                 translateNode.translate = undefined
                 translateNode.status = "translated"
+                restoreOriginalContent(translateNode.originalWrappers)
+                translateNode.originalWrappers = undefined
                 translateNode.container.setAttribute("hidden", "")
                 ;(translateNode.container as HTMLElement).style.setProperty(
                     "display",
@@ -1129,7 +1247,24 @@ export class ImmersiveTranslator {
                 translateNode.status = "translated"
                 translateNode.container.appendChild(translateELement)
             }
+            this.updateOriginalVisibility(sourceNode, translateNode)
         })
+    }
+
+    private updateOriginalVisibility(
+        source: TranslationNode,
+        display: DisplayElementNode
+    ): void {
+        if (
+            this.translationDisplayMode === "translation" &&
+            display.translate &&
+            display.status === "translated"
+        ) {
+            display.originalWrappers ??= hideOriginalContent(source)
+        } else {
+            restoreOriginalContent(display.originalWrappers)
+            display.originalWrappers = undefined
+        }
     }
 
     /**
@@ -1159,6 +1294,7 @@ export class ImmersiveTranslator {
 
         // 移除所有翻译展示节点
         this.translationNodes.forEach(displayNode => {
+            restoreOriginalContent(displayNode.originalWrappers)
             safeRemoveElement(displayNode.container)
             safeRemoveElement(displayNode.loading)
             safeRemoveElement(displayNode.error)
@@ -1167,6 +1303,8 @@ export class ImmersiveTranslator {
 
         this.translationNodes = []
         this.sourceTextNodes = []
+        this.paragraphTargets.clear()
+        this.translationScope = "paragraph"
 
         // 卸载 DOM 变化监听器
         this.destroyMutationObserver()
@@ -1347,6 +1485,19 @@ export class ImmersiveTranslator {
         const session = this.translationSession
         const isCurrent = () =>
             session === this.translationSession && !this.isTranslationAborted
+        const sourceSnapshots = new Map(
+            nodes.map(node => [node.id, { node, text: node.originText }])
+        )
+        const isCurrentSource = (id: string) => {
+            const snapshot = sourceSnapshots.get(id)
+            const source = this.sourceTextNodes.find(node => node.id === id)
+            return Boolean(
+                snapshot &&
+                    source === snapshot.node &&
+                    source.originText === snapshot.text &&
+                    source.container.isConnected
+            )
+        }
 
         if (this.viewportScheduler && isCurrent()) {
             this.viewportScheduler.add(nodes, !checkCache)
@@ -1408,6 +1559,7 @@ export class ImmersiveTranslator {
             const cachedRenderList: Array<{ id: string; text: string }> = []
 
             for (const { node, cachedResult } of cacheResults) {
+                if (!isCurrentSource(node.id)) continue
                 if (cachedResult) {
                     cacheHitCount++
                     // 收集需要渲染的缓存结果
@@ -1495,6 +1647,10 @@ export class ImmersiveTranslator {
         let totalApiCalls = 0
 
         const translateBatch = async (messageBatch: Message[]) => {
+            messageBatch = messageBatch.filter(message =>
+                isCurrentSource(message.id)
+            )
+            if (!messageBatch.length) return
             // 🔴 在每个批次执行前检查中断标志
             if (!isCurrent() || this.viewportScheduler) {
                 // 清理当前批次的 loading 状态
@@ -1535,17 +1691,22 @@ export class ImmersiveTranslator {
                     messageBatch.length
                 )
 
-                const translateList = messageBatch.map((message, i) => ({
-                    id: message.id,
-                    text: translateStringList[i]
-                }))
+                const translateList = messageBatch
+                    .map((message, i) => ({
+                        id: message.id,
+                        text: translateStringList[i]
+                    }))
+                    .filter(result => isCurrentSource(result.id))
 
                 // 缓存翻译结果
                 await this.cacheTranslationResults(translateList)
 
                 // 📊 记录渲染开始时间
                 const renderStartTime = performance.now()
-                this.renderTranslationResults(translateList)
+                if (!isCurrent()) return
+                this.renderTranslationResults(
+                    translateList.filter(result => isCurrentSource(result.id))
+                )
                 const renderEndTime = performance.now()
 
                 // 累计渲染时间
@@ -1560,8 +1721,11 @@ export class ImmersiveTranslator {
                     return
                 }
 
-                this.clearLoadingForNodeIds(messageBatch.map(v => v.id))
-                this.addErrorForBatch(error.message, messageBatch)
+                const currentBatch = messageBatch.filter(message =>
+                    isCurrentSource(message.id)
+                )
+                this.clearLoadingForNodeIds(currentBatch.map(v => v.id))
+                this.addErrorForBatch(error.message, currentBatch)
             } finally {
                 if (isCurrent()) {
                     messageBatch.forEach(message =>
@@ -1688,115 +1852,13 @@ export class ImmersiveTranslator {
 
     /**
      * 启动 document.body 监听器
-     * 监听页面 DOM 变化，自动检测并翻译新增的节点
+     * 监听页面 DOM 变化，自动翻译新增或更新的节点
      */
     private startBodyObserver(): void {
         // 如果已经有监听器在运行，先停止
         this.stopBodyObserver()
 
-        if (this.viewportScheduler) {
-            this.startReadingBodyObserver()
-            return
-        }
-
-        // 创建 MutationObserver
-        this.bodyObserver = new MutationObserver(async mutations => {
-            // 🔴 首先检查是否已中断
-            if (this.isTranslationAborted) {
-                return
-            }
-
-            const hasRelevantChanges = mutations.some(mutation => {
-                return Array.from(mutation.addedNodes).some(node => {
-                    if (node.nodeType !== Node.ELEMENT_NODE) {
-                        return false
-                    }
-                    const element = node as HTMLElement
-
-                    // 忽略翻译容器和其子元素
-                    if (element.hasAttribute("data-translate-id")) {
-                        return false
-                    }
-                    if (element.closest("[data-translate-id]")) {
-                        return false
-                    }
-
-                    return true
-                })
-            })
-
-            if (!hasRelevantChanges) {
-                return
-            }
-            // 检查是否有新增节点
-            const hasAddedNodes = mutations.some(
-                mutation => mutation.addedNodes.length > 0
-            )
-
-            if (!hasAddedNodes) {
-                return
-            }
-
-            // 🔴 再次检查是否已中断（在异步操作前）
-            if (this.isTranslationAborted) {
-                return
-            }
-
-            // 提取所有待翻译节点
-            const { result: allNodes, stayOriginalMap } =
-                this.domSelector.extractTargetTextNodes()
-
-            // 更新全局 stayOriginalMap
-            this.stayOriginalMap = stayOriginalMap
-
-            // 找出新增的节点（ID 不在现有列表中）
-            const existingNodeIds = new Set(
-                this.sourceTextNodes.map(node => node.id)
-            )
-            const newNodes = allNodes.filter(
-                node => !existingNodeIds.has(node.id)
-            )
-
-            if (newNodes.length === 0) {
-                return
-            }
-
-            // 添加到源节点列表
-            this.sourceTextNodes.push(...newNodes)
-
-            // 创建翻译容器
-            this.createTranslationContainers(newNodes)
-
-            // 🔴 执行翻译前最后一次检查
-            if (this.isTranslationAborted) {
-                return
-            }
-
-            // 执行翻译
-            try {
-                await this.executeTranslation(newNodes, {
-                    checkCache: true,
-                    useConcurrentGroups: false // 新增节点使用顺序执行
-                })
-            } catch (error) {
-                console.error(
-                    "[ImmersiveTranslator] 翻译新增节点时出错:",
-                    error
-                )
-            }
-        })
-
-        // 开始监听 document.body
-        if (document.body) {
-            this.bodyObserver.observe(document.body, {
-                childList: true, // 监听子节点的添加和删除
-                subtree: true // 监听所有后代节点
-            })
-        } else {
-            console.warn(
-                "[ImmersiveTranslator] document.body 不存在，无法启动监听"
-            )
-        }
+        this.observeBodyChanges()
     }
 
     /**
@@ -1811,7 +1873,28 @@ export class ImmersiveTranslator {
         }
     }
 
-    private startReadingBodyObserver(): void {
+    private extractObservedTextNodes() {
+        if (this.translationScope === "page") {
+            return this.domSelector.extractTargetTextNodes()
+        }
+        const nodes = new Map<string, TranslationNode>()
+        for (const target of this.paragraphTargets) {
+            if (!target.isConnected) continue
+            const extracted = this.domSelector.extractParagraphTextNodes(target)
+            for (const node of extracted.result) {
+                nodes.set(node.id, {
+                    ...node,
+                    stayOriginalMap: extracted.stayOriginalMap
+                })
+            }
+        }
+        return {
+            result: Array.from(nodes.values()),
+            stayOriginalMap: {} as Record<string, Element>
+        }
+    }
+
+    private observeBodyChanges(): void {
         const session = this.translationSession
         const isTranslationElement = (node: Node) => {
             const element = node instanceof Element ? node : node.parentElement
@@ -1840,8 +1923,11 @@ export class ImmersiveTranslator {
                     this.isTranslationAborted
                 )
                     return
-                const { result, stayOriginalMap } =
-                    this.domSelector.extractTargetTextNodes()
+                const extracted = this.extractObservedTextNodes()
+                const { stayOriginalMap } = extracted
+                const result = extracted.result
+                for (const node of result)
+                    node.stayOriginalMap ??= stayOriginalMap
                 this.stayOriginalMap = stayOriginalMap
                 const existing = new Map(
                     this.sourceTextNodes.map(node => [node.id, node])
@@ -1886,6 +1972,7 @@ export class ImmersiveTranslator {
                 this.translationNodes = this.translationNodes.filter(
                     display => {
                         if (!obsolete(display.id)) return true
+                        restoreOriginalContent(display.originalWrappers)
                         safeRemoveElement(display.container)
                         return false
                     }
@@ -1905,9 +1992,21 @@ export class ImmersiveTranslator {
                         text: node.translateText
                     }))
                 )
-                this.viewportScheduler?.add(
-                    changed.filter(node => !node.translateText)
-                )
+                const pending = changed.filter(node => !node.translateText)
+                if (this.viewportScheduler) {
+                    this.viewportScheduler.add(pending)
+                } else if (pending.length) {
+                    this.createTranslationContainers(pending)
+                    void this.executeTranslation(pending, {
+                        checkCache: true,
+                        useConcurrentGroups: false
+                    }).catch(error => {
+                        console.error(
+                            "[ImmersiveTranslator] 翻译动态内容时出错:",
+                            error
+                        )
+                    })
+                }
             }, 50)
         })
         if (document.body)
