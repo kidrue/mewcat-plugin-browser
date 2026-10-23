@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import rules from "../src/public/assets/rule.json"
 import { defaultExtensionConfig } from "../src/state/constants"
+import * as cacheModule from "../src/translation/cache"
 import { DomSelector } from "../src/translation/DomSelector"
 import {
     InsertPosition,
@@ -99,6 +100,240 @@ const requested = () =>
     service.translate.mock.calls.map(call => call[1][0].content)
 
 describe("viewport translation integration", () => {
+    it.each(
+        [true, false].flatMap(viewport =>
+            [false, true].map(failed => ({ viewport, failed }))
+        )
+    )(
+        "discards a stale response after successive source updates (viewport: $viewport, failed: $failed)",
+        async ({ viewport: enableViewportTranslation, failed }) => {
+            const cache = new cacheModule.TieredTranslationCache({
+                enableL2: false
+            })
+            vi.spyOn(cacheModule, "createDefaultCache").mockReturnValue(cache)
+            const item = makeNode("Original paragraph", 0)
+            const originalText = item.container.firstChild!
+            translator = new ImmersiveTranslator({
+                ...config,
+                cacheEnabled: true,
+                enableViewportTranslation,
+                translationDisplayMode: "translation"
+            })
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            let resolveStale!: (value: string) => void
+            let rejectStale!: (error: Error) => void
+            service.translate.mockImplementationOnce(
+                () =>
+                    new Promise<string>((resolve, reject) => {
+                        resolveStale = resolve
+                        rejectStale = reject
+                    })
+            )
+            service.translate.mockResolvedValueOnce("最新译文")
+            const updateSource = (text: string) => {
+                originalText.textContent = text
+                nodes = [
+                    {
+                        ...item,
+                        originText: text,
+                        textNodes: [{ ...item.textNodes![0], content: text }]
+                    }
+                ]
+            }
+            updateSource("First source revision")
+            await vi.advanceTimersByTimeAsync(200)
+            updateSource("Latest source revision")
+            await vi.advanceTimersByTimeAsync(1200)
+            expect(
+                item.container.querySelector(".mewcat-wrapper")?.textContent
+            ).toContain("最新译文")
+            if (failed) rejectStale(new Error("outdated request failed"))
+            else resolveStale("过期译文")
+            await vi.advanceTimersByTimeAsync(200)
+            expect(
+                item.container.querySelector(".mewcat-wrapper")?.textContent
+            ).toContain("最新译文")
+            expect(item.container.textContent).not.toContain("过期译文")
+            expect(translator.getReadingProgress().failed).toBe(0)
+            expect(
+                await cache.get({
+                    text: "Latest source revision",
+                    sourceLang: "auto",
+                    targetLang: "zh-CN",
+                    modelId: "google-translate",
+                    aiRole: "DEFAULT"
+                })
+            ).toBe("最新译文")
+        }
+    )
+
+    it.each([true, false])(
+        "switches display mode without requesting translations again (viewport: %s)",
+        async enableViewportTranslation => {
+            const item = makeNode("Original paragraph", 0)
+            const original = item.container.firstChild!
+            const initialHtml = item.container.innerHTML
+            const settings = { ...config, enableViewportTranslation }
+            translator = new ImmersiveTranslator(settings)
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            expect(original.parentElement).toBe(item.container)
+
+            await translator.updateConfig({
+                ...settings,
+                translationDisplayMode: "translation"
+            })
+            await vi.advanceTimersByTimeAsync(200)
+            expect(
+                original.parentElement?.getAttribute("data-mewcat-original")
+            ).toBe(item.id)
+            expect(
+                window.getComputedStyle(original.parentElement!).display
+            ).toBe("none")
+            expect(
+                item.container.querySelector(".mewcat-wrapper")?.textContent
+            ).toContain("译文 Original paragraph")
+
+            await translator.updateConfig({
+                ...settings,
+                translationDisplayMode: "bilingual"
+            })
+            await vi.advanceTimersByTimeAsync(200)
+            expect(original.parentElement).toBe(item.container)
+            expect(requested()).toEqual(["Original paragraph"])
+
+            await translator.updateConfig({
+                ...settings,
+                translationDisplayMode: "translation"
+            })
+            translator.clearAllTranslations()
+            expect(item.container.firstChild).toBe(original)
+            expect(item.container.innerHTML).toBe(initialHtml)
+        }
+    )
+
+    it.each(["", "<span> &nbsp; </span>", "Original paragraph", "failure"])(
+        "keeps the original visible until a usable translation arrives (%s)",
+        async result => {
+            const item = makeNode("Original paragraph", 0)
+            const original = item.container.firstChild!
+            let resolve!: (value: string) => void
+            let reject!: (reason: Error) => void
+            service.translate.mockImplementationOnce(
+                () =>
+                    new Promise<string>((done, fail) => {
+                        resolve = done
+                        reject = fail
+                    })
+            )
+            translator = new ImmersiveTranslator({
+                ...config,
+                translationDisplayMode: "translation"
+            })
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(50)
+            expect(original.parentElement).toBe(item.container)
+            if (result === "failure")
+                reject(new Error("test translation failed"))
+            else resolve(result)
+            await vi.advanceTimersByTimeAsync(100)
+            expect(original.parentElement).toBe(item.container)
+            expect(
+                item.container.querySelector("[data-mewcat-original]")
+            ).toBeNull()
+        }
+    )
+
+    it.each([true, false])(
+        "keeps original extraction stable in translation-only mode and translates changed and newly added content (viewport: %s)",
+        async enableViewportTranslation => {
+            vi.mocked(DomSelector.prototype.initialize).mockRestore()
+            vi.mocked(
+                DomSelector.prototype.extractTargetTextNodes
+            ).mockRestore()
+            vi.stubGlobal("chrome", {
+                runtime: { getURL: (path: string) => path }
+            })
+            vi.stubGlobal(
+                "fetch",
+                vi.fn(async () => ({ json: async () => rules }))
+            )
+            vi.spyOn(
+                HTMLElement.prototype,
+                "getBoundingClientRect"
+            ).mockImplementation(function () {
+                return this.closest("[data-mewcat-original]")
+                    ? new DOMRect(0, 0, 0, 0)
+                    : new DOMRect(0, 0, 500, 300)
+            })
+            const item = makeNode("This is the first visible paragraph.", 0)
+            item.container.innerHTML =
+                'This is the first <a href="/article">visible paragraph</a>.'
+            const originalText = item.container.firstChild!
+            const link = item.container.querySelector("a")!
+            const click = vi.fn((event: Event) => event.preventDefault())
+            link.addEventListener("click", click)
+            translator = new ImmersiveTranslator({
+                ...config,
+                enableViewportTranslation,
+                translationDisplayMode: "translation",
+                neverTranslateLanguages: [],
+                alwaysTranslateLanguages: []
+            })
+            await vi.advanceTimersByTimeAsync(20)
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(300)
+            expect(
+                item.container.querySelector("[data-mewcat-original]")
+            ).not.toBeNull()
+            expect(requested()).toHaveLength(1)
+            makeNode("Another paragraph is added dynamically.", 0)
+            await vi.advanceTimersByTimeAsync(1200)
+            expect(requested()).toHaveLength(2)
+            expect(document.querySelectorAll(".mewcat-wrapper")).toHaveLength(2)
+            await translator.updateConfig({
+                ...config,
+                enableViewportTranslation,
+                neverTranslateLanguages: [],
+                alwaysTranslateLanguages: []
+            })
+            link.click()
+            expect(click).toHaveBeenCalledOnce()
+            expect(item.container.querySelector("a")).toBe(link)
+            await translator.updateConfig({
+                ...config,
+                enableViewportTranslation,
+                translationDisplayMode: "translation",
+                neverTranslateLanguages: [],
+                alwaysTranslateLanguages: []
+            })
+            originalText.textContent =
+                "Updated original text with the same node reference and "
+            await vi.advanceTimersByTimeAsync(1200)
+            expect(requested()).toHaveLength(3)
+            expect(
+                item.container.querySelector(".mewcat-wrapper")?.textContent
+            ).toContain("Updated original text")
+            item.container.textContent =
+                "The article now contains replacement text."
+            await vi.advanceTimersByTimeAsync(1200)
+            expect(requested()).toHaveLength(4)
+            expect(
+                item.container.querySelector(".mewcat-wrapper")?.textContent
+            ).toContain("replacement text")
+            expect(
+                item.container.querySelector("[data-mewcat-original]")
+            ).not.toBeNull()
+            translator.clearAllTranslations()
+            expect(item.container.innerHTML).toBe(
+                "The article now contains replacement text."
+            )
+            expect(link.isConnected).toBe(false)
+            expect(document.querySelector("[data-mewcat-original]")).toBeNull()
+        }
+    )
+
     it("allows an explicit translation on an excluded site and preserves its rules", async () => {
         makeNode("Manual reading", 0)
         translator = new ImmersiveTranslator({

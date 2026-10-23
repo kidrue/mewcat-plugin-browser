@@ -6,6 +6,7 @@ import { isDevelopment } from "@/utils/environment"
 import { getEnhancedLanguageCode } from "@/utils/francLanguageMap"
 
 import { DOMTraverser, type TranslationNode } from "./DOMTraverser"
+import { EDITABLE_SELECTOR, EXTENSION_SELECTOR } from "./paragraphShortcut"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 import { RuleEngine } from "./RuleEngine"
 
@@ -126,7 +127,10 @@ export class DomSelector {
      * 根据规则列表提取需要翻译的 DOM 元素
      * @returns 需要翻译的 HTMLElement 数组及可视性分类
      */
-    public extractTargetTextNodes(): {
+    public extractTargetTextNodes(
+        rootElement: HTMLElement = document.body,
+        manual = false
+    ): {
         result: TranslationNode[]
         stayOriginalMap: Record<string, Element>
         visibleNodes: TranslationNode[]
@@ -147,7 +151,7 @@ export class DomSelector {
         // 步骤3: 遍历DOM树（只遍历一次）
         this.performanceMonitor?.startStage("DOM遍历")
         const { list: allResults, stayOriginalMap } =
-            this.domTraverser.traverse(document.body)
+            this.domTraverser.traverse(rootElement)
 
         this.performanceMonitor?.endStage({
             nodeCount: allResults.length
@@ -213,8 +217,8 @@ export class DomSelector {
 
         // 步骤6: 语言过滤：根据 alwaysTranslateLanguages 和 neverTranslateLanguages 过滤节点
         this.performanceMonitor?.startStage("语言过滤")
-        const filteredResults = resultsWithFranc.filter(node =>
-            this.shouldTranslateNode(node)
+        const filteredResults = resultsWithFranc.filter(
+            node => manual || this.shouldTranslateNode(node)
         )
         this.performanceMonitor?.endStage({
             filteredCount: filteredResults.length
@@ -249,6 +253,52 @@ export class DomSelector {
             stayOriginalMap,
             visibleNodes,
             nonVisibleNodes
+        }
+    }
+
+    public extractParagraphTextNodes(target: Element) {
+        const empty = {
+            result: [] as TranslationNode[],
+            stayOriginalMap: {} as Record<string, Element>,
+            visibleNodes: [] as TranslationNode[],
+            nonVisibleNodes: [] as TranslationNode[]
+        }
+        if (
+            !target.isConnected ||
+            target.closest(`${EDITABLE_SELECTOR},${EXTENSION_SELECTOR},button`)
+        )
+            return empty
+        const blocks =
+            "p,li,blockquote,h1,h2,h3,h4,h5,h6,td,th,dd,dt,pre,figcaption"
+        let root = target.closest<HTMLElement>(blocks)
+        if (!root) {
+            for (
+                let element = target as HTMLElement;
+                element && element !== document.body;
+                element = element.parentElement
+            ) {
+                if (
+                    ["block", "flex", "grid", "list-item"].includes(
+                        getComputedStyle(element).display
+                    )
+                ) {
+                    if (element.querySelector(`${blocks},div,section,article`))
+                        return empty
+                    root = element
+                    break
+                }
+            }
+        }
+        if (!root) return empty
+        const extracted = this.extractTargetTextNodes(root, true)
+        return {
+            ...extracted,
+            result: extracted.result.filter(
+                node =>
+                    node.container === root ||
+                    (root.matches(blocks) &&
+                        node.container.closest(blocks) === root)
+            )
         }
     }
 

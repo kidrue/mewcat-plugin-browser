@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { isValidParagraphShortcut } from "@/translation/paragraphShortcut"
+
 import { AiModel_Platform_Enum } from "./aiModel"
 import type { BaseModel } from "./aiModel"
 import { AiRole, type ExtensionConfig } from "./config"
@@ -31,6 +33,12 @@ const extensionConfigShape = {
     neverTranslateUrls: z.array(z.string()).optional(),
     alwaysTranslateLanguages: z.array(z.string()).optional(),
     translationStyle: z.nativeEnum(TranslationStyle).optional(),
+    translationDisplayMode: z.enum(["bilingual", "translation"]).optional(),
+    enableParagraphTranslation: z.boolean().optional(),
+    paragraphTranslationShortcut: z
+        .string()
+        .refine(isValidParagraphShortcut)
+        .optional(),
     enableGoogleTranslate: z.boolean().optional(),
     enableMicrosoftTranslate: z.boolean().optional(),
     enableTencentTranslate: z.boolean().optional(),

@@ -5,6 +5,7 @@ import type { TranslationRule } from "@/types"
 import { getCountWords } from "@/utils"
 import { isDevelopment } from "@/utils/environment"
 
+import { getOriginalParent, ORIGINAL_CONTENT_SELECTOR } from "./originalContent"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 
 /**
@@ -32,6 +33,8 @@ export interface TranslationNode {
     textNodes?: TextNode[]
     /** 翻译文本 */
     translateText?: string
+    /** 局部提取时独立保存占位符，避免并发段落的链接互相覆盖。 */
+    stayOriginalMap?: Record<string, Element>
     /** 插入位置类型 */
     insertPosition: InsertPosition
     /** 添加标签类型 */
@@ -184,6 +187,20 @@ export class DOMTraverser {
         list: TranslationNode[]
         stayOriginalMap: Record<string, Element>
     } {
+        if (rootElement !== document.body) {
+            for (
+                let ancestor = rootElement.parentElement;
+                ancestor;
+                ancestor = ancestor.parentElement
+            ) {
+                const { action } = this.filterNode(ancestor)
+                if (
+                    action === NodeAction.REJECT ||
+                    action === NodeAction.STAY_ORIGIN
+                )
+                    return { list: [], stayOriginalMap: {} }
+            }
+        }
         // 🕐 开始性能监控
         this.performanceMonitor?.start("DOMTraverser.traverse")
 
@@ -210,16 +227,29 @@ export class DOMTraverser {
             }
             const element = node as HTMLElement
 
+            if (element.matches?.(ORIGINAL_CONTENT_SELECTOR)) {
+                for (const child of Array.from(element.childNodes))
+                    traverseNode(child)
+                return
+            }
+
             this.context.stats.totalNodes++
 
             // 检查是否应该被排除
             perfStats.filterNodeCalls++
             const filterResult = this.filterNode(element)
             // 提取 action（兼容调试模式返回的对象）
-            const action =
+            let action =
                 typeof filterResult === "object"
                     ? filterResult.action
                     : filterResult
+            if (
+                node === rootElement &&
+                rootElement !== document.body &&
+                action === NodeAction.ACCEPT
+            ) {
+                action = NodeAction.SKIP
+            }
 
             if (action === NodeAction.REJECT) {
                 this.context.stats.rejectedNodes++
@@ -241,7 +271,7 @@ export class DOMTraverser {
             if (action === NodeAction.STAY_ORIGIN) {
                 this.context.stats.stayOriginNodes++
                 // 🕐 性能优化：缓存 parentElement
-                const parentElement = element.parentElement
+                const parentElement = getOriginalParent(element)
 
                 if (
                     lastTranslateNode &&
@@ -269,7 +299,7 @@ export class DOMTraverser {
 
             if (action === NodeAction.ACCEPT) {
                 // 🕐 性能优化：缓存 parentElement
-                const parentElement = element.parentElement
+                const parentElement = getOriginalParent(element)
 
                 // 🕐 性能优化：检查 lastTranslateNode 是否存在且与当前 parentElement 相同
                 if (lastTranslateNode) {
@@ -308,11 +338,14 @@ export class DOMTraverser {
 
         // 🕐 DOM 遍历阶段
         this.performanceMonitor?.startStage("DOM遍历")
-        if (this.rule.selectors.length > 0) {
+        if (
+            this.rule.selectors.length > 0 &&
+            !this.rule.selectors.some(selector => rootElement.closest(selector))
+        ) {
             // 🕐 性能优化：避免 map + flat，直接收集节点
             const nodes: Node[] = []
             for (const selector of this.rule.selectors) {
-                const nodeList = document.querySelectorAll(selector)
+                const nodeList = rootElement.querySelectorAll(selector)
                 for (let i = 0; i < nodeList.length; i++) {
                     nodes.push(nodeList[i])
                 }
@@ -1329,6 +1362,9 @@ export class DOMTraverser {
         if (style.opacity === "0") {
             return true
         }
+
+        // 仅译文模式隐藏了原文的盒子，仍需提取其内容以识别后续页面变化。
+        if (element.closest(ORIGINAL_CONTENT_SELECTOR)) return false
 
         // 检查元素尺寸（触发布局计算）
         const rect = element.getBoundingClientRect()

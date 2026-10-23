@@ -22,6 +22,35 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it.each([undefined, "Ctrl+Ctrl+KeyQ", "Alt+KeyQ", "F8", "ShiftLeft"])(
+        "repairs the paragraph shortcut (%s)",
+        paragraphTranslationShortcut => {
+            const config = repairExtensionConfig(
+                { ...defaultExtensionConfig, paragraphTranslationShortcut },
+                defaultExtensionConfig
+            )
+            expect(config.paragraphTranslationShortcut).toBe(
+                ["Alt+KeyQ", "F8"].includes(paragraphTranslationShortcut ?? "")
+                    ? paragraphTranslationShortcut
+                    : "Alt+KeyQ"
+            )
+            expect(config.enableParagraphTranslation).toBe(true)
+        }
+    )
+    it.each([undefined, "invalid", "bilingual", "translation"])(
+        "loads and repairs the display preference (%s)",
+        translationDisplayMode => {
+            const config = repairExtensionConfig(
+                { ...defaultExtensionConfig, translationDisplayMode },
+                defaultExtensionConfig
+            )
+            expect(config.translationDisplayMode).toBe(
+                translationDisplayMode === "translation"
+                    ? "translation"
+                    : "bilingual"
+            )
+        }
+    )
     it.each([undefined, "unknown-style"])(
         "uses the postal bubble when the stored style is %s",
         translationStyle => {

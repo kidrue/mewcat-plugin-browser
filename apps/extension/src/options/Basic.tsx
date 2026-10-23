@@ -14,12 +14,15 @@ import {
 } from "@/components"
 import FeatureAvailability from "@/components/FeatureAvailability"
 import Icon from "@/components/Icon"
+import ParagraphShortcutInput from "@/components/ParagraphShortcutInput"
 import {
     DEFAULT_VALUES,
     languages,
     TRANSLATION_STYLE_OPTIONS
 } from "@/constants"
 import { configAtom, updateConfigAtom } from "@/state"
+import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/translation/paragraphShortcut"
+import type { TranslationDisplayMode } from "@/types/config"
 import {
     DEFAULT_TRANSLATION_STYLE,
     type TranslationStyleType
@@ -137,6 +140,42 @@ export const Basic: React.FunctionComponent = () => {
                 </FormRow>
             </OptionsSection>
 
+            <OptionsSection title="段落翻译" artwork="desk" icon="book">
+                <FormRow
+                    label="启用段落翻译"
+                    description="鼠标悬浮在文字段落上，按快捷键翻译该段。"
+                    controlId="enable-paragraph-translation"
+                >
+                    <CustomToggle
+                        id="enable-paragraph-translation"
+                        aria-label="启用段落翻译"
+                        checked={config.enableParagraphTranslation ?? true}
+                        onChange={checked =>
+                            updateConfig({
+                                enableParagraphTranslation: checked
+                            })
+                        }
+                    />
+                </FormRow>
+                <FormRow
+                    label="翻译快捷键"
+                    description="点击后按下单键或组合键录制；输入文字时不触发。浏览器保留的快捷键可能不可用。"
+                    controlId="paragraph-translation-shortcut"
+                >
+                    <ParagraphShortcutInput
+                        value={
+                            config.paragraphTranslationShortcut ??
+                            DEFAULT_PARAGRAPH_SHORTCUT
+                        }
+                        disabled={config.enableParagraphTranslation === false}
+                        onChange={value =>
+                            updateConfig({
+                                paragraphTranslationShortcut: value
+                            })
+                        }
+                    />
+                </FormRow>
+            </OptionsSection>
             <OptionsSection title="阅读翻译" artwork="desk" icon="book">
                 <FormRow
                     label="按阅读范围翻译"
@@ -202,6 +241,27 @@ export const Basic: React.FunctionComponent = () => {
                 artwork="postcards"
                 icon="picture"
             >
+                <FormRow
+                    label="翻译偏好"
+                    description="选择翻译后的显示方式：双语对照或仅显示译文"
+                    controlId="translation-display-mode"
+                >
+                    <CustomSelect
+                        id="translation-display-mode"
+                        aria-label="翻译偏好"
+                        value={config.translationDisplayMode ?? "bilingual"}
+                        onChange={value =>
+                            updateConfig({
+                                translationDisplayMode:
+                                    value as TranslationDisplayMode
+                            })
+                        }
+                        options={[
+                            { value: "bilingual", label: "双语对照" },
+                            { value: "translation", label: "仅显示译文" }
+                        ]}
+                    />
+                </FormRow>
                 <FormRow
                     label="译文显示样式"
                     description="选择翻译文本的显示样式"

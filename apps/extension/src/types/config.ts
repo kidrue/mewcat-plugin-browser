@@ -1,6 +1,8 @@
 import type { BaseModel } from "./aiModel"
 import type { TranslationStyleType } from "./translationStyle"
 
+export type TranslationDisplayMode = "bilingual" | "translation"
+
 /**
  * 插件主配置对象
  */
@@ -31,6 +33,13 @@ export interface ExtensionConfig {
 
     /** 翻译样式配置（如字体、颜色等） */
     translationStyle?: TranslationStyleType
+
+    /** 网页译文显示方式，默认双语对照 */
+    translationDisplayMode?: TranslationDisplayMode
+    /** 鼠标悬浮段落后通过快捷键翻译 */
+    enableParagraphTranslation?: boolean
+    /** 按 KeyboardEvent.code 保存的快捷键，如 Alt+KeyQ */
+    paragraphTranslationShortcut?: string
 
     // 翻译服务相关配置
     /** 是否启用Google翻译 */
