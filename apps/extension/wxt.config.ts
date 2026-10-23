@@ -1,5 +1,5 @@
-import { defineConfig } from "wxt"
 import { execFileSync } from "node:child_process"
+import { defineConfig } from "wxt"
 
 export default defineConfig({
     srcDir: "src",
@@ -10,7 +10,9 @@ export default defineConfig({
     targetBrowsers: ["chrome"],
     imports: false,
     modules: ["@wxt-dev/module-react", "@wxt-dev/auto-icons"],
-    vite: env => ({ build: { sourcemap: env.mode === "production" ? "hidden" : false } }),
+    vite: env => ({
+        build: { sourcemap: env.mode === "production" ? "hidden" : false }
+    }),
     hooks: {
         "build:done": wxt => {
             if (wxt.config.mode === "production") {
@@ -23,7 +25,10 @@ export default defineConfig({
         }
     },
     manifest: {
-        name: "mewCat",
+        name: "mewCat 译趣喵 - 网页翻译与双语阅读",
+        short_name: "mewCat",
+        description:
+            "网页双语翻译、划词翻译和图片翻译，支持 Google、Microsoft 翻译及自定义 AI 模型，轻松阅读外语文章、技术文档与海外资讯。",
         host_permissions: ["<all_urls>"],
         permissions: [
             "storage",

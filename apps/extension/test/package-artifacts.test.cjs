@@ -20,13 +20,32 @@ test("uses the extension name, version and Shanghai time across a year boundary"
     )
 })
 
+test("keeps release artifact names stable when the store title changes", () => {
+    const manifest = {
+        name: "mewCat 译趣喵 - 网页翻译与双语阅读",
+        short_name: "mewCat",
+        version: "1.1.1"
+    }
+    const now = new Date("2026-10-24T01:30:25Z")
+    for (const extension of ["zip", "crx"]) {
+        assert.equal(
+            createArtifactFileName(manifest, extension, now),
+            `mewCat-1.1.1-20261024 093025.${extension}`
+        )
+    }
+})
+
 test("renames the built ZIP using its manifest and preserves archive contents", () => {
     const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "mewcat-package-"))
     try {
         fs.mkdirSync(path.join(outputDir, "chrome-mv3"))
         fs.writeFileSync(
             path.join(outputDir, "chrome-mv3", "manifest.json"),
-            JSON.stringify({ name: "译趣喵", version: "2.3.4" })
+            JSON.stringify({
+                name: "mewCat 译趣喵 - 网页翻译与双语阅读",
+                short_name: "mewCat",
+                version: "2.3.4"
+            })
         )
         const contents = Buffer.from("archive contents")
         const source = path.join(outputDir, "chrome-mv3-prod.zip")
@@ -37,7 +56,7 @@ test("renames the built ZIP using its manifest and preserves archive contents", 
         )
         assert.equal(
             path.basename(destination),
-            "译趣喵-2.3.4-20261008 173025.zip"
+            "mewCat-2.3.4-20261008 173025.zip"
         )
         assert.deepEqual(fs.readFileSync(destination), contents)
         assert.equal(fs.existsSync(source), false)

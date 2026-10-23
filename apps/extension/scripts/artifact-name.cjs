@@ -1,4 +1,4 @@
-/** 本地产物统一使用扩展名称、版本及北京时间（精确到秒）。 */
+/** 本地产物优先使用扩展短名称，结合版本及北京时间（精确到秒）。 */
 function createArtifactFileName(manifest, extension, now = new Date()) {
     const parts = new Intl.DateTimeFormat("en-GB", {
         timeZone: "Asia/Shanghai",
@@ -12,7 +12,8 @@ function createArtifactFileName(manifest, extension, now = new Date()) {
     }).formatToParts(now)
     const date = Object.fromEntries(parts.map(part => [part.type, part.value]))
     const timestamp = `${date.year}${date.month}${date.day} ${date.hour}${date.minute}${date.second}`
-    return `${manifest.name}-${manifest.version}-${timestamp}.${extension}`
+    const name = manifest.short_name || manifest.name
+    return `${name}-${manifest.version}-${timestamp}.${extension}`
 }
 
 module.exports = { createArtifactFileName }
