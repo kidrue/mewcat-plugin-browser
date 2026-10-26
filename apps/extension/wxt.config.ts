@@ -10,10 +10,28 @@ export default defineConfig({
     targetBrowsers: ["chrome"],
     imports: false,
     modules: ["@wxt-dev/module-react", "@wxt-dev/auto-icons"],
+    autoIcons: {
+        baseIconPath: "public/assets/icon.png"
+    },
     vite: env => ({
         build: { sourcemap: env.mode === "production" ? "hidden" : false }
     }),
     hooks: {
+        "build:publicAssets": (_wxt, files) => {
+            // 图标源文件仅供构建或留档，运行时使用自动生成的 icons/*。
+            for (let index = files.length - 1; index >= 0; index--) {
+                const relativePath = files[index].relativeDest.replaceAll(
+                    "\\",
+                    "/"
+                )
+                if (
+                    relativePath === "assets/icon.png" ||
+                    relativePath === "assets/icon-128.png"
+                ) {
+                    files.splice(index, 1)
+                }
+            }
+        },
         "build:done": wxt => {
             if (wxt.config.mode === "production") {
                 execFileSync(

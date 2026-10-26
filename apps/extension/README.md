@@ -81,13 +81,15 @@
 │   │   └── translationStyles.ts # 翻译样式
 │   ├── popup/               # 弹出窗口
 │   ├── options/             # 选项页面
-│   └── sidepanel/           # 侧边栏面板
-│   ├── assets/              # WXT 构建期资源（扩展图标）
-│   └── public/              # 原样复制到扩展产物的静态资源
+│   ├── sidepanel/           # 侧边栏面板
+│   └── public/
+│       └── assets/          # 统一资源目录：图标、字体、插画与规则文件
 ├── scripts/                 # 构建脚本
 ├── wxt.config.ts            # WXT 与 Manifest 配置
 └── package.json
 ```
+
+扩展资源统一存放在 `src/public/assets/`，运行时资源构建后通过 `assets/...` 访问。扩展图标源图为 `src/public/assets/icon.png`，由 `@wxt-dev/auto-icons` 生成 `icons/16.png`、`icons/32.png`、`icons/48.png` 和 `icons/128.png`；界面继续使用这些生成的图标。源图 `icon.png` 与保留的 `icon-128.png` 不直接复制到扩展包，避免重复打包图标素材。
 
 ## 安装与开发
 
