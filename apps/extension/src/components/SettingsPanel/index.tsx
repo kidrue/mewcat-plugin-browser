@@ -312,11 +312,8 @@ const SettingsButton = styled.button`
 const popupGlassSurface = css`
     position: relative;
     background: rgba(255, 255, 255, 0.9);
-    border: 1px solid rgba(255, 255, 255, 0.86);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.9),
-        inset 0 -1px 0 rgba(143, 183, 216, 0.18),
-        0 6px 20px rgba(32, 74, 112, 0.1);
+    border: none;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 
     @supports (backdrop-filter: blur(1px)) {
         background: linear-gradient(
@@ -330,7 +327,6 @@ const popupGlassSurface = css`
 
     @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
         background: var(--bg-secondary);
-        border-color: var(--border-color);
         backdrop-filter: none;
     }
 `
@@ -392,6 +388,7 @@ const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
                       /* 帮助浮层在卡片内渲染，需要高于后面的玻璃卡片。 */
                       z-index: 2;
                       padding: var(--space-3);
+                      margin-top: 20px;
                       margin-bottom: var(--space-3);
                       border-radius: var(--radius-xl);
                   }
