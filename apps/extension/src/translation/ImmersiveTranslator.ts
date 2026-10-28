@@ -42,6 +42,8 @@ import { ViewportTranslationScheduler } from "./ViewportTranslationScheduler"
  * ImmersiveTranslator 构造函数配置
  */
 export interface ImmersiveTranslatorConfig {
+    /** 实际翻译请求的状态，不包含语言筛选、缓存读取或排队。 */
+    onRequestStateChange?: (loading: boolean) => void
     currentModel?: string
     /** 目标语言（必传） */
     targetLanguage: string
@@ -268,6 +270,37 @@ export class ImmersiveTranslator {
     private enableViewportTranslation = false
     private viewportScheduler: ViewportTranslationScheduler | null = null
     private legacyInFlight = new Set<string>()
+    private activeRequests = new Set<symbol>()
+    private readonly onRequestStateChange?: (loading: boolean) => void
+
+    private async translateWithLoading(
+        ...args: Parameters<typeof translateWithService>
+    ) {
+        const request = Symbol()
+        this.activeRequests.add(request)
+        if (this.activeRequests.size === 1) {
+            this.onRequestStateChange?.(true)
+        }
+        try {
+            return await translateWithService(...args)
+        } finally {
+            // 清理会移除旧请求，避免它们结束时关闭新会话的 loading。
+            if (
+                this.activeRequests.delete(request) &&
+                this.activeRequests.size === 0
+            ) {
+                this.onRequestStateChange?.(false)
+            }
+        }
+    }
+
+    private resetRequestState(): void {
+        if (!this.activeRequests.size) {
+            return
+        }
+        this.activeRequests.clear()
+        this.onRequestStateChange?.(false)
+    }
 
     /** DOM 插入批次大小（每批插入的节点数量） */
     private readonly DOM_INSERT_BATCH_SIZE = 20
@@ -296,6 +329,7 @@ export class ImmersiveTranslator {
      * @param config 扩展配置
      */
     constructor(config: ImmersiveTranslatorConfig) {
+        this.onRequestStateChange = config.onRequestStateChange
         this.targetLanguage = config.targetLanguage
         this.currentModel = config.currentModel ?? "default"
         this.MAX_CONCURRENT_REQUESTS = config.maxRequestsPerSecond ?? 3
@@ -323,6 +357,7 @@ export class ImmersiveTranslator {
 
         // 初始化 DOM 选择器（使用新架构）
         this.domSelector = new DomSelector({
+            targetLanguage: config.targetLanguage,
             currentUrl: window.location.href,
             currentHostname: window.location.hostname,
             neverTranslateLanguages: config.neverTranslateLanguages,
@@ -436,6 +471,7 @@ export class ImmersiveTranslator {
                 : null
         if (restartReadingSession) this.clearAllTranslations()
         this.targetLanguage = config.targetLanguage
+        this.domSelector.setTargetLanguage(config.targetLanguage)
         this.currentModel = config.currentModel ?? "default"
         this.MAX_CONCURRENT_REQUESTS = config.maxRequestsPerSecond ?? 3
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
@@ -539,7 +575,7 @@ export class ImmersiveTranslator {
                 this.createTranslationContainers(nodes)
                 this.showLoadingByIds(nodes.map(node => node.id))
                 // Reading mode deliberately avoids the unused full-page summary request.
-                const result = await translateWithService(
+                const result = await this.translateWithLoading(
                     runtime,
                     [
                         {
@@ -1276,6 +1312,7 @@ export class ImmersiveTranslator {
         // 🔴 设置中断标志，停止所有正在执行的翻译任务
         this.isTranslationAborted = true
         this.translationSession++
+        this.resetRequestState()
         this.viewportScheduler?.destroy()
         this.viewportScheduler = null
         this.legacyInFlight.clear()
@@ -1361,6 +1398,7 @@ export class ImmersiveTranslator {
         this.isTranslationAborted = true
         this.viewportScheduler?.destroy()
         this.translationSession++
+        this.resetRequestState()
 
         if (!this.translationCache || cacheParams.length === 0) {
             return 0
@@ -1607,8 +1645,6 @@ export class ImmersiveTranslator {
             return false
         }
 
-        this.showLoadingByIds(translationMessages.map(message => message.id))
-
         // 提取页面内容并生成摘要（如果启用上下文且使用 AI 模型）
         if (this.enableContext && this.isUsingAiModel()) {
             this.performanceMonitor?.startStage("提取页面内容")
@@ -1668,7 +1704,8 @@ export class ImmersiveTranslator {
 
                 // 📊 记录接口调用开始时间
                 const apiStartTime = performance.now()
-                const translationResults = await translateWithService(
+                this.showLoadingByIds(messageBatch.map(message => message.id))
+                const translationResults = await this.translateWithLoading(
                     this.translationRuntimeConfig,
                     [{ role: "user", content: requestMessageContent }],
                     this.targetLanguage,

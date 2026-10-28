@@ -1,5 +1,6 @@
 import { onMessage } from "@/messaging"
 
+import { registerExtensionNavigation } from "./lib/extension-navigation"
 import { monitorBackgroundHandler } from "./lib/monitor-background-handler"
 import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
@@ -115,6 +116,7 @@ export function registerExtensionMessages(register = onMessage) {
 }
 
 export function registerBackgroundListeners() {
+    registerExtensionNavigation()
     registerExtensionMessages()
     chrome.runtime.onConnect.addListener(port =>
         handleModelGatewayStreamPort(port)
@@ -218,33 +220,9 @@ export function registerBackgroundListeners() {
             message: {
                 type?: string
                 isTranslate?: boolean
-                section?: string
             },
             sender
         ) => {
-            if (message.type === "OPEN_OPTIONS") {
-                chrome.tabs.create(
-                    {
-                        url:
-                            chrome.runtime.getURL("options.html") +
-                            (["translation", "image", "basic"].includes(
-                                message.section ?? ""
-                            )
-                                ? `#${message.section}`
-                                : "")
-                    },
-                    () => {
-                        if (chrome.runtime.lastError) {
-                            console.error(
-                                "打开高级设置失败:",
-                                chrome.runtime.lastError.message
-                            )
-                        }
-                    }
-                )
-                return
-            }
-
             if (
                 message.type === "TRANSLATE_END" &&
                 typeof message.isTranslate === "boolean"

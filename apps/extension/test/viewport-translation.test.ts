@@ -100,6 +100,120 @@ const requested = () =>
     service.translate.mock.calls.map(call => call[1][0].content)
 
 describe("viewport translation integration", () => {
+    it.each([true, false])(
+        "waits for cache lookup and resets loading on request failure (viewport: %s)",
+        async enableViewportTranslation => {
+            makeNode("An English paragraph awaiting cache", 0)
+            const cache = new cacheModule.TieredTranslationCache({
+                enableL2: false
+            })
+            vi.spyOn(cacheModule, "createDefaultCache").mockReturnValue(cache)
+            let finishCache!: (text: string | null) => void
+            vi.spyOn(cache, "get").mockImplementation(
+                () =>
+                    new Promise(resolve => {
+                        finishCache = resolve
+                    })
+            )
+            let failRequest!: (error: Error) => void
+            service.translate.mockImplementation(
+                () =>
+                    new Promise((_resolve, reject) => {
+                        failRequest = reject
+                    })
+            )
+            const onRequestStateChange = vi.fn()
+            translator = new ImmersiveTranslator({
+                ...config,
+                cacheEnabled: true,
+                enableViewportTranslation,
+                onRequestStateChange
+            })
+            const task = translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            expect(service.translate).not.toHaveBeenCalled()
+            expect(onRequestStateChange).not.toHaveBeenCalled()
+            finishCache(null)
+            await vi.advanceTimersByTimeAsync(100)
+            expect(onRequestStateChange.mock.calls).toEqual([[true]])
+            failRequest(new Error("translation unavailable"))
+            await vi.advanceTimersByTimeAsync(100)
+            await task
+            expect(onRequestStateChange.mock.calls).toEqual([[true], [false]])
+        }
+    )
+    it.each([true, false])(
+        "tracks concurrent requests and ignores cleared requests (viewport: %s)",
+        async enableViewportTranslation => {
+            makeNode("First English paragraph", 0)
+            makeNode("Second English paragraph", 50)
+            const pending: Array<(text: string) => void> = []
+            service.translate.mockImplementation(
+                () => new Promise<string>(resolve => pending.push(resolve))
+            )
+            const onRequestStateChange = vi.fn()
+            translator = new ImmersiveTranslator({
+                ...config,
+                enableViewportTranslation,
+                onRequestStateChange
+            })
+            const task = translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            expect(pending).toHaveLength(2)
+            expect(onRequestStateChange.mock.calls).toEqual([[true]])
+            pending[0]("第一段译文")
+            await vi.advanceTimersByTimeAsync(10)
+            expect(onRequestStateChange.mock.calls).toEqual([[true]])
+            translator.clearAllTranslations()
+            expect(onRequestStateChange.mock.calls).toEqual([[true], [false]])
+            const next = translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            expect(onRequestStateChange.mock.calls).toEqual([
+                [true],
+                [false],
+                [true]
+            ])
+            pending[1]("旧请求译文")
+            await vi.advanceTimersByTimeAsync(10)
+            expect(onRequestStateChange.mock.calls).toEqual([
+                [true],
+                [false],
+                [true]
+            ])
+            pending.slice(2).forEach(resolve => resolve("新译文"))
+            await vi.advanceTimersByTimeAsync(100)
+            await Promise.all([task, next])
+            expect(onRequestStateChange.mock.calls).toEqual([
+                [true],
+                [false],
+                [true],
+                [false]
+            ])
+        }
+    )
+    it.each([true, false])(
+        "keeps cached translations out of request loading (viewport: %s)",
+        async enableViewportTranslation => {
+            makeNode("An English paragraph from cache", 0)
+            const cache = new cacheModule.TieredTranslationCache({
+                enableL2: false
+            })
+            vi.spyOn(cacheModule, "createDefaultCache").mockReturnValue(cache)
+            vi.spyOn(cache, "get").mockResolvedValue("缓存译文")
+            const onRequestStateChange = vi.fn()
+            translator = new ImmersiveTranslator({
+                ...config,
+                cacheEnabled: true,
+                enableViewportTranslation,
+                onRequestStateChange
+            })
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            expect(service.translate).not.toHaveBeenCalled()
+            expect(onRequestStateChange).not.toHaveBeenCalled()
+            expect(document.body.textContent).toContain("缓存译文")
+        }
+    )
     it.each(
         [true, false].flatMap(viewport =>
             [false, true].map(failed => ({ viewport, failed }))

@@ -51,7 +51,7 @@ const PopupScenery = styled.div`
     pointer-events: none;
     background: var(--bg-primary);
 
-    &::after {
+    /* &::after {
         content: "";
         position: absolute;
         inset: 0;
@@ -69,7 +69,7 @@ const PopupScenery = styled.div`
                 rgba(242, 248, 254, 0.28) 140px,
                 rgba(242, 248, 254, 0.44)
             );
-    }
+    } */
 `
 
 const PopupPortrait = styled.div`
@@ -593,18 +593,31 @@ function SettingsPanel({
 
     const handleOpenSettings = () => {
         const runtime = chrome.runtime
-        if (typeof runtime?.sendMessage === "function") {
-            runtime.sendMessage({ type: "OPEN_OPTIONS" }, () => {
-                // 读取 lastError 以消费没有可用后台监听器时的 Chrome 警告。
-                void chrome.runtime.lastError
+        const openFallback = () => {
+            if (typeof chrome.tabs?.create === "function") {
+                chrome.tabs.create({ url: runtime.getURL("options.html") })
+                return
+            }
+
+            // 网页内的悬浮面板没有 tabs 权限，通过后台打开设置页。
+            if (typeof runtime?.sendMessage === "function") {
+                runtime.sendMessage({ type: "OPEN_OPTIONS" }, () => {
+                    void runtime.lastError
+                })
+            }
+        }
+
+        // popup 直接使用浏览器 API，避免开发环境后台重载时消息丢失。
+        if (typeof runtime?.openOptionsPage === "function") {
+            runtime.openOptionsPage(() => {
+                if (runtime.lastError) {
+                    openFallback()
+                }
             })
             return
         }
 
-        // 仅作为极旧运行环境的降级路径；正常 popup 与内容脚本都走后台消息。
-        if (typeof chrome.tabs?.create === "function") {
-            chrome.tabs.create({ url: runtime.getURL("options.html") })
-        }
+        openFallback()
     }
 
     const websiteRuleSelector = (

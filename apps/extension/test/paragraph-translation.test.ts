@@ -50,6 +50,107 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 describe("paragraph translation", () => {
+    it.each([
+        "網頁",
+        "繁體中文",
+        "檔案",
+        "網頁瀏覽器",
+        "中文繁體轉換",
+        "訂閱電子郵件以獲取最新消息。"
+    ])(
+        "preserves traditional text requiring simplified conversion: %s",
+        async text => {
+            document.body.innerHTML = `<article><p>${text}</p></article>`
+            translator = new ImmersiveTranslator(config)
+            expect(
+                await translator.translateParagraph(
+                    document.querySelector("p")!
+                )
+            ).toBe(true)
+            await vi.advanceTimersByTimeAsync(100)
+            expect(service.translate).toHaveBeenCalledTimes(1)
+        }
+    )
+    it("preserves Japanese Han-only text declared on its paragraph", async () => {
+        document.body.innerHTML = '<article><p lang="ja">東京都</p></article>'
+        translator = new ImmersiveTranslator(config)
+        expect(
+            await translator.translateParagraph(document.querySelector("p")!)
+        ).toBe(true)
+        await vi.advanceTimersByTimeAsync(100)
+        expect(service.translate).toHaveBeenCalledTimes(1)
+    })
+    it.each([
+        ["zh-TW", "這是已經使用繁體中文編寫的內容。"],
+        [
+            "en",
+            "Please read the instructions carefully before using this application."
+        ]
+    ])("skips paragraphs that already use %s", async (targetLanguage, text) => {
+        document.body.innerHTML = `<article><p>${text}</p></article>`
+        translator = new ImmersiveTranslator({ ...config, targetLanguage })
+        expect(
+            await translator.translateParagraph(document.querySelector("p")!)
+        ).toBe(false)
+        await vi.advanceTimersByTimeAsync(100)
+        expect(service.translate).not.toHaveBeenCalled()
+    })
+    it.each([
+        "你好",
+        "这是一个中文段落，无需重复翻译。",
+        "请阅读<a href='/help'>使用帮助</a>了解详情。"
+    ])(
+        "skips target-language paragraphs before requesting translation: %s",
+        async text => {
+            document.body.innerHTML = `<article><p>${text}</p></article>`
+            translator = new ImmersiveTranslator(config)
+            expect(
+                await translator.translateParagraph(
+                    document.querySelector("p")!
+                )
+            ).toBe(false)
+            await vi.advanceTimersByTimeAsync(200)
+            expect(service.translate).not.toHaveBeenCalled()
+            expect(document.querySelector(".mewcat-container")).toBeNull()
+        }
+    )
+    it("filters Chinese paragraphs without dropping foreign text on a mixed page", async () => {
+        document.body.innerHTML =
+            "<article><p>这是已经使用中文编写的内容。</p><p>Read the instructions before you start using this application.</p><p>日本語の文章を翻訳してください。</p><p>中文说明 Please read the instructions carefully.</p></article>"
+        const selector = new DomSelector(config)
+        await selector.initialize()
+        const result = selector.extractTargetTextNodes(document.body, true)
+        expect(result.result).toHaveLength(3)
+        expect(
+            result.result.every(
+                node => !node.originText.includes("已经使用中文")
+            )
+        ).toBe(true)
+    })
+    it.each([
+        ["zh-CN", "設置"],
+        ["zh-TW", "设置"],
+        ["en", "这是需要翻译为英文的中文段落。"]
+    ])("preserves conversion to %s for %s", async (targetLanguage, text) => {
+        document.body.innerHTML = `<article><p>${text}</p></article>`
+        translator = new ImmersiveTranslator({ ...config, targetLanguage })
+        expect(
+            await translator.translateParagraph(document.querySelector("p")!)
+        ).toBe(true)
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate).toHaveBeenCalledTimes(1)
+    })
+    it("uses the new target language after a configuration update", async () => {
+        document.body.innerHTML =
+            "<article><p>这是需要翻译为英文的中文段落。</p></article>"
+        translator = new ImmersiveTranslator(config)
+        await translator.updateConfig({ ...config, targetLanguage: "en" })
+        expect(
+            await translator.translateParagraph(document.querySelector("p")!)
+        ).toBe(true)
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate).toHaveBeenCalledTimes(1)
+    })
     it("translates an inline-styled paragraph without including its siblings", async () => {
         document.querySelector<HTMLElement>("#first")!.style.display = "inline"
         translator = new ImmersiveTranslator(config)

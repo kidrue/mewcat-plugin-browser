@@ -107,6 +107,14 @@ async function renderSettingsPanel(executePageAction?: PageActionExecutor) {
     )
 }
 
+async function clickAdvancedSettings() {
+    const button = Array.from(document.querySelectorAll("button")).find(
+        item => item.textContent?.trim() === "高级设置"
+    )
+    expect(button).toBeDefined()
+    await act(async () => button!.click())
+}
+
 describe("quick settings page summary setting", () => {
     it("opens the independent feedback page from the popup", async () => {
         await renderSettingsPanel()
@@ -230,6 +238,57 @@ describe("quick settings page summary setting", () => {
         )
     })
 
+    it("opens popup settings when the background worker has no receiver", async () => {
+        const openOptionsPage = vi.fn((callback: () => void) => callback())
+        const sendMessage = vi.fn((_message: unknown, callback: () => void) => {
+            Object.assign(chrome.runtime, {
+                lastError: {
+                    message:
+                        "Could not establish connection. Receiving end does not exist."
+                }
+            })
+            callback()
+            Object.assign(chrome.runtime, { lastError: undefined })
+        })
+        Object.assign(chrome.runtime, { openOptionsPage, sendMessage })
+
+        await renderSettingsPanel()
+        await clickAdvancedSettings()
+
+        expect(openOptionsPage).toHaveBeenCalledOnce()
+        expect(sendMessage).not.toHaveBeenCalled()
+        expect(chrome.tabs.create).not.toHaveBeenCalled()
+    })
+
+    it("falls back to an extension tab when opening the options page fails", async () => {
+        const openOptionsPage = vi.fn((callback: () => void) => {
+            Object.assign(chrome.runtime, {
+                lastError: { message: "Could not open options page." }
+            })
+            callback()
+            Object.assign(chrome.runtime, { lastError: undefined })
+        })
+        Object.assign(chrome.runtime, { openOptionsPage })
+
+        await renderSettingsPanel()
+        await clickAdvancedSettings()
+
+        expect(chrome.tabs.create).toHaveBeenCalledExactlyOnceWith({
+            url: "options.html"
+        })
+        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled()
+    })
+
+    it("opens a popup settings tab directly when openOptionsPage is unavailable", async () => {
+        await renderSettingsPanel()
+        await clickAdvancedSettings()
+
+        expect(chrome.tabs.create).toHaveBeenCalledExactlyOnceWith({
+            url: "options.html"
+        })
+        expect(chrome.runtime.sendMessage).not.toHaveBeenCalled()
+    })
+
     it("opens advanced settings through the runtime bridge in a content script", async () => {
         const sendMessage = vi.fn()
         Object.assign(globalThis, {
@@ -243,13 +302,7 @@ describe("quick settings page summary setting", () => {
         })
 
         await renderSettingsPanel()
-
-        const settingsButton = Array.from(
-            document.querySelectorAll("button")
-        ).find(button => button.textContent?.trim() === "高级设置")
-        expect(settingsButton).not.toBeNull()
-
-        await act(async () => settingsButton?.click())
+        await clickAdvancedSettings()
 
         expect(sendMessage).toHaveBeenCalledWith(
             { type: "OPEN_OPTIONS" },

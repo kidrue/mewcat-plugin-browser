@@ -100,6 +100,9 @@ const Table = styled.table`
     width: 100%;
     min-width: 640px;
     border-collapse: collapse;
+    thead {
+        border: 1px solid var(--border-color);
+    }
     th,
     td {
         padding: var(--space-3) var(--space-4);

@@ -9,11 +9,13 @@ import { DOMTraverser, type TranslationNode } from "./DOMTraverser"
 import { EDITABLE_SELECTOR, EXTENSION_SELECTOR } from "./paragraphShortcut"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 import { RuleEngine } from "./RuleEngine"
+import { isTargetLanguageText } from "./targetLanguage"
 
 /**
  * DomSelector 配置接口
  */
 export interface DomSelectorConfig {
+    targetLanguage?: string
     /** 当前URL（可选，默认使用 window.location.href） */
     currentUrl?: string
     /** 当前域名（可选，默认使用 window.location.hostname） */
@@ -56,6 +58,10 @@ export class DomSelector {
     /** 检测到的语言 */
     private detectedLanguage: string = ""
     private manualTranslation = false
+    private targetLanguage?: string
+    public setTargetLanguage(language: string): void {
+        this.targetLanguage = language
+    }
     public setManualTranslation(enabled: boolean): void {
         this.manualTranslation = enabled
     }
@@ -85,6 +91,7 @@ export class DomSelector {
         })
 
         // 2. 初始化语言配置
+        this.targetLanguage = config?.targetLanguage
         this.neverTranslateLanguages = config?.neverTranslateLanguages
         this.alwaysTranslateLanguages = config?.alwaysTranslateLanguages
 
@@ -218,7 +225,13 @@ export class DomSelector {
         // 步骤6: 语言过滤：根据 alwaysTranslateLanguages 和 neverTranslateLanguages 过滤节点
         this.performanceMonitor?.startStage("语言过滤")
         const filteredResults = resultsWithFranc.filter(
-            node => manual || this.shouldTranslateNode(node)
+            node =>
+                !isTargetLanguageText(
+                    this.cleanPlaceholderTags(node.originText, stayOriginalMap),
+                    this.targetLanguage,
+                    node.container.closest("[lang]")?.getAttribute("lang")
+                ) &&
+                (manual || this.shouldTranslateNode(node))
         )
         this.performanceMonitor?.endStage({
             filteredCount: filteredResults.length

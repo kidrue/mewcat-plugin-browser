@@ -3,7 +3,7 @@
     "displayName": "mewCat",
     "private": true,
     "type": "module",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "scripts": {
         "predev": "pnpm -w build:packages && node scripts/check-legacy-output.cjs",
         "dev": "node ../../scripts/run-with-env.mjs dev:raw",
@@ -30,7 +30,7 @@
         "clean:prod:zip": "rimraf \".output/chrome-mv3-prod*.zip\" \".output/mewCat-*.zip\"",
         "test:rpc": "npx tsx ./test/test-rpc.ts",
         "test:feedback": "vitest run --config test/vitest.image-translation.config.ts test/feedback-background.test.ts test/feedback-page.test.tsx test/mewcat-background-service.test.ts",
-        "test:reading": "vitest run --config test/vitest.image-translation.config.ts test/reading-actions.test.ts test/reading-guide.test.tsx test/sidepanel-reading.test.tsx test/page-reading-controls.test.tsx test/page-summary-manual.test.ts test/paragraph-translation.test.ts test/paragraph-shortcut.test.ts",
+        "test:reading": "vitest run --config test/vitest.image-translation.config.ts test/extension-navigation.test.ts test/reading-actions.test.ts test/reading-guide.test.tsx test/sidepanel-reading.test.tsx test/page-reading-controls.test.tsx test/page-summary-manual.test.ts test/paragraph-translation.test.ts test/paragraph-shortcut.test.ts",
         "test:sentry": "vitest run --config test/vitest.image-translation.config.ts test/sentry-real-sdk.test.ts test/sentry-worker-sdk.test.ts",
         "sentry:smoke": "node ../../scripts/run-with-env.mjs sentry:smoke:raw",
         "test:rpc:web": "node ./test/test-server.mjs",
@@ -55,6 +55,7 @@
         "@connectrpc/protoc-gen-connect-es": "1.7.0",
         "@floating-ui/core": "1.7.3",
         "@floating-ui/react": "0.27.16",
+        "@mewcat/client": "workspace:*",
         "@mozilla/readability": "^0.6.0",
         "@sentry/browser": "10.74.0",
         "@webext-core/messaging": "4.0.0",
@@ -67,6 +68,7 @@
         "franc": "6.2.0",
         "jotai": "2.13.1",
         "nanoid": "4.0.2",
+        "opencc-js": "1.4.2",
         "ramda": "0.31.3",
         "react": "18.3.0",
         "react-dom": "18.3.0",
@@ -74,8 +76,7 @@
         "react-use": "17.4.0",
         "styled-components": "6.1.8",
         "use-immer": "0.11.0",
-        "zod": "4.0.15",
-        "@mewcat/client": "workspace:*"
+        "zod": "4.0.15"
     },
     "devDependencies": {
         "@bufbuild/buf": "^1.57.2",

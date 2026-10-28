@@ -73,6 +73,8 @@ describe("page translation cache refresh", () => {
         ) as ImmersiveTranslator
         Object.assign(translator as unknown as Record<string, unknown>, {
             translationCache: cache,
+            activeRequests: new Set(),
+            translationSession: 0,
             sourceTextNodes: [
                 { originText: activeEntry.text },
                 { originText: activeEntry.text },

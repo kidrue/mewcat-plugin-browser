@@ -11,6 +11,7 @@ import type {
 import type { ExtensionConfig } from "../src/types/config"
 
 const mocks = vi.hoisted(() => ({
+    requestState: undefined as ((loading: boolean) => void) | undefined,
     calls: [] as string[],
     config: {
         isSelectedTranslate: true,
@@ -62,6 +63,11 @@ vi.mock("../src/hooks/useDrag", () => ({
 
 vi.mock("../src/translation/ImmersiveTranslator", () => ({
     ImmersiveTranslator: class {
+        constructor(config: {
+            onRequestStateChange?: (loading: boolean) => void
+        }) {
+            mocks.requestState = config.onRequestStateChange
+        }
         translationNodes = []
         getTranslationScope() {
             return mocks.scope
@@ -122,6 +128,7 @@ async function click(element: Element) {
 }
 
 beforeEach(() => {
+    mocks.requestState = undefined
     mocks.scope = "paragraph"
     mocks.paragraph.mockReset().mockResolvedValue(true)
     mocks.config.detectedLanguage = "auto"
@@ -203,6 +210,64 @@ async function pageAction(
     })
     return state!
 }
+
+describe("floating navigation and request state", () => {
+    it("reports navigation failures without triggering translation", async () => {
+        vi.mocked(chrome.runtime.sendMessage).mockImplementation(
+            (_message, callback) => {
+                if (typeof callback === "function")
+                    callback({ success: false, message: "无法打开侧边栏" })
+            }
+        )
+        await renderPage(englishArticle)
+        await click(shadowRoot.querySelector('[aria-label="打开侧边栏"]')!)
+        expect(mocks.showToast).toHaveBeenCalledWith({
+            type: "error",
+            message: "无法打开侧边栏"
+        })
+        expect(mocks.translate).not.toHaveBeenCalled()
+    })
+    it.each([
+        ["打开侧边栏", "OPEN_SIDE_PANEL"],
+        ["进入高级设置", "OPEN_OPTIONS"]
+    ])("opens %s without starting translation", async (label, type) => {
+        await renderPage(englishArticle)
+        const main = shadowRoot.querySelector('[aria-label="开启翻译"]')!
+        await act(async () =>
+            main.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }))
+        )
+        const button = shadowRoot.querySelector(`[aria-label="${label}"]`)
+        expect(button).not.toBeNull()
+        await click(button!)
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+            { type },
+            expect.any(Function)
+        )
+        expect(mocks.translate).not.toHaveBeenCalled()
+    })
+    it("shows loading only while the engine has an actual translation request", async () => {
+        let finish!: (value: boolean) => void
+        mocks.translate.mockImplementation(
+            () =>
+                new Promise<boolean>(resolve => {
+                    finish = resolve
+                })
+        )
+        await renderPage(chineseArticle)
+        await click(shadowRoot.querySelector('[aria-label="开启翻译"]')!)
+        expect(shadowRoot.querySelector('[aria-label="翻译中"]')).toBeNull()
+        expect(mocks.requestState).toBeTypeOf("function")
+        await act(async () => mocks.requestState!(true))
+        expect(shadowRoot.querySelector('[aria-label="翻译中"]')).not.toBeNull()
+        await act(async () => {
+            finish(true)
+            await Promise.resolve()
+        })
+        expect(shadowRoot.querySelector('[aria-label="翻译中"]')).not.toBeNull()
+        await act(async () => mocks.requestState!(false))
+        expect(shadowRoot.querySelector('[aria-label="翻译中"]')).toBeNull()
+    })
+})
 
 describe("paragraph shortcut controller", () => {
     async function trigger(target: Element, code = "KeyQ", altKey = true) {

@@ -13,7 +13,6 @@ import {
 
 import BrandLogo from "../components/BrandLogo"
 import Icon from "../components/Icon"
-import SettingsPanel from "../components/SettingsPanel"
 import Tooltip from "../components/Tooltip"
 import { useDrag } from "../hooks/useDrag"
 import { configAtom } from "../state"
@@ -180,15 +179,23 @@ const SCxTickIcon = styled.div`
     box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.9);
 `
 
-const SCxSettingsIcon = styled.div.withConfig({
-    shouldForwardProp: prop => prop !== "visible"
-})<{ visible: boolean }>`
+const SCxActions = styled.div<{ $visible: boolean }>`
     position: absolute;
     bottom: -44px;
     left: 50%;
     transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    opacity: ${props => (props.$visible ? 1 : 0)};
+    visibility: ${props => (props.$visible ? "visible" : "hidden")};
+    pointer-events: ${props => (props.$visible ? "auto" : "none")};
+    transition: opacity var(--transition-base, 0.2s ease);
+`
+
+const SCxActionButton = styled.button`
     width: 30px;
     height: 30px;
+    padding: 0;
     border-radius: var(--radius-md);
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
@@ -201,9 +208,6 @@ const SCxSettingsIcon = styled.div.withConfig({
         opacity var(--transition-base, 0.2s ease),
         border-color var(--transition-base, 0.2s ease),
         background var(--transition-base, 0.2s ease);
-    opacity: ${props => (props.visible ? 1 : 0)};
-    visibility: ${props => (props.visible ? "visible" : "hidden")};
-    pointer-events: ${props => (props.visible ? "auto" : "none")};
 
     &:hover {
         background: var(--primary-light);
@@ -271,28 +275,6 @@ const SCxRefreshIcon = styled.button<{ $visible: boolean }>`
     }
 `
 
-const SCxSettingsPanel = styled.div.withConfig({
-    shouldForwardProp: prop =>
-        !["visible", "alignRight", "alignBottom"].includes(prop)
-})<{
-    visible: boolean
-    alignRight: boolean
-    alignBottom: boolean
-}>`
-    position: absolute;
-    ${props => (props.alignBottom ? "bottom: 0" : "top: 0")};
-    ${props => (props.alignRight ? "right: 70px" : "left: 70px")};
-    opacity: ${props => (props.visible ? 1 : 0)};
-    visibility: ${props => (props.visible ? "visible" : "hidden")};
-    transform: ${props => (props.visible ? "scale(1)" : "scale(0.95)")};
-    transition: all 0.3s ease;
-    pointer-events: ${props => (props.visible ? "auto" : "none")};
-    z-index: 10000;
-
-    @media (prefers-reduced-motion: reduce) {
-        transition: none;
-    }
-`
 const TranslationControlCenter: React.FunctionComponent = () => {
     const [config] = useAtom(configAtom)
     const configRef = useLatest(config)
@@ -330,41 +312,13 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     const [loading, setLoading] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
     const refreshTask = useRef(0)
-    const [showSettingsIcon, setShowSettingsIcon] = useState(false)
-    const [showSettingsPanel, setShowSettingsPanel] = useState(false)
-    const [currentTabUrl, setCurrentTabUrl] = useState<URL | undefined>()
+    const [showActions, setShowActions] = useState(false)
     const hideIconTimerRef = useRef<NodeJS.Timeout | null>(null)
-
-    // 获取当前标签页 URL
-    useEffect(() => {
-        setCurrentTabUrl(
-            window.location.href ? new URL(window.location.href) : undefined
-        )
-    }, [])
 
     // 判断面板应该显示在左侧还是右侧
     const alignRight = useMemo(() => {
         return position.x > window.innerWidth / 2
     }, [position.x])
-
-    // 判断面板应该向上还是向下显示
-    const alignBottom = useMemo(() => {
-        // 设置面板的大概高度（根据实际内容调整）
-        const panelHeight = 600
-        const buttonHeight = 56
-        const availableSpaceBelow =
-            window.innerHeight - position.y - buttonHeight
-        const availableSpaceAbove = position.y
-
-        // 如果下方空间不足以显示完整面板，且上方空间更充足，则向上显示
-        if (
-            availableSpaceBelow < panelHeight &&
-            availableSpaceAbove > availableSpaceBelow
-        ) {
-            return true
-        }
-        return false
-    }, [position.y])
 
     // 使用 useClickAway 检测点击外部区域
     useClickAway(ref, e => {
@@ -372,9 +326,8 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         if (rootElement && rootElement.contains(e.target as Node)) {
             return
         }
-        if (showSettingsPanel || showSettingsIcon) {
-            setShowSettingsPanel(false)
-            setShowSettingsIcon(false)
+        if (showActions) {
+            setShowActions(false)
         }
     })
 
@@ -393,27 +346,33 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             clearTimeout(hideIconTimerRef.current)
             hideIconTimerRef.current = null
         }
-        setShowSettingsIcon(true)
+        setShowActions(true)
     }, [])
 
     // 处理鼠标离开容器
     const handleMouseLeave = useCallback(() => {
-        if (!showSettingsPanel) {
-            // 延迟隐藏，给用户时间移动到设置图标
-            hideIconTimerRef.current = setTimeout(() => {
-                setShowSettingsIcon(false)
-            }, 200)
-        }
-    }, [showSettingsPanel])
-
-    // 处理设置图标鼠标进入
-    const handleSettingsIconMouseEnter = useCallback(() => {
-        if (hideIconTimerRef.current) {
-            clearTimeout(hideIconTimerRef.current)
-            hideIconTimerRef.current = null
-        }
-        setShowSettingsIcon(true)
+        // 延迟隐藏，给用户时间移动到下方入口。
+        hideIconTimerRef.current = setTimeout(() => {
+            setShowActions(false)
+        }, 200)
     }, [])
+
+    const openExtensionPage = (type: "OPEN_SIDE_PANEL" | "OPEN_OPTIONS") => {
+        const fail = (message = "无法连接扩展，请刷新网页后重试。") =>
+            Toast.show({ type: ToastType.ERROR, message })
+        try {
+            chrome.runtime.sendMessage(
+                { type },
+                (response?: { success: boolean; message?: string }) => {
+                    if (chrome.runtime.lastError || !response?.success) {
+                        fail(response?.message)
+                    }
+                }
+            )
+        } catch {
+            fail()
+        }
+    }
 
     // 开始翻译任务
     const doTranslate = useCallback(
@@ -430,7 +389,6 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             pageSession.current.active = true
             pageSession.current.busy = true
             pageSession.current.reason = ""
-            setLoading(true)
             immersiveTranslator.setSourceLanguage(sourceLanguage)
             try {
                 setIsTranslate(true)
@@ -463,7 +421,6 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             } finally {
                 if (generation === pageSession.current.generation) {
                     pageSession.current.busy = false
-                    setLoading(false)
                 }
             }
         },
@@ -668,13 +625,20 @@ const TranslationControlCenter: React.FunctionComponent = () => {
 
     // 初始化 ImmersiveTranslator
     useEffect(() => {
+        let mounted = true
         immersiveTranslatorRef.current = new ImmersiveTranslator({
             ...configRef.current,
+            onRequestStateChange: active => {
+                if (mounted) {
+                    setLoading(active)
+                }
+            },
             prioritizeVisibleArea: true,
             debug: true
         })
 
         return () => {
+            mounted = false
             if (immersiveTranslatorRef.current) {
                 immersiveTranslatorRef.current.clearAllTranslations()
                 immersiveTranslatorRef.current = null
@@ -870,7 +834,6 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 pageSession.current.detectedSource = undefined
                 pageSession.current.paused = false
                 locationHrefRef.current = href
-                setCurrentTabUrl(new URL(href))
                 if (isAlwayTranslateSite && !pageSession.current.paused) {
                     const generation = pageSession.current.generation
                     timer = setTimeout(async () => {
@@ -912,7 +875,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 x={position.x}
                 y={position.y}
                 isDragging={isDragging}
-                $expanded={showSettingsIcon || showSettingsPanel || isDragging}
+                $expanded={showActions || isDragging}
                 $right={alignRight}
                 onClick={onToggleTranslate}
                 onMouseEnter={handleMouseEnter}
@@ -921,7 +884,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 {(loading || isTranslate) && (
                     <SCxRefreshIcon
                         type="button"
-                        $visible={showSettingsIcon}
+                        $visible={showActions}
                         disabled={refreshing}
                         aria-label="清除当前页缓存并重新翻译"
                         title={
@@ -930,7 +893,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                                 : "清除当前页缓存并重新翻译"
                         }
                         onClick={onRefreshTranslate}
-                        onMouseEnter={handleSettingsIconMouseEnter}
+                        onMouseEnter={handleMouseEnter}
                     >
                         <Icon name="refresh" size={16} />
                     </SCxRefreshIcon>
@@ -987,48 +950,53 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                     </SCxFloatingButton>
                 </Tooltip>
 
-                <SCxSettingsIcon
-                    visible={showSettingsIcon}
-                    role="button"
-                    tabIndex={showSettingsIcon ? 0 : -1}
-                    aria-label="打开高级设置"
-                    onClick={e => {
-                        e.stopPropagation()
-                        setShowSettingsPanel(!showSettingsPanel)
-                    }}
-                    onKeyDown={e => {
-                        if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault()
+                <SCxActions
+                    $visible={showActions}
+                    onMouseEnter={handleMouseEnter}
+                >
+                    <SCxActionButton
+                        type="button"
+                        tabIndex={showActions ? 0 : -1}
+                        aria-label="打开侧边栏"
+                        title="打开侧边栏"
+                        onClick={e => {
                             e.stopPropagation()
-                            setShowSettingsPanel(!showSettingsPanel)
-                        }
-                    }}
-                    onMouseEnter={handleSettingsIconMouseEnter}
-                >
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
+                            openExtensionPage("OPEN_SIDE_PANEL")
+                        }}
                     >
-                        <circle cx="12" cy="12" r="3" />
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                    </svg>
-                </SCxSettingsIcon>
-
-                <SCxSettingsPanel
-                    visible={showSettingsPanel}
-                    alignRight={alignRight}
-                    alignBottom={alignBottom}
-                    onClick={e => e.stopPropagation()}
-                >
-                    {showSettingsPanel && (
-                        <SettingsPanel
-                            currentTabUrl={currentTabUrl}
-                            executePageAction={executePageAction}
-                        />
-                    )}
-                </SCxSettingsPanel>
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            aria-hidden="true"
+                        >
+                            <rect x="3" y="4" width="18" height="16" rx="2" />
+                            <path d="M15 4v16" />
+                        </svg>
+                    </SCxActionButton>
+                    <SCxActionButton
+                        type="button"
+                        tabIndex={showActions ? 0 : -1}
+                        aria-label="进入高级设置"
+                        title="进入高级设置"
+                        onClick={e => {
+                            e.stopPropagation()
+                            openExtensionPage("OPEN_OPTIONS")
+                        }}
+                    >
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            aria-hidden="true"
+                        >
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                        </svg>
+                    </SCxActionButton>
+                </SCxActions>
             </SCxContainer>
         </StyleSheetManager>
     )
