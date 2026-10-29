@@ -8,11 +8,13 @@ import "@/styles/theme.scss"
 
 import Icon from "../components/Icon"
 import SelectionDot from "../components/SelectionDot"
+import SelectionToolbar from "../components/SelectionToolbar"
 import { TranslateTextPanel } from "../components/TranslateTextPanel"
+import type { SelectionResult } from "../hooks/useSelectionTranslation"
 
 import "../constants"
 
-import { useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 
 import { INTERACTION_MODE_OPTIONS, TRIGGER_MODE_OPTIONS } from "../constants"
 import { useSelectionTranslate } from "../hooks/useSelectionTranslate"
@@ -66,9 +68,12 @@ const SCxHeader = styled.div`
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
 `
 
 const SCxTitle = styled.div`
+    min-width: 0;
+    flex-wrap: wrap;
     font-size: 12px;
     font-weight: 600;
     color: #2878c8;
@@ -86,26 +91,6 @@ const SCxTitle = styled.div`
         display: flex;
         align-items: center;
         justify-content: center;
-    }
-`
-
-const SCxCloseButton = styled.button`
-    width: 20px;
-    height: 20px;
-    border: none;
-    background: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-md);
-    color: #6f879c;
-    font-size: 12px;
-    transition: all 0.16s ease;
-
-    &:hover {
-        background: rgba(40, 120, 200, 0.1);
-        color: #2878c8;
     }
 `
 
@@ -132,6 +117,37 @@ const SelectionTranslate = () => {
     } = useSelectionTranslate<HTMLDivElement>({
         config
     })
+
+    const [snapshot, setSnapshot] = useState<{
+        text: string
+        context: string | undefined
+        config: typeof config
+        active: boolean
+        result: SelectionResult
+    }>()
+    const onResultChange = useCallback(
+        (result: SelectionResult) => {
+            setSnapshot({
+                text: state.text,
+                context: state.context,
+                config,
+                active: state.isVisible,
+                result
+            })
+        },
+        [state.text, state.context, state.isVisible, config]
+    )
+    const result = useMemo<SelectionResult>(
+        () =>
+            snapshot &&
+            snapshot.text === state.text &&
+            snapshot.context === state.context &&
+            snapshot.config === config &&
+            snapshot.active === state.isVisible
+                ? snapshot.result
+                : { mode: "analyzing", value: "", loading: state.isVisible },
+        [snapshot, state.text, state.context, config, state.isVisible]
+    )
 
     const triggerModelLabel = useMemo(
         () =>
@@ -183,7 +199,9 @@ const SelectionTranslate = () => {
                                     color="white"
                                 />
                             </div>
-                            划词翻译
+                            {result.mode === "explain"
+                                ? "概念解释"
+                                : "划词翻译"}
                             {/* 显示当前触发模式 */}
                             {selectionConfig.triggerMode !== "direct" && (
                                 <span
@@ -201,19 +219,13 @@ const SelectionTranslate = () => {
                                 </span>
                             )}
                         </SCxTitle>
-                        <button
-                            type="button"
-                            aria-pressed={pinned}
-                            onClick={actions.togglePinned}
-                        >
-                            {pinned ? "取消固定" : "固定"}
-                        </button>
-                        <SCxCloseButton
-                            aria-label="关闭划词面板"
-                            onClick={actions.hideAll}
-                        >
-                            <Icon name="close" size={12} />
-                        </SCxCloseButton>
+                        <SelectionToolbar
+                            result={result}
+                            active={state.isVisible}
+                            pinned={pinned}
+                            onTogglePinned={actions.togglePinned}
+                            onClose={actions.hideAll}
+                        />
                     </SCxHeader>
 
                     <SCxContent>
@@ -224,6 +236,7 @@ const SelectionTranslate = () => {
                             context={state.context}
                             active={state.isVisible}
                             onFinished={actions.onComputeRect}
+                            onResultChange={onResultChange}
                         />
                     </SCxContent>
                 </SCxContainer>

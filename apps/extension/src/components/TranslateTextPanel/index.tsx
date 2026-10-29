@@ -1,22 +1,15 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react"
+import React, { useEffect, useLayoutEffect, useRef } from "react"
 import Markdown, { type Components } from "react-markdown"
-import { useAsyncRetry } from "react-use"
 import styled from "styled-components"
 
 import { UI_FONT_FAMILY } from "@/constants/fonts"
-import { useConceptExplanation } from "@/hooks/useConceptExplanation"
+import {
+    useSelectionTranslation,
+    type SelectionResult
+} from "@/hooks/useSelectionTranslation"
 import { useConfig } from "@/state/config"
-import {
-    notifySelectionTranslationFinished,
-    translateSelectedText
-} from "@/translation/selectionTranslation"
-import {
-    getConceptExplanationErrorMessage,
-    translateText as translateWithService
-} from "@/translation/translationService"
-import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
+import { notifySelectionTranslationFinished } from "@/translation/selectionTranslation"
 
-import FeatureAvailability from "../FeatureAvailability"
 import LoadingDots from "../LoadingDots"
 import TranslationMark from "../TranslationMark"
 
@@ -26,6 +19,7 @@ interface TranslateTextPanelProps {
     context?: string
     active?: boolean
     onFinished?: () => void
+    onResultChange?: (result: SelectionResult) => void
 }
 
 const SCxContainer = styled.div`
@@ -91,16 +85,7 @@ const SCxLoadingText = styled.span`
     font-weight: 500;
 `
 
-const SCxActions = styled.div`
-    padding-top: 8px;
-    border-top: 1px solid #e3eef7;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-`
-
-const SCxExplainButton = styled.button`
+const SCxRetryButton = styled.button`
     height: 28px;
     padding: 0 12px;
     border: 1px solid #2878c8;
@@ -119,20 +104,6 @@ const SCxExplainButton = styled.button`
         cursor: not-allowed;
         opacity: 0.55;
     }
-`
-
-const SCxActionHint = styled.span`
-    color: #7c7469;
-    font-size: 11px;
-`
-
-const SCxExplanation = styled.div`
-    min-width: 0;
-    margin-top: 8px;
-    padding: 10px 12px;
-    border: 1px solid #e3eef7;
-    border-radius: var(--radius-lg);
-    background: rgba(40, 120, 200, 0.04);
 `
 
 const SCxExplanationText = styled.div`
@@ -257,180 +228,104 @@ const SCxAiNotice = styled.div`
 
 export const TranslateTextPanel: React.FunctionComponent<
     TranslateTextPanelProps
-> = ({ data, pageTitle, context, active = true, onFinished }) => {
+> = ({
+    data,
+    pageTitle,
+    context,
+    active = true,
+    onFinished,
+    onResultChange
+}) => {
     const config = useConfig()
-    const canExplain = hasUsablePageSummaryModel(config.aiModelList)
-    const [copyNotice, setCopyNotice] = useState("")
-    const copyVersion = useRef(0)
-    useEffect(() => {
-        copyVersion.current++
-        setCopyNotice("")
-        return () => {
-            copyVersion.current++
-        }
-    }, [data])
-
-    const {
-        value: translateText,
-        loading,
-        error,
-        retry
-    } = useAsyncRetry(async () => {
-        if (!data || !active) {
-            return
-        }
-        const result = await translateSelectedText(
-            {
-                translateText: (messages, targetLanguage) =>
-                    translateWithService(config, messages, targetLanguage)
-            },
-            data,
-            config
-        )
-
-        return result
-    }, [data, config, active])
-
-    const [explanationState, requestExplanation] = useConceptExplanation(
+    const { result, retry } = useSelectionTranslation(
         config,
         { text: data ?? "", pageTitle, context },
         config.targetLanguage,
         active
     )
+    const { mode, value, loading, error, notice } = result
     const layoutTimer = useRef<ReturnType<typeof setTimeout>>()
 
+    useEffect(() => {
+        onResultChange?.(result)
+    }, [result, onResultChange])
     useLayoutEffect(() => {
-        if (translateText && !loading) {
+        if (loading && value) {
+            if (layoutTimer.current === undefined) {
+                layoutTimer.current = setTimeout(() => {
+                    layoutTimer.current = undefined
+                    notifySelectionTranslationFinished(onFinished)
+                }, 32)
+            }
+        } else {
+            clearTimeout(layoutTimer.current)
+            layoutTimer.current = undefined
             notifySelectionTranslationFinished(onFinished)
         }
-    }, [loading, onFinished, translateText])
-
-    useLayoutEffect(() => {
-        if (
-            explanationState.loading ||
-            explanationState.error ||
-            explanationState.value
-        ) {
-            if (explanationState.loading && explanationState.value) {
-                if (layoutTimer.current === undefined) {
-                    layoutTimer.current = setTimeout(() => {
-                        layoutTimer.current = undefined
-                        notifySelectionTranslationFinished(onFinished)
-                    }, 32)
-                }
-            } else {
-                clearTimeout(layoutTimer.current)
-                layoutTimer.current = undefined
-                notifySelectionTranslationFinished(onFinished)
-            }
-        }
-    }, [
-        explanationState.error,
-        explanationState.loading,
-        explanationState.value,
-        onFinished
-    ])
-
+    }, [loading, value, error, notice, onFinished])
     useLayoutEffect(
         () => () => {
             clearTimeout(layoutTimer.current)
             layoutTimer.current = undefined
         },
-        [onFinished]
+        [onFinished, active, data, context]
     )
 
     return (
-        <SCxContainer>
-            <SCxTranslationContent>
-                <SCxText loading={loading}>
-                    {translateText || ""}
-                    {translateText && !loading && !error && (
-                        <TranslationMark placement="corner" />
-                    )}
-                </SCxText>
-
-                {loading && (
-                    <SCxLoadingContainer>
-                        <LoadingDots loading={true} color="#2878c8" size={4} />
-                        <SCxLoadingText>翻译中...</SCxLoadingText>
-                    </SCxLoadingContainer>
-                )}
-                {error && (
-                    <SCxErrorText role="alert">
-                        {error.message}{" "}
-                        <button
-                            type="button"
-                            onClick={retry}
-                            disabled={loading || !active}
-                        >
-                            重试翻译
-                        </button>
-                    </SCxErrorText>
-                )}
-            </SCxTranslationContent>
-
-            <SCxActions>
-                <SCxExplainButton
-                    type="button"
-                    disabled={
-                        !data ||
-                        !active ||
-                        !canExplain ||
-                        explanationState.loading
-                    }
-                    onClick={() => void requestExplanation()}
-                >
-                    {explanationState.loading
-                        ? "解释中..."
-                        : explanationState.value
-                          ? "重新解释"
-                          : "解释概念"}
-                </SCxExplainButton>
-                <SCxActionHint>使用已配置的 AI 模型</SCxActionHint>
-                {translateText && !error && !loading && (
-                    <button
-                        type="button"
-                        onClick={async () => {
-                            const version = copyVersion.current
-                            try {
-                                await navigator.clipboard.writeText(
-                                    translateText
-                                )
-                                if (version === copyVersion.current)
-                                    setCopyNotice("已复制")
-                            } catch {
-                                if (version === copyVersion.current)
-                                    setCopyNotice(
-                                        "复制失败，请选中译文手动复制。"
-                                    )
-                            }
-                        }}
-                    >
-                        复制译文
-                    </button>
-                )}
-            </SCxActions>
-            {!canExplain && <FeatureAvailability available={false} />}
-            {copyNotice && <p role="status">{copyNotice}</p>}
-
-            {explanationState.error && (
-                <SCxErrorText>
-                    {getConceptExplanationErrorMessage(explanationState.error)}
-                </SCxErrorText>
-            )}
-            {explanationState.value && (
-                <SCxExplanation>
+        <SCxContainer aria-busy={loading}>
+            {mode === "explain" && value ? (
+                <>
                     <SCxExplanationText>
                         <Markdown
                             skipHtml
                             components={explanationMarkdownComponents}
                         >
-                            {explanationState.value}
+                            {value}
                         </Markdown>
                     </SCxExplanationText>
-                    <SCxAiNotice>AI 生成，未联网核验</SCxAiNotice>
-                </SCxExplanation>
+                    <SCxAiNotice>
+                        {loading ? "解释中..." : "AI 生成，未联网核验"}
+                    </SCxAiNotice>
+                </>
+            ) : (
+                <SCxTranslationContent>
+                    {value && (
+                        <SCxText loading={loading}>
+                            {value}
+                            {!loading && !error && (
+                                <TranslationMark placement="corner" />
+                            )}
+                        </SCxText>
+                    )}
+                    {loading && (
+                        <SCxLoadingContainer role="status">
+                            <LoadingDots
+                                loading={true}
+                                color="#2878c8"
+                                size={4}
+                            />
+                            <SCxLoadingText>
+                                {mode === "analyzing"
+                                    ? "识别术语中..."
+                                    : "翻译中..."}
+                            </SCxLoadingText>
+                        </SCxLoadingContainer>
+                    )}
+                    {error && (
+                        <SCxErrorText role="alert">
+                            {error}{" "}
+                            <SCxRetryButton
+                                type="button"
+                                onClick={retry}
+                                disabled={loading || !active}
+                            >
+                                重试翻译
+                            </SCxRetryButton>
+                        </SCxErrorText>
+                    )}
+                </SCxTranslationContent>
             )}
+            {notice && <SCxAiNotice role="status">{notice}</SCxAiNotice>}
         </SCxContainer>
     )
 }

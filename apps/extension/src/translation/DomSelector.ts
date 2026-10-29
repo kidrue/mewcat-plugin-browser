@@ -395,6 +395,7 @@ export class DomSelector {
      */
     private deduplicateNodes(nodes: TranslationNode[]): TranslationNode[] {
         const result: TranslationNode[] = []
+        const segmentAnchors = new Set<Node>()
         // 获取 stayOriginalMap
         const stayOriginalMap = this.getStayOriginalMap()
 
@@ -444,6 +445,13 @@ export class DomSelector {
         }
 
         for (const node of nodes) {
+            if (node.segmentAnchor) {
+                if (!segmentAnchors.has(node.segmentAnchor)) {
+                    segmentAnchors.add(node.segmentAnchor)
+                    result.push(node)
+                }
+                continue
+            }
             const container = node.container
             const text = node.originText
             // 清理占位符标签后的文本，用于去重比较（使用缓存）
@@ -463,6 +471,7 @@ export class DomSelector {
             // 注意：规则1已经通过 Map 快速检查，这里只需检查规则2和3
             for (let i = 0; i < result.length; i++) {
                 const existingNode = result[i]
+                if (existingNode.segmentAnchor) continue
                 const existingContainer = existingNode.container
                 const existingText = existingNode.originText
                 // 清理已存在节点的文本（使用缓存）

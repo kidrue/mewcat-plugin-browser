@@ -5,6 +5,7 @@ import type { TranslationRule } from "@/types"
 import { getCountWords } from "@/utils"
 import { isDevelopment } from "@/utils/environment"
 
+import { splitTranslationNodeAtBreaks } from "./lineBreakSegmentation"
 import { getOriginalParent, ORIGINAL_CONTENT_SELECTOR } from "./originalContent"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 
@@ -19,12 +20,16 @@ export enum InsertPosition {
 }
 export interface TextNode {
     element: HTMLElement
+    /** 跨 BR 的行内标签片段，仅用于翻译输入，不插入页面。 */
+    translationElement?: Node
     type: "text" | "stayOriginal"
     content: string
 }
 /** 翻译节点信息 */
 export interface TranslationNode {
     id: string
+    /** BR 分段的真实源节点，区分共享父容器中的独立段落。 */
+    segmentAnchor?: Node
     /** 父容器元素 - 翻译节点将插入到这个元素中 */
     container: HTMLElement
     /**  当前textNodes所含文本 */
@@ -411,6 +416,7 @@ export class DOMTraverser {
                             ...c,
                             originText: text,
                             insertTagType:
+                                c.segmentAnchor ||
                                 this.rule.blockMinTextCount < text.length ||
                                 this.rule.blockMinWordCount < total
                                     ? "br"
@@ -421,7 +427,18 @@ export class DOMTraverser {
                 return p
             },
             [],
-            translateNodes
+            translateNodes.flatMap(node =>
+                splitTranslationNodeAtBreaks(node, element => {
+                    const { action } = this.filterNode(element)
+                    if (action === NodeAction.REJECT) return null
+                    if (action === NodeAction.STAY_ORIGIN) {
+                        const id = `@${++this.stayOriginalCounter}#`
+                        this.stayOriginalMap[id] = element
+                        return { element, content: id, type: "stayOriginal" }
+                    }
+                    return this.createTextNode(element)
+                })
+            )
         )
 
         this.performanceMonitor?.endStage({
@@ -509,7 +526,7 @@ export class DOMTraverser {
                 textList.push(textNode.content.trim())
             }
             if (textNode.type === "text") {
-                traverseNode(textNode.element)
+                traverseNode(textNode.translationElement ?? textNode.element)
             }
         }
 
@@ -620,6 +637,9 @@ export class DOMTraverser {
         }
 
         const tagName = element?.tagName?.toUpperCase()
+
+        // BR 是翻译分段边界，不应让其行内祖先被当成块级结构拆开。
+        if (tagName === "BR") return false
 
         // ⚡ 优化 4: 快速路径 - 检查默认块级标签（避免 getComputedStyle）
         if (this.allBlocksTag.has(tagName)) {
@@ -849,33 +869,6 @@ export class DOMTraverser {
                 `文本节点: "${node.textContent?.trim().substring(0, 50)}..."`,
                 "Pre-check"
             )
-        }
-
-        // ====================================
-        // Layer 0: BR 标签连续检查（快速路径）
-        // ====================================
-        if (tagName === "BR") {
-            // 检查前一个兄弟节点
-            const prevSibling = element.previousElementSibling
-            if (prevSibling?.tagName === "BR") {
-                this.context.stats.rejectedNodes++
-                return returnResult(
-                    NodeAction.REJECT,
-                    `连续 BR 标签（前一个是 BR）`,
-                    "Layer 0 - BR Check"
-                )
-            }
-
-            // 检查后一个兄弟节点
-            const nextSibling = element.nextElementSibling
-            if (nextSibling?.tagName === "BR") {
-                this.context.stats.rejectedNodes++
-                return returnResult(
-                    NodeAction.REJECT,
-                    `连续 BR 标签（后一个是 BR）`,
-                    "Layer 0 - BR Check"
-                )
-            }
         }
 
         // ====================================

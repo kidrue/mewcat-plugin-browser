@@ -316,13 +316,9 @@ const popupGlassSurface = css`
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 
     @supports (backdrop-filter: blur(1px)) {
-        background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.55),
-            rgba(238, 248, 255, 0.38)
-        );
-        -webkit-backdrop-filter: blur(16px) saturate(1.2) brightness(1.06);
-        backdrop-filter: blur(16px) saturate(1.2) brightness(1.06);
+        background: rgba(238, 248, 255, 0.38);
+        -webkit-backdrop-filter: blur(16px) saturate(1.2);
+        backdrop-filter: blur(16px) saturate(1.2);
     }
 
     @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {

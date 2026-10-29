@@ -362,8 +362,11 @@ const SlidePanel: React.FunctionComponent = () => {
     const requestRef = useRef(0)
     const [notice, setNotice] = useState("")
     const copyTimer = useRef<ReturnType<typeof setTimeout>>()
+    const pasteTimer = useRef<ReturnType<typeof setTimeout>>()
     const invalidate = useCallback(() => {
         requestRef.current++
+        clearTimeout(pasteTimer.current)
+        pasteTimer.current = undefined
         setLoading(false)
         setResult("")
         setError("")
@@ -374,6 +377,7 @@ const SlidePanel: React.FunctionComponent = () => {
         () => () => {
             requestRef.current++
             clearTimeout(copyTimer.current)
+            clearTimeout(pasteTimer.current)
         },
         []
     )
@@ -381,51 +385,85 @@ const SlidePanel: React.FunctionComponent = () => {
     const sourceOptions = [AUTO_DETECT_OPTION, ...languages.languages]
     const targetOptions = languages.languages
 
+    const translateInput = useCallback(
+        async (value: string) => {
+            const text = value.trim()
+            invalidate()
+            if (!text) return
+
+            const request = requestRef.current
+
+            setLoading(true)
+
+            try {
+                const newConfig = { ...config, sourceLanguage: sourceLang }
+
+                const translated = await translateText(
+                    newConfig,
+                    [{ role: "user", content: text }],
+                    targetLang
+                )
+                if (request === requestRef.current) setResult(translated || "")
+            } catch (e) {
+                if (
+                    request === requestRef.current &&
+                    (e as Error)?.name !== "AbortError"
+                ) {
+                    setError((e as Error)?.message || "翻译失败，请重试")
+                }
+            } finally {
+                if (request === requestRef.current) setLoading(false)
+            }
+        },
+        [config, sourceLang, targetLang, invalidate]
+    )
+
+    const handleTranslate = useCallback(() => {
+        if (!loading) void translateInput(inputText)
+    }, [inputText, loading, translateInput])
+
+    const handleTextPaste = useCallback(
+        (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+            if (
+                event.defaultPrevented ||
+                !event.clipboardData.getData("text/plain")
+            )
+                return
+            invalidate()
+            const request = requestRef.current
+            const textarea = event.currentTarget
+            const nativeEvent = event.nativeEvent
+            // 保留浏览器的光标插入、选区替换与撤销栈；默认粘贴完成后再读取全文。
+            pasteTimer.current = setTimeout(() => {
+                pasteTimer.current = undefined
+                if (
+                    nativeEvent.defaultPrevented ||
+                    request !== requestRef.current
+                )
+                    return
+                const text = textarea.value
+                setInputText(text)
+                void translateInput(text)
+            }, 0)
+        },
+        [invalidate, translateInput]
+    )
+
     const handlePaste = useCallback(async () => {
+        invalidate()
         const request = requestRef.current
         try {
             const text = await navigator.clipboard.readText()
             if (request !== requestRef.current) return
-            invalidate()
             setInputText(text)
+            void translateInput(text)
         } catch {
             if (request === requestRef.current)
                 setNotice(
                     "无法读取剪贴板，请使用 Ctrl+V（Mac 使用 ⌘V）手动粘贴。"
                 )
         }
-    }, [invalidate])
-
-    const handleTranslate = useCallback(async () => {
-        const text = inputText.trim()
-        if (!text || loading) return
-
-        const request = ++requestRef.current
-
-        setLoading(true)
-        setError("")
-        setResult("")
-
-        try {
-            const newConfig = { ...config, sourceLanguage: sourceLang }
-
-            const translated = await translateText(
-                newConfig,
-                [{ role: "user", content: text }],
-                targetLang
-            )
-            if (request === requestRef.current) setResult(translated || "")
-        } catch (e) {
-            if (
-                request === requestRef.current &&
-                (e as Error)?.name !== "AbortError"
-            ) {
-                setError((e as Error)?.message || "翻译失败，请重试")
-            }
-        } finally {
-            if (request === requestRef.current) setLoading(false)
-        }
-    }, [inputText, loading, config, sourceLang, targetLang])
+    }, [invalidate, translateInput])
 
     const handleSwapLang = useCallback(() => {
         if (sourceLang === "auto") return
@@ -454,6 +492,7 @@ const SlidePanel: React.FunctionComponent = () => {
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
             if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                e.preventDefault()
                 handleTranslate()
             }
         },
@@ -517,11 +556,16 @@ const SlidePanel: React.FunctionComponent = () => {
                     <StyledTextarea
                         value={inputText}
                         onChange={e => {
-                            invalidate()
+                            const isPendingPaste =
+                                pasteTimer.current !== undefined &&
+                                (e.nativeEvent as InputEvent).inputType ===
+                                    "insertFromPaste"
+                            if (!isPendingPaste) invalidate()
                             setInputText(e.target.value)
                         }}
+                        onPaste={handleTextPaste}
                         onKeyDown={handleKeyDown}
-                        placeholder="输入或粘贴要翻译的文本…&#10;Ctrl+Enter 快速翻译"
+                        placeholder="粘贴文本后自动翻译…&#10;手动输入后按 Ctrl+Enter / ⌘Enter 翻译"
                         rows={5}
                     />
                     {inputText && (

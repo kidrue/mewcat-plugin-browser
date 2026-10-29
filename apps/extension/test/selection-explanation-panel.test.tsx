@@ -3,497 +3,281 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { TranslateTextPanel } from "../src/components/TranslateTextPanel"
 import type { ExtensionConfig } from "../src/types/config"
 
 const mocks = vi.hoisted(() => ({
-    config: {
-        isSelectedTranslate: true,
-        targetLanguage: "zh-CN",
-        detectedLanguage: "auto",
-        aiRole: "DEFAULT",
-        aiModelList: [{ id: "configured-model" }],
-        selectionTriggerMode: "direct",
-        autoTranslateDelay: 700
-    } as ExtensionConfig,
+    config: {} as ExtensionConfig,
     translateText: vi.fn(),
     explainConcept: vi.fn()
 }))
-
-vi.mock("@/state/config", () => ({
-    useConfig: () => mocks.config
-}))
-
+vi.mock("@/state/config", () => ({ useConfig: () => mocks.config }))
 vi.mock("@/translation/translationService", () => ({
     isConfiguredGenerativeModel: () => true,
     translateText: mocks.translateText,
-    explainConcept: mocks.explainConcept,
-    streamConceptExplanation: mocks.explainConcept,
-    getConceptExplanationErrorMessage: (error: unknown) =>
-        error instanceof Error &&
-        error.message === "配置生成式 AI 模型后可使用概念解释"
-            ? error.message
-            : "概念解释失败，请稍后重试"
+    streamConceptExplanation: mocks.explainConcept
 }))
-
 const act = (
     React as typeof React & {
         unstable_act: typeof import("react-dom/test-utils").act
     }
 ).unstable_act
-
 const flushEffects = () =>
     act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await Promise.resolve()
     })
-
 function deferred<T>() {
     let resolve!: (value: T) => void
-    const promise = new Promise<T>(resolvePromise => {
-        resolve = resolvePromise
+    const promise = new Promise<T>(done => {
+        resolve = done
     })
     return { promise, resolve }
 }
-
 let root: Root | undefined
-
-async function renderExplanation(explanation: string, onFinished?: () => void) {
-    mocks.explainConcept.mockResolvedValueOnce(explanation)
-    const { TranslateTextPanel } = await import(
-        "../src/components/TranslateTextPanel/index.tsx"
+const host = () => document.querySelector<HTMLDivElement>("#host")!
+async function render(
+    props: React.ComponentProps<typeof TranslateTextPanel> = {}
+) {
+    root ??= createRoot(host())
+    await act(async () =>
+        root!.render(<TranslateTextPanel data="gravity" {...props} />)
     )
-    const host = document.querySelector<HTMLDivElement>("#host")!
-    root = createRoot(host)
-    await act(async () => {
-        root?.render(
-            <TranslateTextPanel
-                data="Treaty of Versailles"
-                pageTitle="Causes of World War II"
-                context="The treaty reshaped Europe after World War I."
-                onFinished={onFinished}
-            />
-        )
-    })
     await flushEffects()
-    const button = host.querySelector<HTMLButtonElement>("button")!
-    await act(async () => button.click())
-    await flushEffects()
-    return { host, button }
+    return host()
 }
-
+async function renderExplanation(explanation: string, onFinished?: () => void) {
+    mocks.explainConcept.mockResolvedValueOnce(`[EXPLAIN]\n${explanation}`)
+    return { host: await render({ onFinished }) }
+}
 beforeEach(() => {
     document.body.innerHTML = "<div id=host></div>"
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
+    mocks.config = {
+        targetLanguage: "zh-CN",
+        currentModel: "google-translate",
+        aiRole: "DEFAULT",
+        aiModelList: [{ id: "configured-model" }]
+    } as ExtensionConfig
     mocks.translateText.mockReset().mockResolvedValue("凡尔赛条约")
     mocks.explainConcept
         .mockReset()
-        .mockImplementation(
-            async (
-                _config: ExtensionConfig,
-                input: { text: string; pageTitle?: string; context?: string },
-                targetLanguage: string
-            ) => {
-                if (
-                    input.text !== "Treaty of Versailles" ||
-                    input.pageTitle !== "Causes of World War II" ||
-                    input.context !==
-                        "The treaty reshaped Europe after World War I." ||
-                    targetLanguage !== "zh-CN"
-                ) {
-                    throw new Error("解释请求缺少选区语境")
-                }
-                return "类别：历史事件\n简释：第一次世界大战后的和平条约。"
-            }
-        )
+        .mockResolvedValue("[EXPLAIN]\n## 简释\n\n物体之间的吸引作用。")
 })
-
 afterEach(async () => {
+    if (root) await act(async () => root!.unmount())
+    root = undefined
     vi.useRealTimers()
-    if (root) {
-        await act(async () => root?.unmount())
-        root = undefined
-    }
 })
 
-describe("selection concept explanation panel", () => {
-    it("retries a failed translation without selecting the text again", async () => {
-        mocks.translateText.mockRejectedValueOnce(
-            new Error("temporary failure")
-        )
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel"
-        )
-        root = createRoot(document.querySelector<HTMLDivElement>("#host")!)
-        await act(async () =>
-            root?.render(<TranslateTextPanel data="same selection" />)
-        )
-        await flushEffects()
-        const retry = [...document.querySelectorAll("button")].find(
-            button => button.textContent === "重试翻译"
-        )
-        expect(retry).toBeDefined()
-        await act(async () => retry!.click())
-        await flushEffects()
-        expect(mocks.translateText).toHaveBeenCalledTimes(2)
-        expect(document.body.textContent).toContain("凡尔赛条约")
-        expect(document.body.textContent).not.toContain("temporary failure")
-    })
-    it("copies the translated text with feedback", async () => {
-        const writeText = vi.fn().mockResolvedValue(undefined)
-        Object.defineProperty(navigator, "clipboard", {
-            configurable: true,
-            value: { writeText }
+describe("automatic selection explanation", () => {
+    it("explains terms automatically in one request with context and no translation or explanation button", async () => {
+        const onResultChange = vi.fn()
+        await render({
+            data: "gravity",
+            pageTitle: "Physics",
+            context: "mass and gravity",
+            onResultChange
         })
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel"
+        expect(mocks.explainConcept).toHaveBeenCalledTimes(1)
+        expect(mocks.explainConcept).toHaveBeenCalledWith(
+            mocks.config,
+            {
+                text: "gravity",
+                pageTitle: "Physics",
+                context: "mass and gravity",
+                detectTerms: true
+            },
+            "zh-CN",
+            expect.any(Object)
         )
-        root = createRoot(document.querySelector<HTMLDivElement>("#host")!)
-        await act(async () =>
-            root?.render(<TranslateTextPanel data="same selection" />)
-        )
-        await flushEffects()
-        const copy = [...document.querySelectorAll("button")].find(
-            button => button.textContent === "复制译文"
-        )!
-        await act(async () => copy.click())
-        expect(writeText).toHaveBeenCalledWith("凡尔赛条约")
-        expect(document.body.textContent).toContain("已复制")
-    })
-    it("isolates replaced selections and cancels an unmounted request", async () => {
-        const first = deferred<string>()
-        const second = deferred<string>()
-        const streams: Array<{
-            signal: AbortSignal
-            onDelta: (text: string) => void
-        }> = []
-        mocks.explainConcept
-            .mockImplementationOnce((_config, _input, _language, options) => {
-                streams.push(options)
-                return first.promise
+        expect(mocks.translateText).not.toHaveBeenCalled()
+        expect(host().querySelector("h2")?.textContent).toBe("简释")
+        expect(host().querySelector("button")).toBeNull()
+        expect(host().textContent).not.toContain("[EXPLAIN]")
+        expect(onResultChange).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                mode: "explain",
+                loading: false,
+                value: "## 简释\n\n物体之间的吸引作用。"
             })
-            .mockImplementationOnce((_config, _input, _language, options) => {
-                streams.push(options)
-                return second.promise
-            })
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel/index.tsx"
         )
-        const host = document.querySelector<HTMLDivElement>("#host")!
-        root = createRoot(host)
-        await act(async () =>
-            root?.render(<TranslateTextPanel data="first selection" />)
-        )
-        await flushEffects()
-        await act(async () =>
-            host.querySelector<HTMLButtonElement>("button")!.click()
-        )
-        await act(async () => streams[0].onDelta("## 旧解释"))
-        await act(async () =>
-            root?.render(<TranslateTextPanel data="second selection" />)
-        )
-        expect(streams[0].signal.aborted).toBe(true)
-        expect(host.textContent).not.toContain("旧解释")
-        await act(async () =>
-            host.querySelector<HTMLButtonElement>("button")!.click()
-        )
-        await act(async () => {
-            streams[1].onDelta("## 新解释")
-            streams[0].onDelta("迟到片段")
-            first.resolve("迟到结果")
-            await first.promise
-        })
-        expect(host.querySelector("h2")?.textContent).toBe("新解释")
-        expect(host.textContent).not.toContain("迟到")
-        expect(host.querySelector<HTMLButtonElement>("button")!.disabled).toBe(
-            true
-        )
-        await act(async () => root?.unmount())
-        root = undefined
-        expect(streams[1].signal.aborted).toBe(true)
-        await act(async () => {
-            streams[1].onDelta("迟到片段")
-            second.resolve("迟到结果")
-            await second.promise
-        })
-        expect(host.textContent).toBe("")
     })
-
-    it("coalesces chunk layout updates and repositions after completion", async () => {
+    it("waits for analysis before translating ordinary text with the selected service", async () => {
         const pending = deferred<string>()
-        const onFinished = vi.fn()
-        let onDelta: (text: string) => void = () => {}
+        mocks.explainConcept.mockReturnValueOnce(pending.promise)
+        await render({ data: "hello", onResultChange: vi.fn() })
+        expect(mocks.translateText).not.toHaveBeenCalled()
+        await act(async () => {
+            pending.resolve("[TRANSLATE]")
+            await pending.promise
+        })
+        expect(mocks.translateText).toHaveBeenCalledWith(
+            mocks.config,
+            [{ role: "user", content: "hello" }],
+            "zh-CN"
+        )
+        expect(host().textContent).toContain("凡尔赛条约")
+        expect(
+            host().querySelectorAll(".mewcat-translation-mark")
+        ).toHaveLength(1)
+    })
+    it("translates immediately without an AI model and gives a configuration hint", async () => {
+        mocks.config = { ...mocks.config, aiModelList: [] }
+        await render()
+        expect(mocks.explainConcept).not.toHaveBeenCalled()
+        expect(host().textContent).toContain("凡尔赛条约")
+        expect(host().textContent).toContain("配置 AI 模型后可自动解释术语")
+    })
+    it.each(["", "## unmarked", "[EXPLAIN]\n ", "[TRANSLATE]\ninvalid body"])(
+        "falls back once for malformed analysis %j",
+        async response => {
+            mocks.explainConcept.mockResolvedValueOnce(response)
+            await render()
+            expect(mocks.translateText).toHaveBeenCalledTimes(1)
+            expect(host().textContent).toContain(
+                "术语解释暂不可用，已使用普通翻译"
+            )
+            expect(host().textContent).not.toContain(response || "[EXPLAIN]")
+        }
+    )
+    it("discards partial explanation on stream failure and safely falls back once", async () => {
         mocks.explainConcept.mockImplementationOnce(
-            (_config, _input, _language, options) => {
-                onDelta = options.onDelta
-                return pending.promise
+            async (_c, _i, _l, options) => {
+                options.onDelta("[EXPLAIN]\n## 不完整解释")
+                throw new Error("https://private-proxy.example/internal")
             }
         )
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel/index.tsx"
-        )
-        const host = document.querySelector<HTMLDivElement>("#host")!
-        root = createRoot(host)
+        await render()
+        expect(mocks.translateText).toHaveBeenCalledTimes(1)
+        expect(host().textContent).toContain("凡尔赛条约")
+        expect(host().textContent).not.toContain("不完整解释")
+        expect(host().textContent).not.toContain("private-proxy")
+    })
+    it("retries only the failed translation without repeating the AI request", async () => {
+        mocks.explainConcept.mockResolvedValueOnce("[TRANSLATE]")
+        mocks.translateText.mockRejectedValueOnce(new Error("private failure"))
+        await render()
+        expect(host().textContent).not.toContain("private failure")
         await act(async () =>
-            root?.render(
-                <TranslateTextPanel data="gravity" onFinished={onFinished} />
-            )
+            host().querySelector<HTMLButtonElement>("button")!.click()
         )
-        await flushEffects()
+        expect(mocks.translateText).toHaveBeenCalledTimes(2)
+        expect(mocks.explainConcept).toHaveBeenCalledTimes(1)
+        expect(host().textContent).toContain("凡尔赛条约")
+    })
+    it("buffers split route markers and throttles streaming layout updates", async () => {
+        const pending = deferred<string>()
+        let delta!: (text: string) => void
+        mocks.explainConcept.mockImplementationOnce((_c, _i, _l, options) => {
+            delta = options.onDelta
+            return pending.promise
+        })
+        const onFinished = vi.fn()
+        await render({ onFinished })
         vi.useFakeTimers()
-        await act(async () =>
-            host.querySelector<HTMLButtonElement>("button")!.click()
-        )
         onFinished.mockClear()
-        for (const value of ["## 简释", "\n\n", "引", "力"]) {
-            await act(async () => onDelta(value))
+        for (const chunk of [
+            "[EX",
+            "PLAIN]",
+            "\n## 简释",
+            "\n\n",
+            "引",
+            "力"
+        ]) {
+            await act(async () => delta(chunk))
         }
-        expect(host.querySelector("h2")?.textContent).toBe("简释")
+        expect(host().querySelector("h2")?.textContent).toBe("简释")
+        expect(host().textContent).not.toContain("[EX")
         expect(onFinished).not.toHaveBeenCalled()
         await act(async () => vi.advanceTimersByTimeAsync(32))
         expect(onFinished).toHaveBeenCalledTimes(1)
         await act(async () => {
-            pending.resolve("## 简释\n\n引力")
+            pending.resolve("[EXPLAIN]\n## 简释\n\n引力")
             await pending.promise
         })
         expect(onFinished).toHaveBeenCalledTimes(2)
-        expect(host.querySelector<HTMLButtonElement>("button")!.disabled).toBe(
-            false
-        )
     })
-
-    it("shows Markdown chunks before completion and aborts a hidden panel", async () => {
+    it.each(["text", "context", "model", "language"])(
+        "cancels stale analysis when %s changes",
+        async change => {
+            const pending = deferred<string>()
+            let stream!: {
+                signal: AbortSignal
+                onDelta: (text: string) => void
+            }
+            mocks.explainConcept.mockImplementationOnce(
+                (_c, _i, _l, options) => {
+                    stream = options
+                    return pending.promise
+                }
+            )
+            await render({ context: "old" })
+            await act(async () => stream.onDelta("[EXPLAIN]\n## 旧解释"))
+            if (change === "model")
+                mocks.config = { ...mocks.config, currentModel: "new-model" }
+            if (change === "language")
+                mocks.config = { ...mocks.config, targetLanguage: "en" }
+            await render({
+                data: change === "text" ? "new text" : "gravity",
+                context: change === "context" ? "new" : "old"
+            })
+            expect(stream.signal.aborted).toBe(true)
+            await act(async () => {
+                stream.onDelta("迟到片段")
+                pending.resolve("[TRANSLATE]")
+                await pending.promise
+            })
+            expect(host().textContent).not.toContain("旧解释")
+            expect(host().textContent).not.toContain("迟到")
+            expect(mocks.translateText).not.toHaveBeenCalled()
+            expect(mocks.explainConcept).toHaveBeenCalledTimes(2)
+        }
+    )
+    it.each(["hide", "unmount"])(
+        "aborts analysis on %s without triggering fallback",
+        async action => {
+            const pending = deferred<string>()
+            let signal!: AbortSignal
+            mocks.explainConcept.mockImplementationOnce(
+                (_c, _i, _l, options) => {
+                    signal = options.signal
+                    return pending.promise
+                }
+            )
+            await render()
+            if (action === "hide") await render({ active: false })
+            else {
+                await act(async () => root!.unmount())
+                root = undefined
+            }
+            expect(signal.aborted).toBe(true)
+            await act(async () => {
+                pending.resolve("[TRANSLATE]")
+                await pending.promise
+            })
+            expect(mocks.translateText).not.toHaveBeenCalled()
+        }
+    )
+    it("ignores an old ordinary translation that finishes after a new selection", async () => {
         const pending = deferred<string>()
-        let stream:
-            | { signal: AbortSignal; onDelta: (text: string) => void }
-            | undefined
-        mocks.explainConcept.mockImplementationOnce(
-            (_config, _input, _language, options) => {
-                stream = options
-                return pending.promise
-            }
-        )
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel/index.tsx"
-        )
-        const host = document.querySelector<HTMLDivElement>("#host")!
-        root = createRoot(host)
-        await act(async () =>
-            root?.render(<TranslateTextPanel data="Treaty of Versailles" />)
-        )
-        await flushEffects()
-        const button = host.querySelector<HTMLButtonElement>("button")!
-        await act(async () => button.click())
-        expect(stream).toBeDefined()
-        await act(async () => stream!.onDelta("## 类别\n\n**历史"))
-        expect(host.querySelector("h2")?.textContent).toBe("类别")
-        expect(button.disabled).toBe(true)
-        await act(async () => stream!.onDelta("事件**"))
-        expect(host.querySelector("strong")?.textContent).toBe("历史事件")
-        await act(async () =>
-            root?.render(
-                <TranslateTextPanel
-                    data="Treaty of Versailles"
-                    active={false}
-                />
-            )
-        )
-        expect(stream!.signal.aborted).toBe(true)
+        mocks.explainConcept.mockResolvedValueOnce("[TRANSLATE]")
+        mocks.translateText.mockReturnValueOnce(pending.promise)
+        await render({ data: "hello" })
+        await render({ data: "gravity" })
         await act(async () => {
-            stream!.onDelta("迟到片段")
-            pending.resolve("迟到结果")
+            pending.resolve("旧译文")
             await pending.promise
         })
-        expect(host.textContent).not.toContain("迟到")
+        expect(host().textContent).not.toContain("旧译文")
+        expect(host().textContent).toContain("物体之间")
     })
-
-    it("keeps partial text on failure and replaces it when retrying", async () => {
-        mocks.explainConcept.mockImplementationOnce(
-            async (_config, _input, _language, options) => {
-                options.onDelta("## 已生成的部分\n\n内容")
-                throw new Error("private provider error")
-            }
-        )
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel/index.tsx"
-        )
-        const host = document.querySelector<HTMLDivElement>("#host")!
-        root = createRoot(host)
-        await act(async () =>
-            root?.render(<TranslateTextPanel data="Treaty of Versailles" />)
-        )
-        await flushEffects()
-        const button = host.querySelector<HTMLButtonElement>("button")!
-        await act(async () => button.click())
-        expect(host.querySelector("h2")?.textContent).toBe("已生成的部分")
-        expect(host.textContent).toContain("概念解释失败，请稍后重试")
-        expect(host.textContent).not.toContain("private provider error")
-        mocks.explainConcept.mockResolvedValueOnce("## 新解释")
-        await act(async () => button.click())
-        expect(host.querySelector("h2")?.textContent).toBe("新解释")
-        expect(host.textContent).not.toContain("已生成的部分")
+    it("renders ordinary translation as plain text", async () => {
+        mocks.explainConcept.mockResolvedValueOnce("[TRANSLATE]")
+        mocks.translateText.mockResolvedValueOnce("**hello**")
+        await render()
+        expect(host().textContent).toContain("**hello**")
+        expect(host().querySelector("strong")).toBeNull()
     })
-
-    it("keeps translation visible and explains the selected concept on demand", async () => {
-        const onFinished = vi.fn()
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel/index.tsx"
-        )
-        const host = document.querySelector<HTMLDivElement>("#host")
-        expect(host).not.toBeNull()
-        root = createRoot(host!)
-
-        await act(async () => {
-            root?.render(
-                <TranslateTextPanel
-                    data="Treaty of Versailles"
-                    pageTitle="Causes of World War II"
-                    context="The treaty reshaped Europe after World War I."
-                    onFinished={onFinished}
-                />
-            )
-        })
-        await flushEffects()
-
-        expect(document.body.textContent).toContain("凡尔赛条约")
-        expect(host!.querySelectorAll(".mewcat-translation-mark")).toHaveLength(
-            1
-        )
-        const explainButton = Array.from(
-            document.querySelectorAll("button")
-        ).find(button => button.textContent?.includes("解释概念"))
-        expect(explainButton).toBeDefined()
-
-        onFinished.mockClear()
-        await act(async () => {
-            explainButton?.dispatchEvent(
-                new window.MouseEvent("click", { bubbles: true })
-            )
-        })
-        await flushEffects()
-
-        expect(document.body.textContent).toContain("类别：历史事件")
-        expect(document.querySelector("p")?.textContent).toBe(
-            "类别：历史事件\n简释：第一次世界大战后的和平条约。"
-        )
-        expect(document.body.textContent).toContain("AI 生成，未联网核验")
-        expect(onFinished).toHaveBeenCalled()
-    })
-
-    it("keeps translation visible when concept explanation is unavailable", async () => {
-        const onFinished = vi.fn()
-        mocks.explainConcept.mockRejectedValueOnce(
-            new Error("配置生成式 AI 模型后可使用概念解释")
-        )
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel/index.tsx"
-        )
-        const host = document.querySelector<HTMLDivElement>("#host")
-        expect(host).not.toBeNull()
-        root = createRoot(host!)
-
-        await act(async () => {
-            root?.render(
-                <TranslateTextPanel
-                    data="Ada Lovelace"
-                    onFinished={onFinished}
-                />
-            )
-        })
-        await flushEffects()
-
-        const explainButton = Array.from(
-            document.querySelectorAll("button")
-        ).find(button => button.textContent?.includes("解释概念"))
-        await act(async () => {
-            explainButton?.dispatchEvent(
-                new window.MouseEvent("click", { bubbles: true })
-            )
-        })
-        await flushEffects()
-
-        expect(document.body.textContent).toContain("凡尔赛条约")
-        expect(document.body.textContent).toContain(
-            "配置生成式 AI 模型后可使用概念解释"
-        )
-        expect(onFinished.mock.calls.length).toBeGreaterThanOrEqual(2)
-    })
-
-    it("does not expose raw provider errors in the page", async () => {
-        mocks.explainConcept.mockRejectedValueOnce(
-            new Error("https://private-proxy.example/internal failed")
-        )
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel/index.tsx"
-        )
-        const host = document.querySelector<HTMLDivElement>("#host")
-        expect(host).not.toBeNull()
-        root = createRoot(host!)
-
-        await act(async () => {
-            root?.render(<TranslateTextPanel data="Ada Lovelace" />)
-        })
-        await flushEffects()
-
-        const explainButton = Array.from(
-            document.querySelectorAll("button")
-        ).find(button => button.textContent?.includes("解释概念"))
-        await act(async () => {
-            explainButton?.dispatchEvent(
-                new window.MouseEvent("click", { bubbles: true })
-            )
-        })
-        await flushEffects()
-
-        expect(document.body.textContent).toContain("概念解释失败，请稍后重试")
-        expect(document.body.textContent).not.toContain("private-proxy")
-    })
-
-    it("repositions the panel while an explanation request changes layout", async () => {
-        const onFinished = vi.fn()
-        const explanation = deferred<string>()
-        mocks.explainConcept.mockReturnValueOnce(explanation.promise)
-        const { TranslateTextPanel } = await import(
-            "../src/components/TranslateTextPanel/index.tsx"
-        )
-        const host = document.querySelector<HTMLDivElement>("#host")
-        expect(host).not.toBeNull()
-        root = createRoot(host!)
-
-        await act(async () => {
-            root?.render(
-                <TranslateTextPanel
-                    data="Treaty of Versailles"
-                    onFinished={onFinished}
-                />
-            )
-        })
-        await flushEffects()
-
-        expect(mocks.explainConcept).not.toHaveBeenCalled()
-        const explainButton = Array.from(
-            document.querySelectorAll("button")
-        ).find(button => button.textContent?.includes("解释概念"))
-        expect(explainButton).toBeDefined()
-
-        await act(async () => {
-            explainButton?.dispatchEvent(
-                new window.MouseEvent("click", { bubbles: true })
-            )
-        })
-
-        expect(explainButton?.textContent).toContain("解释中")
-        expect(explainButton?.disabled).toBe(true)
-        expect(onFinished).toHaveBeenCalledTimes(2)
-
-        await act(async () => {
-            explanation.resolve("类别：历史事件")
-            await explanation.promise
-        })
-
-        expect(explainButton?.textContent).toContain("重新解释")
-        expect(explainButton?.disabled).toBe(false)
-        expect(onFinished).toHaveBeenCalledTimes(3)
-    })
-
     it("renders basic Markdown only for concept explanations", async () => {
         mocks.translateText.mockResolvedValueOnce("**凡尔赛条约**")
         const { host } = await renderExplanation(
@@ -519,7 +303,7 @@ describe("selection concept explanation panel", () => {
             ].join("\n")
         )
 
-        expect(host.textContent).toContain("**凡尔赛条约**")
+        expect(host.textContent).not.toContain("**凡尔赛条约**")
         expect(host.querySelector("h1")?.textContent).toBe("类别")
         expect(host.querySelector("strong")?.textContent).toBe("历史事件")
         expect(host.querySelector("em")?.textContent).toBe("和平条约")
@@ -593,36 +377,5 @@ describe("selection concept explanation panel", () => {
         expect(host.querySelector("p")?.textContent).toBe("背景：历史示意图")
         expect(host.querySelector("img")).toBeNull()
         expect(host.innerHTML).not.toContain("https://example.com/tracker.png")
-    })
-
-    it("renders the replacement Markdown and repositions after explaining again", async () => {
-        const onFinished = vi.fn()
-        const { host, button } = await renderExplanation(
-            "## 初次解释",
-            onFinished
-        )
-        expect(host.querySelector("h2")?.textContent).toBe("初次解释")
-
-        const explanation = deferred<string>()
-        mocks.explainConcept.mockReturnValueOnce(explanation.promise)
-        onFinished.mockClear()
-        await act(async () => button.click())
-        expect(button.disabled).toBe(true)
-        expect(button.textContent).toContain("解释中")
-        expect(onFinished).toHaveBeenCalledTimes(1)
-
-        await act(async () => {
-            explanation.resolve("## 更新解释\n\n**补充语境**")
-            await explanation.promise
-        })
-        await flushEffects()
-
-        expect(host.querySelector("h2")?.textContent).toBe("更新解释")
-        expect(host.querySelector("strong")?.textContent).toBe("补充语境")
-        expect(host.textContent).not.toContain("初次解释")
-        expect(host.textContent).toContain("凡尔赛条约")
-        expect(button.disabled).toBe(false)
-        expect(button.textContent).toContain("重新解释")
-        expect(onFinished).toHaveBeenCalledTimes(2)
     })
 })
