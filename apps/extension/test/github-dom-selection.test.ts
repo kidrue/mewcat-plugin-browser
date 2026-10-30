@@ -32,6 +32,60 @@ async function createSelector(path: string) {
 }
 
 describe("GitHub translation targets", () => {
+    it.each([
+        "kidrue/resume/settings",
+        "kidrue/resume/settings/branches",
+        "owner/repo/settings?tab=general"
+    ])("extracts a long repository settings sidebar on %s", async path => {
+        document.body.innerHTML = `
+            <main>
+                <aside class="Layout-sidebar">
+                    <nav aria-label="Repository settings">
+                        <ul class="ActionList">
+                            <li><a href="/kidrue/resume/settings"><span class="ActionListItem-label">General</span></a></li>
+                            <li><h2 class="ActionList-sectionDivider-title">Code and automation</h2></li>
+                            <li><a href="/kidrue/resume/settings/branches"><span class="ActionListItem-label">Branches</span></a></li>
+                            <li><button><span class="ActionListItem-label">Actions</span></button>
+                                <ul><li><a href="/kidrue/resume/settings/actions/runners">Runners</a></li></ul>
+                            </li>
+                            ${Array.from({ length: 50 }, (_, index) => `<li><a href="/kidrue/resume/settings/item-${index}">Additional repository setting ${index}</a></li>`).join("")}
+                        </ul>
+                    </nav>
+                </aside>
+                <section class="Layout-main"><h1>General settings</h1><p>Configure your repository features.</p></section>
+            </main>`
+        const selector = await createSelector(path)
+        const text = selector
+            .extractTargetTextNodes()
+            .result.map(node => node.originText)
+            .join(" ")
+        expect(text).toContain("General settings")
+        expect(text).toContain("Code and automation")
+        expect(text).toContain("Branches")
+        expect(text).toContain("Actions")
+        expect(text).toContain("Runners")
+        expect(text).toContain("Additional repository setting 49")
+        expect(text).toContain("Configure your repository features.")
+    })
+
+    it.each(["owner/repo/issues", "owner/repo/settings-preview"])(
+        "keeps repository settings targets scoped away from %s",
+        async path => {
+            document.body.innerHTML = `
+                <main>
+                    <nav aria-label="Repository settings"><a href="/owner/repo/settings/branches">Branches</a></nav>
+                    <p>Unrelated navigation content</p>
+                </main>`
+            const selector = await createSelector(path)
+            const text = selector
+                .extractTargetTextNodes()
+                .result.map(node => node.originText)
+                .join(" ")
+            expect(text).not.toContain("Branches")
+            expect(text).not.toContain("Unrelated navigation content")
+        }
+    )
+
     it("extracts current issue list titles and titles added after navigation", async () => {
         document.body.innerHTML = `
             <main><h3><a data-testid="issue-listitem-title-link" href="/owner/repo/issues/1">

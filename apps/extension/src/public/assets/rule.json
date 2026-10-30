@@ -2579,6 +2579,11 @@
             }
         },
         {
+            "id": "github-repository-settings",
+            "matches": "^https://github\\.com/[^/?#]+/[^/?#]+/settings(?:[/?#]|$)",
+            "selectors": ["main", "nav[aria-label=\"Repository settings\"]"]
+        },
+        {
             "id": "github-blog",
             "matches": ["github.blog"],
             "injectedCss": ["font {word-break: break-all !important;}"],
