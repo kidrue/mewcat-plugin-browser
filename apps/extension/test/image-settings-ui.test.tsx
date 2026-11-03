@@ -854,6 +854,26 @@ describe("image translation settings", () => {
 })
 
 describe("custom model visual capability", () => {
+    it("defaults automatic webpage roles off and saves only the opt-in", async () => {
+        mocks.config = createConfig({ aiModelList: [createModel("service")] })
+        const { TranslateServices } = await import(
+            "../src/options/TranslateServices"
+        )
+        root = await render(<TranslateServices />)
+        const toggle = document.querySelector<HTMLInputElement>(
+            '[aria-label="根据网页自动选择 AI 角色"]'
+        )
+        expect(toggle).not.toBeNull()
+        expect(toggle?.checked).toBe(false)
+        await click(toggle!)
+        expect(mocks.updateConfig).toHaveBeenCalledWith({
+            enableAutoAiRole: true
+        })
+        expect(mocks.updateConfig).not.toHaveBeenCalledWith(
+            expect.objectContaining({ aiRole: expect.anything() })
+        )
+    })
+
     it("filters the configured model directory by model name", async () => {
         mocks.config = createConfig({
             aiModelList: [

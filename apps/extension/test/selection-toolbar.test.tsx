@@ -31,7 +31,8 @@ beforeEach(() => {
     props = {
         result: {
             mode: "explain",
-            value: "## 引力\n\n物体之间的吸引作用。",
+            value: "引力",
+            explanation: "物体之间的吸引作用。",
             loading: false
         },
         active: true,
@@ -53,7 +54,11 @@ describe("selection toolbar", () => {
             vi.useFakeTimers()
             await render()
             await act(async () => button("复制结果").click())
-            expect(writeText).toHaveBeenCalledWith(props.result.value)
+            expect(writeText).toHaveBeenCalledWith(
+                mode === "explain"
+                    ? "译文：引力\n\n术语解释：物体之间的吸引作用。"
+                    : "引力"
+            )
             expect(button("已复制").title).toBe("已复制")
             expect(document.querySelector('[role="status"]')?.textContent).toBe(
                 "已复制"

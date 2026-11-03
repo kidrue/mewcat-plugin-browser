@@ -1,6 +1,7 @@
 import { onMessage } from "@/messaging"
 
 import { registerExtensionNavigation } from "./lib/extension-navigation"
+import { registerFrameTranslation } from "./lib/frame-translation"
 import { monitorBackgroundHandler } from "./lib/monitor-background-handler"
 import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
@@ -117,6 +118,7 @@ export function registerExtensionMessages(register = onMessage) {
 
 export function registerBackgroundListeners() {
     registerExtensionNavigation()
+    registerFrameTranslation()
     registerExtensionMessages()
     chrome.runtime.onConnect.addListener(port =>
         handleModelGatewayStreamPort(port)

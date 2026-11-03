@@ -53,6 +53,7 @@ export default defineConfig({
             "sidePanel",
             "tabs",
             "scripting",
+            "webNavigation",
             "contextMenus",
             "declarativeNetRequest",
             "declarativeNetRequestWithHostAccess"

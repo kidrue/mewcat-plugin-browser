@@ -16,7 +16,12 @@ import Icon from "../components/Icon"
 import Tooltip from "../components/Tooltip"
 import { useDrag } from "../hooks/useDrag"
 import { configAtom } from "../state"
+import {
+    notifyFrameTranslation,
+    type FrameTranslationState
+} from "../translation/frameTranslation"
 import { ImmersiveTranslator } from "../translation/ImmersiveTranslator"
+import { isSameTranslationPage } from "../translation/pageNavigation"
 import {
     DEFAULT_PARAGRAPH_SHORTCUT,
     installParagraphShortcut
@@ -289,6 +294,42 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     )
 
     const immersiveTranslatorRef = useRef<ImmersiveTranslator | null>(null)
+    const frameSession = useRef<FrameTranslationState>({
+        sessionId: `${Date.now()}:${Math.random()}`,
+        revision: 0,
+        enabled: false,
+        sourceLanguage: "auto",
+        manual: false
+    })
+    const syncFrames = useCallback(
+        (
+            enabled: boolean,
+            sourceLanguage = frameSession.current.sourceLanguage,
+            manual = frameSession.current.manual
+        ) => {
+            frameSession.current = {
+                ...frameSession.current,
+                revision: frameSession.current.revision + 1,
+                enabled,
+                sourceLanguage,
+                manual
+            }
+            notifyFrameTranslation(frameSession.current)
+        },
+        []
+    )
+    useEffect(() => {
+        const listener = (
+            message: { type?: string },
+            _sender: chrome.runtime.MessageSender,
+            respond: (state: FrameTranslationState) => void
+        ) => {
+            if (message?.type === "MEWCAT_FRAME_STATE")
+                respond(frameSession.current)
+        }
+        chrome.runtime.onMessage.addListener(listener)
+        return () => chrome.runtime.onMessage.removeListener(listener)
+    }, [])
     const pageSession = useRef({
         active: false,
         busy: false,
@@ -378,7 +419,10 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     const doTranslate = useCallback(
         async (manual = false) => {
             const immersiveTranslator = immersiveTranslatorRef.current
-            if (!immersiveTranslator) {
+            if (
+                !immersiveTranslator ||
+                configRef.current.extensionEnabled === false
+            ) {
                 console.error("ImmersiveTranslator not initialized")
                 return false
             }
@@ -390,6 +434,8 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             pageSession.current.busy = true
             pageSession.current.reason = ""
             immersiveTranslator.setSourceLanguage(sourceLanguage)
+            // 自动检测留给各自框架，正文与评论可能使用不同语言。
+            syncFrames(true, pageSession.current.source, manual)
             try {
                 setIsTranslate(true)
                 const res = await immersiveTranslator.startImmersiveTranslation(
@@ -397,13 +443,22 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                         manual
                     }
                 )
-                if (!res && generation === pageSession.current.generation) {
+                const started =
+                    res || manual || document.querySelector("iframe") !== null
+                if (
+                    !res &&
+                    started &&
+                    generation === pageSession.current.generation
+                )
+                    pageSession.current.reason = "已开启翻译，等待可翻译内容。"
+                if (!started && generation === pageSession.current.generation) {
                     pageSession.current.active = false
+                    syncFrames(false)
                     pageSession.current.reason =
                         "未开始翻译，请检查网站规则或页面是否有可翻译内容。"
                     setIsTranslate(false)
                 }
-                return res
+                return started
             } catch (err) {
                 captureExtensionException(err, {
                     feature: "page-translation",
@@ -413,6 +468,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 console.error("Translation failed:", err)
                 if (generation === pageSession.current.generation) {
                     pageSession.current.active = false
+                    syncFrames(false)
                     pageSession.current.reason =
                         "翻译失败，请重试或切换翻译服务。"
                     setIsTranslate(false)
@@ -424,25 +480,38 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 }
             }
         },
-        [resolveSourceLanguage]
+        [configRef, resolveSourceLanguage, syncFrames]
     )
 
-    const onClearTranslate = useCallback((preserveRefresh = false) => {
-        if (!preserveRefresh) {
-            refreshTask.current++
-            setRefreshing(false)
-        }
-        pageSession.current.generation++
-        pageSession.current.active = false
-        pageSession.current.busy = false
-        pageSession.current.paused = true
-        pageSession.current.reason = ""
-        setLoading(false)
-        if (immersiveTranslatorRef.current) {
-            immersiveTranslatorRef.current.clearAllTranslations()
-            setIsTranslate(false)
-        }
-    }, [])
+    const onClearTranslate = useCallback(
+        (preserveRefresh = false) => {
+            if (!preserveRefresh) {
+                refreshTask.current++
+                setRefreshing(false)
+            }
+            pageSession.current.generation++
+            pageSession.current.active = false
+            pageSession.current.busy = false
+            pageSession.current.paused = true
+            syncFrames(false)
+            pageSession.current.reason = ""
+            setLoading(false)
+            if (immersiveTranslatorRef.current) {
+                immersiveTranslatorRef.current.clearAllTranslations()
+                setIsTranslate(false)
+            }
+        },
+        [syncFrames]
+    )
+
+    useEffect(() => {
+        if (config.extensionEnabled === false) onClearTranslate()
+    }, [config.extensionEnabled, onClearTranslate])
+
+    useEffect(() => {
+        if (frameSession.current.enabled && config.extensionEnabled !== false)
+            syncFrames(true)
+    }, [config, syncFrames])
 
     useEffect(() => {
         chrome.runtime.sendMessage(
@@ -537,7 +606,8 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             const engine = immersiveTranslatorRef.current
             if (
                 !engine ||
-                (request.pageUrl && request.pageUrl !== location.href)
+                (request.pageUrl &&
+                    !isSameTranslationPage(request.pageUrl, location.href))
             )
                 return {
                     status: "unavailable",
@@ -639,12 +709,13 @@ const TranslationControlCenter: React.FunctionComponent = () => {
 
         return () => {
             mounted = false
+            syncFrames(false)
             if (immersiveTranslatorRef.current) {
                 immersiveTranslatorRef.current.clearAllTranslations()
                 immersiveTranslatorRef.current = null
             }
         }
-    }, [configRef])
+    }, [configRef, syncFrames])
 
     // 监听来自background的右键菜单消息。右键翻译或关闭
     useEffect(() => {
@@ -694,6 +765,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         currentModel: config.currentModel,
         targetLanguage: config.targetLanguage,
         aiRole: config.aiRole,
+        enableAutoAiRole: config.enableAutoAiRole,
         enableThinking: config.enableThinking,
         enableContext: config.enableContext,
         model: config.aiModelList.find(
@@ -825,7 +897,9 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         }) => {
             if (message.type === "TAB_UPDATED") {
                 const href = window.location.href
-                if (locationHrefRef.current === href) {
+                const previousHref = locationHrefRef.current
+                locationHrefRef.current = href
+                if (isSameTranslationPage(previousHref, href)) {
                     return
                 }
                 clearTimeout(timer)
@@ -833,14 +907,13 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                 pageSession.current.source = "auto"
                 pageSession.current.detectedSource = undefined
                 pageSession.current.paused = false
-                locationHrefRef.current = href
                 if (isAlwayTranslateSite && !pageSession.current.paused) {
                     const generation = pageSession.current.generation
                     timer = setTimeout(async () => {
                         if (
                             pageSession.current.paused ||
                             pageSession.current.generation !== generation ||
-                            window.location.href !== href
+                            !isSameTranslationPage(window.location.href, href)
                         ) {
                             return
                         }

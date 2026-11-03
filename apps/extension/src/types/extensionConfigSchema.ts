@@ -28,6 +28,7 @@ const extensionConfigShape = {
     targetLanguage: z.string(),
     detectedLanguage: z.string(),
     aiRole: z.nativeEnum(AiRole),
+    enableAutoAiRole: z.boolean().optional(),
     neverTranslateLanguages: z.array(z.string()).optional(),
     alwaysTranslateUrls: z.array(z.string()).optional(),
     neverTranslateUrls: z.array(z.string()).optional(),

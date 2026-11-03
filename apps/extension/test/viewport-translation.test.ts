@@ -11,6 +11,7 @@ import {
     type TranslationNode
 } from "../src/translation/DOMTraverser"
 import { ImmersiveTranslator } from "../src/translation/ImmersiveTranslator"
+import { AiRole } from "../src/types/config"
 
 const service = vi.hoisted(() => ({
     translate: vi.fn(),
@@ -92,6 +93,7 @@ beforeEach(() => {
 })
 afterEach(() => {
     translator?.destroy()
+    document.title = ""
     vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
@@ -100,6 +102,125 @@ const requested = () =>
     service.translate.mock.calls.map(call => call[1][0].content)
 
 describe("viewport translation integration", () => {
+    it.each([true, false])(
+        "uses the actual webpage role for requests, cache reads/writes and clearing (viewport: %s)",
+        async enableViewportTranslation => {
+            const node = makeNode("An English paragraph about algorithms", 0)
+            document.title = "Machine learning"
+            const cache = new cacheModule.TieredTranslationCache({
+                enableL2: false
+            })
+            vi.spyOn(cacheModule, "createDefaultCache").mockReturnValue(cache)
+            const read = vi.spyOn(cache, "get")
+            translator = new ImmersiveTranslator({
+                ...config,
+                cacheEnabled: true,
+                enableViewportTranslation,
+                aiRole: AiRole.FREE_TRANSLATOR,
+                enableAutoAiRole: true
+            })
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(200)
+            expect(service.translate.mock.calls[0][0].aiRole).toBe(
+                AiRole.AI_TRANSLATOR
+            )
+            const entry = {
+                text: node.originText,
+                sourceLang: "auto",
+                targetLang: "zh-CN",
+                modelId: config.currentModel!,
+                aiRole: AiRole.AI_TRANSLATOR
+            }
+            expect(read).toHaveBeenCalledWith(entry)
+            expect(await cache.get(entry)).toContain("译文")
+            expect(
+                await cache.get({ ...entry, aiRole: AiRole.FREE_TRANSLATOR })
+            ).toBeNull()
+            await translator.clearCurrentPageTranslationCache()
+            expect(await cache.get(entry)).toBeNull()
+        }
+    )
+
+    it("rechecks the webpage on new sessions and restores the manual role after disabling", async () => {
+        makeNode("An English paragraph about a topic", 0)
+        const settings = {
+            ...config,
+            aiRole: AiRole.FREE_TRANSLATOR,
+            enableAutoAiRole: true
+        }
+        document.title = "Machine learning"
+        translator = new ImmersiveTranslator(settings)
+        await translator.startImmersiveTranslation()
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate.mock.calls.at(-1)?.[0].aiRole).toBe(
+            AiRole.AI_TRANSLATOR
+        )
+        window.history.pushState({}, "", "/psychology")
+        document.title = "Cognitive psychology"
+        await translator.startImmersiveTranslation()
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate.mock.calls.at(-1)?.[0].aiRole).toBe(
+            AiRole.PSYCHOLOGY_TRANSLATOR
+        )
+        await translator.updateConfig({ ...settings, enableAutoAiRole: false })
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate.mock.calls.at(-1)?.[0].aiRole).toBe(
+            AiRole.FREE_TRANSLATOR
+        )
+    })
+
+    it.each([true, false])(
+        "does not cache a stale response under the next webpage role (viewport: %s)",
+        async enableViewportTranslation => {
+            const node = makeNode("An English paragraph reused across pages", 0)
+            const cache = new cacheModule.TieredTranslationCache({
+                enableL2: false
+            })
+            vi.spyOn(cacheModule, "createDefaultCache").mockReturnValue(cache)
+            let finishOld!: (text: string) => void
+            service.translate
+                .mockImplementationOnce(
+                    () =>
+                        new Promise<string>(resolve => {
+                            finishOld = resolve
+                        })
+                )
+                .mockResolvedValue("新角色译文")
+            document.title = "Machine learning"
+            translator = new ImmersiveTranslator({
+                ...config,
+                cacheEnabled: true,
+                enableViewportTranslation,
+                enableAutoAiRole: true
+            })
+            const oldTask = translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            document.title = "Cognitive psychology"
+            const newTask = translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(200)
+            await newTask
+            finishOld("旧角色译文")
+            await oldTask
+            await vi.advanceTimersByTimeAsync(200)
+            const entry = {
+                text: node.originText,
+                sourceLang: "auto",
+                targetLang: "zh-CN",
+                modelId: config.currentModel!
+            }
+            expect(
+                await cache.get({ ...entry, aiRole: AiRole.AI_TRANSLATOR })
+            ).toBeNull()
+            expect(
+                await cache.get({
+                    ...entry,
+                    aiRole: AiRole.PSYCHOLOGY_TRANSLATOR
+                })
+            ).toBe("新角色译文")
+            expect(node.container.textContent).not.toContain("旧角色译文")
+        }
+    )
+
     it.each([true, false])(
         "waits for cache lookup and resets loading on request failure (viewport: %s)",
         async enableViewportTranslation => {

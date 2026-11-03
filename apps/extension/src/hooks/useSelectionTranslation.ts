@@ -13,6 +13,7 @@ import {
 export interface SelectionResult {
     mode: "analyzing" | "translate" | "explain"
     value: string
+    explanation?: string
     loading: boolean
     notice?: string
     error?: string

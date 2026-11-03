@@ -126,7 +126,11 @@ export default function SelectionToolbar({
         setCopying(true)
         setNotice("")
         try {
-            await navigator.clipboard.writeText(result.value)
+            const content =
+                result.mode === "explain" && result.explanation
+                    ? `译文：${result.value}\n\n术语解释：${result.explanation}`
+                    : result.value
+            await navigator.clipboard.writeText(content)
             if (currentVersion !== version.current) return
             setNotice("已复制")
             noticeTimer.current = setTimeout(() => setNotice(""), 1800)

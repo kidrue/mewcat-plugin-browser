@@ -18,6 +18,7 @@ export const defaultExtensionConfig: ExtensionConfig = {
     detectedLanguage: "auto",
     targetLanguage: "zh-CN",
     aiRole: AiRole.DEFAULT,
+    enableAutoAiRole: false,
 
     // 基本配置
     neverTranslateLanguages: ["zh-CN"],

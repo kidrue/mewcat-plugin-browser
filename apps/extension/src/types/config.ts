@@ -19,6 +19,9 @@ export interface ExtensionConfig {
     /** ai专家角色（决定AI提示词风格） */
     aiRole: AiRole
 
+    /** 是否根据当前网页自动选择 AI 专家角色（默认 false） */
+    enableAutoAiRole?: boolean
+
     /** 永不翻译的语言列表 */
     neverTranslateLanguages?: string[]
 
@@ -185,7 +188,19 @@ export enum AiRole {
     // 词汇助手：提供词汇解析与应用的辅助工具
     VOCABULARY_ASSISTANT = "VOCABULARY_ASSISTANT",
     // Web3翻译大师：精通Web3领域术语的翻译专家
-    WEB3_TRANSLATOR = "WEB3_TRANSLATOR"
+    WEB3_TRANSLATOR = "WEB3_TRANSLATOR",
+    AI_TRANSLATOR = "AI_TRANSLATOR",
+    SECURITY_TRANSLATOR = "SECURITY_TRANSLATOR",
+    SCIENCE_TRANSLATOR = "SCIENCE_TRANSLATOR",
+    ENGINEERING_TRANSLATOR = "ENGINEERING_TRANSLATOR",
+    BUSINESS_TRANSLATOR = "BUSINESS_TRANSLATOR",
+    MARKETING_TRANSLATOR = "MARKETING_TRANSLATOR",
+    EDUCATION_TRANSLATOR = "EDUCATION_TRANSLATOR",
+    HISTORY_TRANSLATOR = "HISTORY_TRANSLATOR",
+    PHILOSOPHY_TRANSLATOR = "PHILOSOPHY_TRANSLATOR",
+    PSYCHOLOGY_TRANSLATOR = "PSYCHOLOGY_TRANSLATOR",
+    ANIME_TRANSLATOR = "ANIME_TRANSLATOR",
+    SUBTITLE_TRANSLATOR = "SUBTITLE_TRANSLATOR"
 }
 
 export type DeepPartial<T extends object> =

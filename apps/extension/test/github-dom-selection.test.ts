@@ -33,6 +33,85 @@ async function createSelector(path: string) {
 
 describe("GitHub translation targets", () => {
     it.each([
+        ["settings", 'aria-label="Account settings"'],
+        ["settings/profile", 'aria-label="Account settings"'],
+        [
+            "settings/security?tab=authentication",
+            'aria-label="Account settings"'
+        ],
+        ["owner/repo/settings", 'aria-label="Settings navigation"'],
+        ["owner/repo/settings/branches", ""],
+        [
+            "organizations/example/settings/profile",
+            'aria-label="Organization settings"'
+        ],
+        [
+            "enterprises/example/settings/profile",
+            'aria-label="Enterprise settings"'
+        ]
+    ])(
+        "extracts the settings sidebar outside main on %s",
+        async (path, attributes) => {
+            document.body.innerHTML = `
+            <header><nav><a href="/explore">Explore GitHub</a></nav></header>
+            <div class="Layout">
+                <aside class="Layout-sidebar">
+                    <nav ${attributes}>
+                        <ul class="ActionList">
+                            <li><h2>Access management</h2></li>
+                            <li><a href="#profile"><span class="ActionListItem-label">Public profile</span></a></li>
+                            <li><button><span class="ActionListItem-label">Password and authentication</span></button></li>
+                            ${Array.from({ length: 50 }, (_, index) => `<li><a href="#setting-${index}">Additional account setting ${index}</a></li>`).join("")}
+                        </ul>
+                    </nav>
+                </aside>
+                <main><h1>Settings overview</h1><p>Manage your preferences.</p></main>
+            </div>`
+            const selector = await createSelector(path)
+            const text = selector
+                .extractTargetTextNodes()
+                .result.map(node => node.originText)
+                .join(" ")
+            expect(text).toContain("Access management")
+            expect(text).toContain("Public profile")
+            expect(text).toContain("Password and authentication")
+            expect(text).toContain("Additional account setting 49")
+            expect(text).toContain("Manage your preferences.")
+            expect(text).not.toContain("Explore GitHub")
+
+            document
+                .querySelector(".ActionList")!
+                .insertAdjacentHTML(
+                    "beforeend",
+                    '<li><a href="#billing">Billing and licensing</a></li>'
+                )
+            expect(
+                selector
+                    .extractTargetTextNodes()
+                    .result.map(node => node.originText)
+                    .join(" ")
+            ).toContain("Billing and licensing")
+        }
+    )
+
+    it("extracts legacy settings menu links without a nav element", async () => {
+        document.body.innerHTML = `
+            <aside class="Layout-sidebar"><div class="menu">
+                <a href="/settings/profile">Public profile</a>
+                <a href="/settings/admin">Account security</a>
+                ${Array.from({ length: 50 }, (_, index) => `<a href="#legacy-${index}">Additional account setting ${index}</a>`).join("")}
+            </div></aside>
+            <main><p>Manage your account preferences.</p></main>`
+        const selector = await createSelector("settings/profile")
+        const text = selector
+            .extractTargetTextNodes()
+            .result.map(node => node.originText)
+            .join(" ")
+        expect(text).toContain("Public profile")
+        expect(text).toContain("Account security")
+    })
+
+    it.each([
         "kidrue/resume/settings",
         "kidrue/resume/settings/branches",
         "owner/repo/settings?tab=general"
@@ -73,7 +152,7 @@ describe("GitHub translation targets", () => {
         async path => {
             document.body.innerHTML = `
                 <main>
-                    <nav aria-label="Repository settings"><a href="/owner/repo/settings/branches">Branches</a></nav>
+                    <aside class="Layout-sidebar"><nav aria-label="Repository settings"><a href="/owner/repo/settings/branches">Branches</a></nav></aside>
                     <p>Unrelated navigation content</p>
                 </main>`
             const selector = await createSelector(path)
