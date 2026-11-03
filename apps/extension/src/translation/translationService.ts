@@ -28,17 +28,20 @@ import {
     type ConceptExplanationInput,
     type ModelGatewaySender
 } from "./modelTranslation"
+import { resolvePageAiRole, type PageRoleContext } from "./pageAiRole"
 
 export interface TranslationRuntimeConfig {
     sourceLanguage?: string
     currentModel?: string
     aiModelList: BaseModel[]
     aiRole: AiRole
+    enableAutoAiRole?: boolean
     enableThinking?: boolean
 }
 
 export interface TranslationCallOptions {
     pageTitle?: string
+    pageContext?: PageRoleContext
 }
 
 export interface TranslationServiceDependencies {
@@ -146,7 +149,7 @@ function translateWithService(
         messages,
         targetLanguage,
         {
-            aiRole: config.aiRole,
+            aiRole: resolvePageAiRole(config, options.pageContext),
             enableThinking: config.enableThinking,
             pageTitle: options.pageTitle,
             sourceLanguage: config.sourceLanguage

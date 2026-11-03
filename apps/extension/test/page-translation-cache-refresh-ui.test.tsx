@@ -136,6 +136,8 @@ beforeEach(() => {
     mocks.config.currentModel = "google-translate"
     mocks.config.paragraphTranslationShortcut = "Alt+KeyQ"
     mocks.config.enableParagraphTranslation = true
+    mocks.config.translationDisplayMode = "bilingual"
+    mocks.config.enableViewportTranslation = false
     mocks.calls.length = 0
     mocks.clearCache.mockReset().mockResolvedValue(2)
     mocks.translate.mockReset().mockResolvedValue(true)
@@ -192,7 +194,8 @@ async function renderPage(text: string) {
 
 async function pageAction(
     action: PageActionRequest["action"],
-    sourceLanguage?: string
+    sourceLanguage?: string,
+    pageUrl?: string
 ): Promise<ReadingState> {
     let state: ReadingState
     await act(async () => {
@@ -201,7 +204,12 @@ async function pageAction(
                 chrome.runtime.onMessage.addListener
             ).mock.calls) {
                 listener(
-                    { type: "MEWCAT_PAGE_ACTION", action, sourceLanguage },
+                    {
+                        type: "MEWCAT_PAGE_ACTION",
+                        action,
+                        sourceLanguage,
+                        pageUrl
+                    },
                     {} as chrome.runtime.MessageSender,
                     resolve
                 )
@@ -210,6 +218,215 @@ async function pageAction(
     })
     return state!
 }
+
+function frameState() {
+    const respond = vi.fn()
+    for (const [listener] of vi.mocked(chrome.runtime.onMessage.addListener)
+        .mock.calls)
+        listener(
+            { type: "MEWCAT_FRAME_STATE" },
+            {} as chrome.runtime.MessageSender,
+            respond
+        )
+    return respond.mock.calls[0]?.[0]
+}
+
+async function notifyTabUpdated() {
+    await act(async () => {
+        for (const [listener] of vi.mocked(chrome.runtime.onMessage.addListener)
+            .mock.calls)
+            listener(
+                { type: "TAB_UPDATED" },
+                {} as chrome.runtime.MessageSender,
+                () => {}
+            )
+    })
+}
+
+describe("in-page navigation during translation", () => {
+    it("preserves the active translation and source override across heading anchors", async () => {
+        const originalUrl = location.href
+        try {
+            history.replaceState(
+                null,
+                "",
+                "/new-central/?source=docs#organizations"
+            )
+            await renderPage(englishArticle)
+            await pageAction("source", "ja")
+            await pageAction("start")
+            const before = frameState()
+            mocks.calls.length = 0
+            history.replaceState(null, "", "#networks")
+            await notifyTabUpdated()
+            expect((await pageAction("status")).status).toBe("complete")
+            expect((await pageAction("status")).sourceLanguage).toBe("ja")
+            expect(frameState()).toEqual(before)
+            expect(
+                shadowRoot.querySelector('[aria-label="清理翻译"]')
+            ).not.toBeNull()
+            expect(mocks.calls).toEqual([])
+        } finally {
+            history.replaceState(null, "", originalUrl)
+        }
+    })
+    it("accepts reading controls opened before an anchor-only URL update", async () => {
+        const originalUrl = location.href
+        try {
+            history.replaceState(null, "", "/new-central/#organizations")
+            await renderPage(englishArticle)
+            const pageUrl = location.href
+            await pageAction("start")
+            history.replaceState(null, "", "#networks")
+            await notifyTabUpdated()
+            expect((await pageAction("clear", undefined, pageUrl)).status).toBe(
+                "idle"
+            )
+        } finally {
+            history.replaceState(null, "", originalUrl)
+        }
+    })
+    it.each([
+        "/another-article#networks",
+        "/new-central/?view=other#networks",
+        "/new-central/#/networks",
+        "/new-central/#!/networks"
+    ])(
+        "still clears translations for a real route change: %s",
+        async nextUrl => {
+            const originalUrl = location.href
+            try {
+                history.replaceState(null, "", "/new-central/#organizations")
+                await renderPage(englishArticle)
+                await pageAction("start")
+                history.replaceState(null, "", nextUrl)
+                await notifyTabUpdated()
+                expect((await pageAction("status")).status).toBe("idle")
+                expect(frameState().enabled).toBe(false)
+            } finally {
+                history.replaceState(null, "", originalUrl)
+            }
+        }
+    )
+    it("does not cancel a pending automatic start when only the heading anchor changes", async () => {
+        const originalUrl = location.href
+        vi.useFakeTimers()
+        try {
+            history.replaceState(null, "", "/new-central/#organizations")
+            mocks.config.alwaysTranslateUrls = [location.hostname]
+            await renderPage(englishArticle)
+            await act(async () => vi.advanceTimersByTimeAsync(700))
+            expect(mocks.translate).toHaveBeenCalledTimes(1)
+            history.replaceState(null, "", "/next-article#first")
+            await notifyTabUpdated()
+            await act(async () => vi.advanceTimersByTimeAsync(400))
+            history.replaceState(null, "", "#second")
+            await notifyTabUpdated()
+            await act(async () => vi.advanceTimersByTimeAsync(300))
+            expect(mocks.translate).toHaveBeenCalledTimes(2)
+        } finally {
+            history.replaceState(null, "", originalUrl)
+            vi.useRealTimers()
+        }
+    })
+})
+
+describe("page and iframe translation state", () => {
+    it("keeps a manual session ready for an iframe inserted after empty content extraction", async () => {
+        mocks.translate.mockResolvedValueOnce(false)
+        await renderPage(chineseArticle)
+        await pageAction("start")
+        await act(async () => {
+            await Promise.resolve()
+        })
+        expect(frameState()).toMatchObject({ enabled: true })
+        document.body.insertAdjacentHTML(
+            "beforeend",
+            '<iframe src="https://comments.example/embed"></iframe>'
+        )
+        expect(frameState()).toMatchObject({ enabled: true })
+        await pageAction("clear")
+        expect(frameState()).toMatchObject({ enabled: false })
+    })
+    it("publishes a newer frame session revision when display settings change", async () => {
+        await renderPage(englishArticle)
+        await pageAction("start")
+        const before = frameState()
+        mocks.config = {
+            ...mocks.config,
+            translationDisplayMode: "translation",
+            enableViewportTranslation: true
+        }
+        const { default: TranslationControlCenter } = await import(
+            "../src/contents/TranslationControlCenter"
+        )
+        await act(async () => root?.render(<TranslationControlCenter />))
+        expect(frameState().revision).toBeGreaterThan(before.revision)
+        expect(frameState().enabled).toBe(true)
+    })
+    it("publishes enabled state and a newer disabled state when cleared", async () => {
+        await renderPage(englishArticle)
+        await pageAction("start")
+        const started = frameState()
+        expect(started).toMatchObject({
+            enabled: true,
+            manual: true,
+            sourceLanguage: "auto"
+        })
+        expect(chrome.runtime.sendMessage).toHaveBeenCalledWith(
+            expect.objectContaining({ type: "MEWCAT_FRAME_SYNC" }),
+            expect.any(Function)
+        )
+        await pageAction("clear")
+        expect(frameState()).toMatchObject({
+            enabled: false,
+            sessionId: started.sessionId
+        })
+        expect(frameState().revision).toBeGreaterThan(started.revision)
+    })
+    it("forwards an explicitly selected source language to child frames", async () => {
+        await renderPage(englishArticle)
+        await pageAction("source", "ja")
+        await pageAction("start")
+        expect(frameState()).toMatchObject({
+            enabled: true,
+            sourceLanguage: "ja"
+        })
+    })
+    it("keeps the session enabled when only an iframe has translatable content", async () => {
+        mocks.translate.mockResolvedValueOnce(false)
+        await renderPage(chineseArticle)
+        document.body.insertAdjacentHTML(
+            "beforeend",
+            '<iframe src="https://disqus.com/embed/comments"></iframe>'
+        )
+        await pageAction("start")
+        await act(async () => {
+            await Promise.resolve()
+        })
+        expect(frameState()).toMatchObject({ enabled: true })
+        expect((await pageAction("status")).status).not.toBe("idle")
+    })
+    it("does not enable iframe translation for a single paragraph", async () => {
+        const article = await renderPage(englishArticle)
+        Object.assign(document, { elementFromPoint: () => article })
+        await act(async () =>
+            article.dispatchEvent(
+                new MouseEvent("mousemove", { bubbles: true })
+            )
+        )
+        await act(async () =>
+            document.dispatchEvent(
+                new KeyboardEvent("keydown", {
+                    code: "KeyQ",
+                    altKey: true,
+                    bubbles: true
+                })
+            )
+        )
+        expect(frameState()).toMatchObject({ enabled: false })
+    })
+})
 
 describe("floating navigation and request state", () => {
     it("reports navigation failures without triggering translation", async () => {
@@ -604,7 +821,7 @@ describe("translation button cache refresh", () => {
         expect((refreshButton as HTMLButtonElement).disabled).toBe(false)
     })
 
-    it("restores the idle state when retranslation produces no result", async () => {
+    it("keeps the manual session ready for delayed content after an empty refresh", async () => {
         mocks.translate.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
         const { default: TranslationControlCenter } = await import(
             "../src/contents/TranslationControlCenter"
@@ -625,11 +842,11 @@ describe("translation button cache refresh", () => {
         )
 
         expect(
-            shadowRoot.querySelector('[aria-label="开启翻译"]')
+            shadowRoot.querySelector('[aria-label="清理翻译"]')
         ).not.toBeNull()
         expect(mocks.showToast).toHaveBeenLastCalledWith({
-            type: "error",
-            message: "刷新翻译失败，请稍后重试"
+            type: "success",
+            message: "已刷新当前页面翻译"
         })
     })
 })

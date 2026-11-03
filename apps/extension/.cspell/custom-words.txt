@@ -69,3 +69,17 @@ ymax
 ymin
 chengyu
 ttranslatev
+archiveofourown
+pubmed
+ncbi
+medlineplus
+sciencedirect
+huggingface
+apnews
+aliexpress
+steampowered
+investopedia
+myanimelist
+anilist
+khanacademy
+defi

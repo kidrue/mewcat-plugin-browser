@@ -2579,9 +2579,15 @@
             }
         },
         {
-            "id": "github-repository-settings",
-            "matches": "^https://github\\.com/[^/?#]+/[^/?#]+/settings(?:[/?#]|$)",
-            "selectors": ["main", "nav[aria-label=\"Repository settings\"]"]
+            "id": "github-settings",
+            "matches": "^https://github\\.com/(?:settings|[^/?#]+/[^/?#]+/settings)(?:[/?#]|$)",
+            "selectors": [
+                "main",
+                ".Layout-sidebar nav",
+                ".Layout-sidebar [role=\"navigation\"]",
+                ".Layout-sidebar .menu",
+                "nav[aria-label$=\"settings\" i]"
+            ]
         },
         {
             "id": "github-blog",

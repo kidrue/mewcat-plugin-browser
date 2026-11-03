@@ -5,6 +5,7 @@ import rules from "../src/public/assets/rule.json"
 import { defaultExtensionConfig } from "../src/state/constants"
 import { DomSelector } from "../src/translation/DomSelector"
 import { ImmersiveTranslator } from "../src/translation/ImmersiveTranslator"
+import { AiRole } from "../src/types/config"
 
 const service = vi.hoisted(() => ({ translate: vi.fn() }))
 vi.mock("../src/translation/translationService", () => ({
@@ -44,12 +45,56 @@ beforeEach(() => {
 })
 afterEach(() => {
     translator?.destroy()
+    document.title = ""
     translator = undefined
     vi.useRealTimers()
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
 })
 describe("paragraph translation", () => {
+    it("restarts every selected paragraph after the page role changes", async () => {
+        document.title = "Machine learning"
+        translator = new ImmersiveTranslator({
+            ...config,
+            enableAutoAiRole: true
+        })
+        await translator.translateParagraph(document.querySelector("#first")!)
+        await translator.translateParagraph(document.querySelector("#second")!)
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate).toHaveBeenCalledTimes(2)
+        service.translate.mockClear()
+        document.title = "Cognitive psychology"
+        await translator.restartParagraphTranslations()
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate).toHaveBeenCalledTimes(2)
+        expect(
+            service.translate.mock.calls.every(
+                call => call[0].aiRole === AiRole.PSYCHOLOGY_TRANSLATOR
+            )
+        ).toBe(true)
+    })
+
+    it("resolves the current page role again before translating a new paragraph", async () => {
+        document.title = "Welcome"
+        translator = new ImmersiveTranslator({
+            ...config,
+            aiRole: AiRole.FREE_TRANSLATOR,
+            enableAutoAiRole: true
+        })
+        document.title = "Machine learning"
+        await translator.translateParagraph(document.querySelector("#first")!)
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate.mock.calls.at(-1)?.[0].aiRole).toBe(
+            AiRole.AI_TRANSLATOR
+        )
+        document.title = "Cognitive psychology"
+        await translator.translateParagraph(document.querySelector("#second")!)
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate.mock.calls.at(-1)?.[0].aiRole).toBe(
+            AiRole.PSYCHOLOGY_TRANSLATOR
+        )
+    })
+
     it.each([
         "網頁",
         "繁體中文",

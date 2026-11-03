@@ -29,6 +29,7 @@ import { DomSelector } from "./DomSelector"
 import { type TranslationNode } from "./DOMTraverser"
 import type { MutationObserverManager } from "./MutationObserverManager"
 import { hideOriginalContent, restoreOriginalContent } from "./originalContent"
+import { resolvePageAiRole } from "./pageAiRole"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 import {
     buildAiSummary,
@@ -73,6 +74,7 @@ export interface ImmersiveTranslatorConfig {
     aiModelList: ExtensionConfig["aiModelList"]
     /** AI角色（必传） */
     aiRole: ExtensionConfig["aiRole"]
+    enableAutoAiRole?: boolean
     /** 是否启用思考能力（可选，默认false） */
     enableThinking?: boolean
     /** 是否启用缓存（可选，默认true） */
@@ -106,6 +108,7 @@ export class ImmersiveTranslator {
     }
 
     public async translateParagraph(target: Element): Promise<boolean> {
+        this.refreshPageAiRole()
         const session = this.translationSession
         await this.domReady
         if (session !== this.translationSession) return false
@@ -167,6 +170,7 @@ export class ImmersiveTranslator {
     public async restartParagraphTranslations(): Promise<void> {
         const targets = Array.from(this.paragraphTargets)
         this.clearAllTranslations()
+        this.refreshPageAiRole()
         const session = this.translationSession
         for (const target of targets) {
             if (session !== this.translationSession) return
@@ -234,6 +238,22 @@ export class ImmersiveTranslator {
 
     /** 当前翻译服务运行配置 */
     private translationRuntimeConfig: TranslationRuntimeConfig
+
+    /** 保留手选角色，自动匹配只更新当前会话的实际角色。 */
+    private roleSelectionConfig: Pick<
+        ExtensionConfig,
+        "aiRole" | "enableAutoAiRole"
+    >
+
+    private refreshPageAiRole(): void {
+        const aiRole = resolvePageAiRole(this.roleSelectionConfig)
+        if (aiRole === this.translationRuntimeConfig.aiRole) return
+        this.clearAllTranslations()
+        this.translationRuntimeConfig = {
+            ...this.translationRuntimeConfig,
+            aiRole
+        }
+    }
 
     /** DOM 选择器 */
     private domSelector: DomSelector
@@ -341,11 +361,15 @@ export class ImmersiveTranslator {
         this.enableContext = config.enableContext ?? false
         this.enableViewportTranslation =
             config.enableViewportTranslation ?? false
+        this.roleSelectionConfig = {
+            aiRole: config.aiRole,
+            enableAutoAiRole: config.enableAutoAiRole
+        }
         this.translationRuntimeConfig = {
             sourceLanguage: this.detectedLanguage,
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
-            aiRole: config.aiRole,
+            aiRole: resolvePageAiRole(this.roleSelectionConfig),
             enableThinking: config.enableThinking
         }
         this.minVisibleNodesThreshold = config.minVisibleNodesThreshold ?? 20
@@ -433,6 +457,7 @@ export class ImmersiveTranslator {
      * 更新配置
      */
     public async updateConfig(config: ImmersiveTranslatorConfig) {
+        const aiRole = resolvePageAiRole(config)
         const displayMode = config.translationDisplayMode ?? "bilingual"
         if (displayMode !== this.translationDisplayMode) {
             this.translationDisplayMode = displayMode
@@ -451,7 +476,7 @@ export class ImmersiveTranslator {
                 !this.isTranslationAborted &&
                 (this.targetLanguage !== config.targetLanguage ||
                     this.currentModel !== (config.currentModel ?? "default") ||
-                    previousRuntime.aiRole !== config.aiRole ||
+                    previousRuntime.aiRole !== aiRole ||
                     Boolean(previousRuntime.enableThinking) !==
                         Boolean(config.enableThinking) ||
                     JSON.stringify(
@@ -479,11 +504,15 @@ export class ImmersiveTranslator {
             config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
         this.neverTranslateLanguages = config.neverTranslateLanguages ?? []
         this.neverTranslateUrls = config.neverTranslateUrls ?? []
+        this.roleSelectionConfig = {
+            aiRole: config.aiRole,
+            enableAutoAiRole: config.enableAutoAiRole
+        }
         this.translationRuntimeConfig = {
             sourceLanguage: this.detectedLanguage,
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
-            aiRole: config.aiRole,
+            aiRole,
             enableThinking: config.enableThinking
         }
         this.enableViewportTranslation =
@@ -722,6 +751,7 @@ export class ImmersiveTranslator {
     public async startImmersiveTranslation(
         options: { manual?: boolean } = {}
     ): Promise<boolean> {
+        this.refreshPageAiRole()
         this.manualSession = options.manual ?? this.manualSession
         this.domSelector.setManualTranslation(this.manualSession)
         let session: number
@@ -775,6 +805,12 @@ export class ImmersiveTranslator {
             this.performanceMonitor?.endStage({ result: "passed" })
 
             // 第三步：提取并筛选需要翻译的文本节点
+            await this.domReady
+            if (
+                session !== this.translationSession ||
+                this.isTranslationAborted
+            )
+                return false
             this.performanceMonitor?.startStage("提取文本节点")
             this.extractTargetTextNodes()
             this.performanceMonitor?.endStage({

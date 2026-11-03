@@ -1250,8 +1250,24 @@ export const TranslateServices: React.FunctionComponent = () => {
                         </FormRow>
                     )}
                     <FormRow
+                        label="根据网页自动选择 AI 角色"
+                        description="根据当前网站和网页主题匹配专家角色，未匹配时使用下方手选角色。仅对 AI 翻译生效。"
+                    >
+                        <Switch
+                            aria-label="根据网页自动选择 AI 角色"
+                            checked={config.enableAutoAiRole ?? false}
+                            onChange={checked =>
+                                updateConfig({ enableAutoAiRole: checked })
+                            }
+                        />
+                    </FormRow>
+                    <FormRow
                         label="AI专家角色"
-                        description="选择AI翻译时的专家角色，不同角色会影响翻译风格"
+                        description={
+                            config.enableAutoAiRole
+                                ? "网页未匹配到专家角色时，使用此角色翻译"
+                                : "选择AI翻译时的专家角色，不同角色会影响翻译风格"
+                        }
                     >
                         <CustomSelect
                             value={config.aiRole || AiRole.DEFAULT}

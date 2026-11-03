@@ -243,7 +243,7 @@ export const TranslateTextPanel: React.FunctionComponent<
         config.targetLanguage,
         active
     )
-    const { mode, value, loading, error, notice } = result
+    const { mode, value, explanation, loading, error, notice } = result
     const layoutTimer = useRef<ReturnType<typeof setTimeout>>()
 
     useEffect(() => {
@@ -262,7 +262,7 @@ export const TranslateTextPanel: React.FunctionComponent<
             layoutTimer.current = undefined
             notifySelectionTranslationFinished(onFinished)
         }
-    }, [loading, value, error, notice, onFinished])
+    }, [loading, value, explanation, error, notice, onFinished])
     useLayoutEffect(
         () => () => {
             clearTimeout(layoutTimer.current)
@@ -275,14 +275,18 @@ export const TranslateTextPanel: React.FunctionComponent<
         <SCxContainer aria-busy={loading}>
             {mode === "explain" && value ? (
                 <>
-                    <SCxExplanationText>
-                        <Markdown
-                            skipHtml
-                            components={explanationMarkdownComponents}
-                        >
-                            {value}
-                        </Markdown>
-                    </SCxExplanationText>
+                    <SCxText loading={false}>译文：{value}</SCxText>
+                    {explanation && (
+                        <SCxExplanationText>
+                            <div>术语解释：</div>
+                            <Markdown
+                                skipHtml
+                                components={explanationMarkdownComponents}
+                            >
+                                {explanation}
+                            </Markdown>
+                        </SCxExplanationText>
+                    )}
                     <SCxAiNotice>
                         {loading ? "解释中..." : "AI 生成，未联网核验"}
                     </SCxAiNotice>
@@ -291,7 +295,7 @@ export const TranslateTextPanel: React.FunctionComponent<
                 <SCxTranslationContent>
                     {value && (
                         <SCxText loading={loading}>
-                            {value}
+                            译文：{value}
                             {!loading && !error && (
                                 <TranslationMark placement="corner" />
                             )}

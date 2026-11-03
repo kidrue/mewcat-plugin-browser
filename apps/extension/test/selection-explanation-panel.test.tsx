@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TranslateTextPanel } from "../src/components/TranslateTextPanel"
+import { parseSelectionAnalysis } from "../src/translation/selectionAnalysis"
 import type { ExtensionConfig } from "../src/types/config"
 
 const mocks = vi.hoisted(() => ({
@@ -46,7 +47,9 @@ async function render(
     return host()
 }
 async function renderExplanation(explanation: string, onFinished?: () => void) {
-    mocks.explainConcept.mockResolvedValueOnce(`[EXPLAIN]\n${explanation}`)
+    mocks.explainConcept.mockResolvedValueOnce(
+        `[EXPLAIN]\n[TRANSLATION]\n引力\n[TERMS]\n${explanation}`
+    )
     return { host: await render({ onFinished }) }
 }
 beforeEach(() => {
@@ -61,7 +64,9 @@ beforeEach(() => {
     mocks.translateText.mockReset().mockResolvedValue("凡尔赛条约")
     mocks.explainConcept
         .mockReset()
-        .mockResolvedValue("[EXPLAIN]\n## 简释\n\n物体之间的吸引作用。")
+        .mockResolvedValue(
+            "[EXPLAIN]\n[TRANSLATION]\n引力\n[TERMS]\n## 简释\n\n物体之间的吸引作用。"
+        )
 })
 afterEach(async () => {
     if (root) await act(async () => root!.unmount())
@@ -98,7 +103,8 @@ describe("automatic selection explanation", () => {
             expect.objectContaining({
                 mode: "explain",
                 loading: false,
-                value: "## 简释\n\n物体之间的吸引作用。"
+                value: "引力",
+                explanation: "## 简释\n\n物体之间的吸引作用。"
             })
         )
     })
@@ -117,6 +123,7 @@ describe("automatic selection explanation", () => {
             "zh-CN"
         )
         expect(host().textContent).toContain("凡尔赛条约")
+        expect(host().textContent).not.toContain("术语解释：")
         expect(
             host().querySelectorAll(".mewcat-translation-mark")
         ).toHaveLength(1)
@@ -179,6 +186,8 @@ describe("automatic selection explanation", () => {
         for (const chunk of [
             "[EX",
             "PLAIN]",
+            "\n[TRANSLATION]\n引力\n[TE",
+            "RMS]",
             "\n## 简释",
             "\n\n",
             "引",
@@ -192,10 +201,40 @@ describe("automatic selection explanation", () => {
         await act(async () => vi.advanceTimersByTimeAsync(32))
         expect(onFinished).toHaveBeenCalledTimes(1)
         await act(async () => {
-            pending.resolve("[EXPLAIN]\n## 简释\n\n引力")
+            pending.resolve(
+                "[EXPLAIN]\n[TRANSLATION]\n引力\n[TERMS]\n## 简释\n\n引力"
+            )
             await pending.promise
         })
         expect(onFinished).toHaveBeenCalledTimes(2)
+    })
+    it("streams the full translation before the explanations arrive", async () => {
+        const pending = deferred<string>()
+        let delta!: (text: string) => void
+        mocks.explainConcept.mockImplementationOnce((_c, _i, _l, options) => {
+            delta = options.onDelta
+            return pending.promise
+        })
+        await render()
+        await act(async () =>
+            delta("[EXPLAIN]\n[TRANSLATION]\n模型使用注意力机制。\n[TE")
+        )
+        expect(host().textContent).toContain("译文：模型使用注意力机制。")
+        expect(host().textContent).not.toContain("[TE")
+        expect(host().textContent).not.toContain("术语解释：")
+        await act(async () => {
+            delta("RMS]\n**attention**：分配权重的机制。")
+            pending.resolve(
+                "[EXPLAIN]\n[TRANSLATION]\n模型使用注意力机制。\n[TERMS]\n**attention**：分配权重的机制。"
+            )
+        })
+        expect(host().textContent).toContain(
+            "术语解释：attention：分配权重的机制。"
+        )
+        expect(
+            host().querySelector("[aria-busy]")?.getAttribute("aria-busy")
+        ).toBe("false")
+        expect(mocks.translateText).not.toHaveBeenCalled()
     })
     it.each(["text", "context", "model", "language"])(
         "cancels stale analysis when %s changes",
@@ -374,8 +413,79 @@ describe("automatic selection explanation", () => {
             "背景：![历史示意图](https://example.com/tracker.png)"
         )
 
-        expect(host.querySelector("p")?.textContent).toBe("背景：历史示意图")
+        expect(host.textContent).toContain("背景：历史示意图")
         expect(host.querySelector("img")).toBeNull()
         expect(host.innerHTML).not.toContain("https://example.com/tracker.png")
+    })
+})
+
+describe("selection translation and terms", () => {
+    const response =
+        "[EXPLAIN]\n[TRANSLATION]\n模型使用注意力机制和嵌入。\n[TERMS]\n- **attention**：分配权重的机制。\n- **embedding**：数据的向量表示。"
+    it("shows a complete translation followed by separate concept explanations in one request", async () => {
+        mocks.explainConcept.mockResolvedValueOnce(response)
+        await render({ data: "The model uses attention and embeddings." })
+        expect(host().textContent).toContain("译文：模型使用注意力机制和嵌入。")
+        expect(host().textContent).toContain("术语解释：")
+        expect(host().textContent).toContain("attention：分配权重的机制。")
+        expect(host().textContent).toContain("embedding：数据的向量表示。")
+        expect(mocks.translateText).not.toHaveBeenCalled()
+        expect(mocks.explainConcept).toHaveBeenCalledTimes(1)
+    })
+    it("buffers every split of section markers without leaking them into fields", () => {
+        for (let end = 0; end < response.length; end++) {
+            const parsed = parseSelectionAnalysis(response.slice(0, end))
+            if (parsed.mode === "explain") {
+                expect(parsed.value).not.toMatch(/\[/)
+                expect(parsed.explanation).not.toMatch(/\[|\]/)
+            }
+        }
+        expect(parseSelectionAnalysis(response, true)).toEqual({
+            mode: "explain",
+            value: "模型使用注意力机制和嵌入。",
+            explanation:
+                "- **attention**：分配权重的机制。\n- **embedding**：数据的向量表示。"
+        })
+    })
+    it("preserves long multiline translations and accepts CRLF section boundaries", () => {
+        expect(
+            parseSelectionAnalysis(
+                "[EXPLAIN]\r\n[TRANSLATION]\r\n第一句完整译文。\r\n第二句保留段落。\r\n[TERMS]\r\n**term**：概念解释。",
+                true
+            )
+        ).toEqual({
+            mode: "explain",
+            value: "第一句完整译文。\n第二句保留段落。",
+            explanation: "**term**：概念解释。"
+        })
+    })
+    it.each([
+        "[EXPLAIN]\n解释但缺少译文",
+        "[EXPLAIN]\n[TRANSLATION]\n\n[TERMS]\n术语解释",
+        "[EXPLAIN]\n[TRANSLATION]\n完整译文\n[TERMS]\n",
+        "[EXPLAIN]\n[TRANSLATION]\n[TRANSLATION]\n[TERMS]\n概念解释",
+        "[EXPLAIN]\n[TRANSLATION]\n完整译文\n[TERMS]\n[TERMS]",
+        "[EXPLAIN]\n[TERMS]\n概念解释\n[TRANSLATION]\n完整译文"
+    ])(
+        "falls back to full translation for missing or malformed sections: %s",
+        async response => {
+            mocks.explainConcept.mockResolvedValueOnce(response)
+            await render()
+            expect(host().textContent).toContain("凡尔赛条约")
+            expect(host().textContent).not.toContain("[TERMS]")
+            expect(mocks.translateText).toHaveBeenCalledTimes(1)
+        }
+    )
+    it("never publishes repeated control markers or their streamed prefixes", () => {
+        const malformed =
+            "[EXPLAIN]\n[TRANSLATION]\n完整译文\n[TERMS]\n概念解释\n[TRANSLATION]"
+        for (let end = 0; end <= malformed.length; end++) {
+            const parsed = parseSelectionAnalysis(malformed.slice(0, end))
+            if (parsed.mode === "explain") {
+                expect(parsed.value).not.toContain("[")
+                expect(parsed.explanation).not.toContain("[")
+            }
+        }
+        expect(() => parseSelectionAnalysis(malformed, true)).toThrow()
     })
 })

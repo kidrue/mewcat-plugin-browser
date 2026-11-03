@@ -4,6 +4,8 @@ import styled from "styled-components"
 import Icon from "../Icon"
 
 const Container = styled.div`
+    width: 100%;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -15,10 +17,16 @@ const InputWrapper = styled.div`
     align-items: center;
 `
 
-const Input = styled.input<{ $isValid?: boolean }>`
+const Input = styled.input<{ $isValid?: boolean; $actionCount: number }>`
     width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     padding: 0 var(--space-4);
-    padding-right: 80px;
+    padding-right: ${props => {
+        if (props.$actionCount > 1) return "80px"
+        if (props.$actionCount === 1) return "44px"
+        return "var(--space-4)"
+    }};
     height: 36px;
     border: 1px solid
         ${props => {
@@ -247,6 +255,10 @@ const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
                     placeholder={placeholder}
                     disabled={disabled}
                     $isValid={isValid}
+                    $actionCount={
+                        Number(!!onTest && hasValue) +
+                        Number(!!disabledVisitable && hasValue)
+                    }
                 />
                 <ButtonWrapper>
                     {onTest && hasValue && (
