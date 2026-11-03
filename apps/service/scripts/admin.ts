@@ -4,14 +4,19 @@ import { dirname, resolve } from "node:path"
 import { createIdentity, publicKeys } from "@mewcat/protocol"
 import { calculateJwkThumbprint } from "jose"
 
+import { AnalyticsStore } from "../src/analytics/store.js"
+import { loadConfig } from "../src/config.js"
 import { ensureDatabaseDirectory } from "../src/database-path.js"
 import { serializeKeys } from "../src/keys.js"
 import { createStore } from "../src/store.js"
+import { runAnalyticsCli } from "./analytics.js"
 
 async function main() {
     const [command, argument] = process.argv.slice(2)
     if (!command || command === "help") {
-        console.log("命令：keys | clients | revoke <clientId> | cleanup")
+        console.log(
+            "命令：keys | clients | revoke <clientId> | cleanup | analytics help"
+        )
         return
     }
     if (command === "keys") {
@@ -40,13 +45,19 @@ async function main() {
         )
         return
     }
-    if (!["clients", "revoke", "cleanup"].includes(command))
+    if (!["clients", "revoke", "cleanup", "analytics"].includes(command))
         throw new Error("未知命令，请运行 npm run admin -- help")
     const databaseUrl = process.env.DATABASE_URL ?? "file:./data/mewcat.db"
     await ensureDatabaseDirectory(databaseUrl)
     const store = createStore(databaseUrl)
     try {
         switch (command) {
+            case "analytics":
+                await runAnalyticsCli(
+                    process.argv.slice(3),
+                    new AnalyticsStore(store, loadConfig())
+                )
+                break
             case "clients":
                 console.table(
                     await store.db.client.findMany({
@@ -67,7 +78,18 @@ async function main() {
                 console.log("客户端已撤销")
                 break
             case "cleanup":
-                console.log(await store.cleanup())
+                {
+                    const config = loadConfig()
+                    console.log(
+                        await new AnalyticsStore(store, config).cleanup()
+                    )
+                    console.log(
+                        await store.cleanup(
+                            Date.now(),
+                            config.ANALYTICS_CALL_RETENTION_DAYS
+                        )
+                    )
+                }
                 break
         }
     } finally {

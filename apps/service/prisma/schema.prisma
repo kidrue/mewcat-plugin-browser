@@ -1,7 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output = "../src/generated/prisma"
-  moduleFormat = "esm"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
   importFileExtension = "js"
 }
 
@@ -10,12 +10,12 @@ datasource db {
 }
 
 model Client {
-  id            String   @id @default(uuid())
+  id            String               @id @default(uuid())
   name          String
   signingKey    String
   encryptionKey String
-  keyThumbprint String   @unique
-  createdAt     DateTime @default(now())
+  keyThumbprint String               @unique
+  createdAt     DateTime             @default(now())
   revokedAt     DateTime?
   nonces        Nonce[]
   requests      TranslationRequest[]
@@ -40,15 +40,137 @@ model UsageBucket {
 }
 
 model TranslationRequest {
-  id               String   @id @default(uuid())
-  clientId         String
-  createdAt        DateTime @default(now())
-  inputCharacters  Int
-  status           String   @default("pending")
-  promptTokens     Int?
-  completionTokens Int?
-  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id                 String              @id @default(uuid())
+  clientId           String
+  createdAt          DateTime            @default(now())
+  inputCharacters    Int
+  status             String              @default("pending")
+  promptTokens       Int?
+  completionTokens   Int?
+  sourceLanguage     String?
+  targetLanguage     String?
+  segmentCount       Int?
+  model              String?
+  completedAt        DateTime?
+  upstreamDurationMs Float?
+  errorCode          String?
+  content            TranslationContent?
+  client             Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([clientId, createdAt])
+}
+
+model ApiCall {
+  id                   String   @id
+  requestId            String
+  route                String
+  method               String
+  clientId             String?
+  createdAt            DateTime
+  completedAt          DateTime
+  statusCode           Int
+  errorCode            String?
+  durationMs           Float
+  translationRequestId String?
+
+  @@index([createdAt, id])
+  @@index([clientId, createdAt, id])
+}
+
+model TranslationContent {
+  requestId  String             @id
+  original   String
+  translated String?
+  digest     String
+  expiresAt  DateTime
+  request    TranslationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+model AnalyticsIdentity {
+  clientId String @id
+  epoch    Int    @default(0)
+}
+
+model AnalysisJob {
+  id             String    @id @default(uuid())
+  requestId      String
+  clientId       String
+  epoch          Int
+  version        String
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  nextAttemptAt  DateTime  @default(now())
+  leaseToken     String?
+  leaseExpiresAt DateTime?
+  errorCode      String?
+  createdAt      DateTime  @default(now())
+
+  @@unique([requestId, version])
+  @@index([status, nextAttemptAt, leaseExpiresAt])
+  @@index([clientId])
+}
+
+model ContentAnalysis {
+  id                 String   @id @default(uuid())
+  requestId          String
+  requestCreatedAt   DateTime
+  clientId           String
+  version            String
+  topics             String
+  keywords           String
+  model              String
+  sampledCharacters  Int
+  originalCharacters Int
+  truncated          Boolean
+  promptTokens       Int?
+  completionTokens   Int?
+  createdAt          DateTime @default(now())
+
+  @@unique([requestId, version])
+  @@index([clientId, createdAt])
+  @@index([createdAt])
+}
+
+model AnalyticsDaily {
+  clientId         String
+  day              String
+  dimension        String
+  value            String
+  requests         BigInt @default(0)
+  successes        BigInt @default(0)
+  failures         BigInt @default(0)
+  rejected         BigInt @default(0)
+  executions       BigInt @default(0)
+  characters       BigInt @default(0)
+  promptTokens     BigInt @default(0)
+  completionTokens BigInt @default(0)
+  durationMs       Float  @default(0)
+
+  @@id([clientId, day, dimension, value])
+  @@index([day, dimension])
+}
+
+model TopicDaily {
+  clientId String
+  day      String
+  version  String
+  topic    String
+  samples  BigInt @default(0)
+  score    Float  @default(0)
+
+  @@id([clientId, day, version, topic])
+  @@index([day])
+}
+
+model TopicSample {
+  clientId String
+  day      String
+  version  String
+  digest   String
+
+  @@id([clientId, day, version, digest])
+  @@index([day])
 }

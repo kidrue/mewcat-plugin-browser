@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import cors from "@fastify/cors"
 import helmet from "@fastify/helmet"
 import rateLimit from "@fastify/rate-limit"
@@ -16,6 +17,7 @@ import Fastify, { LogController, type FastifyRequest } from "fastify"
 import { importJWK } from "jose"
 import { z, ZodError } from "zod"
 
+import { AnalyticsStore, type CallInput } from "./analytics/store.js"
 import type { Config } from "./config.js"
 import { ApiError, publicError } from "./errors.js"
 import { createFeedbackMailer, type FeedbackMailer } from "./feedback-mailer.js"
@@ -77,14 +79,35 @@ export async function buildApp({
         },
         fetcher
     )
+    const analytics = new AnalyticsStore(store, config)
+    const contexts = new WeakMap<FastifyRequest, CallInput>()
+    const knownRoutes = new Set([
+        "/health",
+        "/v1/keys",
+        "/v1/clients/register",
+        "/v1/usage",
+        "/v1/feedback",
+        "/v1/translate"
+    ])
     const mailer = feedbackMailer ?? createFeedbackMailer(config)
     app.addHook("onClose", async () => {
         mailer.close()
+        await store.atomic(async () => {})
     })
     let inFlight = 0
     let cryptoInFlight = 0
 
     app.addHook("onRequest", async (request, reply) => {
+        contexts.set(request, {
+            id: randomUUID(),
+            requestId: request.id,
+            route: "",
+            method: request.method,
+            createdAt: new Date(),
+            completedAt: new Date(),
+            statusCode: 0,
+            durationMs: 0
+        })
         reply.header("Cache-Control", "no-store")
         const origin = request.headers.origin
         if (origin && !origins.includes(origin))
@@ -106,6 +129,26 @@ export async function buildApp({
             new ApiError(429, "RATE_LIMITED", "请求过于频繁，请稍后重试")
     })
     app.addHook("onResponse", async (request, reply) => {
+        const context = contexts.get(request)
+        const route = request.routeOptions.url
+        if (context && route && knownRoutes.has(route)) {
+            context.route = route
+            context.completedAt = new Date()
+            context.statusCode = reply.statusCode
+            context.durationMs = Math.max(0, reply.elapsedTime)
+            try {
+                await analytics.recordCall(context)
+            } catch {
+                analytics.persistenceFailures++
+                request.log.error(
+                    {
+                        code: "ANALYTICS_PERSIST_FAILED",
+                        count: analytics.persistenceFailures
+                    },
+                    "analytics persistence failed"
+                )
+            }
+        }
         request.log.info(
             {
                 requestId: request.id,
@@ -128,6 +171,8 @@ export async function buildApp({
                         statusCode === 413 ? "请求体过大" : "请求被拒绝"
                     )
                   : publicError(error)
+        const context = contexts.get(request)
+        if (context) context.errorCode = safe.code
         if (safe.status >= 500)
             request.log.error(
                 { requestId: request.id, code: safe.code },
@@ -145,7 +190,10 @@ export async function buildApp({
     app.get("/health", async (_request, reply) => {
         try {
             await store.db.$queryRaw`SELECT 1`
-            return { status: "ok" }
+            return {
+                status: "ok",
+                analyticsPersistenceFailures: analytics.persistenceFailures
+            }
         } catch {
             return reply.code(503).send({ status: "unavailable" })
         }
@@ -241,6 +289,11 @@ export async function buildApp({
     function secureRoute(path: string, status: number, action: Action) {
         app.post(path, async (request, reply) => {
             const auth = await authenticate(request, path)
+            const context = contexts.get(request)!
+            if (auth.clientId !== "registration") {
+                context.clientId = auth.clientId
+                context.epoch = await analytics.epoch(auth.clientId)
+            }
             let body: unknown
             let responseStatus = status
             try {
@@ -259,6 +312,7 @@ export async function buildApp({
                         ? new ApiError(400, "INVALID_REQUEST", "请求参数不正确")
                         : publicError(error)
                 responseStatus = safe.status
+                context.errorCode = safe.code
                 body = {
                     ok: false,
                     error: { code: safe.code, message: safe.message }
@@ -302,6 +356,9 @@ export async function buildApp({
                 }
             ]
         )
+        const context = contexts.get(request)!
+        context.clientId = client.id
+        context.epoch = await analytics.epoch(client.id)
         return { clientId: client.id }
     })
     secureRoute("/v1/usage", 200, async auth => {
@@ -351,22 +408,64 @@ export async function buildApp({
                     auth.clientId,
                     hashIp(request.ip, keys.ipHashSecret),
                     characters
-                )
+                ),
+                {
+                    sourceLanguage: data.sourceLanguage,
+                    targetLanguage: data.targetLanguage,
+                    segmentCount: data.texts.length,
+                    model: config.SILICONFLOW_MODEL
+                },
+                (tx, id) =>
+                    analytics.capture(
+                        tx,
+                        id,
+                        auth.clientId,
+                        contexts.get(request)!.epoch!,
+                        data.texts
+                    )
             )
+            contexts.get(request)!.translationRequestId = record.id
+            const started = performance.now()
+            let result
             try {
-                const result = await provider.translate(data)
-                await store.finishTranslation(
-                    record.id,
-                    "success",
-                    result.promptTokens,
-                    result.completionTokens
-                )
-                return { translations: result.translations }
+                result = await provider.translate(data)
             } catch (error) {
                 // 失败也保留预占额度；供应商可能已经计费，自动重试会扩大费用。
-                await store.finishTranslation(record.id, "failed")
+                await store.finishTranslation(
+                    record.id,
+                    "failed",
+                    null,
+                    null,
+                    {
+                        errorCode: publicError(error).code,
+                        upstreamDurationMs: performance.now() - started
+                    },
+                    tx =>
+                        analytics.complete(
+                            tx,
+                            record.id,
+                            auth.clientId,
+                            contexts.get(request)!.epoch!
+                        )
+                )
                 throw error
             }
+            await store.finishTranslation(
+                record.id,
+                "success",
+                result.promptTokens,
+                result.completionTokens,
+                { upstreamDurationMs: performance.now() - started },
+                tx =>
+                    analytics.complete(
+                        tx,
+                        record.id,
+                        auth.clientId,
+                        contexts.get(request)!.epoch!,
+                        result.translations
+                    )
+            )
+            return { translations: result.translations }
         } finally {
             inFlight--
         }

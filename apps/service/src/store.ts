@@ -64,7 +64,7 @@ export class Store {
             adapter: new PrismaBetterSqlite3({ url })
         })
     }
-    private atomic<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
+    atomic<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
         const result = this.writes.then(() =>
             this.db.$transaction(work, { maxWait: 10_000, timeout: 10_000 })
         )
@@ -164,27 +164,52 @@ export class Store {
     async reserveTranslation(
         clientId: string,
         characters: number,
-        buckets: Bucket[]
+        buckets: Bucket[],
+        details: {
+            sourceLanguage?: string
+            targetLanguage?: string
+            segmentCount?: number
+            model?: string
+        } = {},
+        persist?: (tx: Tx, id: string) => Promise<void>
     ) {
         return this.atomic(async tx => {
             await activeClient(tx, clientId)
             await consume(tx, buckets)
-            return tx.translationRequest.create({
-                data: { clientId, inputCharacters: characters }
+            const record = await tx.translationRequest.create({
+                data: {
+                    clientId,
+                    inputCharacters: characters,
+                    sourceLanguage: details.sourceLanguage ?? null,
+                    targetLanguage: details.targetLanguage ?? null,
+                    segmentCount: details.segmentCount ?? null,
+                    model: details.model ?? null
+                }
             })
+            await persist?.(tx, record.id)
+            return record
         })
     }
     async finishTranslation(
         id: string,
         status: "success" | "failed",
         promptTokens: number | null = null,
-        completionTokens: number | null = null
+        completionTokens: number | null = null,
+        details: { errorCode?: string; upstreamDurationMs?: number } = {},
+        persist?: (tx: Tx) => Promise<void>
     ): Promise<void> {
         await this.atomic(async tx => {
-            await tx.translationRequest.update({
-                where: { id },
-                data: { status, promptTokens, completionTokens }
+            const updated = await tx.translationRequest.updateMany({
+                where: { id, status: "pending" },
+                data: {
+                    status,
+                    promptTokens,
+                    completionTokens,
+                    completedAt: new Date(),
+                    ...details
+                }
             })
+            if (updated.count) await persist?.(tx)
         })
     }
     async used(key: string): Promise<number> {

@@ -1,6 +1,7 @@
 import { z } from "zod"
 
 import repositoryOrigins from "../config/allowed-origins.json" with { type: "json" }
+import { createContentCipher } from "./analytics/content.js"
 
 export const defaultAllowedOrigins = z
     .array(z.string().regex(/^chrome-extension:\/\/[a-p]{32}$/))
@@ -10,7 +11,22 @@ export const defaultAllowedOrigins = z
 
 const positive = (fallback: number, max = 2_000_000_000) =>
     z.coerce.number().int().positive().max(max).default(fallback)
+const flag = z
+    .enum(["true", "false"])
+    .default("false")
+    .transform(value => value === "true")
 const schema = z.object({
+    ANALYTICS_CAPTURE_CONTENT: flag,
+    ANALYTICS_AUTO_ANALYZE: flag,
+    ANALYTICS_CONTENT_KEY: z.string().default(""),
+    ANALYTICS_CONTENT_RETENTION_DAYS: positive(30, 3650),
+    ANALYTICS_CALL_RETENTION_DAYS: positive(90, 3650),
+    ANALYTICS_AGGREGATE_RETENTION_DAYS: positive(365, 3650),
+    ANALYTICS_DAILY_ATTEMPTS: positive(100),
+    ANALYTICS_DAILY_CHARACTERS: positive(50_000),
+    ANALYTICS_SAMPLE_CHARACTERS: positive(4000, 5000),
+    ANALYTICS_POLL_MS: positive(5000, 60_000),
+    ANALYTICS_TIMEOUT_MS: positive(30_000, 120_000),
     NODE_ENV: z
         .enum(["development", "production", "test"])
         .default("development"),
@@ -74,5 +90,24 @@ export function loadConfig(
         throw new Error(
             "TRUST_PROXY 必须为明确的代理 IP/CIDR 列表，不能信任任意代理"
         )
+    if (result.data.ANALYTICS_CAPTURE_CONTENT)
+        createContentCipher(result.data.ANALYTICS_CONTENT_KEY)
+    if (
+        result.data.ANALYTICS_AUTO_ANALYZE &&
+        !result.data.ANALYTICS_CAPTURE_CONTENT
+    )
+        throw new Error("配置错误：自动分析需要开启内容采集")
+    if (
+        result.data.ANALYTICS_SAMPLE_CHARACTERS >
+        result.data.ANALYTICS_DAILY_CHARACTERS
+    )
+        throw new Error("配置错误：分析采样上限不能超过每日字符预算")
+    if (
+        result.data.ANALYTICS_CONTENT_RETENTION_DAYS >
+            result.data.ANALYTICS_CALL_RETENTION_DAYS ||
+        result.data.ANALYTICS_CALL_RETENTION_DAYS >
+            result.data.ANALYTICS_AGGREGATE_RETENTION_DAYS
+    )
+        throw new Error("配置错误：保留期必须满足内容 <= 调用明细 <= 日汇总")
     return result.data
 }

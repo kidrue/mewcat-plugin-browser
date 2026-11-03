@@ -1,3 +1,5 @@
+import { AnalyticsStore } from "./analytics/store.js"
+import { startAnalysisWorker } from "./analytics/worker.js"
 import { buildApp } from "./app.js"
 import { loadConfig } from "./config.js"
 import { ensureDatabaseDirectory } from "./database-path.js"
@@ -13,23 +15,35 @@ async function main() {
     try {
         // 访问实际表，缺少迁移时不启动一个只能报错的服务。
         await store.db.client.count()
-        await store.cleanup()
+        await store.db.apiCall.count()
+        await store.db.analysisJob.count()
+        const analytics = new AnalyticsStore(store, config)
+        const cleanupData = async () => {
+            await analytics.cleanup()
+            await store.cleanup(
+                Date.now(),
+                config.ANALYTICS_CALL_RETENTION_DAYS
+            )
+        }
+        await cleanupData()
+        const stopWorker = startAnalysisWorker(analytics, () =>
+            app.log.error(
+                { code: "ANALYSIS_WORKER_FAILED" },
+                "analysis worker failed"
+            )
+        )
         const cleanup = setInterval(
             () => {
-                void store
-                    .cleanup()
-                    .catch(() =>
-                        app.log.error(
-                            { code: "CLEANUP_FAILED" },
-                            "cleanup failed"
-                        )
-                    )
+                void cleanupData().catch(() =>
+                    app.log.error({ code: "CLEANUP_FAILED" }, "cleanup failed")
+                )
             },
             60 * 60 * 1000
         )
         cleanup.unref()
         app.addHook("onClose", async () => {
             clearInterval(cleanup)
+            await stopWorker()
             await store.db.$disconnect()
         })
         let closing = false
