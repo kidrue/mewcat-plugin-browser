@@ -3,6 +3,10 @@ import { onMessage } from "@/messaging"
 import { registerExtensionNavigation } from "./lib/extension-navigation"
 import { registerFrameTranslation } from "./lib/frame-translation"
 import { monitorBackgroundHandler } from "./lib/monitor-background-handler"
+import {
+    handleAnalyticsIdentity,
+    handleAnalyticsQuery
+} from "./messages/analytics"
 import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
 import { handleModelGatewayRequest } from "./messages/model-gateway"
@@ -46,6 +50,16 @@ async function handleToggleImmersiveTranslate(tabId: number) {
 }
 
 export function registerExtensionMessages(register = onMessage) {
+    // 管理查询和画像数据不进入通用错误上报链路。
+    register("analytics-query", message =>
+        handleAnalyticsQuery(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
+        )
+    )
+    register("analytics-identity", message =>
+        handleAnalyticsIdentity(message.sender as chrome.runtime.MessageSender)
+    )
     // 反馈正文和联系邮箱不进入通用错误上报链路。
     register("submit-feedback", message =>
         handleSubmitFeedback(

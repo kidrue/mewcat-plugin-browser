@@ -25,6 +25,8 @@ import OptionsContentHeader from "../components/OptionsContentHeader"
 import OptionsSidebar from "../components/OptionsSidebar"
 import { hideScrollBar } from "../styles/scroll"
 import { About } from "./About"
+import { Analytics } from "./Analytics"
+import { resolveOptionsTab } from "./analytics/navigation"
 import { Basic } from "./Basic"
 import { Image } from "./Image"
 import { Selection } from "./Selection"
@@ -229,10 +231,7 @@ const HeroAction = styled.button`
 
 const IndexOptions: React.FunctionComponent = () => {
     const mainContentRef = useRef<HTMLElement>(null)
-    const tabFromHash = () =>
-        NAVIGATION_ITEMS.some(item => item.id === location.hash.slice(1))
-            ? location.hash.slice(1)
-            : "basic"
+    const tabFromHash = () => resolveOptionsTab(location.hash)
     const [activeTab, setActiveTab] = useState(tabFromHash)
     const config = useAtomValue(configAtom)
     const updateConfig = useSetAtom(updateConfigAtom)
@@ -244,6 +243,8 @@ const IndexOptions: React.FunctionComponent = () => {
 
     const renderContent = () => {
         switch (activeTab) {
+            case "analytics":
+                return <Analytics />
             case "basic":
                 return <Basic />
             case "translation":
@@ -288,7 +289,7 @@ const IndexOptions: React.FunctionComponent = () => {
                     title="译趣喵"
                     subtitle="高级设置"
                     navigationItems={NAVIGATION_ITEMS}
-                    activeTab={activeTab}
+                    activeTab={activeTab === "analytics" ? "about" : activeTab}
                     onTabChange={id => {
                         startTransition(() => {
                             setActiveTab(id)

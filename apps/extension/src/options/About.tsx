@@ -13,6 +13,8 @@ import { SkyReadingPortrait } from "@/components/SkyArtwork"
 import { EXTENSION_INFO } from "@/constants"
 import { configAtom, updateConfigAtom } from "@/state"
 
+import { AuthorAnalyticsEntry } from "./analytics/navigation"
+
 const Page = styled.div`
     display: grid;
     gap: var(--space-6);
@@ -163,11 +165,12 @@ export const About: React.FunctionComponent = () => {
                             value={EXTENSION_INFO.version}
                             type="version"
                         />
-                        <InfoDisplay
-                            label="作者"
-                            value={EXTENSION_INFO.author}
-                            type="strong"
-                        />
+                        <div>
+                            <p style={{ margin: "0 0 var(--space-2)" }}>作者</p>
+                            <AuthorAnalyticsEntry
+                                author={EXTENSION_INFO.author}
+                            />
+                        </div>
                     </Details>
                     <InfoActions>
                         <FeedbackButton />

@@ -1,5 +1,6 @@
 import * as bundledSdk from "@mewcat/client"
 import type {
+    AnalyticsInput,
     MewCatClientState,
     MewCatRequestOptions,
     MewCatTranslationClient
@@ -165,6 +166,18 @@ export const createMewCatService = (
     }
 
     return {
+        async analyticsIdentity() {
+            const client = await getClient(AbortSignal.timeout(30_000))
+            const clientId = client.getState().clientId
+            if (!clientId) throw new Error("Missing device identity")
+            return { clientId, serviceOrigin: MEWCAT_SERVICE_ORIGIN }
+        },
+        async queryAnalytics(input: AnalyticsInput) {
+            const signal = AbortSignal.timeout(30_000)
+            const client = await getClient(signal)
+            if (!client.queryAnalytics) throw { code: "ANALYTICS_UNAVAILABLE" }
+            return client.queryAnalytics(input, { signal, timeoutMs: 30_000 })
+        },
         async translate(input: MewCatTranslateInput): Promise<string[]> {
             const controller = new AbortController()
             activeControllers.add(controller)
