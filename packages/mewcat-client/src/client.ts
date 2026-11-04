@@ -1,4 +1,6 @@
 import {
+    analyticsQuerySchema,
+    analyticsResultSchema,
     createIdentity,
     feedbackResultSchema,
     feedbackSchema,
@@ -10,6 +12,7 @@ import {
     translationResultSchema,
     translationSchema,
     usageSchema,
+    type AnalyticsInput,
     type FeedbackInput,
     type Identity,
     type ServerPublicKeys
@@ -225,6 +228,16 @@ export class TranslationClient {
     async usage(options: RequestOptions = {}) {
         return usageSchema.parse(
             await this.request("/v1/usage", {}, false, options)
+        )
+    }
+    async queryAnalytics(input: AnalyticsInput, options: RequestOptions = {}) {
+        return analyticsResultSchema.parse(
+            await this.request(
+                "/v1/analytics/query",
+                analyticsQuerySchema.parse(input),
+                false,
+                options
+            )
         )
     }
     async submitFeedback(input: FeedbackInput, options: RequestOptions = {}) {
