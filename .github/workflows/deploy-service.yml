@@ -118,6 +118,11 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           SMTP_FROM: ${{ secrets.SMTP_FROM }}
           FEEDBACK_TO: ${{ secrets.FEEDBACK_TO }}
+          CLIENT_DAILY_CHARACTERS: ${{ vars.CLIENT_DAILY_CHARACTERS || '500000' }}
+          IP_DAILY_CHARACTERS: ${{ vars.IP_DAILY_CHARACTERS || '500000' }}
+          GLOBAL_DAILY_CHARACTERS: ${{ vars.GLOBAL_DAILY_CHARACTERS || '0' }}
+          GLOBAL_DAILY_REQUESTS: ${{ vars.GLOBAL_DAILY_REQUESTS || '0' }}
+          TRUST_PROXY: ${{ vars.TRUST_PROXY || '' }}
         run: |
           test -n "$SILICONFLOW_API_KEY"
           [[ "$SILICONFLOW_API_KEY" != *$'\n'* && "$SILICONFLOW_API_KEY" != *$'\r'* ]]
@@ -156,6 +161,10 @@ jobs:
             printf 'SILICONFLOW_BASE_URL=%s\n' "$SILICONFLOW_BASE_URL"
             printf 'SILICONFLOW_MODEL=%s\n' "$SILICONFLOW_MODEL"
             printf 'ALLOWED_ORIGINS=%s\n' "$ALLOWED_ORIGINS"
+            for key in CLIENT_DAILY_CHARACTERS IP_DAILY_CHARACTERS GLOBAL_DAILY_CHARACTERS GLOBAL_DAILY_REQUESTS; do
+              printf '%s=%s\n' "$key" "${!key}"
+            done
+            if [[ -n "$TRUST_PROXY" ]]; then printf 'TRUST_PROXY=%s\n' "$TRUST_PROXY"; fi
             if [[ -n "$SMTP_HOST" ]]; then
               for key in SMTP_HOST SMTP_PORT SMTP_SECURE SMTP_USER SMTP_PASS SMTP_FROM FEEDBACK_TO; do
                 printf '%s=%s\n' "$key" "${!key}"

@@ -9,8 +9,20 @@ export interface Bucket {
     amount: number
     limit: number
     expiresAt: Date
+    errorCode?: "QUOTA_EXCEEDED" | "RATE_LIMITED"
 }
 type Tx = Prisma.TransactionClient
+
+function bucketError(bucket: Bucket): ApiError {
+    const code = bucket.errorCode ?? "QUOTA_EXCEEDED"
+    return new ApiError(
+        429,
+        code,
+        code === "RATE_LIMITED"
+            ? "请求过于频繁，请稍后重试"
+            : "已达到当前时段的使用限额"
+    )
+}
 
 async function consume(tx: Tx, buckets: Bucket[]) {
     for (const bucket of buckets) {
@@ -20,11 +32,7 @@ async function consume(tx: Tx, buckets: Bucket[]) {
             !Number.isSafeInteger(bucket.limit) ||
             bucket.limit < bucket.amount
         ) {
-            throw new ApiError(
-                429,
-                "QUOTA_EXCEEDED",
-                "已达到当前时段的使用限额"
-            )
+            throw bucketError(bucket)
         }
         await tx.usageBucket.upsert({
             where: { key: bucket.key },
@@ -38,12 +46,7 @@ async function consume(tx: Tx, buckets: Bucket[]) {
             },
             data: { used: { increment: bucket.amount } }
         })
-        if (result.count !== 1)
-            throw new ApiError(
-                429,
-                "QUOTA_EXCEEDED",
-                "已达到当前时段的使用限额"
-            )
+        if (result.count !== 1) throw bucketError(bucket)
     }
 }
 

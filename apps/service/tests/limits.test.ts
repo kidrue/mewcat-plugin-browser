@@ -21,7 +21,9 @@ describe("额度来源边界", () => {
     it("UTC 日边界刷新每日额度，不能改客户端 ID 绕过全站额度", () => {
         const config = loadConfig({
             SILICONFLOW_API_KEY: "test",
-            SILICONFLOW_MODEL: "test"
+            SILICONFLOW_MODEL: "test",
+            GLOBAL_DAILY_CHARACTERS: "1000000",
+            GLOBAL_DAILY_REQUESTS: "10000"
         })
         const before = translationBuckets(
             config,

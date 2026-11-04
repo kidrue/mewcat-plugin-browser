@@ -11,6 +11,12 @@ export const defaultAllowedOrigins = z
 
 const positive = (fallback: number, max = 2_000_000_000) =>
     z.coerce.number().int().positive().max(max).default(fallback)
+const optionalGlobalLimit = z.coerce
+    .number()
+    .int()
+    .nonnegative()
+    .max(2_000_000_000)
+    .default(0)
 const flag = z
     .enum(["true", "false"])
     .default("false")
@@ -49,10 +55,10 @@ const schema = z.object({
     CLOCK_SKEW_MS: positive(300_000, 300_000),
     CLIENT_REQUESTS_PER_MINUTE: positive(20),
     IP_REQUESTS_PER_MINUTE: positive(60),
-    CLIENT_DAILY_CHARACTERS: positive(20_000),
-    IP_DAILY_CHARACTERS: positive(100_000),
-    GLOBAL_DAILY_CHARACTERS: positive(1_000_000),
-    GLOBAL_DAILY_REQUESTS: positive(10_000),
+    CLIENT_DAILY_CHARACTERS: positive(500_000),
+    IP_DAILY_CHARACTERS: positive(500_000),
+    GLOBAL_DAILY_CHARACTERS: optionalGlobalLimit,
+    GLOBAL_DAILY_REQUESTS: optionalGlobalLimit,
     REGISTRATIONS_PER_IP_PER_DAY: positive(10),
     INGRESS_REQUESTS_PER_MINUTE: positive(120),
     ALLOWED_ORIGINS: z

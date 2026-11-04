@@ -15,6 +15,8 @@ pnpm dev:service
 
 默认监听 `http://127.0.0.1:3000`，密钥和数据默认位于本应用的 `secrets/` 与 `data/`。生产单进程运行，不能多副本共享 SQLite。
 
+默认每设备、每 IP 每个 UTC 日各 500,000 字符，全站不设置字符或请求次数日上限。`GLOBAL_DAILY_CHARACTERS=0` 和 `GLOBAL_DAILY_REQUESTS=0` 表示关闭对应的全站日限额；分钟限流仍单独生效。
+
 ## 调用留存与画像
 
 默认保存已知接口的成功/失败调用及设备行为日汇总。原文/译文采集和模型主题分析需通过 `ANALYTICS_CAPTURE_CONTENT`、`ANALYTICS_AUTO_ANALYZE` 及专用内容密钥显式启用。开启采集后内容加密保存 30 天，调用与分析明细默认 90 天，日汇总默认 365 天；均可配置。

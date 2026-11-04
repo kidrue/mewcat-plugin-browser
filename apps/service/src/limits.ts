@@ -59,18 +59,20 @@ export function translationBuckets(
     const day = dayWindow(now)
     const minute = Math.floor(now / 60_000)
     const minuteEnd = new Date((minute + 1) * 60_000)
-    return [
+    const buckets: Bucket[] = [
         {
             key: `client:${clientId}:minute:${minute}`,
             amount: 1,
             limit: config.CLIENT_REQUESTS_PER_MINUTE,
-            expiresAt: minuteEnd
+            expiresAt: minuteEnd,
+            errorCode: "RATE_LIMITED"
         },
         {
             key: `ip:${ipHash}:minute:${minute}`,
             amount: 1,
             limit: config.IP_REQUESTS_PER_MINUTE,
-            expiresAt: minuteEnd
+            expiresAt: minuteEnd,
+            errorCode: "RATE_LIMITED"
         },
         {
             key: clientDailyKey(clientId, now),
@@ -83,18 +85,21 @@ export function translationBuckets(
             amount: characters,
             limit: config.IP_DAILY_CHARACTERS,
             expiresAt: day.expiresAt
-        },
-        {
+        }
+    ]
+    if (config.GLOBAL_DAILY_CHARACTERS > 0)
+        buckets.push({
             key: `global:characters:${day.id}`,
             amount: characters,
             limit: config.GLOBAL_DAILY_CHARACTERS,
             expiresAt: day.expiresAt
-        },
-        {
+        })
+    if (config.GLOBAL_DAILY_REQUESTS > 0)
+        buckets.push({
             key: `global:requests:${day.id}`,
             amount: 1,
             limit: config.GLOBAL_DAILY_REQUESTS,
             expiresAt: day.expiresAt
-        }
-    ]
+        })
+    return buckets
 }

@@ -100,4 +100,46 @@ describe("入口资源保护", () => {
         expect((await register()).statusCode).toBe(429)
         expect(await fixture.store.db.client.count()).toBe(1)
     })
+    it("明确可信代理按真实访客IP分别限流，伪造前缀不能切换身份", async () => {
+        fixture = await testStore()
+        const identity = await createIdentity()
+        app = await buildApp({
+            config: loadConfig({
+                NODE_ENV: "test",
+                SILICONFLOW_API_KEY: "test",
+                SILICONFLOW_MODEL: "test",
+                INGRESS_REQUESTS_PER_MINUTE: "1",
+                TRUST_PROXY: "172.19.0.1/32"
+            }),
+            store: fixture.store,
+            keys: {
+                identity,
+                publicKeys: await publicKeys(identity, "server"),
+                ipHashSecret: "salt"
+            }
+        })
+        const request = (address: string, forwarded: string) =>
+            app.inject({
+                method: "GET",
+                url: "/v1/keys",
+                remoteAddress: address,
+                headers: { "x-forwarded-for": forwarded }
+            })
+        expect((await request("172.19.0.1", "198.51.100.1")).statusCode).toBe(
+            200
+        )
+        expect((await request("172.19.0.1", "198.51.100.2")).statusCode).toBe(
+            200
+        )
+        expect(
+            (await request("172.19.0.1", "203.0.113.99, 198.51.100.1"))
+                .statusCode
+        ).toBe(429)
+        expect((await request("203.0.113.5", "198.51.100.3")).statusCode).toBe(
+            200
+        )
+        expect((await request("203.0.113.5", "198.51.100.4")).statusCode).toBe(
+            429
+        )
+    })
 })

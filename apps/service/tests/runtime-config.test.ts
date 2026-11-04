@@ -43,6 +43,75 @@ describe("生产运行时配置更新", () => {
         "SILICONFLOW_API_KEY=sk-new-key\nSILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1\nSILICONFLOW_MODEL=deepseek-ai/DeepSeek-V4-Flash\nALLOWED_ORIGINS=chrome-extension://nnmceoehnacdjdpeeocdopnaejcnaibm\n"
     const smtpConfig =
         "SMTP_HOST=smtp.gmail.com\nSMTP_PORT=587\nSMTP_SECURE=false\nSMTP_USER=sender@example.com\nSMTP_PASS=test#password$literal\nSMTP_FROM=sender@example.com\nFEEDBACK_TO=receiver@example.com\n"
+    const quotaConfig =
+        "CLIENT_DAILY_CHARACTERS=500000\nIP_DAILY_CHARACTERS=500000\nGLOBAL_DAILY_CHARACTERS=0\nGLOBAL_DAILY_REQUESTS=0\n"
+
+    it("仅同步明确可信代理地址，保留其他配置", async () => {
+        const { envPath, runtimePath } = await fixture(
+            "TRUST_PROXY=\n",
+            translationConfig + "TRUST_PROXY=172.19.0.1/32\n"
+        )
+        expect(runUpdater(envPath, runtimePath).status).toBe(0)
+        expect(await readFile(envPath, "utf8")).toContain(
+            "TRUST_PROXY=172.19.0.1/32\n"
+        )
+    })
+    it.each([
+        "true",
+        "*",
+        "0.0.0.0/0",
+        "::/0",
+        "::/1",
+        "::ffff:0.0.0.0/96",
+        "not-an-ip"
+    ])("拒绝不安全或无效的可信代理：%s", async proxy => {
+        const { envPath, runtimePath } = await fixture(
+            "TRUST_PROXY=\n",
+            translationConfig + `TRUST_PROXY=${proxy}\n`
+        )
+        expect(runUpdater(envPath, runtimePath).status).not.toBe(0)
+        expect(await readFile(envPath, "utf8")).toBe("TRUST_PROXY=\n")
+    })
+
+    it("发布同步50万设备/IP额度和全站不限额，覆盖旧值并保留密钥", async () => {
+        const { envPath, runtimePath } = await fixture(
+            "CLIENT_DAILY_CHARACTERS=20000\nIP_DAILY_CHARACTERS=100000\nGLOBAL_DAILY_CHARACTERS=1000000\nGLOBAL_DAILY_REQUESTS=10000\nANALYTICS_CONTENT_KEY=keep-this-key\n",
+            translationConfig + quotaConfig
+        )
+        expect(runUpdater(envPath, runtimePath).status).toBe(0)
+        const updated = await readFile(envPath, "utf8")
+        expect(updated).toContain(quotaConfig)
+        expect(updated).toContain("ANALYTICS_CONTENT_KEY=keep-this-key\n")
+        expect(updated).not.toContain("CLIENT_DAILY_CHARACTERS=20000\n")
+    })
+    it.each([
+        quotaConfig.replace(
+            "CLIENT_DAILY_CHARACTERS=500000",
+            "CLIENT_DAILY_CHARACTERS=0"
+        ),
+        quotaConfig.replace(
+            "IP_DAILY_CHARACTERS=500000",
+            "IP_DAILY_CHARACTERS=-1"
+        ),
+        quotaConfig.replace(
+            "GLOBAL_DAILY_CHARACTERS=0",
+            "GLOBAL_DAILY_CHARACTERS=-1"
+        ),
+        quotaConfig.replace(
+            "GLOBAL_DAILY_REQUESTS=0",
+            "GLOBAL_DAILY_REQUESTS=1.5"
+        ),
+        quotaConfig.replace("GLOBAL_DAILY_REQUESTS=0\n", "")
+    ])("拒绝非法或不完整额度组合且不改写生产配置：%#", async incoming => {
+        const { envPath, runtimePath } = await fixture(
+            "CLIENT_DAILY_CHARACTERS=20000\n",
+            translationConfig + incoming
+        )
+        expect(runUpdater(envPath, runtimePath).status).not.toBe(0)
+        expect(await readFile(envPath, "utf8")).toBe(
+            "CLIENT_DAILY_CHARACTERS=20000\n"
+        )
+    })
 
     it("同步完整 SMTP 配置，保留密码字面值且不向日志输出凭据", async () => {
         const { envPath, runtimePath } = await fixture(

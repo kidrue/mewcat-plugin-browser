@@ -80,7 +80,7 @@ describe("浏览器兼容客户端", () => {
         })
         expect(await restored.usage()).toMatchObject({
             usedCharacters: 5,
-            limitCharacters: 20_000
+            limitCharacters: 500_000
         })
         await fixture.store.revokeClient(state.clientId!)
         await expect(

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto"
 import { chmod, readFile, rename, rm, writeFile } from "node:fs/promises"
+import ipaddr from "ipaddr.js"
 import { z } from "zod"
 
 const requiredKeys = [
@@ -17,7 +18,18 @@ const smtpKeys = [
     "SMTP_FROM",
     "FEEDBACK_TO"
 ] as const
-const allowedKeys = [...requiredKeys, ...smtpKeys]
+const quotaKeys = [
+    "CLIENT_DAILY_CHARACTERS",
+    "IP_DAILY_CHARACTERS",
+    "GLOBAL_DAILY_CHARACTERS",
+    "GLOBAL_DAILY_REQUESTS"
+] as const
+const allowedKeys = [
+    ...requiredKeys,
+    ...smtpKeys,
+    ...quotaKeys,
+    "TRUST_PROXY"
+] as const
 const allowedKeySet = new Set<string>(allowedKeys)
 const smtpKeySet = new Set<string>(smtpKeys)
 const smtpSchema = z.object({
@@ -70,6 +82,45 @@ function parseRuntimeConfig(text: string): Map<string, string> {
         if (!result.success) {
             throw new Error(
                 `SMTP 配置不完整或格式无效：${result.error.issues.map(issue => issue.path.join(".")).join(", ")}`
+            )
+        }
+    }
+    if (quotaKeys.some(key => values.has(key))) {
+        const numeric = z
+            .string()
+            .regex(/^(0|[1-9][0-9]*)$/)
+            .transform(Number)
+            .pipe(z.number().int().max(2_000_000_000))
+        const quotaSchema = z.object({
+            CLIENT_DAILY_CHARACTERS: numeric.pipe(z.number().positive()),
+            IP_DAILY_CHARACTERS: numeric.pipe(z.number().positive()),
+            GLOBAL_DAILY_CHARACTERS: numeric,
+            GLOBAL_DAILY_REQUESTS: numeric
+        })
+        const result = quotaSchema.safeParse(
+            Object.fromEntries(quotaKeys.map(key => [key, values.get(key)]))
+        )
+        if (!result.success)
+            throw new Error(
+                `额度配置不完整或格式无效：${result.error.issues.map(issue => issue.path.join(".")).join(", ")}`
+            )
+    }
+    if (values.has("TRUST_PROXY")) {
+        for (const proxy of values
+            .get("TRUST_PROXY")!
+            .split(",")
+            .map(value => value.trim())) {
+            if (ipaddr.isValid(proxy)) continue
+            try {
+                const [network, prefix] = ipaddr.parseCIDR(proxy)
+                const trustsEveryIpv4 =
+                    network.kind() === "ipv6" &&
+                    prefix <= 96 &&
+                    ipaddr.parse("::ffff:0.0.0.0").match(network, prefix)
+                if (prefix > 0 && !trustsEveryIpv4) continue
+            } catch {}
+            throw new Error(
+                "TRUST_PROXY 必须是明确的代理 IP/CIDR，不能信任任意来源"
             )
         }
     }
