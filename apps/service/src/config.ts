@@ -22,6 +22,18 @@ const flag = z
     .default("false")
     .transform(value => value === "true")
 const schema = z.object({
+    ANALYTICS_ADMIN_CLIENT_IDS: z
+        .string()
+        .default("")
+        .transform(value => [
+            ...new Set(
+                value
+                    .split(",")
+                    .map(item => item.trim())
+                    .filter(Boolean)
+            )
+        ])
+        .pipe(z.array(z.string().uuid()).max(20)),
     ANALYTICS_CAPTURE_CONTENT: flag,
     ANALYTICS_AUTO_ANALYZE: flag,
     ANALYTICS_CONTENT_KEY: z.string().default(""),

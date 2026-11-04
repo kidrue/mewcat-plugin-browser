@@ -1,5 +1,27 @@
-import { analyticsQuerySchema, analyticsResultSchema } from "@mewcat/protocol"
-import { describe, expect, it } from "vitest"
+import { TranslationClient } from "@mewcat/client"
+import {
+    analyticsQuerySchema,
+    analyticsResultSchema,
+    createIdentity,
+    publicKeys,
+    seal
+} from "@mewcat/protocol"
+import { importJWK } from "jose"
+import {
+    afterEach,
+    beforeAll,
+    beforeEach,
+    describe,
+    expect,
+    it,
+    vi
+} from "vitest"
+
+import { AdminAnalytics } from "../src/analytics/admin.js"
+import { AnalyticsStore } from "../src/analytics/store.js"
+import { buildApp } from "../src/app.js"
+import { loadConfig } from "../src/config.js"
+import { testStore } from "./helpers.js"
 
 describe("管理员分析协议", () => {
     it("限制真实 UTC 日期、90 天、分页及未使用的参数", () => {
@@ -40,5 +62,295 @@ describe("管理员分析协议", () => {
                 original: "secret"
             }).success
         ).toBe(false)
+    })
+})
+
+describe("管理员分析加密接口", () => {
+    let fixture: Awaited<ReturnType<typeof testStore>>
+    let app: Awaited<ReturnType<typeof buildApp>>
+    let identity: Awaited<ReturnType<typeof createIdentity>>
+    let config: ReturnType<typeof loadConfig>
+    const range = { from: "2026-11-01", to: "2026-11-06" }
+    beforeAll(async () => {
+        identity = await createIdentity()
+    })
+    beforeEach(async () => {
+        fixture = await testStore()
+        config = loadConfig({
+            NODE_ENV: "test",
+            SILICONFLOW_API_KEY: "fake",
+            SILICONFLOW_MODEL: "fake",
+            INGRESS_REQUESTS_PER_MINUTE: "1000"
+        })
+        app = await buildApp({
+            config,
+            store: fixture.store,
+            keys: {
+                identity,
+                publicKeys: await publicKeys(identity, "server"),
+                ipHashSecret: "test"
+            },
+            fetcher: async () =>
+                Response.json({
+                    choices: [
+                        {
+                            message: { content: '{"translations":["你好"]}' },
+                            finish_reason: "stop"
+                        }
+                    ],
+                    usage: { prompt_tokens: 10, completion_tokens: 2 }
+                })
+        })
+    })
+    afterEach(async () => {
+        vi.restoreAllMocks()
+        await app?.close()
+        await fixture?.cleanup()
+    })
+    async function client(admin = true) {
+        const sdk = await TranslationClient.connect({
+            baseUrl: "https://test.local",
+            fetcher: async (input, init) => {
+                const response = await app.inject({
+                    method: (init?.method ?? "GET") as "GET" | "POST",
+                    url: new URL(String(input)).pathname,
+                    ...(init?.body
+                        ? {
+                              payload: String(init.body),
+                              headers: { "content-type": "application/json" }
+                          }
+                        : {})
+                })
+                return new Response(response.body, {
+                    status: response.statusCode,
+                    headers: { "content-type": "application/json" }
+                })
+            }
+        })
+        await sdk.register("管理员测试设备")
+        if (admin)
+            config.ANALYTICS_ADMIN_CLIENT_IDS.push(sdk.getState().clientId!)
+        return sdk
+    }
+    it("默认拒绝非管理员，授权查询不会记录画像或消耗翻译额度", async () => {
+        const sdk = await client(false)
+        await expect(
+            sdk.queryAnalytics({ operation: "overview", ...range })
+        ).rejects.toMatchObject({ status: 403, code: "ANALYTICS_FORBIDDEN" })
+        config.ANALYTICS_ADMIN_CLIENT_IDS.push(sdk.getState().clientId!)
+        const before = await fixture.store.db.apiCall.count()
+        const result = await sdk.queryAnalytics({
+            operation: "overview",
+            ...range
+        })
+        expect(result).toMatchObject({
+            operation: "overview",
+            totals: { requests: "0" },
+            activeDevices: 0,
+            analysis: { captureContent: false }
+        })
+        expect(await fixture.store.db.apiCall.count()).toBe(before)
+        expect(await sdk.usage()).toMatchObject({ usedCharacters: 0 })
+    })
+    it("翻译统计不混入 usage，分页受控且不泄漏正文和设备密钥", async () => {
+        const sdk = await client()
+        await sdk.translate({ texts: ["hello"], targetLanguage: "zh-CN" })
+        await sdk.usage()
+        const overview = await sdk.queryAnalytics({
+            operation: "overview",
+            ...range
+        })
+        expect(overview).toMatchObject({
+            totals: { requests: "1", characters: "5", promptTokens: "10" },
+            activeDevices: 1
+        })
+        const devices = await sdk.queryAnalytics({
+            operation: "devices",
+            ...range,
+            limit: 1
+        })
+        expect(
+            devices.operation === "devices" && devices.items[0]?.client.id
+        ).toBe(sdk.getState().clientId)
+        const profile = await sdk.queryAnalytics({
+            operation: "profile",
+            clientId: sdk.getState().clientId!
+        })
+        expect(profile).toMatchObject({
+            operation: "profile",
+            client: { name: "管理员测试设备" }
+        })
+        const first = await sdk.queryAnalytics({
+            operation: "calls",
+            ...range,
+            limit: 1
+        })
+        expect(first.operation).toBe("calls")
+        if (first.operation !== "calls") throw new Error()
+        expect(first.nextCursor).toBeTruthy()
+        const second = await sdk.queryAnalytics({
+            operation: "calls",
+            ...range,
+            limit: 1,
+            cursor: first.nextCursor!
+        })
+        expect(second.operation === "calls" && second.items[0]?.id).not.toBe(
+            first.items[0]?.id
+        )
+        const serialized = JSON.stringify([
+            overview,
+            devices,
+            profile,
+            first,
+            second
+        ])
+        for (const secret of [
+            "signingKey",
+            "encryptionKey",
+            "hello",
+            "你好",
+            "nonce",
+            "original",
+            "translated"
+        ])
+            expect(serialized).not.toContain(secret)
+        await expect(
+            sdk.queryAnalytics({
+                operation: "calls",
+                ...range,
+                cursor: "broken"
+            })
+        ).rejects.toMatchObject({ status: 400, code: "INVALID_REQUEST" })
+    })
+    it("移除白名单和撤销设备后不能再读取，签名防重放", async () => {
+        const sdk = await client()
+        const state = sdk.getState()
+        const keys = await publicKeys(identity, "server")
+        const envelope = await seal(
+            {
+                v: 1,
+                method: "POST",
+                path: "/v1/analytics/query",
+                timestamp: Date.now(),
+                nonce: crypto.randomUUID(),
+                data: { operation: "overview", ...range }
+            },
+            state.identity.signing.privateKey,
+            (await importJWK(keys.encryptionKey, "RSA-OAEP-256")) as CryptoKey,
+            state.clientId!,
+            "server"
+        )
+        const request = () =>
+            app.inject({
+                method: "POST",
+                url: "/v1/analytics/query",
+                payload: { envelope }
+            })
+        expect((await request()).statusCode).toBe(200)
+        expect((await request()).statusCode).toBe(409)
+        config.ANALYTICS_ADMIN_CLIENT_IDS.length = 0
+        await expect(
+            sdk.queryAnalytics({ operation: "overview", ...range })
+        ).rejects.toMatchObject({ status: 403 })
+        config.ANALYTICS_ADMIN_CLIENT_IDS.push(state.clientId!)
+        await fixture.store.revokeClient(state.clientId!)
+        await expect(
+            sdk.queryAnalytics({ operation: "overview", ...range })
+        ).rejects.toMatchObject({ code: "CLIENT_REVOKED" })
+        expect(
+            (
+                await app.inject({
+                    method: "POST",
+                    url: "/v1/analytics/query",
+                    payload: { envelope: "x".repeat(120) }
+                })
+            ).statusCode
+        ).toBe(401)
+    })
+    it("独立每分钟 60 次限制不会扣除日额度", async () => {
+        const sdk = await client()
+        const minute = Math.floor(Date.now() / 60000)
+        await fixture.store.db.usageBucket.create({
+            data: {
+                key: `analytics:${sdk.getState().clientId}:${minute}`,
+                used: 60,
+                expiresAt: new Date((minute + 1) * 60000)
+            }
+        })
+        await expect(
+            sdk.queryAnalytics({ operation: "overview", ...range })
+        ).rejects.toMatchObject({ status: 429, code: "RATE_LIMITED" })
+        expect((await sdk.usage()).usedCharacters).toBe(0)
+    })
+    it("查询并发满返回忙碌，失败后归还槽位，大整数保持精度", async () => {
+        const sdk = await client()
+        const admin = new AdminAnalytics(
+            new AnalyticsStore(fixture.store, config)
+        )
+        const original = admin.queries.summary.bind(admin.queries)
+        let release!: () => void
+        let started!: () => void
+        let count = 0
+        const ready = new Promise<void>(resolve => {
+            started = resolve
+        })
+        const blocked = new Promise<void>(resolve => {
+            release = resolve
+        })
+        const spy = vi
+            .spyOn(admin.queries, "summary")
+            .mockImplementation(async (...args) => {
+                if (++count === 2) started()
+                await blocked
+                return original(...args)
+            })
+        const id = sdk.getState().clientId!
+        const one = admin.query(id, { operation: "overview", ...range })
+        const two = admin.query(id, { operation: "overview", ...range })
+        await ready
+        await expect(
+            admin.query(id, { operation: "overview", ...range })
+        ).rejects.toMatchObject({ code: "ANALYTICS_BUSY" })
+        release()
+        await Promise.all([one, two])
+        spy.mockRejectedValueOnce(new Error("database unavailable"))
+        await expect(
+            admin.query(id, { operation: "overview", ...range })
+        ).rejects.toThrow("database unavailable")
+        spy.mockRestore()
+        await fixture.store.db.analyticsDaily.create({
+            data: {
+                clientId: id,
+                day: "2026-11-04",
+                dimension: "route",
+                value: "/v1/translate",
+                requests: 9007199254740993n,
+                characters: 9007199254740997n
+            }
+        })
+        expect(
+            await admin.query(id, { operation: "overview", ...range })
+        ).toMatchObject({
+            totals: {
+                requests: "9007199254740993",
+                characters: "9007199254740997"
+            }
+        })
+    })
+    it("白名单去空白去重，默认禁用并拒绝非法或过多 UUID", () => {
+        const env = { SILICONFLOW_API_KEY: "fake", SILICONFLOW_MODEL: "fake" }
+        const id = crypto.randomUUID()
+        expect(
+            loadConfig({ ...env, ANALYTICS_ADMIN_CLIENT_IDS: ` ${id},${id}, ` })
+                .ANALYTICS_ADMIN_CLIENT_IDS
+        ).toEqual([id])
+        expect(loadConfig(env).ANALYTICS_ADMIN_CLIENT_IDS).toEqual([])
+        for (const value of [
+            "bad",
+            Array.from({ length: 21 }, () => crypto.randomUUID()).join(",")
+        ])
+            expect(() =>
+                loadConfig({ ...env, ANALYTICS_ADMIN_CLIENT_IDS: value })
+            ).toThrow()
     })
 })

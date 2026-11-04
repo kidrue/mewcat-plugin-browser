@@ -90,6 +90,7 @@ function total(
 }
 
 export interface CallFilter extends Range {
+    routes?: readonly string[]
     clientId?: string
     route?: string
     outcome?: "success" | "failed" | "rejected"
@@ -107,11 +108,17 @@ export class AnalyticsQuery {
             throw new Error("聚合统计时间必须为 UTC 零点，避免部分日期重复计入")
         return { gte: utcDay(range.from), lt: utcDay(range.to) }
     }
-    async summary(range: Range, now = Date.now(), clientId?: string) {
+    async summary(
+        range: Range,
+        now = Date.now(),
+        clientId?: string,
+        route?: string
+    ) {
         const db = this.analytics.store.db
         const where = {
             day: this.days(range),
             dimension: "route",
+            ...(route ? { value: route } : {}),
             ...(clientId ? { clientId } : {})
         }
         const rows = await db.analyticsDaily.groupBy({
@@ -156,6 +163,7 @@ export class AnalyticsQuery {
             : "outside-call-retention"
         if (callsComplete) {
             const callWhere = {
+                ...(route ? { route } : {}),
                 createdAt: { gte: range.from, lt: range.to },
                 ...(clientId ? { clientId } : {})
             }
@@ -173,7 +181,11 @@ export class AnalyticsQuery {
                 p95UnavailableReason = count ? "too-many-calls" : "no-samples"
         }
         const first = await db.analyticsDaily.findFirst({
-            where: { dimension: "route", ...(clientId ? { clientId } : {}) },
+            where: {
+                dimension: "route",
+                ...(route ? { value: route } : {}),
+                ...(clientId ? { clientId } : {})
+            },
             orderBy: { day: "asc" },
             select: { day: true }
         })
@@ -364,7 +376,11 @@ export class AnalyticsQuery {
         const where: Prisma.ApiCallWhereInput = {
             createdAt: { gte: filter.from, lt: filter.to },
             ...(filter.clientId ? { clientId: filter.clientId } : {}),
-            ...(filter.route ? { route: filter.route } : {}),
+            ...(filter.route
+                ? { route: filter.route }
+                : filter.routes
+                  ? { route: { in: [...filter.routes] } }
+                  : {}),
             ...(filter.outcome
                 ? {
                       statusCode:

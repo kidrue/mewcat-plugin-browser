@@ -76,6 +76,7 @@ model ApiCall {
 
   @@index([createdAt, id])
   @@index([clientId, createdAt, id])
+  @@index([route, createdAt, id])
 }
 
 model TranslationContent {
