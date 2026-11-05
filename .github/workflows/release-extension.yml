@@ -253,7 +253,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          gh release edit "v${VERSION}" --draft=false --prerelease
+          gh release edit "v${VERSION}" --draft=false --prerelease=false --latest
       - name: Remove temporary release files
         if: always()
         run: |
