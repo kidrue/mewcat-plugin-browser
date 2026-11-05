@@ -19,6 +19,7 @@ export function useAnalyticsRequest(input: AnalyticsInput | null) {
             return
         }
         let active = true
+        const controller = new AbortController()
         setState(previous => ({
             key,
             data: previous.key === key ? previous.data : null,
@@ -27,7 +28,8 @@ export function useAnalyticsRequest(input: AnalyticsInput | null) {
         }))
         const request = async () => {
             const response = await queryAnalytics(
-                JSON.parse(key) as AnalyticsInput
+                JSON.parse(key) as AnalyticsInput,
+                controller.signal
             ).catch(analyticsFailure)
             if (!active) {
                 return
@@ -52,6 +54,7 @@ export function useAnalyticsRequest(input: AnalyticsInput | null) {
         void request()
         return () => {
             active = false
+            controller.abort()
         }
     }, [key, revision])
     return {

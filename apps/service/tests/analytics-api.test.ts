@@ -18,6 +18,7 @@ import {
 } from "vitest"
 
 import { AdminAnalytics } from "../src/analytics/admin.js"
+import { AnalyticsQuery } from "../src/analytics/query.js"
 import { AnalyticsStore } from "../src/analytics/store.js"
 import { buildApp } from "../src/app.js"
 import { loadConfig } from "../src/config.js"
@@ -66,11 +67,156 @@ describe("管理员分析协议", () => {
 })
 
 describe("管理员分析加密接口", () => {
+    it("真实 HTTP 断开会传递取消信号，并允许后续查询", async () => {
+        const address = await app.listen({ host: "127.0.0.1", port: 0 })
+        const sdk = await TranslationClient.connect({ baseUrl: address })
+        await sdk.register("HTTP cancellation")
+        config.ANALYTICS_ADMIN_CLIENT_IDS.push(sdk.getState().clientId!)
+        let release!: () => void,
+            started!: () => void,
+            observed: AbortSignal | undefined
+        const ready = new Promise<void>(resolve => {
+            started = resolve
+        })
+        const blocked = new Promise<void>(resolve => {
+            release = resolve
+        })
+        const original = AnalyticsQuery.prototype.summary
+        const spy = vi
+            .spyOn(AnalyticsQuery.prototype, "summary")
+            .mockImplementation(async function (this: AnalyticsQuery, ...args) {
+                observed = args[4]
+                started()
+                await blocked
+                return original.apply(this, args)
+            })
+        const controller = new AbortController()
+        const waiting = sdk
+            .queryAnalytics(
+                { operation: "overview", ...range },
+                { signal: controller.signal }
+            )
+            .catch(error => error)
+        try {
+            await ready
+            controller.abort()
+            expect((await waiting).name).toBe("AbortError")
+            await vi.waitFor(() => expect(observed?.aborted).toBe(true))
+        } finally {
+            release()
+            spy.mockRestore()
+        }
+        await expect(
+            sdk.queryAnalytics({ operation: "overview", ...range })
+        ).resolves.toMatchObject({ operation: "overview" })
+    })
+    it("分析样本超过聚合执行量时返回未知覆盖率，不拒绝合法查询", async () => {
+        const sdk = await client()
+        const id = sdk.getState().clientId!
+        const today = new Date().toISOString().slice(0, 10)
+        await fixture.store.db.analyticsDaily.create({
+            data: {
+                clientId: id,
+                day: today,
+                dimension: "route",
+                value: "/v1/translate",
+                requests: 1n,
+                executions: 1n
+            }
+        })
+        for (let index = 0; index < 2; index++)
+            await fixture.store.db.contentAnalysis.create({
+                data: {
+                    requestId: crypto.randomUUID(),
+                    requestCreatedAt: new Date(),
+                    clientId: id,
+                    version: "topics-v1",
+                    topics: "[]",
+                    keywords: "[]",
+                    model: "fake",
+                    sampledCharacters: 1,
+                    originalCharacters: 1,
+                    truncated: false
+                }
+            })
+        await expect(
+            sdk.queryAnalytics({
+                operation: "overview",
+                from: today,
+                to: range.to
+            })
+        ).resolves.toMatchObject({ analysis: { completed: 2, coverage: null } })
+    })
+    it("取消查询后停止后续读取，当前数据库工作完成后归还并发槽", async () => {
+        const sdk = await client()
+        const admin = new AdminAnalytics(
+            new AnalyticsStore(fixture.store, config)
+        )
+        let release!: () => void
+        let started!: () => void
+        const ready = new Promise<void>(resolve => {
+            started = resolve
+        })
+        const blocked = new Promise<void>(resolve => {
+            release = resolve
+        })
+        const original = admin.queries.summary.bind(admin.queries)
+        const summary = vi
+            .spyOn(admin.queries, "summary")
+            .mockImplementation(async (...args) => {
+                started()
+                await blocked
+                return original(...args)
+            })
+        const controller = new AbortController()
+        const waiting = admin.query(
+            sdk.getState().clientId!,
+            { operation: "overview", ...range },
+            controller.signal
+        )
+        await ready
+        controller.abort()
+        release()
+        await expect(waiting).rejects.toMatchObject({
+            code: "ANALYTICS_CANCELLED"
+        })
+        summary.mockRestore()
+        await expect(
+            admin.query(sdk.getState().clientId!, {
+                operation: "overview",
+                ...range
+            })
+        ).resolves.toMatchObject({ operation: "overview" })
+    })
+    it("分页查询不计算全站汇总，并对早于采集的区间报告覆盖不足", async () => {
+        const sdk = await client()
+        const admin = new AdminAnalytics(
+            new AnalyticsStore(fixture.store, config)
+        )
+        const summary = vi
+            .spyOn(admin.queries, "summary")
+            .mockRejectedValue(new Error("summary must not run for pagination"))
+        const id = sdk.getState().clientId!
+        await expect(
+            admin.query(id, { operation: "devices", ...range })
+        ).resolves.toMatchObject({
+            operation: "devices",
+            coverage: { aggregateComplete: false }
+        })
+        await expect(
+            admin.query(id, { operation: "calls", ...range })
+        ).resolves.toMatchObject({ operation: "calls" })
+        expect(summary).not.toHaveBeenCalled()
+        summary.mockRestore()
+    })
     let fixture: Awaited<ReturnType<typeof testStore>>
     let app: Awaited<ReturnType<typeof buildApp>>
     let identity: Awaited<ReturnType<typeof createIdentity>>
     let config: ReturnType<typeof loadConfig>
-    const range = { from: "2026-11-01", to: "2026-11-06" }
+    const range = {
+        from: new Date(Date.now() - 2 * 86400000).toISOString().slice(0, 10),
+        to: new Date(Date.now() + 86400000).toISOString().slice(0, 10)
+    }
     beforeAll(async () => {
         identity = await createIdentity()
     })
@@ -321,7 +467,7 @@ describe("管理员分析加密接口", () => {
         await fixture.store.db.analyticsDaily.create({
             data: {
                 clientId: id,
-                day: "2026-11-04",
+                day: range.from,
                 dimension: "route",
                 value: "/v1/translate",
                 requests: 9007199254740993n,

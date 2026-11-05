@@ -4,6 +4,7 @@ import { registerExtensionNavigation } from "./lib/extension-navigation"
 import { registerFrameTranslation } from "./lib/frame-translation"
 import { monitorBackgroundHandler } from "./lib/monitor-background-handler"
 import {
+    handleAnalyticsCancel,
     handleAnalyticsIdentity,
     handleAnalyticsQuery
 } from "./messages/analytics"
@@ -50,6 +51,12 @@ async function handleToggleImmersiveTranslate(tabId: number) {
 }
 
 export function registerExtensionMessages(register = onMessage) {
+    register("analytics-cancel", message =>
+        handleAnalyticsCancel(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
+        )
+    )
     // 管理查询和画像数据不进入通用错误上报链路。
     register("analytics-query", message =>
         handleAnalyticsQuery(

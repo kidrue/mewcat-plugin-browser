@@ -123,6 +123,8 @@ jobs:
           GLOBAL_DAILY_CHARACTERS: ${{ vars.GLOBAL_DAILY_CHARACTERS || '0' }}
           GLOBAL_DAILY_REQUESTS: ${{ vars.GLOBAL_DAILY_REQUESTS || '0' }}
           TRUST_PROXY: ${{ vars.TRUST_PROXY || '' }}
+          ANALYTICS_ADMIN_CLIENT_IDS: ${{ vars.ANALYTICS_ADMIN_CLIENT_IDS || '' }}
+          ANALYTICS_ADMIN_CLEAR: ${{ vars.ANALYTICS_ADMIN_CLEAR || 'false' }}
         run: |
           test -n "$SILICONFLOW_API_KEY"
           [[ "$SILICONFLOW_API_KEY" != *$'\n'* && "$SILICONFLOW_API_KEY" != *$'\r'* ]]
@@ -165,6 +167,11 @@ jobs:
               printf '%s=%s\n' "$key" "${!key}"
             done
             if [[ -n "$TRUST_PROXY" ]]; then printf 'TRUST_PROXY=%s\n' "$TRUST_PROXY"; fi
+            if [[ "$ANALYTICS_ADMIN_CLEAR" == 'true' ]]; then
+              printf 'ANALYTICS_ADMIN_CLIENT_IDS=\n'
+            elif [[ -n "$ANALYTICS_ADMIN_CLIENT_IDS" ]]; then
+              printf 'ANALYTICS_ADMIN_CLIENT_IDS=%s\n' "$ANALYTICS_ADMIN_CLIENT_IDS"
+            fi
             if [[ -n "$SMTP_HOST" ]]; then
               for key in SMTP_HOST SMTP_PORT SMTP_SECURE SMTP_USER SMTP_PASS SMTP_FROM FEEDBACK_TO; do
                 printf '%s=%s\n' "$key" "${!key}"

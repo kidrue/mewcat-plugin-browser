@@ -1,8 +1,7 @@
-import type { AnalyticsInput } from "@mewcat/client"
-
 import type { BaseModel } from "@/types/aiModel"
 import type {
     AnalyticsIdentityResponse,
+    AnalyticsQueryMessage,
     AnalyticsResponse
 } from "@/types/analytics"
 import type { CanvasHookError } from "@/types/canvas-hook"
@@ -133,7 +132,8 @@ export type ConfigUpdateRequest =
     | { type: "model"; updates: { id: string } & DeepPartial<BaseModel> }
 
 export interface ExtensionProtocolMap {
-    "analytics-query"(data: AnalyticsInput): AnalyticsResponse
+    "analytics-query"(data: AnalyticsQueryMessage): AnalyticsResponse
+    "analytics-cancel"(data: { requestId: string }): { success: boolean }
     "analytics-identity"(): AnalyticsIdentityResponse
     "submit-feedback"(data: FeedbackSubmission): FeedbackResponse
     "update-config"(data: ConfigUpdateRequest): ExtensionConfig

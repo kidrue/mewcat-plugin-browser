@@ -261,5 +261,5 @@ export const localTime = (value: string | null) =>
 export const percent = (value: number | null) =>
     value == null ? "—" : `${(value * 100).toFixed(1)}%`
 export function relative(value: string, max: bigint) {
-    return max ? Number((BigInt(value) * 10000n) / max) / 100 : 0
+    return max ? Number((BigInt(value) * BigInt(10000)) / max) / 100 : 0
 }

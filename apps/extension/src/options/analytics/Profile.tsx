@@ -209,6 +209,11 @@ export function Profile({
                     <Muted>
                         画像截至 {localTime(profile.asOf)}
                         ；数据仅来自此后端收到的调用。
+                        {(!profile.coverage.aggregateComplete ||
+                            !profile.coverage.callsComplete) &&
+                            " 部分历史数据覆盖不足，未观察的历史不代表没有调用。"}{" "}
+                        最早观察日：
+                        {profile.coverage.earliestObservedDay ?? "暂无"}。
                     </Muted>
                 </>
             )}

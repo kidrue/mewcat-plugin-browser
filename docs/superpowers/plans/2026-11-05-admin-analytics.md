@@ -1,6 +1,6 @@
 # 管理员分析面板实施计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** 提供签名鉴权的管理员分析接口，以及沿用扩展主题、从作者名称进入的只读分析面板。
 
@@ -33,9 +33,9 @@
 
 **Interfaces:** 导出 `analyticsQuerySchema`、`analyticsResultSchema`、`AnalyticsInput`、`AnalyticsResult` 和 operation 响应类型。`TranslationClient.queryAnalytics(input: AnalyticsInput, options?: RequestOptions): Promise<AnalyticsResult>` 沿用签名请求。
 
-- [ ] 写日期、limit、operation 严格参数、响应字段和 BigInt 字符串的失败测试，并运行确认失败。
-- [ ] 定义四种输入/响应的严格 schema；增加 SDK 方法并导出。
-- [ ] 构建共享包，重跑协议测试到通过；提交 `feat(analytics): 定义管理员分析协议与客户端查询`。
+- [x] 写日期、limit、operation 严格参数、响应字段和 BigInt 字符串的失败测试，并运行确认失败。
+- [x] 定义四种输入/响应的严格 schema；增加 SDK 方法并导出。
+- [x] 构建共享包，重跑协议测试到通过；提交 `feat(analytics): 定义管理员分析协议与客户端查询`。
 
 ### Task 2: 后端管理员查询
 
@@ -43,9 +43,9 @@
 
 **Interfaces:** 消费 Task 1；`AdminAnalytics.query(clientId: string, input: unknown): Promise<AnalyticsResult>` 先鉴权后解析，管理并发和限流。概览只统计 translate，profile 固定近 7/30 天，calls/devices 支持复合游标分页。
 
-- [ ] 写加密 HTTP 测试：管理员、非管理员、撤销、签名、防重放、非法日期/游标、分页、字段白名单、不计入画像/额度、限流和并发恢复；运行确认新增功能失败。
-- [ ] 实现白名单配置、查询投影、严格结果校验和响应大小限制；添加路由，复用已有鉴权并排除管理统计。
-- [ ] 跑后端 typecheck 与全部测试；提交 `feat(analytics): 增加管理员分析查询接口`。
+- [x] 写加密 HTTP 测试：管理员、非管理员、撤销、签名、防重放、非法日期/游标、分页、字段白名单、不计入画像/额度、限流和并发恢复；运行确认新增功能失败。
+- [x] 实现白名单配置、查询投影、严格结果校验和响应大小限制；添加路由，复用已有鉴权并排除管理统计。
+- [x] 跑后端 typecheck 与全部测试；提交 `feat(analytics): 增加管理员分析查询接口`。
 
 ### Task 3: 扩展隐藏入口和分析页面
 
@@ -53,9 +53,9 @@
 
 **Interfaces:** 消费 Task 1 的 schema/types。消息 `analytics-query` 和 `analytics-identity` 返回受控成功/错误 union，仅接受本扩展 options.html sender；UI 不获取 SDK state。
 
-- [ ] 写 sender 拒绝、隐藏 hash、作者点击和键盘、未授权 ID、过期请求及分页筛选测试，运行确认失败。
-- [ ] 接入后台 SDK 和受控错误，构建蓝白主题概览/设备/调用视图、可访问抽屉、SVG 趋势及文本数据，增加加载/空/失败/未上线状态。
-- [ ] 运行相关扩展测试、typecheck 和 lint；提交 `feat(analytics): 添加扩展管理员分析面板`。
+- [x] 写 sender 拒绝、隐藏 hash、作者点击和键盘、未授权 ID、过期请求及分页筛选测试，运行确认失败。
+- [x] 接入后台 SDK 和受控错误，构建蓝白主题概览/设备/调用视图、可访问抽屉、SVG 趋势及文本数据，增加加载/空/失败/未上线状态。
+- [x] 运行相关扩展测试、typecheck 和 lint；提交 `feat(analytics): 添加扩展管理员分析面板`。
 
 ### Task 4: 部署配置和生产服务同步
 
@@ -63,7 +63,7 @@
 
 **Interfaces:** 环境变量 `ANALYTICS_ADMIN_CLIENT_IDS`；未提供时保留旧配置，显式空串清空。继续由独立服务仓库负责生产部署。
 
-- [ ] 写 runtime updater 白名单保留/更新/清空/非法值测试，运行确认失败。
-- [ ] 实现配置传递、说明和后端同步；检查两仓库差异限定在本任务。
-- [ ] 执行 pnpm format、共享包构建、后端检查、扩展测试/typecheck/lint、build:verify；独立后端 npm test/typecheck/build；提交中文信息。
-- [ ] 按执行技能做一次全分支独立审查，修复重要问题并验证；将实际检查与可用产物交付。生产授权只使用用户提供的设备 ID。
+- [x] 写 runtime updater 白名单保留/更新/清空/非法值测试，运行确认失败。
+- [x] 实现配置传递、说明和后端同步；检查两仓库差异限定在本任务。
+- [x] 执行 pnpm format、共享包构建、后端检查、扩展测试/typecheck/lint、build:verify；独立后端 npm test/typecheck/build；提交中文信息。
+- [x] 按执行技能做一次全分支独立审查，修复重要问题并验证；将实际检查与可用产物交付。生产授权只使用用户提供的设备 ID。

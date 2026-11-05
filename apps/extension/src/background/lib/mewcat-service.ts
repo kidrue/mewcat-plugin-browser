@@ -172,8 +172,13 @@ export const createMewCatService = (
             if (!clientId) throw new Error("Missing device identity")
             return { clientId, serviceOrigin: MEWCAT_SERVICE_ORIGIN }
         },
-        async queryAnalytics(input: AnalyticsInput) {
-            const signal = AbortSignal.timeout(30_000)
+        async queryAnalytics(
+            input: AnalyticsInput,
+            callerSignal?: AbortSignal
+        ) {
+            const signal = callerSignal
+                ? AbortSignal.any([callerSignal, AbortSignal.timeout(30_000)])
+                : AbortSignal.timeout(30_000)
             const client = await getClient(signal)
             if (!client.queryAnalytics) throw { code: "ANALYTICS_UNAVAILABLE" }
             return client.queryAnalytics(input, { signal, timeoutMs: 30_000 })

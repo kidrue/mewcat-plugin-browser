@@ -28,6 +28,7 @@ const allowedKeys = [
     ...requiredKeys,
     ...smtpKeys,
     ...quotaKeys,
+    "ANALYTICS_ADMIN_CLIENT_IDS",
     "TRUST_PROXY"
 ] as const
 const allowedKeySet = new Set<string>(allowedKeys)
@@ -54,7 +55,8 @@ function parseRuntimeConfig(text: string): Map<string, string> {
         const value = separator < 0 ? "" : line.slice(separator + 1)
         if (!allowedKeySet.has(key))
             throw new Error(`不允许的运行时配置：${key}`)
-        if (!value) throw new Error(`运行时配置不能为空：${key}`)
+        if (!value && key !== "ANALYTICS_ADMIN_CLIENT_IDS")
+            throw new Error(`运行时配置不能为空：${key}`)
         if (/[\r\n\0]/.test(value))
             throw new Error(`运行时配置包含非法字符：${key}`)
         if (values.has(key)) throw new Error(`运行时配置重复：${key}`)
@@ -123,6 +125,25 @@ function parseRuntimeConfig(text: string): Map<string, string> {
                 "TRUST_PROXY 必须是明确的代理 IP/CIDR，不能信任任意来源"
             )
         }
+    }
+    if (values.has("ANALYTICS_ADMIN_CLIENT_IDS")) {
+        const result = z
+            .array(z.string().uuid())
+            .max(20)
+            .safeParse([
+                ...new Set(
+                    values
+                        .get("ANALYTICS_ADMIN_CLIENT_IDS")!
+                        .split(",")
+                        .map(value => value.trim())
+                        .filter(Boolean)
+                )
+            ])
+        if (!result.success)
+            throw new Error(
+                "ANALYTICS_ADMIN_CLIENT_IDS 必须为最多 20 个设备 UUID"
+            )
+        values.set("ANALYTICS_ADMIN_CLIENT_IDS", result.data.join(","))
     }
     return values
 }

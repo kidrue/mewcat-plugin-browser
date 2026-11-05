@@ -53,7 +53,10 @@ export function Languages({
 }: {
     items: AnalyticsOverview["languages"]
 }) {
-    const max = items.reduce((sum, item) => sum + BigInt(item.requests), 0n)
+    const max = items.reduce(
+        (sum, item) => sum + BigInt(item.requests),
+        BigInt(0)
+    )
     return (
         <Distribution>
             {items.length ? (
@@ -86,7 +89,7 @@ export function Overview({ data }: { data: AnalyticsOverview }) {
     const max = data.days.reduce(
         (value, day) =>
             BigInt(day[measure]) > value ? BigInt(day[measure]) : value,
-        0n
+        BigInt(0)
     )
     return (
         <>

@@ -325,44 +325,38 @@ export function Analytics() {
                         <Devices data={data} onProfile={setProfile} />
                     )}
                     {data?.operation === "calls" && <Calls data={data} />}
-                    {data &&
-                        (data.operation === "calls" ||
-                            data.operation === "devices") && (
-                            <Toolbar>
-                                <Muted>
-                                    第 {cursors.length} 页 · 每页最多 20 条
-                                </Muted>
-                                <Row>
-                                    <Button
-                                        type="button"
-                                        disabled={
-                                            loading || cursors.length === 1
+                    {view !== "overview" && (data || cursors.length > 1) && (
+                        <Toolbar>
+                            <Muted>
+                                第 {cursors.length} 页 · 每页最多 20 条
+                            </Muted>
+                            <Row>
+                                <Button
+                                    type="button"
+                                    disabled={loading || cursors.length === 1}
+                                    onClick={() =>
+                                        setCursors(value => value.slice(0, -1))
+                                    }
+                                >
+                                    上一页
+                                </Button>
+                                <Button
+                                    type="button"
+                                    disabled={loading || !nextCursor}
+                                    onClick={() => {
+                                        if (nextCursor) {
+                                            setCursors(value => [
+                                                ...value,
+                                                nextCursor
+                                            ])
                                         }
-                                        onClick={() =>
-                                            setCursors(value =>
-                                                value.slice(0, -1)
-                                            )
-                                        }
-                                    >
-                                        上一页
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        disabled={loading || !nextCursor}
-                                        onClick={() => {
-                                            if (nextCursor) {
-                                                setCursors(value => [
-                                                    ...value,
-                                                    nextCursor
-                                                ])
-                                            }
-                                        }}
-                                    >
-                                        下一页
-                                    </Button>
-                                </Row>
-                            </Toolbar>
-                        )}
+                                    }}
+                                >
+                                    下一页
+                                </Button>
+                            </Row>
+                        </Toolbar>
+                    )}
                     {data && (
                         <Muted>
                             最近成功更新：{localTime(data.asOf)} · 最早观察日：

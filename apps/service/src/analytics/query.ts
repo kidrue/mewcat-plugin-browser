@@ -1,4 +1,5 @@
-import type { Prisma } from "../generated/prisma/client.js"
+import { Prisma } from "../generated/prisma/client.js"
+import { queryCheckpoint } from "./cancellation.js"
 import {
     ANALYSIS_VERSION,
     DAY_MS,
@@ -90,6 +91,7 @@ function total(
 }
 
 export interface CallFilter extends Range {
+    signal?: AbortSignal
     routes?: readonly string[]
     clientId?: string
     route?: string
@@ -112,8 +114,10 @@ export class AnalyticsQuery {
         range: Range,
         now = Date.now(),
         clientId?: string,
-        route?: string
+        route?: string,
+        signal?: AbortSignal
     ) {
+        await queryCheckpoint(signal)
         const db = this.analytics.store.db
         const where = {
             day: this.days(range),
@@ -126,11 +130,15 @@ export class AnalyticsQuery {
             where,
             _sum: sums
         })
+        await queryCheckpoint(signal)
         const totals = total(rows)
-        const active = await db.analyticsDaily.groupBy({
-            by: ["clientId"],
-            where: { ...where, clientId: clientId ?? { not: "" } }
-        })
+        const active = await db.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+            SELECT COUNT(DISTINCT "clientId") AS "count" FROM "AnalyticsDaily"
+            WHERE "dimension" = 'route' AND "day" >= ${utcDay(range.from)} AND "day" < ${utcDay(range.to)} AND "clientId" <> ''
+            ${clientId ? Prisma.sql`AND "clientId" = ${clientId}` : Prisma.empty}
+            ${route ? Prisma.sql`AND "value" = ${route}` : Prisma.empty}
+        `)
+        await queryCheckpoint(signal)
         const jobs = await db.analysisJob.groupBy({
             by: ["status"],
             where: {
@@ -139,6 +147,7 @@ export class AnalyticsQuery {
             },
             _count: true
         })
+        await queryCheckpoint(signal)
         const completed = await db.contentAnalysis.count({
             where: {
                 requestCreatedAt: { gte: range.from, lt: range.to },
@@ -146,6 +155,7 @@ export class AnalyticsQuery {
                 ...(clientId ? { clientId } : {})
             }
         })
+        await queryCheckpoint(signal)
         const analysisDetailsComplete =
             range.from.getTime() >=
             now - this.analytics.config.ANALYTICS_CALL_RETENTION_DAYS * DAY_MS
@@ -168,6 +178,7 @@ export class AnalyticsQuery {
                 ...(clientId ? { clientId } : {})
             }
             const count = await db.apiCall.count({ where: callWhere })
+            await queryCheckpoint(signal)
             if (count && count <= 100_000) {
                 const durations = await db.apiCall.findMany({
                     where: callWhere,
@@ -180,6 +191,7 @@ export class AnalyticsQuery {
             } else
                 p95UnavailableReason = count ? "too-many-calls" : "no-samples"
         }
+        await queryCheckpoint(signal)
         const first = await db.analyticsDaily.findFirst({
             where: {
                 dimension: "route",
@@ -189,12 +201,13 @@ export class AnalyticsQuery {
             orderBy: { day: "asc" },
             select: { day: true }
         })
+        await queryCheckpoint(signal)
         return {
             from: range.from.toISOString(),
             to: range.to.toISOString(),
             asOf: new Date(now).toISOString(),
             totals,
-            activeDevices: active.length,
+            activeDevices: Number(active[0]?.count ?? 0n),
             routes: rows.map(row => ({ route: row.value, ...row._sum })),
             p95DurationMs,
             p95UnavailableReason,
@@ -209,7 +222,8 @@ export class AnalyticsQuery {
                 coverageOfExecutions:
                     analysisDetailsComplete &&
                     aggregateComplete &&
-                    totals.executions
+                    totals.executions &&
+                    BigInt(completed) <= totals.executions
                         ? completed / Number(totals.executions)
                         : null,
                 detailsComplete: analysisDetailsComplete,
@@ -224,7 +238,8 @@ export class AnalyticsQuery {
             }
         }
     }
-    async profile(clientId: string, now = Date.now()) {
+    async profile(clientId: string, now = Date.now(), signal?: AbortSignal) {
+        await queryCheckpoint(signal)
         const db = this.analytics.store.db
         const client = await db.client.findUnique({
             where: { id: clientId },
@@ -236,8 +251,14 @@ export class AnalyticsQuery {
             from: new Date(range.to.getTime() - 7 * DAY_MS),
             to: range.to
         }
-        const last30 = await this.summary(range, now, clientId)
-        const last7 = await this.summary(week, now, clientId)
+        const last30 = await this.summary(
+            range,
+            now,
+            clientId,
+            undefined,
+            signal
+        )
+        const last7 = await this.summary(week, now, clientId, undefined, signal)
         const dims = await db.analyticsDaily.groupBy({
             by: ["dimension", "value"],
             where: {
@@ -247,6 +268,7 @@ export class AnalyticsQuery {
             },
             _sum: { requests: true, characters: true }
         })
+        await queryCheckpoint(signal)
         const topics = await db.topicDaily.groupBy({
             by: ["topic"],
             where: {
@@ -256,6 +278,7 @@ export class AnalyticsQuery {
             },
             _sum: { samples: true, score: true }
         })
+        await queryCheckpoint(signal)
         const score = topics.reduce(
             (sum, row) => sum + (row._sum.score ?? 0),
             0
@@ -264,20 +287,24 @@ export class AnalyticsQuery {
             by: ["day"],
             where: { clientId, day: this.days(range), dimension: "route" }
         })
+        await queryCheckpoint(signal)
         const first = await db.analyticsDaily.findFirst({
             where: { clientId, dimension: "route" },
             orderBy: { day: "asc" }
         })
+        await queryCheckpoint(signal)
         const last = await db.apiCall.findFirst({
             where: { clientId },
             orderBy: { createdAt: "desc" },
             select: { createdAt: true }
         })
+        await queryCheckpoint(signal)
         const lastDay = await db.analyticsDaily.findFirst({
             where: { clientId, dimension: "route" },
             orderBy: { day: "desc" },
             select: { day: true }
         })
+        await queryCheckpoint(signal)
         const analyses = await db.contentAnalysis.findMany({
             where: {
                 clientId,
@@ -287,6 +314,7 @@ export class AnalyticsQuery {
             select: { keywords: true },
             take: 10_000
         })
+        await queryCheckpoint(signal)
         const keywordCounts = new Map<string, number>()
         for (const row of analyses)
             for (const keyword of new Set(JSON.parse(row.keywords) as string[]))
@@ -350,6 +378,7 @@ export class AnalyticsQuery {
         }
     }
     async calls(filter: CallFilter) {
+        await queryCheckpoint(filter.signal)
         const limit = filter.limit ?? 100
         if (!Number.isSafeInteger(limit) || limit < 1 || limit > 1000)
             throw new Error("limit 必须为 1–1000 的整数")
@@ -405,6 +434,7 @@ export class AnalyticsQuery {
             orderBy: [{ createdAt: "asc" }, { id: "asc" }],
             take: limit + 1
         })
+        await queryCheckpoint(filter.signal)
         const hasMore = items.length > limit
         if (hasMore) items.pop()
         const last = items.at(-1)
@@ -420,6 +450,7 @@ export class AnalyticsQuery {
                     }
                 }
             })
+        await queryCheckpoint(filter.signal)
         const byId = new Map(executions.map(item => [item.id, item]))
         const analyses = await this.analytics.store.db.contentAnalysis.findMany(
             {
@@ -429,6 +460,7 @@ export class AnalyticsQuery {
                 }
             }
         )
+        await queryCheckpoint(filter.signal)
         const analysisById = new Map(
             analyses.map(item => [
                 item.requestId,

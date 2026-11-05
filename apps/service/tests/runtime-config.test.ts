@@ -39,6 +39,37 @@ afterEach(async () => {
 })
 
 describe("生产运行时配置更新", () => {
+    it("管理员白名单保留、更新和显式清空，拒绝非法值", async () => {
+        const required =
+            "SILICONFLOW_API_KEY=sk-test\nSILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1\nSILICONFLOW_MODEL=test\nALLOWED_ORIGINS=chrome-extension://nnmceoehnacdjdpeeocdopnaejcnaibm\n"
+        const id = "8f7ce4a1-1111-4321-8011-111111111111"
+        for (const incoming of [
+            "",
+            `ANALYTICS_ADMIN_CLIENT_IDS= ${id},${id} \n`,
+            "ANALYTICS_ADMIN_CLIENT_IDS=\n"
+        ]) {
+            const { envPath, runtimePath } = await fixture(
+                `ANALYTICS_ADMIN_CLIENT_IDS=${id}\nKEEP=true\n`,
+                required + incoming
+            )
+            expect(runUpdater(envPath, runtimePath).status).toBe(0)
+            expect(await readFile(envPath, "utf8")).toContain(
+                `ANALYTICS_ADMIN_CLIENT_IDS=${incoming === "ANALYTICS_ADMIN_CLIENT_IDS=\n" ? "" : id}\n`
+            )
+            expect(await readFile(envPath, "utf8")).toContain("KEEP=true")
+        }
+        for (const value of [
+            "not-an-id",
+            Array.from({ length: 21 }, () => crypto.randomUUID()).join(",")
+        ]) {
+            const { envPath, runtimePath } = await fixture(
+                "KEEP=true\n",
+                required + `ANALYTICS_ADMIN_CLIENT_IDS=${value}\n`
+            )
+            expect(runUpdater(envPath, runtimePath).status).not.toBe(0)
+            expect(await readFile(envPath, "utf8")).toBe("KEEP=true\n")
+        }
+    })
     const translationConfig =
         "SILICONFLOW_API_KEY=sk-new-key\nSILICONFLOW_BASE_URL=https://api.siliconflow.cn/v1\nSILICONFLOW_MODEL=deepseek-ai/DeepSeek-V4-Flash\nALLOWED_ORIGINS=chrome-extension://nnmceoehnacdjdpeeocdopnaejcnaibm\n"
     const smtpConfig =

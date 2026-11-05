@@ -8,7 +8,13 @@ import {
 import { z } from "zod"
 
 import { ApiError } from "../errors.js"
-import { AnalyticsQuery, parseRange, stringifyAnalytics } from "./query.js"
+import { queryCheckpoint } from "./cancellation.js"
+import {
+    AnalyticsQuery,
+    parseRange,
+    stringifyAnalytics,
+    type Range
+} from "./query.js"
 import { DAY_MS, utcDay, type AnalyticsStore } from "./store.js"
 
 const projectTotals = (
@@ -22,7 +28,10 @@ const projectTotals = (
     return rest
 }
 const analysisState = (
-    value: Awaited<ReturnType<AnalyticsQuery["summary"]>>
+    value: Pick<
+        Awaited<ReturnType<AnalyticsQuery["summary"]>>,
+        "captureContent" | "autoAnalyze" | "analysis"
+    >
 ) => ({
     captureContent: value.captureContent,
     autoAnalyze: value.autoAnalyze,
@@ -40,7 +49,54 @@ export class AdminAnalytics {
     constructor(readonly analytics: AnalyticsStore) {
         this.queries = new AnalyticsQuery(analytics)
     }
-    async query(clientId: string, input: unknown): Promise<AnalyticsResult> {
+    private async coverage(
+        range: Range,
+        now: number,
+        clientId?: string,
+        route?: string
+    ) {
+        const first = await this.analytics.store.db.analyticsDaily.findFirst({
+            where: {
+                dimension: "route",
+                ...(clientId ? { clientId } : {}),
+                ...(route ? { value: route } : {})
+            },
+            orderBy: { day: "asc" },
+            select: { day: true }
+        })
+        const observed =
+            !!first &&
+            first.day <= utcDay(range.from) &&
+            range.to.getTime() <= Date.parse(utcDay(now)) + DAY_MS
+        return {
+            callsComplete:
+                observed &&
+                range.from.getTime() >=
+                    now -
+                        this.analytics.config.ANALYTICS_CALL_RETENTION_DAYS *
+                            DAY_MS,
+            aggregateComplete:
+                observed &&
+                utcDay(range.from) >=
+                    utcDay(
+                        now -
+                            this.analytics.config
+                                .ANALYTICS_AGGREGATE_RETENTION_DAYS *
+                                DAY_MS
+                    ),
+            earliestObservedDay: first?.day ?? null,
+            observationScope: "received-by-this-backend" as const,
+            tokenTotals:
+                "reported-usage-only; missing-usage-is-unknown" as const
+        }
+    }
+    async query(
+        clientId: string,
+        input: unknown,
+        signal?: AbortSignal
+    ): Promise<AnalyticsResult> {
+        if (signal?.aborted)
+            throw new ApiError(499, "ANALYTICS_CANCELLED", "分析查询已取消")
         if (
             !this.analytics.config.ANALYTICS_ADMIN_CLIENT_IDS.includes(clientId)
         )
@@ -52,6 +108,26 @@ export class AdminAnalytics {
         const parsed = analyticsQuerySchema.safeParse(input)
         if (!parsed.success)
             throw new ApiError(400, "INVALID_REQUEST", "分析查询参数不正确")
+        if ("cursor" in parsed.data && parsed.data.cursor) {
+            try {
+                if (!/^[A-Za-z0-9_-]+$/.test(parsed.data.cursor))
+                    throw new Error()
+                const cursor: unknown = JSON.parse(
+                    Buffer.from(parsed.data.cursor, "base64url").toString(
+                        "utf8"
+                    )
+                )
+                if (parsed.data.operation === "devices")
+                    z.string().uuid().parse(cursor)
+                else
+                    z.tuple([
+                        z.string().datetime(),
+                        z.string().min(1).max(100)
+                    ]).parse(cursor)
+            } catch {
+                throw new ApiError(400, "INVALID_REQUEST", "无效分页游标")
+            }
+        }
         const minute = Math.floor(Date.now() / 60000)
         await this.analytics.store.consumeBuckets([
             {
@@ -70,7 +146,9 @@ export class AdminAnalytics {
             )
         this.inFlight++
         try {
-            const value = await this.execute(parsed.data)
+            await queryCheckpoint(signal)
+            const value = await this.execute(parsed.data, signal)
+            await queryCheckpoint(signal)
             const json = stringifyAnalytics(value)
             if (Buffer.byteLength(json) > 256 * 1024)
                 throw new ApiError(
@@ -79,28 +157,48 @@ export class AdminAnalytics {
                     "查询结果过大，请缩小范围"
                 )
             return analyticsResultSchema.parse(JSON.parse(json))
+        } catch (error) {
+            if (signal?.aborted)
+                throw new ApiError(499, "ANALYTICS_CANCELLED", "分析查询已取消")
+            throw error
         } finally {
             this.inFlight--
         }
     }
-    private async execute(input: QueryInput) {
+    private async execute(input: QueryInput, signal?: AbortSignal) {
+        await queryCheckpoint(signal)
         const now = Date.now(),
             db = this.analytics.store.db
         const range =
             input.operation === "profile"
                 ? parseRange(undefined, undefined, now)
                 : parseRange(input.from, input.to, now)
-        const summary = await this.queries.summary(
+        const coverage = await this.coverage(
             range,
             now,
-            input.operation === "profile" ? input.clientId : undefined,
-            input.operation === "overview" ? "/v1/translate" : undefined
+            input.operation === "profile" || input.operation === "calls"
+                ? input.clientId
+                : undefined,
+            input.operation === "overview"
+                ? "/v1/translate"
+                : input.operation === "calls"
+                  ? input.route
+                  : undefined
         )
         const base = {
             asOf: new Date(now).toISOString(),
-            coverage: summary.coverage
+            coverage
         }
+        await queryCheckpoint(signal)
         if (input.operation === "overview") {
+            const summary = await this.queries.summary(
+                range,
+                now,
+                undefined,
+                "/v1/translate",
+                signal
+            )
+            await queryCheckpoint(signal)
             const byDay = await db.analyticsDaily.groupBy({
                 by: ["day"],
                 where: {
@@ -126,7 +224,8 @@ export class AdminAnalytics {
             )
             for (
                 let time = firstCovered;
-                time < range.to.getTime();
+                time <
+                Math.min(range.to.getTime(), Date.parse(utcDay(now)) + DAY_MS);
                 time += DAY_MS
             ) {
                 const day = utcDay(time),
@@ -137,6 +236,7 @@ export class AdminAnalytics {
                     characters: row?._sum.characters ?? 0n
                 })
             }
+            await queryCheckpoint(signal)
             const languages = await db.analyticsDaily.groupBy({
                 by: ["value"],
                 where: {
@@ -147,6 +247,7 @@ export class AdminAnalytics {
                 orderBy: { _sum: { requests: "desc" } },
                 take: 20
             })
+            await queryCheckpoint(signal)
             const errors = await db.apiCall.groupBy({
                 by: ["errorCode"],
                 where: {
@@ -165,8 +266,12 @@ export class AdminAnalytics {
                 to: input.to,
                 totals: projectTotals(summary.totals),
                 activeDevices: summary.activeDevices,
-                p95DurationMs: summary.p95DurationMs,
-                p95UnavailableReason: summary.p95UnavailableReason,
+                p95DurationMs: coverage.callsComplete
+                    ? summary.p95DurationMs
+                    : null,
+                p95UnavailableReason: coverage.callsComplete
+                    ? summary.p95UnavailableReason
+                    : "incomplete-observation",
                 days,
                 languages: languages.map(row => ({
                     languagePair: JSON.parse(row.value),
@@ -177,7 +282,12 @@ export class AdminAnalytics {
                     code: row.errorCode!,
                     requests: String(row._count)
                 })),
-                analysis: analysisState(summary)
+                analysis: {
+                    ...analysisState(summary),
+                    coverage: coverage.aggregateComplete
+                        ? summary.analysis.coverageOfExecutions
+                        : null
+                }
             }
         }
         if (input.operation === "profile") {
@@ -192,7 +302,12 @@ export class AdminAnalytics {
                     "ANALYTICS_DEVICE_NOT_FOUND",
                     "设备不存在"
                 )
-            const profile = await this.queries.profile(input.clientId, now)
+            await queryCheckpoint(signal)
+            const profile = await this.queries.profile(
+                input.clientId,
+                now,
+                signal
+            )
             return {
                 operation: input.operation,
                 ...base,
@@ -217,7 +332,12 @@ export class AdminAnalytics {
                         share
                     })),
                 keywords: profile.recentKeywords,
-                analysis: analysisState(summary)
+                analysis: {
+                    ...analysisState(profile),
+                    coverage: coverage.aggregateComplete
+                        ? profile.analysis.coverageOfExecutions
+                        : null
+                }
             }
         }
         if (input.operation === "devices") {
@@ -258,6 +378,7 @@ export class AdminAnalytics {
                 orderBy: { clientId: "asc" },
                 take: input.limit + 1
             })
+            await queryCheckpoint(signal)
             const more = rows.length > input.limit
             if (more) rows.pop()
             const clients = await db.client.findMany({
@@ -299,6 +420,7 @@ export class AdminAnalytics {
         try {
             calls = await this.queries.calls({
                 ...range,
+                ...(signal ? { signal } : {}),
                 limit: input.limit,
                 routes: analyticsRoutes,
                 ...(input.clientId ? { clientId: input.clientId } : {}),
