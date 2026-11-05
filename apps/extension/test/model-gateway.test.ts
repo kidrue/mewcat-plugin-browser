@@ -1,17 +1,17 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { handleModelGatewayRequest } from "../src/background/messages/model-gateway"
 import type {
     ModelGatewayGenerateRequest,
     ModelGatewayResponse
 } from "../src/messaging/modelGatewayContracts"
+import type { TokenUsageEvent } from "../src/token-usage/types"
 import {
     buildModelSummary,
     buildTranslationMessages,
     translateModelBatch
 } from "../src/translation/modelTranslation"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
-import type { TokenUsageEvent } from "../src/token-usage/types"
 
 const createModel = (
     type: AiModel_Platform_Enum,
@@ -173,24 +173,55 @@ describe("background model gateway", () => {
         expect(received).toMatchObject({ thinking: { type: "enabled" } })
     })
 
-    it("does not inject Huoshan thinking fields into DeepSeek or Moonshot", async () => {
-        for (const provider of [
-            AiModel_Platform_Enum.DEEPSEEK,
-            AiModel_Platform_Enum.MOONSHOT
-        ]) {
-            let received: Record<string, unknown> | undefined
-            await handleModelGatewayRequest(
-                generateRequest(createModel(provider), true),
-                {
-                    generateText: async options => {
-                        received = options
-                        return { text: "ok" }
-                    }
-                }
+    it.each([false, true, undefined])(
+        "sends the DeepSeek thinking setting in the HTTP body (%s)",
+        async enableThinking => {
+            const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+                new Response(
+                    JSON.stringify({
+                        choices: [
+                            {
+                                message: { role: "assistant", content: "你好" },
+                                finish_reason: "stop"
+                            }
+                        ]
+                    }),
+                    { headers: { "Content-Type": "application/json" } }
+                )
             )
-
-            expect(received).not.toHaveProperty("thinking")
+            try {
+                const request = generateRequest(
+                    createModel(AiModel_Platform_Enum.DEEPSEEK)
+                )
+                request.enableThinking = enableThinking
+                const response = await handleModelGatewayRequest(request, {
+                    recordUsage: async () => {}
+                })
+                expect(response).toEqual({ success: true, text: "你好" })
+                expect(
+                    JSON.parse(String(fetch.mock.calls[0][1]?.body))
+                ).toMatchObject({
+                    thinking: { type: enableThinking ? "enabled" : "disabled" }
+                })
+            } finally {
+                fetch.mockRestore()
+            }
         }
+    )
+
+    it("does not inject DeepSeek thinking fields into Moonshot", async () => {
+        let received: Record<string, unknown> | undefined
+        await handleModelGatewayRequest(
+            generateRequest(createModel(AiModel_Platform_Enum.MOONSHOT), true),
+            {
+                generateText: async options => {
+                    received = options
+                    return { text: "ok" }
+                }
+            }
+        )
+
+        expect(received).not.toHaveProperty("thinking")
     })
 
     it("maps provider authentication failures to a stable error code", async () => {

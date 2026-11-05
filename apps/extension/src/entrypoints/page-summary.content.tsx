@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 
 import { defineContentScript } from "#imports"
 
@@ -30,8 +30,11 @@ export default defineContentScript({
 
 function PageSummaryApp() {
     const config = useAtomValue(configAtom)
+    const [controller] = useState(() => new PageSummaryController(config))
     useEffect(() => {
-        const controller = new PageSummaryController(config)
+        if (controller.updateConfig(config)) void controller.start()
+    }, [config, controller])
+    useEffect(() => {
         void controller.start()
         const listener = (
             message: { type?: string; pageUrl?: string },
@@ -65,6 +68,6 @@ function PageSummaryApp() {
             chrome.runtime.onMessage.removeListener(listener)
             chrome.runtime.onMessage.removeListener(navigation)
         }
-    }, [config])
+    }, [controller])
     return null
 }

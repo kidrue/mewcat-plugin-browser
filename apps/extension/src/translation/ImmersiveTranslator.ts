@@ -1,5 +1,6 @@
 import { find, reduce } from "ramda"
 
+import { DEFAULT_VALUES } from "@/constants/options"
 import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
 import {
     createLoadingELement,
@@ -48,7 +49,7 @@ export interface ImmersiveTranslatorConfig {
     currentModel?: string
     /** 目标语言（必传） */
     targetLanguage: string
-    /** 每秒最大请求数（可选，默认3） */
+    /** 每秒最大请求数及最大并发数（可选，默认8） */
     maxRequestsPerSecond?: number
     /** 单次请求最大文本长度（可选，默认1024） */
     maxTextLengthPerRequest?: number
@@ -234,7 +235,7 @@ export class ImmersiveTranslator {
     private detectedLanguage: string = "auto"
 
     /** 同一时间最大并行翻译请求数，避免过多并发导致服务器压力 */
-    private MAX_CONCURRENT_REQUESTS = 3
+    private MAX_CONCURRENT_REQUESTS = DEFAULT_VALUES.maxRequestsPerSecond
 
     /** 当前翻译服务运行配置 */
     private translationRuntimeConfig: TranslationRuntimeConfig
@@ -352,7 +353,8 @@ export class ImmersiveTranslator {
         this.onRequestStateChange = config.onRequestStateChange
         this.targetLanguage = config.targetLanguage
         this.currentModel = config.currentModel ?? "default"
-        this.MAX_CONCURRENT_REQUESTS = config.maxRequestsPerSecond ?? 3
+        this.MAX_CONCURRENT_REQUESTS =
+            config.maxRequestsPerSecond ?? DEFAULT_VALUES.maxRequestsPerSecond
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
         this.translationStyle =
             config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
@@ -498,7 +500,8 @@ export class ImmersiveTranslator {
         this.targetLanguage = config.targetLanguage
         this.domSelector.setTargetLanguage(config.targetLanguage)
         this.currentModel = config.currentModel ?? "default"
-        this.MAX_CONCURRENT_REQUESTS = config.maxRequestsPerSecond ?? 3
+        this.MAX_CONCURRENT_REQUESTS =
+            config.maxRequestsPerSecond ?? DEFAULT_VALUES.maxRequestsPerSecond
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
         this.translationStyle =
             config.translationStyle ?? DEFAULT_TRANSLATION_STYLE

@@ -15,17 +15,51 @@ import {
 import { classifyPageType } from "./pageTypes"
 import { normalizeSummaryResult } from "./summaryResult"
 
+const summaryConfigKey = (config: ExtensionConfig): string =>
+    JSON.stringify({
+        enabled: config.enablePageSummary,
+        targetLanguage: config.targetLanguage,
+        enableThinking: config.enableThinking,
+        neverTranslateUrls: config.neverTranslateUrls,
+        disabledSites: config.pageSummaryDisabledSites,
+        model: selectPageSummaryModel(config)
+    })
+
 export class PageSummaryController {
     private handle: PageSummaryHandle | null = null
     private pending: Promise<SummaryActionResult> | null = null
     private generation = 0
+    private completed: SummaryActionResult | null = null
+    private pageUrl = window.location.href
+    private configKey: string
 
-    constructor(private readonly config: ExtensionConfig) {}
+    constructor(private config: ExtensionConfig) {
+        this.configKey = summaryConfigKey(config)
+    }
+
+    updateConfig(config: ExtensionConfig): boolean {
+        const nextKey = summaryConfigKey(config)
+        this.config = config
+        if (nextKey === this.configKey) return false
+        this.configKey = nextKey
+        this.cancel()
+        return true
+    }
 
     start(trigger: "auto" | "manual" = "auto"): Promise<SummaryActionResult> {
+        if (this.pageUrl !== window.location.href) this.cancel()
+        if (trigger === "auto" && !this.config.enablePageSummary)
+            return Promise.resolve({
+                success: false,
+                message: "自动总结未开启。"
+            })
         if (this.pending) {
             if (trigger === "manual") this.handle?.open()
             return this.pending
+        }
+        if (this.completed) {
+            if (trigger === "manual") this.handle?.open()
+            return Promise.resolve(this.completed)
         }
         const task = this.generate(trigger)
         this.pending = task
@@ -39,8 +73,6 @@ export class PageSummaryController {
     private async generate(
         trigger: "auto" | "manual"
     ): Promise<SummaryActionResult> {
-        if (trigger === "auto" && !this.config.enablePageSummary)
-            return { success: false, message: "自动总结未开启。" }
         if (!/^https?:$/.test(window.location.protocol))
             return { success: false, message: "此页面不支持总结。" }
         if (
@@ -119,12 +151,14 @@ export class PageSummaryController {
                     ? { status: "success", summary, pageType }
                     : { status: "empty" }
             )
-            return {
+            const result = {
                 success: Boolean(summary),
                 message: summary
                     ? "总结已显示在页面中。"
                     : "未生成有效总结，请重试。"
             }
+            if (result.success) this.completed = result
+            return result
         } catch (error) {
             if (
                 generation !== this.generation ||
@@ -144,6 +178,8 @@ export class PageSummaryController {
     cancel(): void {
         this.generation++
         this.pending = null
+        this.completed = null
+        this.pageUrl = window.location.href
         this.handle?.remove()
         this.handle = null
     }

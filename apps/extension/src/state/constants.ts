@@ -1,3 +1,4 @@
+import { DEFAULT_VALUES } from "@/constants/options"
 import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/translation/paragraphShortcut"
 import { type BaseModel } from "@/types"
@@ -82,7 +83,7 @@ export const defaultExtensionConfig: ExtensionConfig = {
     enableGoogleTranslate: true,
     enableMicrosoftTranslate: true,
     enableTencentTranslate: false, // 生产环境中默认禁用需要密钥的服务
-    maxRequestsPerSecond: 3,
+    maxRequestsPerSecond: DEFAULT_VALUES.maxRequestsPerSecond,
     maxTextLengthPerRequest: 1024,
     aiModelList,
 

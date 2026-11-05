@@ -102,6 +102,40 @@ const requested = () =>
     service.translate.mock.calls.map(call => call[1][0].content)
 
 describe("viewport translation integration", () => {
+    it.each([
+        [true, undefined],
+        [false, undefined],
+        [true, defaultExtensionConfig.maxRequestsPerSecond],
+        [false, defaultExtensionConfig.maxRequestsPerSecond]
+    ] as const)(
+        "starts eight default requests without waiting for previous responses (viewport: %s, limit: %s)",
+        async (enableViewportTranslation, maxRequestsPerSecond) => {
+            for (let index = 0; index < 9; index++)
+                makeNode(`paragraph ${index}`, index * 30)
+            const pending: Array<() => void> = []
+            service.translate.mockImplementation(
+                () =>
+                    new Promise<string>(resolve => {
+                        pending.push(() => resolve("译文"))
+                    })
+            )
+            translator = new ImmersiveTranslator({
+                ...config,
+                enableViewportTranslation,
+                maxRequestsPerSecond
+            })
+            const started = translator.startImmersiveTranslation()
+            try {
+                await vi.advanceTimersByTimeAsync(100)
+                expect(service.translate).toHaveBeenCalledTimes(8)
+            } finally {
+                translator.destroy()
+                pending.forEach(resolve => resolve())
+                await started
+            }
+        }
+    )
+
     it.each([true, false])(
         "uses the actual webpage role for requests, cache reads/writes and clearing (viewport: %s)",
         async enableViewportTranslation => {

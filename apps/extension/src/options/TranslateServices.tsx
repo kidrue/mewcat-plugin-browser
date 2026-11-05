@@ -1238,10 +1238,11 @@ export const TranslateServices: React.FunctionComponent = () => {
                 >
                     {currentModelSupportsThinking && (
                         <FormRow
-                            label="启用思考能力"
-                            description="为支持思考的模型（如 DeepSeek R1、QwQ、Thinking 系列）启用深度推理能力，可能会增加响应时间"
+                            label="思考模式"
+                            description="开启后使用深度推理，可能增加等待时间。DeepSeek 默认关闭，关闭时会明确请求非思考模式。"
                         >
                             <Switch
+                                aria-label="思考模式"
                                 checked={config.enableThinking || false}
                                 onChange={checked =>
                                     updateConfig({ enableThinking: checked })
@@ -1331,8 +1332,8 @@ export const TranslateServices: React.FunctionComponent = () => {
                     description="按服务额度调整发送频率与文本长度。"
                 >
                     <FormRow
-                        label="每秒最大请求数"
-                        description="限制AI模型的请求频率"
+                        label="请求频率与并发数"
+                        description="同时限制每秒请求数和最大并发数，默认 8。可按服务额度调整。"
                     >
                         <NumberInput
                             value={

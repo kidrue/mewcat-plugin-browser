@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     update: vi.fn(),
     remove: vi.fn(),
     render: vi.fn(),
+    open: vi.fn(),
     model: { id: "ai", params: {} }
 }))
 vi.mock("@/messaging", () => ({ sendMessage: mocks.send }))
@@ -30,7 +31,7 @@ beforeEach(() => {
     mocks.render.mockReturnValue({
         update: mocks.update,
         remove: mocks.remove,
-        open: vi.fn()
+        open: mocks.open
     })
     mocks.send.mockResolvedValue({
         success: true,
@@ -38,6 +39,17 @@ beforeEach(() => {
     })
 })
 describe("manual page summary", () => {
+    it("opens a completed automatic summary without generating it again", async () => {
+        const controller = new PageSummaryController({
+            ...defaultExtensionConfig,
+            enablePageSummary: true
+        })
+        await controller.start("auto")
+        await controller.start("manual")
+        expect(mocks.send).toHaveBeenCalledTimes(1)
+        expect(mocks.open).toHaveBeenCalledTimes(1)
+    })
+
     it("runs without enabling automatic summaries and deduplicates pending requests", async () => {
         let resolve!: (value: unknown) => void
         mocks.send.mockReturnValue(
@@ -56,6 +68,23 @@ describe("manual page summary", () => {
         expect(mocks.update).toHaveBeenCalledWith(
             expect.objectContaining({ status: "success" })
         )
+    })
+    it("allows a failed summary to be retried manually", async () => {
+        mocks.send.mockResolvedValueOnce({
+            success: false,
+            error: { code: "NETWORK_FAILURE", message: "failed" }
+        })
+        const controller = new PageSummaryController(defaultExtensionConfig)
+        expect((await controller.start("manual")).success).toBe(false)
+        expect((await controller.start("manual")).success).toBe(true)
+        expect(mocks.send).toHaveBeenCalledTimes(2)
+    })
+    it("generates a new summary after cancellation", async () => {
+        const controller = new PageSummaryController(defaultExtensionConfig)
+        await controller.start("manual")
+        controller.cancel()
+        await controller.start("manual")
+        expect(mocks.send).toHaveBeenCalledTimes(2)
     })
     it("explains website exclusion without requesting a model", async () => {
         const controller = new PageSummaryController({

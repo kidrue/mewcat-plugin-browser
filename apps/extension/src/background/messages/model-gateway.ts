@@ -75,6 +75,7 @@ const getThinkingOptions = (
         case AiModel_Platform_Enum.GEMINI:
             return { reasoningEffort: enabled ? "high" : "minimal" }
         case AiModel_Platform_Enum.HUOSHAN:
+        case AiModel_Platform_Enum.DEEPSEEK:
             return { thinking: { type: enabled ? "enabled" : "disabled" } }
         case AiModel_Platform_Enum.BAILIAN:
             return { enableThinking: enabled }

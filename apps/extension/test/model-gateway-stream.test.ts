@@ -53,6 +53,37 @@ function network() {
 }
 
 describe("model gateway streaming", () => {
+    it.each([false, true])(
+        "sends DeepSeek thinking controls in streaming requests (%s)",
+        async enableThinking => {
+            const source = network()
+            const response = handleModelGatewayStream(
+                {
+                    ...request,
+                    model: {
+                        ...request.model,
+                        type: AiModel_Platform_Enum.DEEPSEEK
+                    },
+                    enableThinking
+                },
+                { onDelta: () => {} },
+                { fetch: source.fetch, recordUsage: async () => {} }
+            )
+            source.controller.enqueue(chunk("你好"))
+            source.controller.enqueue(finish())
+            source.controller.enqueue(
+                new TextEncoder().encode("data: [DONE]\n\n")
+            )
+            source.controller.close()
+            expect(await response).toEqual({ success: true, text: "你好" })
+            expect(
+                JSON.parse(String(source.fetch.mock.calls[0][1]?.body))
+            ).toMatchObject({
+                thinking: { type: enableThinking ? "enabled" : "disabled" }
+            })
+        }
+    )
+
     it("accepts CRLF chunks split inside UTF-8 and finishes at DONE without waiting for socket close", async () => {
         const source = network()
         const deltas: string[] = []

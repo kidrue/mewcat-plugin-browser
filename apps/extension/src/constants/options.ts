@@ -76,7 +76,7 @@ export const EXTENSION_INFO = {
 
 // 默认配置值
 export const DEFAULT_VALUES = {
-    maxRequestsPerSecond: 5,
+    maxRequestsPerSecond: 8,
     maxTextLengthPerRequest: 1000,
     minRequestsPerSecond: 1,
     maxRequestsPerSecondLimit: 100,

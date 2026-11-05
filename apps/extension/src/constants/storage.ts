@@ -12,6 +12,10 @@ export function withEnvironmentSuffix(
 export function createStorageNames(mode: StorageBuildMode) {
     return {
         extensionConfig: withEnvironmentSuffix("extension-config", mode),
+        requestConcurrencyMigration: withEnvironmentSuffix(
+            "request-concurrency-migration",
+            mode
+        ),
         accessToken: withEnvironmentSuffix("accessToken", mode),
         refreshToken: withEnvironmentSuffix("refreshToken", mode),
         tokenUsage: withEnvironmentSuffix("token-usage", mode),

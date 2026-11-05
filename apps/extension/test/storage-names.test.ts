@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 
 import {
-    createStructuredImageCachePrefix,
     createStorageNames,
+    createStructuredImageCachePrefix,
     withEnvironmentSuffix
 } from "../src/constants/storage"
 
@@ -13,6 +13,7 @@ describe("storage environment names", () => {
         )
         expect(createStorageNames("production")).toEqual({
             extensionConfig: "extension-config",
+            requestConcurrencyMigration: "request-concurrency-migration",
             accessToken: "accessToken",
             refreshToken: "refreshToken",
             tokenUsage: "token-usage",
@@ -29,6 +30,7 @@ describe("storage environment names", () => {
         )
         expect(createStorageNames("development")).toEqual({
             extensionConfig: "extension-config-dev",
+            requestConcurrencyMigration: "request-concurrency-migration-dev",
             accessToken: "accessToken-dev",
             refreshToken: "refreshToken-dev",
             tokenUsage: "token-usage-dev",
