@@ -40,7 +40,13 @@ export async function generateCacheKey(
     const keyText = hasVariables ? template : normalizedText
 
     // 4. 对长文本使用哈希，短文本直接使用
-    const textKey = keyText.length > 100 ? await hashText(keyText) : keyText
+    let textKey = keyText
+    if (keyText.length > 100) {
+        // HTTP 页没有 SubtleCrypto；保留完整文本，避免弱哈希碰撞导致串译文。
+        textKey = globalThis.crypto?.subtle
+            ? await hashText(keyText)
+            : `text:${keyText.length}:${keyText}`
+    }
 
     // 5. 组合生成键
     const parts = [

@@ -194,7 +194,12 @@ export class L2PersistentCache {
             const store = transaction.objectStore(this.storeName)
             const request = store.put(entry)
 
-            request.onsuccess = () => resolve()
+            // put 成功并不代表事务已经提交。
+            transaction.oncomplete = () => resolve()
+            transaction.onabort = () =>
+                reject(transaction.error ?? new Error("缓存写入事务已中止"))
+            transaction.onerror = () =>
+                reject(transaction.error ?? request.error)
             request.onerror = () => {
                 console.error("[L2Cache] Failed to set cache:", request.error)
                 reject(request.error)

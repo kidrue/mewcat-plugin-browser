@@ -34,6 +34,83 @@ afterEach(async () => {
     await act(async () => root.unmount())
 })
 describe("管理员分析入口和页面", () => {
+    it.each([
+        "37156ad6-e1c6-4628-8ec3-55b329f4f1a3",
+        "76aa2488-3241-4f38-b0a6-4f5df933417b"
+    ])("在作者设备 %s 的完整与缩略 ID 旁标记 kidrue", async clientId => {
+        const { DeviceId } = await import("../src/options/analytics/DeviceId")
+        await act(async () =>
+            root.render(
+                <>
+                    <DeviceId clientId={clientId} />
+                    <DeviceId clientId={clientId} truncated />
+                </>
+            )
+        )
+        expect(
+            document.querySelectorAll('[aria-label="作者 kidrue 的设备"]')
+        ).toHaveLength(2)
+        expect(document.body.textContent).toContain(clientId)
+        expect(document.body.textContent).toContain(
+            `${clientId.slice(0, 8)}…${clientId.slice(-4)}`
+        )
+    })
+
+    it("不将普通设备或未认证记录标记为作者设备", async () => {
+        const { DeviceId } = await import("../src/options/analytics/DeviceId")
+        await act(async () =>
+            root.render(
+                <>
+                    <DeviceId clientId="8f7ce4a1-1111-4321-8011-111111111111" />
+                    <DeviceId clientId={null} />
+                </>
+            )
+        )
+        expect(
+            document.querySelector('[aria-label="作者 kidrue 的设备"]')
+        ).toBeNull()
+        expect(document.body.textContent).toContain("未认证")
+    })
+
+    it("作者标记不改变本设备 ID 的复制内容", async () => {
+        const clientId = "76aa2488-3241-4f38-b0a6-4f5df933417b"
+        mocks.identity.mockResolvedValue({
+            success: true,
+            data: { clientId, serviceOrigin: "https://test.local" }
+        })
+        mocks.query.mockResolvedValue({
+            success: false,
+            code: "ANALYTICS_FORBIDDEN",
+            message: "当前设备尚未获得管理员权限"
+        })
+        const writeText = vi.fn().mockResolvedValue(undefined)
+        const previousClipboard = Object.getOwnPropertyDescriptor(
+            navigator,
+            "clipboard"
+        )
+        Object.defineProperty(navigator, "clipboard", {
+            configurable: true,
+            value: { writeText }
+        })
+        try {
+            const { Analytics } = await import("../src/options/Analytics")
+            await act(async () => root.render(<Analytics />))
+            expect(
+                document.querySelector('[aria-label="作者 kidrue 的设备"]')
+            ).not.toBeNull()
+            await act(async () =>
+                [...document.querySelectorAll("button")]
+                    .find(button => button.textContent === "复制设备 ID")!
+                    .click()
+            )
+            expect(writeText).toHaveBeenCalledExactlyOnceWith(clientId)
+        } finally {
+            if (previousClipboard)
+                Object.defineProperty(navigator, "clipboard", previousClipboard)
+            else Reflect.deleteProperty(navigator, "clipboard")
+        }
+    })
+
     it("下一页读取失败仍可返回上一页", async () => {
         mocks.query.mockResolvedValue({
             success: true,

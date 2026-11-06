@@ -102,6 +102,32 @@ const requested = () =>
     service.translate.mock.calls.map(call => call[1][0].content)
 
 describe("viewport translation integration", () => {
+    it.each([true, false])(
+        "applies cache enable/disable changes to an existing translator (viewport: %s)",
+        async enableViewportTranslation => {
+            const cache = new cacheModule.TieredTranslationCache({
+                enableL2: false
+            })
+            vi.spyOn(cacheModule, "createDefaultCache").mockReturnValue(cache)
+            makeNode("An English paragraph to reuse after enabling cache", 0)
+            const settings = { ...config, enableViewportTranslation }
+            translator = new ImmersiveTranslator({
+                ...settings,
+                cacheEnabled: false
+            })
+            await translator.updateConfig({ ...settings, cacheEnabled: true })
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            expect(service.translate).toHaveBeenCalledTimes(1)
+            await translator.updateConfig({ ...settings, cacheEnabled: false })
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(100)
+            expect(service.translate).toHaveBeenCalledTimes(2)
+        }
+    )
+
     it.each([
         [true, undefined],
         [false, undefined],

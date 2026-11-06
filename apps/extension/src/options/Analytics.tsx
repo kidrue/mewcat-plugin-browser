@@ -9,6 +9,7 @@ import {
 } from "@/types/analytics"
 
 import { copyDeviceId } from "./analytics/clipboard"
+import { DeviceId } from "./analytics/DeviceId"
 import { Overview } from "./analytics/Overview"
 import { Profile } from "./analytics/Profile"
 import {
@@ -24,7 +25,6 @@ import {
     Field,
     LoadingCards,
     localTime,
-    Mono,
     Muted,
     Page,
     Row,
@@ -139,7 +139,7 @@ export function Analytics() {
                         <>
                             <Muted>本设备 ID</Muted>
                             <p>
-                                <Mono>{identity.data.clientId}</Mono>
+                                <DeviceId clientId={identity.data.clientId} />
                             </p>
                             <Row>
                                 <Button

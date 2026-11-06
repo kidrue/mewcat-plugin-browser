@@ -149,9 +149,9 @@ export class TieredTranslationCache {
         // 写入 L1
         this.l1Cache.set(normalizedParams, translation, effectiveTTL)
 
-        // 写入 L2（异步，不阻塞）
+        // 持久化完成后再返回，避免页面重载或关闭时丢失写入。
         if (this.enableL2) {
-            this.l2Cache
+            await this.l2Cache
                 .set(normalizedParams, translation, effectiveTTL)
                 .catch(error => {
                     console.error(

@@ -2,6 +2,7 @@ import type { AnalyticsCalls, AnalyticsDevices } from "@mewcat/client"
 import { analyticsRoutes } from "@mewcat/client"
 import React, { useState } from "react"
 
+import { DeviceId } from "./DeviceId"
 import {
     Button,
     Card,
@@ -134,10 +135,10 @@ export function Devices({
                                             {item.client.name}
                                         </button>
                                         <Muted>
-                                            <Mono>
-                                                {item.client.id.slice(0, 8)}…
-                                                {item.client.id.slice(-4)}
-                                            </Mono>
+                                            <DeviceId
+                                                clientId={item.client.id}
+                                                truncated
+                                            />
                                         </Muted>
                                     </td>
                                     <td>
@@ -199,15 +200,10 @@ export function Calls({ data }: { data: AnalyticsCalls }) {
                                     <td>
                                         <Mono>{localTime(item.createdAt)}</Mono>
                                         <Muted>
-                                            <Mono
-                                                title={
-                                                    item.clientId ?? "未认证"
-                                                }
-                                            >
-                                                {item.clientId
-                                                    ? `${item.clientId.slice(0, 8)}…${item.clientId.slice(-4)}`
-                                                    : "未认证"}
-                                            </Mono>
+                                            <DeviceId
+                                                clientId={item.clientId}
+                                                truncated
+                                            />
                                         </Muted>
                                     </td>
                                     <td>
@@ -241,9 +237,9 @@ export function Calls({ data }: { data: AnalyticsCalls }) {
                                             <summary>执行元数据</summary>
                                             <Muted>
                                                 设备 ID：
-                                                <Mono>
-                                                    {item.clientId ?? "未认证"}
-                                                </Mono>
+                                                <DeviceId
+                                                    clientId={item.clientId}
+                                                />
                                             </Muted>
                                             {item.translation && (
                                                 <>

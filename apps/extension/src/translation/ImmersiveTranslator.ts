@@ -220,7 +220,7 @@ export class ImmersiveTranslator {
     private stayOriginalMap: Record<string, Element> = {}
 
     /** 翻译结果缓存 - 使用分层缓存系统（L1内存 + L2持久化） */
-    private translationCache: TieredTranslationCache
+    private translationCache?: TieredTranslationCache
 
     /** 当前使用的模型ID，用于缓存键生成 */
     private currentModel: string | number
@@ -393,10 +393,7 @@ export class ImmersiveTranslator {
         })
 
         // 初始化分层翻译缓存系统（默认启用）
-        if (config.cacheEnabled !== false) {
-            this.translationCache = createDefaultCache()
-            this.initializeCache()
-        }
+        this.configureCache(config.cacheEnabled !== false)
 
         // 异步初始化 DOM 选择器
         this.domReady = this.initializeDomSelector(config.debug)
@@ -421,14 +418,30 @@ export class ImmersiveTranslator {
      * 初始化翻译缓存系统
      */
     private async initializeCache(): Promise<void> {
+        const cache = this.translationCache
+        if (!cache) return
         try {
-            await this.translationCache.init()
+            await cache.init()
+            if (cache !== this.translationCache) {
+                cache.destroy()
+                return
+            }
             console.log("✅ ImmersiveTranslator: 翻译缓存系统初始化成功")
         } catch (error) {
             console.error(
                 "❌ ImmersiveTranslator: 翻译缓存系统初始化失败",
                 error
             )
+        }
+    }
+
+    private configureCache(enabled: boolean): void {
+        if (enabled && !this.translationCache) {
+            this.translationCache = createDefaultCache()
+            void this.initializeCache()
+        } else if (!enabled && this.translationCache) {
+            this.translationCache.destroy()
+            this.translationCache = undefined
         }
     }
 
@@ -503,6 +516,7 @@ export class ImmersiveTranslator {
         this.MAX_CONCURRENT_REQUESTS =
             config.maxRequestsPerSecond ?? DEFAULT_VALUES.maxRequestsPerSecond
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
+        this.configureCache(config.cacheEnabled !== false)
         this.translationStyle =
             config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
         this.neverTranslateLanguages = config.neverTranslateLanguages ?? []
@@ -572,7 +586,6 @@ export class ImmersiveTranslator {
         const session = this.translationSession
         const runtime = this.translationRuntimeConfig
         const targetLanguage = this.targetLanguage
-        const cache = this.translationCache
         const modelId = this.currentModel
         const sourceLanguage = this.detectedLanguage
         const cacheKey = (node: TranslationNode): CacheKeyParams => ({
@@ -593,8 +606,10 @@ export class ImmersiveTranslator {
                         this.legacyInFlight.size
                 )
             }),
-            readCache: async node => (cache ? cache.get(cacheKey(node)) : null),
+            readCache: async node =>
+                this.translationCache?.get(cacheKey(node)) ?? null,
             writeCache: async (node, text) => {
+                const cache = this.translationCache
                 if (
                     cache &&
                     session === this.translationSession &&
@@ -1055,9 +1070,9 @@ export class ImmersiveTranslator {
             })
             .filter(Boolean)
 
-        // 批量设置缓存（异步，不阻塞）
+        // 等待持久化后再显示译文，刷新页面时也能复用缓存。
         if (cacheEntries.length > 0) {
-            this.translationCache
+            await this.translationCache
                 .batchSet(cacheEntries)
                 .catch(error => console.error("缓存翻译结果失败:", error))
         }

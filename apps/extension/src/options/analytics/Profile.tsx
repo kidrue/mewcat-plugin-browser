@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import styled from "styled-components"
 
 import { copyDeviceId } from "./clipboard"
+import { DeviceId } from "./DeviceId"
 import { AnalysisStatus, Languages } from "./Overview"
 import {
     Alert,
@@ -12,7 +13,6 @@ import {
     localTime,
     Metric,
     Metrics,
-    Mono,
     Muted,
     percent,
     Row
@@ -100,7 +100,9 @@ export function Profile({
                     关闭
                 </Button>
             </Row>
-            <Mono>{clientId}</Mono>
+            <p>
+                <DeviceId clientId={clientId} />
+            </p>
             <Row>
                 <Button
                     type="button"

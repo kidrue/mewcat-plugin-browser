@@ -196,6 +196,9 @@ importers:
       eslint-plugin-react-hooks:
         specifier: 5.2.0
         version: 5.2.0(eslint@9.24.0(jiti@2.7.0))
+      fake-indexeddb:
+        specifier: 6.2.5
+        version: 6.2.5
       fflate:
         specifier: 0.8.2
         version: 0.8.2
