@@ -7,6 +7,7 @@ import { isDevelopment } from "@/utils/environment"
 
 import { splitTranslationNodeAtBreaks } from "./lineBreakSegmentation"
 import { getOriginalParent, ORIGINAL_CONTENT_SELECTOR } from "./originalContent"
+import { isParagraphBlock, PARAGRAPH_CODE_SELECTOR } from "./paragraphTarget"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 
 /**
@@ -34,6 +35,8 @@ export interface TranslationNode {
     container: HTMLElement
     /**  当前textNodes所含文本 */
     originText?: string
+    /** 提取时保存占位符原文快照，避免后续 DOM 修改同时改变新旧指纹。 */
+    originalContentKey?: string
     /** 文本或不含块标签的行内标签节点 */
     textNodes?: TextNode[]
     /** 翻译文本 */
@@ -129,7 +132,10 @@ export class DOMTraverser {
     /** ⚡ 优化：isBlockElement 结果缓存 */
     private blockElementCache = new WeakMap<HTMLElement, boolean>()
 
-    constructor(rule: TranslationRule) {
+    constructor(
+        rule: TranslationRule,
+        private readonly manualParagraph = false
+    ) {
         this.rule = rule
         this.context = {
             rule: this.rule,
@@ -192,7 +198,7 @@ export class DOMTraverser {
         list: TranslationNode[]
         stayOriginalMap: Record<string, Element>
     } {
-        if (rootElement !== document.body) {
+        if (!this.manualParagraph && rootElement !== document.body) {
             for (
                 let ancestor = rootElement.parentElement;
                 ancestor;
@@ -490,7 +496,20 @@ export class DOMTraverser {
     private extractTranslateBlocksText(node: TranslationNode): string | null {
         // 聚合文本内容
         const textList: string[] = []
-        const traverseNode = (node: Node) => {
+        const traverseNode = (node: Node, output = textList) => {
+            if (this.manualParagraph && node instanceof Element) {
+                if (this.isHiddenElement(node as HTMLElement)) return
+                if (
+                    node.matches(PARAGRAPH_CODE_SELECTOR) ||
+                    this.rule.stayOriginalTags?.includes(node.tagName)
+                ) {
+                    const key = `@${++this.stayOriginalCounter}#`
+                    this.stayOriginalMap[key] = node
+                    output.push(key)
+                    return
+                }
+                if (this.isExcludeNode(node)) return
+            }
             if (
                 node.nodeType === Node.ELEMENT_NODE &&
                 this.rule.preserveTagsInTranslation.includes(
@@ -499,18 +518,25 @@ export class DOMTraverser {
             ) {
                 const tag = `${(node as Element).tagName.toLowerCase()}${Object.keys(this.stayOriginalMap).length + 1}`
                 this.stayOriginalMap[`${tag}`] = node as Element
-                const newText = `<${tag}>${node.textContent.trim()}</${tag}>`
-                textList.push(newText)
+                const parts: string[] = []
+                if (this.manualParagraph) {
+                    for (const child of Array.from(node.childNodes))
+                        traverseNode(child, parts)
+                } else parts.push(node.textContent.trim())
+                output.push(`<${tag}>${parts.join("")}</${tag}>`)
                 return
             }
             if (node.nodeType === Node.TEXT_NODE) {
-                const textContent = node.textContent?.trim() || ""
+                const textContent =
+                    this.manualParagraph && output !== textList
+                        ? node.textContent || ""
+                        : node.textContent?.trim() || ""
                 // 跳过空文本
                 if (!textContent) {
                     return
                 }
 
-                textList.push(textContent)
+                output.push(textContent)
                 return
             }
             const isExclude = this.isExcludeNode(node)
@@ -518,7 +544,7 @@ export class DOMTraverser {
                 return
             }
             for (const child of Array.from(node.childNodes)) {
-                traverseNode(child)
+                traverseNode(child, output)
             }
         }
         for (const textNode of node.textNodes) {
@@ -630,6 +656,7 @@ export class DOMTraverser {
         if (!element || !element?.tagName) {
             return false
         }
+        if (this.manualParagraph) return isParagraphBlock(element)
 
         // ⚡ 优化 1: 检查缓存
         if (this.blockElementCache.has(element)) {
@@ -889,6 +916,14 @@ export class DOMTraverser {
             )
         }
 
+        if (this.manualParagraph && element.matches(PARAGRAPH_CODE_SELECTOR)) {
+            return returnResult(
+                NodeAction.STAY_ORIGIN,
+                "手动段落保留代码区域",
+                "Code protection"
+            )
+        }
+
         // ====================================
         // Layer 1: excludeSelectors 检查
         // ====================================
@@ -983,7 +1018,7 @@ export class DOMTraverser {
         // ====================================
         // Layer 5.5: ASIDE 标签特殊规则检查
         // ====================================
-        if (tagName === "ASIDE") {
+        if (!this.manualParagraph && tagName === "ASIDE") {
             const layer5_5Start = performance.now()
             const asideDecision = this.checkAsideElement(element)
             if (this.context.filterNodeStats) {

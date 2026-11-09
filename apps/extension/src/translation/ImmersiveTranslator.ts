@@ -31,6 +31,7 @@ import { type TranslationNode } from "./DOMTraverser"
 import type { MutationObserverManager } from "./MutationObserverManager"
 import { hideOriginalContent, restoreOriginalContent } from "./originalContent"
 import { resolvePageAiRole } from "./pageAiRole"
+import { resolveParagraphTarget } from "./paragraphTarget"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 import {
     buildAiSummary,
@@ -108,6 +109,10 @@ export class ImmersiveTranslator {
         return this.translationScope
     }
 
+    private paragraphSourceKey(node: TranslationNode): string {
+        return node.originalContentKey ?? node.originText ?? ""
+    }
+
     public async translateParagraph(target: Element): Promise<boolean> {
         this.refreshPageAiRole()
         const session = this.translationSession
@@ -116,6 +121,8 @@ export class ImmersiveTranslator {
         const { result, stayOriginalMap } =
             this.domSelector.extractParagraphTextNodes(target)
         if (!result.length) return false
+        const paragraphRoot = resolveParagraphTarget(target)
+        if (paragraphRoot) this.paragraphTargets.add(paragraphRoot)
         this.isTranslationAborted = false
         const pending: TranslationNode[] = []
         let skipCache = false
@@ -126,7 +133,13 @@ export class ImmersiveTranslator {
             const display = this.translationNodes.find(
                 item => item.id === node.id
             )
-            if (previous?.originText === node.originText && display) {
+            node.stayOriginalMap = stayOriginalMap
+            if (
+                previous &&
+                this.paragraphSourceKey(previous) ===
+                    this.paragraphSourceKey(node) &&
+                display
+            ) {
                 if (display.status === "loading" || display.translate) {
                     continue
                 }
@@ -155,7 +168,6 @@ export class ImmersiveTranslator {
                 this.viewportScheduler?.remove([node.id])
             }
             node.stayOriginalMap = stayOriginalMap
-            this.paragraphTargets.add(node.container)
             this.sourceTextNodes.push(node)
             pending.push(node)
         }
@@ -509,7 +521,10 @@ export class ImmersiveTranslator {
             this.translationScope === "paragraph"
                 ? Array.from(this.paragraphTargets)
                 : null
-        if (restartReadingSession) this.clearAllTranslations()
+        if (restartReadingSession)
+            this.clearAllTranslations({
+                preserveParagraphTargets: this.translationScope === "page"
+            })
         this.targetLanguage = config.targetLanguage
         this.domSelector.setTargetLanguage(config.targetLanguage)
         this.currentModel = config.currentModel ?? "default"
@@ -699,7 +714,7 @@ export class ImmersiveTranslator {
             stayOriginalMap,
             visibleNodes,
             nonVisibleNodes
-        } = this.domSelector.extractTargetTextNodes()
+        } = this.extractObservedTextNodes()
 
         this.sourceTextNodes = extractedNodes
         this.stayOriginalMap = stayOriginalMap
@@ -781,7 +796,7 @@ export class ImmersiveTranslator {
         try {
             // 第一步：清空所有翻译状态和DOM修改
             this.performanceMonitor?.startStage("清空翻译状态")
-            this.clearAllTranslations()
+            this.clearAllTranslations({ preserveParagraphTargets: true })
             this.translationScope = "page"
             session = this.translationSession
             this.performanceMonitor?.endStage()
@@ -1362,7 +1377,9 @@ export class ImmersiveTranslator {
      * 移除所有翻译展示节点、清理节点属性、重置内部状态
      * 确保页面恢复到翻译前的原始状态
      */
-    public clearAllTranslations() {
+    public clearAllTranslations(
+        options: { preserveParagraphTargets?: boolean } = {}
+    ) {
         // 🔴 设置中断标志，停止所有正在执行的翻译任务
         this.isTranslationAborted = true
         this.translationSession++
@@ -1394,7 +1411,7 @@ export class ImmersiveTranslator {
 
         this.translationNodes = []
         this.sourceTextNodes = []
-        this.paragraphTargets.clear()
+        if (!options.preserveParagraphTargets) this.paragraphTargets.clear()
         this.translationScope = "paragraph"
 
         // 卸载 DOM 变化监听器
@@ -1965,13 +1982,13 @@ export class ImmersiveTranslator {
     }
 
     private extractObservedTextNodes() {
-        if (this.translationScope === "page") {
-            return this.domSelector.extractTargetTextNodes()
-        }
         const nodes = new Map<string, TranslationNode>()
-        for (const target of this.paragraphTargets) {
-            if (!target.isConnected) continue
-            const extracted = this.domSelector.extractParagraphTextNodes(target)
+        let visibleNodes: TranslationNode[] = []
+        let nonVisibleNodes: TranslationNode[] = []
+        if (this.translationScope === "page") {
+            const extracted = this.domSelector.extractTargetTextNodes()
+            visibleNodes = extracted.visibleNodes
+            nonVisibleNodes = extracted.nonVisibleNodes
             for (const node of extracted.result) {
                 nodes.set(node.id, {
                     ...node,
@@ -1979,9 +1996,32 @@ export class ImmersiveTranslator {
                 })
             }
         }
+        for (const target of this.paragraphTargets) {
+            if (!target.isConnected) {
+                this.paragraphTargets.delete(target)
+                continue
+            }
+            const extracted = this.domSelector.extractParagraphTextNodes(target)
+            for (const node of extracted.result) {
+                const pageNode = nodes.get(node.id)
+                if (
+                    pageNode &&
+                    this.paragraphSourceKey(pageNode) ===
+                        this.paragraphSourceKey(node)
+                )
+                    continue
+                nodes.set(node.id, {
+                    ...node,
+                    stayOriginalMap: extracted.stayOriginalMap
+                })
+                if (!pageNode) nonVisibleNodes.push(node)
+            }
+        }
         return {
             result: Array.from(nodes.values()),
-            stayOriginalMap: {} as Record<string, Element>
+            stayOriginalMap: {} as Record<string, Element>,
+            visibleNodes: visibleNodes.map(node => nodes.get(node.id)!),
+            nonVisibleNodes: nonVisibleNodes.map(node => nodes.get(node.id)!)
         }
     }
 
@@ -2032,6 +2072,7 @@ export class ImmersiveTranslator {
                         !old ||
                         old.container !== node.container ||
                         old.originText !== node.originText ||
+                        old.originalContentKey !== node.originalContentKey ||
                         old.textNodes?.length !== node.textNodes?.length ||
                         node.textNodes?.some(
                             (text, index) =>

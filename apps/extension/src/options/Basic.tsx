@@ -143,7 +143,7 @@ export const Basic: React.FunctionComponent = () => {
             <OptionsSection title="段落翻译" artwork="desk" icon="book">
                 <FormRow
                     label="启用段落翻译"
-                    description="鼠标悬浮在文字段落上，按快捷键翻译该段。"
+                    description="鼠标悬停文字时高亮最近的块级区域，按快捷键补译整页翻译遗漏的内容；代码与编辑区域保持原样。"
                     controlId="enable-paragraph-translation"
                 >
                     <CustomToggle

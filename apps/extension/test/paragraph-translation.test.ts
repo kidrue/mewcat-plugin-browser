@@ -52,6 +52,325 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 describe("paragraph translation", () => {
+    it("retains manually included inline text when page rules still exclude it", async () => {
+        document.body.innerHTML =
+            '<main><p id="included">Regular text <span class="notranslate">Manually included content</span></p></main>'
+        translator = new ImmersiveTranslator(config)
+        await translator.startImmersiveTranslation({ manual: true })
+        await vi.advanceTimersByTimeAsync(300)
+        const root = document.querySelector("#included")!
+        expect(
+            root.querySelector(".mewcat-wrapper")?.textContent
+        ).not.toContain("Manually included")
+        await translator.translateParagraph(root)
+        await vi.advanceTimersByTimeAsync(300)
+        expect(root.querySelector(".mewcat-wrapper")?.textContent).toContain(
+            "Manually included"
+        )
+        document
+            .querySelector("main")!
+            .append(document.createElement("section"))
+        await vi.advanceTimersByTimeAsync(500)
+        expect(root.querySelector(".mewcat-wrapper")?.textContent).toContain(
+            "Manually included"
+        )
+        await translator.startImmersiveTranslation({ manual: true })
+        await vi.advanceTimersByTimeAsync(500)
+        expect(root.querySelector(".mewcat-wrapper")?.textContent).toContain(
+            "Manually included"
+        )
+        expect(root.querySelectorAll(".mewcat-container")).toHaveLength(1)
+    })
+    it("refreshes preserved code clones after source code content changes", async () => {
+        document.body.innerHTML =
+            "<article><p>Run <code>old command</code> to continue.</p></article>"
+        const code = document.querySelector("code")!
+        translator = new ImmersiveTranslator(config)
+        await translator.translateParagraph(document.querySelector("p")!)
+        await vi.advanceTimersByTimeAsync(200)
+        expect(
+            document.querySelector(".mewcat-wrapper code")?.textContent
+        ).toBe("old command")
+        code.textContent = "new command"
+        await vi.advanceTimersByTimeAsync(500)
+        expect(
+            document.querySelector(".mewcat-wrapper code")?.textContent
+        ).toBe("new command")
+    })
+    it("preserves block-level code descendants instead of extracting their text", async () => {
+        document.body.innerHTML =
+            '<article><div id="root">Normal paragraph text<div role="code">secret_code_content</div><pre>another_secret</pre>Paragraph ending.</div></article>'
+        const selector = new DomSelector(config)
+        await selector.initialize()
+        const extracted = selector.extractParagraphTextNodes(
+            document.querySelector("#root")!
+        )
+        const text = extracted.result.map(node => node.originText).join(" ")
+        expect(text).toContain("Normal paragraph text")
+        expect(text).toContain("Paragraph ending.")
+        expect(text).not.toContain("secret_code_content")
+        expect(text).not.toContain("another_secret")
+    })
+    it("retains source identity for whole-page visible-priority batches", async () => {
+        document.body.innerHTML = `<article>${Array.from({ length: 22 }, (_, index) => `<p>Article paragraph number ${index} needs translation.</p>`).join("")}</article>`
+        translator = new ImmersiveTranslator({
+            ...config,
+            prioritizeVisibleArea: true,
+            enableViewportTranslation: false
+        })
+        const task = translator.startImmersiveTranslation({ manual: true })
+        await vi.advanceTimersByTimeAsync(15000)
+        await task
+        expect(document.querySelectorAll(".mewcat-wrapper")).toHaveLength(22)
+    })
+    it("excludes hidden descendants when serializing inline links", async () => {
+        document.body.innerHTML =
+            '<article><p>Visible <a href="/help">link <span hidden>hidden_secret</span></a> text.</p></article>'
+        const selector = new DomSelector(config)
+        await selector.initialize()
+        const text = selector
+            .extractParagraphTextNodes(document.querySelector("p")!)
+            .result.map(node => node.originText)
+            .join(" ")
+        expect(text).toContain("link")
+        expect(text).not.toContain("hidden_secret")
+    })
+    it("does not request an already translated paragraph when link placeholder numbers differ", async () => {
+        document.querySelector("#second")!.innerHTML =
+            'Second paragraph with <a href="/second">another useful link</a>.'
+        translator = new ImmersiveTranslator(config)
+        await translator.startImmersiveTranslation({ manual: true })
+        await vi.advanceTimersByTimeAsync(1000)
+        const count = service.translate.mock.calls.length
+        await translator.translateParagraph(
+            document.querySelector("#second a")!
+        )
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate).toHaveBeenCalledTimes(count)
+        expect(
+            document.querySelectorAll("#second .mewcat-container")
+        ).toHaveLength(1)
+    })
+    it("retains explicit supplements across page restarts and target language changes", async () => {
+        document.body.innerHTML =
+            '<main><p id="included">Regular article paragraph.</p><p id="missed">Manual supplement needs translation.</p></main>'
+        vi.mocked(fetch).mockResolvedValue({
+            json: async () => ({
+                ...rules,
+                rules: [],
+                generalRule: { ...rules.generalRule, selectors: ["#included"] }
+            })
+        } as Response)
+        translator = new ImmersiveTranslator({
+            ...config,
+            enableViewportTranslation: true
+        })
+        await translator.startImmersiveTranslation({ manual: true })
+        await vi.advanceTimersByTimeAsync(1200)
+        await translator.translateParagraph(document.querySelector("#missed")!)
+        await vi.advanceTimersByTimeAsync(1200)
+        expect(document.querySelector("#missed .mewcat-wrapper")).not.toBeNull()
+        await translator.updateConfig({
+            ...config,
+            enableViewportTranslation: true,
+            targetLanguage: "ja"
+        })
+        await vi.advanceTimersByTimeAsync(1200)
+        expect(document.querySelector("#missed .mewcat-wrapper")).not.toBeNull()
+        expect(service.translate.mock.calls.at(-1)![2]).toBe("ja")
+        translator.clearAllTranslations({ preserveParagraphTargets: true })
+        await translator.startImmersiveTranslation({ manual: true })
+        await vi.advanceTimersByTimeAsync(1200)
+        expect(document.querySelector("#missed .mewcat-wrapper")).not.toBeNull()
+        translator.clearAllTranslations()
+        await translator.startImmersiveTranslation({ manual: true })
+        await vi.advanceTimersByTimeAsync(1200)
+        expect(document.querySelector("#missed .mewcat-wrapper")).toBeNull()
+    })
+    it.each(["dual", "translation"] as const)(
+        "retains, updates and removes manual supplements during page rescans in %s mode",
+        async translationDisplayMode => {
+            document.body.innerHTML =
+                '<main><p id="included">Regular article paragraph.</p><aside><div id="missed"><span>Manual supplement needs translation.</span></div></aside></main>'
+            vi.mocked(fetch).mockResolvedValue({
+                json: async () => ({
+                    ...rules,
+                    rules: [],
+                    generalRule: {
+                        ...rules.generalRule,
+                        selectors: ["#included"]
+                    }
+                })
+            } as Response)
+            translator = new ImmersiveTranslator({
+                ...config,
+                translationDisplayMode
+            })
+            await translator.startImmersiveTranslation({ manual: true })
+            await vi.advanceTimersByTimeAsync(200)
+            const missed = document.querySelector("#missed")!
+            const original = missed.querySelector("span")!.firstChild!
+            expect(missed.querySelector(".mewcat-wrapper")).toBeNull()
+            await translator.translateParagraph(missed.querySelector("span")!)
+            await vi.advanceTimersByTimeAsync(200)
+            expect(missed.querySelectorAll(".mewcat-wrapper")).toHaveLength(1)
+            expect(translator.getTranslationScope()).toBe("page")
+            document
+                .querySelector("main")!
+                .append(document.createElement("section"))
+            await vi.advanceTimersByTimeAsync(300)
+            expect(missed.querySelectorAll(".mewcat-wrapper")).toHaveLength(1)
+            expect(service.translate).toHaveBeenCalledTimes(2)
+            original.textContent = "Updated manual supplement content."
+            await vi.advanceTimersByTimeAsync(1000)
+            expect(
+                missed.querySelector(".mewcat-wrapper")?.textContent
+            ).toContain("Updated manual supplement")
+            expect(missed.querySelectorAll(".mewcat-container")).toHaveLength(1)
+            missed.remove()
+            await vi.advanceTimersByTimeAsync(300)
+            expect(
+                translator.translationNodes.every(
+                    node => node.container.isConnected
+                )
+            ).toBe(true)
+            translator.clearAllTranslations()
+            expect(missed.querySelector("[data-mewcat-original]")).toBeNull()
+            expect(missed.querySelector("span")!.firstChild).toBe(original)
+        }
+    )
+    it("renders code inside links unchanged and restores original nodes after manual translation", async () => {
+        document.body.innerHTML =
+            '<article><p>Install <a href="/guide">the <code>secret_command</code> package</a> to continue.</p></article>'
+        const original = document.querySelector("code")!
+        translator = new ImmersiveTranslator({
+            ...config,
+            translationDisplayMode: "translation"
+        })
+        await translator.translateParagraph(document.querySelector("p")!)
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate.mock.calls[0][1][0].content).not.toContain(
+            "secret_command"
+        )
+        expect(
+            document.querySelector(".mewcat-wrapper a code")?.textContent
+        ).toBe("secret_command")
+        expect(
+            document.querySelector(".mewcat-wrapper a")?.getAttribute("href")
+        ).toBe("/guide")
+        translator.clearAllTranslations()
+        expect(document.querySelector("code")).toBe(original)
+    })
+    it.each([
+        "block",
+        "flow-root",
+        "flex",
+        "grid",
+        "list-item",
+        "table-cell",
+        "table-caption"
+    ])("uses the nearest CSS %s container for nested text", async display => {
+        document.body.innerHTML = `<section><div id="block" style="display:${display}"><span>Start of paragraph <span id="target">with nested text</span></span><span> and its ending.</span></div><p>Unrelated sibling paragraph.</p></section>`
+        const selector = new DomSelector(config)
+        await selector.initialize()
+        const result = selector.extractParagraphTextNodes(
+            document.querySelector("#target")!
+        )
+        const text = result.result.map(node => node.originText).join(" ")
+        expect(text).toContain("Start of paragraph")
+        expect(text).toContain("with nested text")
+        expect(text).toContain("and its ending.")
+        expect(text).not.toContain("Unrelated sibling")
+    })
+    it("uses actual layout instead of semantic ancestors or display contents", async () => {
+        document.body.innerHTML =
+            '<section><div style="display:contents"><span id="block" style="display:block">Nearest block <span id="target">needs translation.</span></span></div><p>Unrelated sibling paragraph.</p></section>'
+        const selector = new DomSelector(config)
+        await selector.initialize()
+        const result = selector.extractParagraphTextNodes(
+            document.querySelector("#target")!
+        )
+        expect(result.result.map(node => node.originText).join(" ")).toContain(
+            "Nearest block"
+        )
+        expect(
+            result.result.every(node =>
+                document.querySelector("#block")!.contains(node.container)
+            )
+        ).toBe(true)
+    })
+    it("manually translates content excluded by GitHub without changing page rules", async () => {
+        document.body.innerHTML =
+            '<main><aside><div id="missed"><span>Account navigation text</span></div></aside><div class="markdown-body"><p>Regular article content.</p></div></main>'
+        const selector = new DomSelector({
+            ...config,
+            currentUrl: "https://github.com/owner/repo",
+            currentHostname: "github.com"
+        })
+        await selector.initialize()
+        expect(
+            selector
+                .extractTargetTextNodes()
+                .result.map(node => node.originText)
+                .join(" ")
+        ).not.toContain("Account navigation")
+        expect(
+            selector
+                .extractParagraphTextNodes(
+                    document.querySelector("#missed span")!
+                )
+                .result.map(node => node.originText)
+                .join(" ")
+        ).toContain("Account navigation text")
+        expect(
+            selector
+                .extractTargetTextNodes()
+                .result.map(node => node.originText)
+                .join(" ")
+        ).not.toContain("Account navigation")
+    })
+    it.each([
+        "code",
+        "pre",
+        "kbd",
+        "samp",
+        "button",
+        "[contenteditable]",
+        "[role=textbox]"
+    ])(
+        "does not climb out of protected %s content",
+        async protectedSelector => {
+            document.body.innerHTML =
+                '<article><p>Readable paragraph <code><span>Code text</span></code><kbd>Keyboard code</kbd><samp>Program output</samp></p><pre><span>Source code</span></pre><button>Action text</button><div contenteditable="true">Editable text</div><div role="textbox">Editor text</div></article>'
+            const selector = new DomSelector(config)
+            await selector.initialize()
+            const protectedElement = document.querySelector(protectedSelector)!
+            expect(
+                selector.extractParagraphTextNodes(
+                    protectedElement.firstElementChild ?? protectedElement
+                ).result
+            ).toHaveLength(0)
+        }
+    )
+    it("preserves code nested inside inline links in a manually selected paragraph", async () => {
+        document.body.innerHTML =
+            '<article><p>Install <a href="/guide">the <code>secret_command</code> package</a> to continue.</p></article>'
+        const selector = new DomSelector(config)
+        await selector.initialize()
+        const extracted = selector.extractParagraphTextNodes(
+            document.querySelector("p")!
+        )
+        const text = extracted.result.map(node => node.originText).join(" ")
+        expect(text).toContain("Install")
+        expect(text).toContain("package")
+        expect(text).not.toContain("secret_command")
+        expect(text).toMatch(/the @\d+# package/)
+        expect(
+            Object.values(extracted.stayOriginalMap).some(
+                node => node.textContent === "secret_command"
+            )
+        ).toBe(true)
+    })
     it("restarts every selected paragraph after the page role changes", async () => {
         document.title = "Machine learning"
         translator = new ImmersiveTranslator({
@@ -196,14 +515,16 @@ describe("paragraph translation", () => {
         await vi.advanceTimersByTimeAsync(200)
         expect(service.translate).toHaveBeenCalledTimes(1)
     })
-    it("translates an inline-styled paragraph without including its siblings", async () => {
+    it("follows the CSS parent block when a semantic paragraph is styled inline", async () => {
         document.querySelector<HTMLElement>("#first")!.style.display = "inline"
         translator = new ImmersiveTranslator(config)
         await translator.translateParagraph(document.querySelector("#first a")!)
         await vi.advanceTimersByTimeAsync(250)
-        expect(document.querySelector("#first .mewcat-wrapper")).not.toBeNull()
-        expect(document.querySelector("#second .mewcat-wrapper")).toBeNull()
-        expect(service.translate).toHaveBeenCalledTimes(1)
+        expect(
+            document.querySelectorAll("article .mewcat-wrapper")
+        ).toHaveLength(2)
+        expect(document.querySelector("#second .mewcat-wrapper")).not.toBeNull()
+        expect(service.translate).toHaveBeenCalledTimes(2)
     })
     it.each(["", "<span> </span>"])(
         "allows another shortcut to retry an empty result (%s)",
@@ -296,6 +617,9 @@ describe("paragraph translation", () => {
             selector.extractParagraphTextNodes(
                 document.querySelector("article")!
             ).result
+        ).toHaveLength(2)
+        expect(
+            selector.extractParagraphTextNodes(document.body).result
         ).toHaveLength(0)
     })
     it("keeps website selector rules confined to the requested paragraph", async () => {

@@ -484,7 +484,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     )
 
     const onClearTranslate = useCallback(
-        (preserveRefresh = false) => {
+        (preserveRefresh = false, preserveParagraphTargets = false) => {
             if (!preserveRefresh) {
                 refreshTask.current++
                 setRefreshing(false)
@@ -497,7 +497,9 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             pageSession.current.reason = ""
             setLoading(false)
             if (immersiveTranslatorRef.current) {
-                immersiveTranslatorRef.current.clearAllTranslations()
+                immersiveTranslatorRef.current.clearAllTranslations({
+                    preserveParagraphTargets
+                })
                 setIsTranslate(false)
             }
         },
@@ -836,7 +838,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
             return
         }
         if (restart) {
-            onClearTranslate()
+            onClearTranslate(false, true)
             pageSession.current.paused = false
         }
         const generation = pageSession.current.generation

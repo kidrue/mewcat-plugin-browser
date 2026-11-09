@@ -6,7 +6,10 @@ import { isDevelopment } from "@/utils/environment"
 import { getEnhancedLanguageCode } from "@/utils/francLanguageMap"
 
 import { DOMTraverser, type TranslationNode } from "./DOMTraverser"
-import { EDITABLE_SELECTOR, EXTENSION_SELECTOR } from "./paragraphShortcut"
+import {
+    PARAGRAPH_EXCLUDE_SELECTOR,
+    resolveParagraphTarget
+} from "./paragraphTarget"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 import { RuleEngine } from "./RuleEngine"
 import { isTargetLanguageText } from "./targetLanguage"
@@ -136,7 +139,8 @@ export class DomSelector {
      */
     public extractTargetTextNodes(
         rootElement: HTMLElement = document.body,
-        manual = false
+        manual = false,
+        paragraph = false
     ): {
         result: TranslationNode[]
         stayOriginalMap: Record<string, Element>
@@ -152,7 +156,19 @@ export class DomSelector {
 
         // 步骤2: 创建 DOMTraverser
         this.performanceMonitor?.startStage("创建遍历器")
-        this.domTraverser = new DOMTraverser(this.mergedRule)
+        const rule = paragraph
+            ? ({
+                  ...this.ruleEngine.getGeneralRule(),
+                  selectors: [],
+                  excludeSelectors: [PARAGRAPH_EXCLUDE_SELECTOR],
+                  additionalExcludeSelectors: [],
+                  excludeTags: this.ruleEngine
+                      .getGeneralRule()
+                      .excludeTags.filter(tag => tag !== "FOOTER"),
+                  stayOriginalSelectors: []
+              } as TranslationRule)
+            : this.mergedRule
+        this.domTraverser = new DOMTraverser(rule, paragraph)
         this.performanceMonitor?.endStage()
 
         // 步骤3: 遍历DOM树（只遍历一次）
@@ -238,6 +254,14 @@ export class DomSelector {
         })
 
         // 步骤7: 可视性分类（如果启用）
+        for (const node of filteredResults) {
+            node.originalContentKey = (node.originText ?? "")
+                .replace(/(<\/?[a-z]+)\d+(>)/g, "$1$2")
+                .replace(
+                    /@\d+#/g,
+                    key => stayOriginalMap[key]?.outerHTML ?? key
+                )
+        }
         let visibleNodes: TranslationNode[] = []
         let nonVisibleNodes: TranslationNode[] = []
 
@@ -276,43 +300,9 @@ export class DomSelector {
             visibleNodes: [] as TranslationNode[],
             nonVisibleNodes: [] as TranslationNode[]
         }
-        if (
-            !target.isConnected ||
-            target.closest(`${EDITABLE_SELECTOR},${EXTENSION_SELECTOR},button`)
-        )
-            return empty
-        const blocks =
-            "p,li,blockquote,h1,h2,h3,h4,h5,h6,td,th,dd,dt,pre,figcaption"
-        let root = target.closest<HTMLElement>(blocks)
-        if (!root) {
-            for (
-                let element = target as HTMLElement;
-                element && element !== document.body;
-                element = element.parentElement
-            ) {
-                if (
-                    ["block", "flex", "grid", "list-item"].includes(
-                        getComputedStyle(element).display
-                    )
-                ) {
-                    if (element.querySelector(`${blocks},div,section,article`))
-                        return empty
-                    root = element
-                    break
-                }
-            }
-        }
+        const root = resolveParagraphTarget(target)
         if (!root) return empty
-        const extracted = this.extractTargetTextNodes(root, true)
-        return {
-            ...extracted,
-            result: extracted.result.filter(
-                node =>
-                    node.container === root ||
-                    (root.matches(blocks) &&
-                        node.container.closest(blocks) === root)
-            )
-        }
+        return this.extractTargetTextNodes(root, true, true)
     }
 
     /**
