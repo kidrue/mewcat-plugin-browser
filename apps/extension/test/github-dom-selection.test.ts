@@ -193,6 +193,107 @@ describe("GitHub translation targets", () => {
         ).toContain("Support loading additional languages")
     })
 
+    it("extracts pull request list titles with hovercards", async () => {
+        document.body.innerHTML = `
+            <main><h3>
+                <a data-testid="listitem-title-link" data-hovercard-type="pull_request" href="/owner/repo/pull/1">
+                    <span data-component="Text">Preserve replacement text in large Replace All</span>
+                </a>
+            </h3></main>`
+        const selector = await createSelector("owner/repo/pulls")
+        const text = selector
+            .extractTargetTextNodes()
+            .result.map(node => node.originText)
+            .join(" ")
+        expect(text).toContain("Preserve replacement text in large Replace All")
+    })
+
+    it("extracts pinned issue titles without including their metadata", async () => {
+        document.body.innerHTML = `
+            <main><ul aria-label="Drag and drop pinned issues list."><li>
+                <div class="PinnedIssueContainer__vsm37n">
+                    <div class="contentContainer__YWSx_8">
+                        <div class="titleOptionsContainer__za47RM">
+                            <a aria-label="View Extension fails to load" href="https://github.com/owner/repo/issues/1">
+                                <span><svg aria-label="Status: Closed (completed)."><path d="M0 0" /></svg></span>
+                                <span data-component="Text">Extension fails to load</span>
+                            </a>
+                        </div>
+                        <div class="metadataContainer__Ut21pG">
+                            <a data-hovercard-type="user" href="/example">Example Author</a>
+                            <span>opened</span><relative-time>2 days ago</relative-time>
+                        </div>
+                    </div>
+                </div>
+            </li></ul></main>`
+        const selector = await createSelector("owner/repo/issues")
+        const text = selector
+            .extractTargetTextNodes()
+            .result.map(node => node.originText)
+            .join(" ")
+        expect(text).toContain("Extension fails to load")
+        expect(text).not.toContain("Example Author")
+        expect(text).not.toContain("opened")
+        expect(text).not.toContain("2 days ago")
+
+        document.querySelector("ul")!.insertAdjacentHTML(
+            "beforeend",
+            `<li><div class="PinnedIssueContainer__anotherHash">
+                <a href="/owner/repo/issues/2"><span>Support additional languages</span></a>
+            </div></li>`
+        )
+        expect(
+            selector
+                .extractTargetTextNodes()
+                .result.map(node => node.originText)
+                .join(" ")
+        ).toContain("Support additional languages")
+    })
+
+    it.each(["owner/repo", "owner/repo/issues/1"])(
+        "extracts Markdown third-level headings on %s while preserving code",
+        async path => {
+            document.body.innerHTML = `
+                <main><div class="markdown-body">
+                    <h2 class="heading-element">Installation guide</h2>
+                    <h3 class="heading-element">System requirements <code>Node.js</code></h3>
+                    <h3>Additional configuration</h3>
+                    <p>Install the extension before continuing.</p>
+                    <pre><code>pnpm install</code></pre>
+                </div></main>`
+            const selector = await createSelector(path)
+            const text = selector
+                .extractTargetTextNodes()
+                .result.map(node => node.originText)
+                .join(" ")
+            expect(text).toContain("Installation guide")
+            expect(text).toContain("System requirements")
+            expect(text).toContain("Additional configuration")
+            expect(text).toContain("Install the extension before continuing.")
+            expect(text).not.toContain("Node.js")
+            expect(text).not.toContain("pnpm install")
+        }
+    )
+
+    it("preserves user, repository and commit hovercard links inside Markdown", async () => {
+        document.body.innerHTML = `
+            <main><div class="markdown-body"><p>
+                <a data-hovercard-type="user" href="/example">Example Author</a>
+                <a data-hovercard-type="repository" href="/owner/repo">Example Repository</a>
+                <a data-hovercard-type="commit" href="/owner/repo/commit/abcdef">Example Commit</a>
+                <a data-hovercard-type="issue" href="/owner/repo/issues/1">Fix translation of issue titles</a>
+            </p></div></main>`
+        const selector = await createSelector("owner/repo")
+        const text = selector
+            .extractTargetTextNodes()
+            .result.map(node => node.originText)
+            .join(" ")
+        expect(text).toContain("Fix translation of issue titles")
+        expect(text).not.toContain("Example Author")
+        expect(text).not.toContain("Example Repository")
+        expect(text).not.toContain("Example Commit")
+    })
+
     it("extracts issue hovercard titles while leaving user and repository links alone", async () => {
         document.body.innerHTML = `
             <main>
