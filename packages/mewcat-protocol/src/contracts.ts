@@ -23,7 +23,10 @@ export const translationSchema = z
             .min(1)
             .max(20),
         sourceLanguage: z.union([z.literal("auto"), language]).default("auto"),
-        targetLanguage: language.refine(value => value.toLowerCase() !== "auto")
+        targetLanguage: language.refine(
+            value => value.toLowerCase() !== "auto"
+        ),
+        context: z.string().trim().min(1).max(2000).optional()
     })
     .refine(
         data =>

@@ -41,6 +41,8 @@ export interface ExtensionConfig {
     translationDisplayMode?: TranslationDisplayMode
     /** 鼠标悬浮段落后通过快捷键翻译 */
     enableParagraphTranslation?: boolean
+    /** 是否显示段落悬浮高亮和快捷键提示（默认 false） */
+    enableParagraphHoverPreview?: boolean
     /** 按 KeyboardEvent.code 保存的快捷键，如 Alt+KeyQ */
     paragraphTranslationShortcut?: string
 

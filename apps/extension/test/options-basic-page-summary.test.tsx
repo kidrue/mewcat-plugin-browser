@@ -81,6 +81,23 @@ async function renderBasic() {
 }
 
 describe("options page summary setting", () => {
+    it("defaults hover hints to off and saves their switch independently of paragraph translation", async () => {
+        await renderBasic()
+        const preview = document.querySelector<HTMLInputElement>(
+            '[aria-label="显示段落悬浮提示"]'
+        )
+        expect(preview).not.toBeNull()
+        expect(preview?.checked).toBe(false)
+        expect(preview?.disabled).toBe(false)
+        await act(async () => preview?.click())
+        expect(mocks.updateConfig).toHaveBeenCalledWith({
+            enableParagraphHoverPreview: true
+        })
+        expect(mocks.updateConfig).not.toHaveBeenCalledWith({
+            enableParagraphTranslation: false
+        })
+    })
+
     it("records and resets the paragraph shortcut and saves its independent switch", async () => {
         await renderBasic()
         const input = document.querySelector<HTMLInputElement>(

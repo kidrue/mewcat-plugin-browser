@@ -76,6 +76,7 @@ export const defaultExtensionConfig: ExtensionConfig = {
     translationStyle: DEFAULT_TRANSLATION_STYLE,
     translationDisplayMode: "bilingual",
     enableParagraphTranslation: true,
+    enableParagraphHoverPreview: false,
     paragraphTranslationShortcut: DEFAULT_PARAGRAPH_SHORTCUT,
     autoTranslateDelay: 700,
 

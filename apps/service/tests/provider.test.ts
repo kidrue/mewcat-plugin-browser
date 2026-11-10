@@ -1,3 +1,4 @@
+import { translationSchema } from "@mewcat/protocol"
 import { describe, expect, it } from "vitest"
 
 import { createProvider } from "../src/provider.js"
@@ -16,6 +17,48 @@ const request = {
 }
 
 describe("硅基流动接口边界", () => {
+    it("接受可选限长上下文、兼容旧请求并拒绝超长内容", () => {
+        expect(translationSchema.parse(request)).toEqual(request)
+        expect(
+            translationSchema.parse({
+                ...request,
+                context: "Financial markets"
+            })
+        ).toMatchObject({ context: "Financial markets" })
+        expect(
+            translationSchema.safeParse({
+                ...request,
+                context: "x".repeat(2001)
+            }).success
+        ).toBe(false)
+    })
+
+    it("将上下文作为不可信参考发送给模型，保持译文数量不变", async () => {
+        let messages: { role: string; content: string }[] = []
+        const provider = createProvider(settings, async (_url, init) => {
+            messages = JSON.parse(String(init?.body)).messages
+            return Response.json({
+                choices: [
+                    {
+                        message: {
+                            content: '{"translations":["你好","世界"]}'
+                        },
+                        finish_reason: "stop"
+                    }
+                ]
+            })
+        })
+        await expect(
+            provider.translate({ ...request, context: "Financial markets" })
+        ).resolves.toMatchObject({ translations: ["你好", "世界"] })
+        expect(JSON.parse(messages[1]!.content)).toMatchObject({
+            texts: ["hello", "world"],
+            context: "Financial markets"
+        })
+        expect(messages[0]!.content).toContain("context")
+        expect(messages[0]!.content).toContain("untrusted")
+    })
+
     it("发送固定模型与翻译提示词，按原顺序返回校验后的译文", async () => {
         let sent: Record<string, unknown> | undefined
         const provider = createProvider(settings, async (url, init) => {

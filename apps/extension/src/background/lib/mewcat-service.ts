@@ -17,6 +17,7 @@ export interface MewCatTranslateInput {
     texts: string[]
     targetLanguage: string
     sourceLanguage?: string
+    context?: string
     timeoutMs?: number
 }
 
@@ -197,7 +198,8 @@ export const createMewCatService = (
                     {
                         texts: input.texts,
                         targetLanguage: input.targetLanguage,
-                        sourceLanguage: input.sourceLanguage
+                        sourceLanguage: input.sourceLanguage,
+                        ...(input.context ? { context: input.context } : {})
                     },
                     requestOptions
                 )

@@ -116,6 +116,26 @@ async function clickAdvancedSettings() {
 }
 
 describe("quick settings page summary setting", () => {
+    it("allows mewCat context without a custom AI model and keeps automatic summary unavailable", async () => {
+        mocks.config = createConfig({
+            currentModel: "mewcat-translate",
+            aiModelList: [],
+            enableContext: false
+        })
+        await renderSettingsPanel()
+        const context = document.querySelector<HTMLInputElement>(
+            'input[aria-label="AI 智能上下文"]'
+        )!
+        expect(context.disabled).toBe(false)
+        await act(async () => context.click())
+        expect(mocks.updateConfig).toHaveBeenCalledWith({ enableContext: true })
+        expect(
+            document.querySelector<HTMLInputElement>(
+                'input[aria-label="自动总结页面"]'
+            )?.disabled
+        ).toBe(true)
+    })
+
     it("opens the independent feedback page from the popup", async () => {
         await renderSettingsPanel()
         const feedback = document.querySelector<HTMLButtonElement>(

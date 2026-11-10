@@ -70,6 +70,7 @@ export interface MewCatTranslateRequestConfig {
     texts: string[]
     targetLanguage: string
     sourceLanguage?: string
+    context?: string
 }
 
 /**

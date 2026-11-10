@@ -28,6 +28,31 @@ vi.mock("@/background/lib/mewcat-service", () => ({
 describe("MewCatTranslator", () => {
     beforeEach(() => vi.clearAllMocks())
 
+    it("limits context without splitting a surrogate pair and repeats it for every batch", async () => {
+        const contexts: unknown[] = []
+        const translator = new MewCatTranslator(
+            async request => {
+                if (request.type !== RequestType.MEWCAT_TRANSLATE)
+                    throw new Error("unexpected request")
+                contexts.push(request.config.context)
+                return {
+                    success: true,
+                    content: { translations: request.config.texts }
+                }
+            },
+            undefined,
+            "x".repeat(1999) + "😀tail"
+        )
+        const text = Array.from({ length: 21 }, () => "bank").join("\n\n%%\n\n")
+        await expect(
+            translator.translateBatch(
+                [{ role: "user", content: text }],
+                "zh-CN"
+            )
+        ).resolves.toBe(text)
+        expect(contexts).toEqual(["x".repeat(1999), "x".repeat(1999)])
+    })
+
     it("按服务上限安全分片并原样保留分隔符和空白段", async () => {
         const requests: string[][] = []
         const sender: TranslateRequestSender = vi.fn(async request => {

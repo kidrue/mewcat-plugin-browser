@@ -817,11 +817,13 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                             message: "段落翻译失败，请重试或切换翻译服务"
                         })
                     })
-            }
+            },
+            config.enableParagraphHoverPreview ?? false
         )
     }, [
         config.extensionEnabled,
         config.enableParagraphTranslation,
+        config.enableParagraphHoverPreview,
         config.paragraphTranslationShortcut,
         refreshing,
         resolveSourceLanguage

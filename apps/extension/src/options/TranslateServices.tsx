@@ -56,7 +56,7 @@ import { testConfiguredModel } from "@/translation/translationService"
 import type { AiModel_Platform_Enum } from "@/types"
 import { AiRole, type BaseModel } from "@/types"
 import { getModelByModelList, isModelThinkingCapable } from "@/utils/llmModel"
-import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
+import { isTranslationContextAvailable } from "@/utils/pageSummary"
 import { Toast, ToastType } from "@/utils/toast"
 import { isVisionCapableModel } from "@/utils/visionModels"
 
@@ -1289,35 +1289,19 @@ export const TranslateServices: React.FunctionComponent = () => {
                     </FormRow>
                     <FormRow
                         label="启用AI智能上下文"
-                        description="结合网页上下文提升翻译效果，需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长"
+                        description="结合网页上下文提升翻译效果，支持 mewCat 自有服务或已配置的 LLM。mewCat 会发送限长网页上下文并计入额度；开启后可能增加翻译时长。"
                     >
                         <Switch
                             checked={
-                                hasUsablePageSummaryModel(
-                                    config.aiModelList.filter(
-                                        model =>
-                                            model.id === config.currentModel
-                                    )
-                                ) &&
+                                isTranslationContextAvailable(config) &&
                                 (config.enableContext || false)
                             }
-                            disabled={
-                                !hasUsablePageSummaryModel(
-                                    config.aiModelList.filter(
-                                        model =>
-                                            model.id === config.currentModel
-                                    )
-                                )
-                            }
+                            disabled={!isTranslationContextAvailable(config)}
                             onChange={checked =>
                                 updateConfig({ enableContext: checked })
                             }
                         />
-                        {!hasUsablePageSummaryModel(
-                            config.aiModelList.filter(
-                                model => model.id === config.currentModel
-                            )
-                        ) && (
+                        {!isTranslationContextAvailable(config) && (
                             <FeatureAvailability
                                 available={false}
                                 saved={config.enableContext}

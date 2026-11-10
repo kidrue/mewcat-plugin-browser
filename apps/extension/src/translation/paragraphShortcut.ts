@@ -50,7 +50,8 @@ export function formatParagraphShortcut(value: string): string {
 }
 export function installParagraphShortcut(
     shortcut: string,
-    onTranslate: (target: Element) => void
+    onTranslate: (target: Element) => void,
+    showPreview = false
 ): () => void {
     let pointer: { x: number; y: number } | undefined
     let preview: HTMLElement | undefined
@@ -62,6 +63,7 @@ export function installParagraphShortcut(
     }
     const move = (event: MouseEvent) => {
         pointer = { x: event.clientX, y: event.clientY }
+        if (!showPreview) return
         const hit = document.elementFromPoint(pointer.x, pointer.y)
         const target = hit && resolveParagraphTarget(hit)
         if (!target || document.activeElement?.matches(EDITABLE_SELECTOR)) {

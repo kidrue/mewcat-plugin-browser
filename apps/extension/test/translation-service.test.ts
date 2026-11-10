@@ -43,6 +43,38 @@ const createConfig = (
 })
 
 describe("functional translation service", () => {
+    it.each([translateText, translateBatch])(
+        "sends mewCat context only when enabled",
+        async translate => {
+            for (const enabled of [true, false]) {
+                let sent: unknown
+                await translate(
+                    {
+                        ...createConfig(MEWCAT_TRANSLATE_MODEL_ID, []),
+                        enableContext: enabled
+                    },
+                    [{ role: "user", content: "bank" }],
+                    "zh-CN",
+                    { context: "Financial markets" },
+                    {
+                        mewcatRequestSender: async request => {
+                            sent = request.config
+                            return {
+                                success: true,
+                                content: { translations: ["银行"] }
+                            }
+                        }
+                    }
+                )
+                expect(sent).toEqual({
+                    texts: ["bank"],
+                    targetLanguage: "zh-CN",
+                    ...(enabled ? { context: "Financial markets" } : {})
+                })
+            }
+        }
+    )
+
     it("detects and explains terms in one streamed request using a configured AI when Google is selected", async () => {
         const requests: ModelGatewayRequest[] = []
         const result = await streamConceptExplanation(

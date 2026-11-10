@@ -214,6 +214,7 @@ export class TranslationClient {
             texts: string[]
             targetLanguage: string
             sourceLanguage?: string
+            context?: string
         },
         options: RequestOptions = {}
     ) {

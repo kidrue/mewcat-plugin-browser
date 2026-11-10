@@ -22,6 +22,25 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it.each([
+        { stored: undefined, expected: false },
+        { stored: "invalid", expected: false },
+        { stored: true, expected: true },
+        { stored: false, expected: false }
+    ])(
+        "repairs or preserves the saved hover preview preference ($stored)",
+        ({ stored, expected }) => {
+            const config = repairExtensionConfig(
+                {
+                    ...defaultExtensionConfig,
+                    enableParagraphHoverPreview: stored
+                },
+                defaultExtensionConfig
+            )
+            expect(config.enableParagraphHoverPreview).toBe(expected)
+        }
+    )
+
     it.each([undefined, "Ctrl+Ctrl+KeyQ", "Alt+KeyQ", "F8", "ShiftLeft"])(
         "repairs the paragraph shortcut (%s)",
         paragraphTranslationShortcut => {

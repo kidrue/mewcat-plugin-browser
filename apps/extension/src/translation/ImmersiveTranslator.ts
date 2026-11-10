@@ -1,6 +1,7 @@
 import { find, reduce } from "ramda"
 
 import { DEFAULT_VALUES } from "@/constants/options"
+import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
 import {
     createLoadingELement,
@@ -31,6 +32,7 @@ import { type TranslationNode } from "./DOMTraverser"
 import type { MutationObserverManager } from "./MutationObserverManager"
 import { hideOriginalContent, restoreOriginalContent } from "./originalContent"
 import { resolvePageAiRole } from "./pageAiRole"
+import { extractTranslationContext } from "./pageTranslationContext"
 import { resolveParagraphTarget } from "./paragraphTarget"
 import { PerformanceMonitor } from "./PerformanceMonitor"
 import {
@@ -352,6 +354,17 @@ export class ImmersiveTranslator {
 
     /** 是否启用AI智能上下文翻译 */
     private enableContext: boolean = false
+    private pageTranslationContext?: string
+
+    private getPageTranslationContext(): string | undefined {
+        if (
+            !this.enableContext ||
+            this.currentModel !== MEWCAT_TRANSLATE_MODEL_ID
+        )
+            return undefined
+        return (this.pageTranslationContext ??=
+            extractTranslationContext(document))
+    }
 
     /** 页面内容摘要（用于AI上下文翻译） */
     private pageSummary: string = ""
@@ -384,7 +397,8 @@ export class ImmersiveTranslator {
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
             aiRole: resolvePageAiRole(this.roleSelectionConfig),
-            enableThinking: config.enableThinking
+            enableThinking: config.enableThinking,
+            enableContext: config.enableContext
         }
         this.minVisibleNodesThreshold = config.minVisibleNodesThreshold ?? 20
         this.prioritizeVisibleArea = config.prioritizeVisibleArea ?? true
@@ -504,6 +518,7 @@ export class ImmersiveTranslator {
                 (this.targetLanguage !== config.targetLanguage ||
                     this.currentModel !== (config.currentModel ?? "default") ||
                     previousRuntime.aiRole !== aiRole ||
+                    this.enableContext !== (config.enableContext ?? false) ||
                     Boolean(previousRuntime.enableThinking) !==
                         Boolean(config.enableThinking) ||
                     JSON.stringify(
@@ -528,6 +543,7 @@ export class ImmersiveTranslator {
         this.targetLanguage = config.targetLanguage
         this.domSelector.setTargetLanguage(config.targetLanguage)
         this.currentModel = config.currentModel ?? "default"
+        this.enableContext = config.enableContext ?? false
         this.MAX_CONCURRENT_REQUESTS =
             config.maxRequestsPerSecond ?? DEFAULT_VALUES.maxRequestsPerSecond
         this.MAX_REQUEST_BYTES = config.maxTextLengthPerRequest ?? 1024
@@ -545,7 +561,8 @@ export class ImmersiveTranslator {
             currentModel: config.currentModel,
             aiModelList: config.aiModelList,
             aiRole,
-            enableThinking: config.enableThinking
+            enableThinking: config.enableThinking,
+            enableContext: config.enableContext
         }
         this.enableViewportTranslation =
             config.enableViewportTranslation ?? false
@@ -603,12 +620,14 @@ export class ImmersiveTranslator {
         const targetLanguage = this.targetLanguage
         const modelId = this.currentModel
         const sourceLanguage = this.detectedLanguage
+        const context = this.getPageTranslationContext()
         const cacheKey = (node: TranslationNode): CacheKeyParams => ({
             text: node.originText,
             sourceLang: sourceLanguage,
             targetLang: targetLanguage,
             modelId,
-            aiRole: runtime.aiRole
+            aiRole: runtime.aiRole,
+            context
         })
         this.viewportScheduler = new ViewportTranslationScheduler({
             viewportOnly,
@@ -648,7 +667,7 @@ export class ImmersiveTranslator {
                         }
                     ],
                     targetLanguage,
-                    { pageTitle: document.title }
+                    { pageTitle: document.title, context }
                 )
                 return splitTranslationResults(result, nodes.length)
             },
@@ -1074,7 +1093,8 @@ export class ImmersiveTranslator {
                     sourceLang: this.detectedLanguage,
                     targetLang: this.targetLanguage,
                     modelId: this.currentModel,
-                    aiRole: this.translationRuntimeConfig.aiRole
+                    aiRole: this.translationRuntimeConfig.aiRole,
+                    context: this.getPageTranslationContext()
                 }
 
                 return {
@@ -1383,6 +1403,7 @@ export class ImmersiveTranslator {
         // 🔴 设置中断标志，停止所有正在执行的翻译任务
         this.isTranslationAborted = true
         this.translationSession++
+        this.pageTranslationContext = undefined
         this.resetRequestState()
         this.viewportScheduler?.destroy()
         this.viewportScheduler = null
@@ -1463,7 +1484,8 @@ export class ImmersiveTranslator {
             sourceLang: this.detectedLanguage,
             targetLang: this.targetLanguage,
             modelId: this.currentModel,
-            aiRole: this.translationRuntimeConfig.aiRole
+            aiRole: this.translationRuntimeConfig.aiRole,
+            context: this.getPageTranslationContext()
         }))
 
         this.isTranslationAborted = true
@@ -1637,7 +1659,8 @@ export class ImmersiveTranslator {
                         sourceLang: this.detectedLanguage,
                         targetLang: this.targetLanguage,
                         modelId: this.currentModel,
-                        aiRole: this.translationRuntimeConfig.aiRole
+                        aiRole: this.translationRuntimeConfig.aiRole,
+                        context: this.getPageTranslationContext()
                     }
 
                     // 从分层缓存系统获取
@@ -1780,7 +1803,10 @@ export class ImmersiveTranslator {
                     this.translationRuntimeConfig,
                     [{ role: "user", content: requestMessageContent }],
                     this.targetLanguage,
-                    { pageTitle: document.title }
+                    {
+                        pageTitle: document.title,
+                        context: this.getPageTranslationContext()
+                    }
                 )
                 const apiEndTime = performance.now()
 

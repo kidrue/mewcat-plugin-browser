@@ -74,7 +74,27 @@ it("records stable single keys and exact modifier combinations", () => {
     ).toBeUndefined()
 })
 
-it("previews the nearest CSS block and translates that same block", () => {
+it("does not show a hover preview by default but still translates the hovered paragraph", () => {
+    document.body.innerHTML = "<p>Hovered paragraph</p>"
+    const target = document.querySelector("p")!
+    Object.defineProperty(document, "elementFromPoint", {
+        configurable: true,
+        value: () => target
+    })
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue(
+        new DOMRect(20, 30, 300, 60)
+    )
+    const trigger = vi.fn()
+    cleanup = installParagraphShortcut("Alt+KeyQ", trigger)
+    target.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }))
+    expect(document.querySelector("[data-mewcat-paragraph-preview]")).toBeNull()
+    document.dispatchEvent(
+        new KeyboardEvent("keydown", { code: "KeyQ", altKey: true })
+    )
+    expect(trigger).toHaveBeenCalledWith(target)
+})
+
+it("previews the nearest CSS block when enabled and translates that same block", () => {
     document.body.innerHTML =
         '<section><div id="target"><span>Hovered <b>paragraph text</b></span></div><p>Sibling content</p></section>'
     const target = document.querySelector("#target")!
@@ -87,7 +107,7 @@ it("previews the nearest CSS block and translates that same block", () => {
         new DOMRect(20, 30, 300, 60)
     )
     const trigger = vi.fn()
-    cleanup = installParagraphShortcut("Alt+KeyQ", trigger)
+    cleanup = installParagraphShortcut("Alt+KeyQ", trigger, true)
     inner.dispatchEvent(
         new MouseEvent("mousemove", { bubbles: true, clientX: 25, clientY: 35 })
     )
@@ -106,6 +126,13 @@ it("previews the nearest CSS block and translates that same block", () => {
     expect(trigger).toHaveBeenCalledWith(target)
     cleanup()
     expect(document.querySelector("[data-mewcat-paragraph-preview]")).toBeNull()
+    cleanup = installParagraphShortcut("Alt+KeyQ", trigger, false)
+    inner.dispatchEvent(new MouseEvent("mousemove", { bubbles: true }))
+    expect(document.querySelector("[data-mewcat-paragraph-preview]")).toBeNull()
+    document.dispatchEvent(
+        new KeyboardEvent("keydown", { code: "KeyQ", altKey: true })
+    )
+    expect(trigger).toHaveBeenCalledTimes(2)
 })
 
 it.each(["code", "pre", "kbd", "samp", "button", "[contenteditable]"])(
@@ -119,7 +146,7 @@ it.each(["code", "pre", "kbd", "samp", "button", "[contenteditable]"])(
             value: () => element.firstElementChild ?? element
         })
         const trigger = vi.fn()
-        cleanup = installParagraphShortcut("Alt+KeyQ", trigger)
+        cleanup = installParagraphShortcut("Alt+KeyQ", trigger, true)
         element.dispatchEvent(
             new MouseEvent("mousemove", {
                 bubbles: true,
@@ -151,7 +178,7 @@ it.each(["scroll", "blur", "resize"])(
             "getBoundingClientRect"
         ).mockReturnValue(new DOMRect(20, 30, 300, 60))
         const trigger = vi.fn()
-        cleanup = installParagraphShortcut("Alt+KeyQ", trigger)
+        cleanup = installParagraphShortcut("Alt+KeyQ", trigger, true)
         target.dispatchEvent(
             new MouseEvent("mousemove", {
                 bubbles: true,

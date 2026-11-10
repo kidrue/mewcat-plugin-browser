@@ -37,10 +37,12 @@ export interface TranslationRuntimeConfig {
     aiRole: AiRole
     enableAutoAiRole?: boolean
     enableThinking?: boolean
+    enableContext?: boolean
 }
 
 export interface TranslationCallOptions {
     pageTitle?: string
+    context?: string
     pageContext?: PageRoleContext
 }
 
@@ -132,7 +134,8 @@ function translateWithService(
     if (serviceId === MEWCAT_TRANSLATE_MODEL_ID) {
         return new MewCatTranslator(
             dependencies.mewcatRequestSender,
-            config.sourceLanguage
+            config.sourceLanguage,
+            config.enableContext ? options.context : undefined
         )[method](messages, targetLanguage)
     }
     const model = getSelectedModel(config)

@@ -16,6 +16,7 @@ describe("浏览器兼容客户端", () => {
     let fixture: Awaited<ReturnType<typeof testStore>>
     let app: FastifyInstance
     let server: Identity
+    let upstreamInput: unknown
     beforeEach(async () => {
         fixture = await testStore()
         server = await createIdentity()
@@ -31,8 +32,11 @@ describe("浏览器兼容客户端", () => {
                 publicKeys: await publicKeys(server, "server"),
                 ipHashSecret: "test-secret"
             },
-            fetcher: async () =>
-                Response.json({
+            fetcher: async (_url, init) => {
+                upstreamInput = JSON.parse(
+                    JSON.parse(String(init?.body)).messages[1].content
+                )
+                return Response.json({
                     choices: [
                         {
                             message: { content: '{"translations":["你好"]}' },
@@ -40,6 +44,7 @@ describe("浏览器兼容客户端", () => {
                         }
                     ]
                 })
+            }
         })
     })
     afterEach(async () => {
@@ -58,6 +63,26 @@ describe("浏览器兼容客户端", () => {
             headers: { "content-type": "application/json" }
         })
     }
+
+    it("通过加密 SDK 传送上下文并将参考字符计入用量", async () => {
+        const client = await TranslationClient.connect({
+            baseUrl: "http://localhost:3000",
+            fetcher
+        })
+        await client.register("context-client")
+        await expect(
+            client.translate({
+                texts: ["bank"],
+                targetLanguage: "zh-CN",
+                context: "Finance"
+            })
+        ).resolves.toEqual({ translations: ["你好"] })
+        expect(upstreamInput).toMatchObject({
+            texts: ["bank"],
+            context: "Finance"
+        })
+        expect(await client.usage()).toMatchObject({ usedCharacters: 11 })
+    })
 
     it("原生 Web Crypto 身份完成注册、翻译、持久化状态恢复和用量查询", async () => {
         const client = await TranslationClient.connect({

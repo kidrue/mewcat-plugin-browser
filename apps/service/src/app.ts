@@ -431,7 +431,7 @@ export async function buildApp({
         try {
             const characters = data.texts.reduce(
                 (sum, value) => sum + value.length,
-                0
+                data.context?.length ?? 0
             )
             const record = await store.reserveTranslation(
                 auth.clientId,

@@ -4,6 +4,7 @@ import type { Message, TranslatorInterface } from "@/types"
 import { RequestType } from "@/types/request"
 
 import type { TranslateRequestSender } from "./GoogleTranslator"
+import { normalizeTranslationContext } from "./pageTranslationContext"
 
 const BATCH_SEPARATOR = "\n\n%%\n\n"
 const MAX_ITEMS = 20
@@ -67,12 +68,16 @@ export const createMewCatBatches = (
 
 export class MewCatTranslator implements TranslatorInterface {
     readonly provider = MEWCAT_TRANSLATE_MODEL_ID
+    private readonly context?: string
 
     constructor(
         private readonly requestSender: TranslateRequestSender = request =>
             sendMessage("translate-request", request),
-        private readonly sourceLanguage?: string
-    ) {}
+        private readonly sourceLanguage?: string,
+        context?: string
+    ) {
+        this.context = normalizeTranslationContext(context)
+    }
 
     private async translateSegments(
         segments: string[],
@@ -87,6 +92,7 @@ export class MewCatTranslator implements TranslatorInterface {
                 config: {
                     texts: pieces.map(piece => piece.text),
                     targetLanguage,
+                    ...(this.context ? { context: this.context } : {}),
                     ...(this.sourceLanguage && this.sourceLanguage !== "auto"
                         ? { sourceLanguage: this.sourceLanguage }
                         : {})

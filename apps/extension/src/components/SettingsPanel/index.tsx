@@ -15,7 +15,10 @@ import {
     getTranslationServiceOptions,
     updateConfigAtom
 } from "@/state"
-import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
+import {
+    hasUsablePageSummaryModel,
+    isTranslationContextAvailable
+} from "@/utils/pageSummary"
 
 import BrandLogo from "../BrandLogo"
 import Button from "../Button"
@@ -559,9 +562,7 @@ function SettingsPanel({
     const hasUsableGenerativeModel = hasUsablePageSummaryModel(
         config.aiModelList
     )
-    const contextAvailable = hasUsablePageSummaryModel(
-        config.aiModelList.filter(model => model.id === config.currentModel)
-    )
+    const contextAvailable = isTranslationContextAvailable(config)
 
     const handleToggleTranslation = (checked: boolean) => {
         updateConfig({ isSelectedTranslate: checked })
@@ -694,7 +695,7 @@ function SettingsPanel({
                     <ListItemLabel>
                         AI 智能上下文
                         <Tooltip
-                            content="结合网页上下文提升翻译效果。需要配置 LLM 翻译服务商。注意：开启后会增加翻译时长。"
+                            content="结合网页上下文提升翻译效果，支持 mewCat 自有服务或已配置的 LLM。mewCat 会发送限长网页上下文并计入额度；开启后可能增加翻译时长。"
                             position="top"
                             width={200}
                         >

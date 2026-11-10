@@ -3,8 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import rules from "../src/public/assets/rule.json"
 import { defaultExtensionConfig } from "../src/state/constants"
+import * as translationCache from "../src/translation/cache"
 import { DomSelector } from "../src/translation/DomSelector"
 import { ImmersiveTranslator } from "../src/translation/ImmersiveTranslator"
+import { extractTranslationContext } from "../src/translation/pageTranslationContext"
 import { AiRole } from "../src/types/config"
 
 const service = vi.hoisted(() => ({ translate: vi.fn() }))
@@ -52,6 +54,94 @@ afterEach(() => {
     vi.unstubAllGlobals()
 })
 describe("paragraph translation", () => {
+    it.each([
+        '<div role="textbox">Private draft.</div>',
+        '<div contenteditable="true">Private draft.</div>'
+    ])("excludes editable drafts from page context (%s)", editor => {
+        document.body.innerHTML = `<main><p>Public article.</p>${editor}</main>`
+        const context = extractTranslationContext(document)
+        expect(context).toContain("Public article.")
+        expect(context).not.toContain("Private draft.")
+    })
+
+    it("keeps explicitly read-only article content in page context", () => {
+        document.body.innerHTML =
+            '<main contenteditable="false"><p>Public article.</p></main>'
+        expect(extractTranslationContext(document)).toBe("Public article.")
+    })
+
+    it("keeps contextual and plain translations separate in cache and refreshes only the active context", async () => {
+        const cache = new translationCache.TieredTranslationCache({
+            enableL2: false
+        })
+        vi.spyOn(translationCache, "createDefaultCache").mockReturnValue(cache)
+        const selectedConfig = {
+            ...config,
+            cacheEnabled: true,
+            currentModel: "mewcat-translate",
+            enableContext: true
+        }
+        document.title = "Finance"
+        translator = new ImmersiveTranslator(selectedConfig)
+        const target = document.querySelector("#first")!
+        await translator.translateParagraph(target)
+        await vi.advanceTimersByTimeAsync(300)
+        expect(service.translate).toHaveBeenCalledTimes(1)
+        await translator.restartParagraphTranslations()
+        await vi.advanceTimersByTimeAsync(300)
+        expect(service.translate).toHaveBeenCalledTimes(1)
+        await translator.updateConfig({
+            ...selectedConfig,
+            enableContext: false
+        })
+        await vi.advanceTimersByTimeAsync(300)
+        expect(service.translate).toHaveBeenCalledTimes(2)
+        await translator.updateConfig(selectedConfig)
+        await vi.advanceTimersByTimeAsync(300)
+        expect(service.translate).toHaveBeenCalledTimes(2)
+        await translator.clearCurrentPageTranslationCache()
+        await translator.restartParagraphTranslations()
+        await vi.advanceTimersByTimeAsync(300)
+        expect(service.translate).toHaveBeenCalledTimes(3)
+        await translator.updateConfig({
+            ...selectedConfig,
+            enableContext: false
+        })
+        await vi.advanceTimersByTimeAsync(300)
+        expect(service.translate).toHaveBeenCalledTimes(3)
+    })
+
+    it("sends stable original page context and restarts paragraph translation when context is disabled", async () => {
+        document.title = "Finance"
+        const selectedConfig = {
+            ...config,
+            currentModel: "mewcat-translate",
+            enableContext: true
+        }
+        translator = new ImmersiveTranslator(selectedConfig)
+        await translator.translateParagraph(document.querySelector("#first")!)
+        await vi.advanceTimersByTimeAsync(300)
+        const firstContext = service.translate.mock.calls[0][3].context
+        expect(firstContext).toContain("Finance")
+        expect(firstContext).toContain("Second paragraph remains untouched.")
+        expect(firstContext).not.toContain("译文")
+        await translator.translateParagraph(document.querySelector("#second")!)
+        await vi.advanceTimersByTimeAsync(300)
+        expect(service.translate.mock.calls.at(-1)![3].context).toBe(
+            firstContext
+        )
+        const previousCalls = service.translate.mock.calls.length
+        await translator.updateConfig({
+            ...selectedConfig,
+            enableContext: false
+        })
+        await vi.advanceTimersByTimeAsync(600)
+        expect(service.translate.mock.calls.length).toBeGreaterThan(
+            previousCalls
+        )
+        expect(service.translate.mock.calls.at(-1)![3].context).toBeUndefined()
+    })
+
     it("retains manually included inline text when page rules still exclude it", async () => {
         document.body.innerHTML =
             '<main><p id="included">Regular text <span class="notranslate">Manually included content</span></p></main>'

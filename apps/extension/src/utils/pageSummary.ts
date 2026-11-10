@@ -1,3 +1,4 @@
+import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import {
     isConfiguredGenerativeModel,
     type TranslationRuntimeConfig
@@ -6,6 +7,14 @@ import type { BaseModel } from "@/types/aiModel"
 
 export const hasUsablePageSummaryModel = (models: BaseModel[]): boolean =>
     models.some(isConfiguredGenerativeModel)
+
+export const isTranslationContextAvailable = (
+    config: Pick<TranslationRuntimeConfig, "currentModel" | "aiModelList">
+): boolean =>
+    config.currentModel === MEWCAT_TRANSLATE_MODEL_ID ||
+    hasUsablePageSummaryModel(
+        config.aiModelList.filter(model => model.id === config.currentModel)
+    )
 
 export const selectPageSummaryModel = (
     config: Pick<TranslationRuntimeConfig, "currentModel" | "aiModelList">

@@ -36,6 +36,7 @@ const extensionConfigShape = {
     translationStyle: z.nativeEnum(TranslationStyle).optional(),
     translationDisplayMode: z.enum(["bilingual", "translation"]).optional(),
     enableParagraphTranslation: z.boolean().optional(),
+    enableParagraphHoverPreview: z.boolean().optional(),
     paragraphTranslationShortcut: z
         .string()
         .refine(isValidParagraphShortcut)

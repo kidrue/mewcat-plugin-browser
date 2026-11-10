@@ -143,7 +143,7 @@ export const Basic: React.FunctionComponent = () => {
             <OptionsSection title="段落翻译" artwork="desk" icon="book">
                 <FormRow
                     label="启用段落翻译"
-                    description="鼠标悬停文字时高亮最近的块级区域，按快捷键补译整页翻译遗漏的内容；代码与编辑区域保持原样。"
+                    description="鼠标指向文字时，按快捷键翻译该段落，可补译整页翻译遗漏的内容；代码与编辑区域保持原样。"
                     controlId="enable-paragraph-translation"
                 >
                     <CustomToggle
@@ -153,6 +153,23 @@ export const Basic: React.FunctionComponent = () => {
                         onChange={checked =>
                             updateConfig({
                                 enableParagraphTranslation: checked
+                            })
+                        }
+                    />
+                </FormRow>
+                <FormRow
+                    label="显示段落悬浮提示"
+                    description="鼠标悬停时显示段落高亮框和快捷键提示，默认关闭。"
+                    controlId="enable-paragraph-hover-preview"
+                >
+                    <CustomToggle
+                        id="enable-paragraph-hover-preview"
+                        aria-label="显示段落悬浮提示"
+                        checked={config.enableParagraphHoverPreview ?? false}
+                        disabled={config.enableParagraphTranslation === false}
+                        onChange={checked =>
+                            updateConfig({
+                                enableParagraphHoverPreview: checked
                             })
                         }
                     />
