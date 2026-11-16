@@ -46,6 +46,9 @@ export interface ExtensionConfig {
     /** 按 KeyboardEvent.code 保存的快捷键，如 Alt+KeyQ */
     paragraphTranslationShortcut?: string
 
+    /** 页面总结快捷键；空字符串表示禁用，默认 Alt+KeyS */
+    pageSummaryShortcut?: string
+
     // 翻译服务相关配置
     /** 是否启用Google翻译 */
     enableGoogleTranslate?: boolean

@@ -19,7 +19,7 @@ export function dockPosition(
                 : Math.max(0, width - BUTTON_SIZE),
         y: Math.max(
             Math.min(44, Math.max(0, (height - BUTTON_SIZE) / 2)),
-            Math.min(position.y, height - BUTTON_SIZE - 44)
+            Math.min(position.y, height - BUTTON_SIZE - 82)
         )
     }
 }

@@ -81,6 +81,104 @@ async function renderBasic() {
 }
 
 describe("options page summary setting", () => {
+    it("records, clears and restores the summary shortcut with automatic summaries off", async () => {
+        mocks.config = createConfig({
+            enablePageSummary: false,
+            aiModelList: []
+        })
+        await renderBasic()
+        const input = document.querySelector<HTMLInputElement>(
+            '[aria-label="页面总结快捷键"]'
+        )!
+        expect(input).not.toBeNull()
+        expect(input.value).toBe("Alt+S")
+        expect(input.disabled).toBe(false)
+        await act(async () =>
+            input.dispatchEvent(
+                new KeyboardEvent("keydown", { code: "F8", bubbles: true })
+            )
+        )
+        expect(mocks.updateConfig).toHaveBeenCalledWith({
+            pageSummaryShortcut: "F8"
+        })
+        await act(async () =>
+            document
+                .querySelector<HTMLButtonElement>(
+                    '[aria-label="禁用页面总结快捷键"]'
+                )!
+                .click()
+        )
+        expect(mocks.updateConfig).toHaveBeenCalledWith({
+            pageSummaryShortcut: ""
+        })
+        await act(async () =>
+            document
+                .querySelector<HTMLButtonElement>(
+                    '[aria-label="恢复页面总结默认快捷键"]'
+                )!
+                .click()
+        )
+        expect(mocks.updateConfig).toHaveBeenCalledWith({
+            pageSummaryShortcut: "Alt+KeyS"
+        })
+        expect(mocks.updateConfig).not.toHaveBeenCalledWith(
+            expect.objectContaining({ enablePageSummary: true })
+        )
+        expect(
+            new Set(
+                [...document.querySelectorAll("input[id]")].map(
+                    input => input.id
+                )
+            ).size
+        ).toBe(document.querySelectorAll("input[id]").length)
+    })
+
+    it.each([
+        { label: "页面总结快捷键", code: "KeyQ", other: "段落翻译" },
+        { label: "段落翻译快捷键", code: "KeyS", other: "页面总结" }
+    ])("rejects a conflicting $label", async ({ label, code, other }) => {
+        await renderBasic()
+        const input = document.querySelector<HTMLInputElement>(
+            `[aria-label="${label}"]`
+        )!
+        expect(input).not.toBeNull()
+        await act(async () =>
+            input.dispatchEvent(
+                new KeyboardEvent("keydown", {
+                    code,
+                    altKey: true,
+                    bubbles: true
+                })
+            )
+        )
+        expect(mocks.updateConfig).not.toHaveBeenCalled()
+        expect(document.querySelector('[role="alert"]')?.textContent).toContain(
+            other
+        )
+        expect(input.getAttribute("aria-invalid")).toBe("true")
+    })
+
+    it.each([
+        {
+            config: { paragraphTranslationShortcut: "Alt+KeyS" },
+            reset: "恢复页面总结默认快捷键"
+        },
+        {
+            config: { pageSummaryShortcut: "Alt+KeyQ" },
+            reset: "恢复段落翻译默认快捷键"
+        }
+    ])("checks conflicts when using $reset", async ({ config, reset }) => {
+        mocks.config = createConfig(config)
+        await renderBasic()
+        const button = document.querySelector<HTMLButtonElement>(
+            `[aria-label="${reset}"]`
+        )
+        expect(button).not.toBeNull()
+        await act(async () => button!.click())
+        expect(mocks.updateConfig).not.toHaveBeenCalled()
+        expect(document.querySelector('[role="alert"]')).not.toBeNull()
+    })
+
     it("defaults hover hints to off and saves their switch independently of paragraph translation", async () => {
         await renderBasic()
         const preview = document.querySelector<HTMLInputElement>(

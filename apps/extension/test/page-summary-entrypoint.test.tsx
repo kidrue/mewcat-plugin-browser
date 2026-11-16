@@ -26,12 +26,17 @@ const mocks = vi.hoisted(() => ({
     update: vi.fn(),
     remove: vi.fn(),
     open: vi.fn(),
+    toast: vi.fn(),
     roots: [] as Array<{ root: Root; container: Element }>,
     listeners: new Set<MessageListener>()
 }))
 vi.mock("@/messaging", () => ({ sendMessage: mocks.send }))
 vi.mock("@/monitoring", () => ({ captureExtensionException: vi.fn() }))
 vi.mock("@/utils/fonts", () => ({ registerUiFonts: vi.fn() }))
+vi.mock("@/utils/toast", () => ({
+    Toast: { show: mocks.toast },
+    ToastType: { ERROR: "error" }
+}))
 vi.mock("@/components/MonitoringErrorBoundary", () => ({
     MonitoringErrorBoundary: ({ children }: { children: ReactNode }) => children
 }))
@@ -116,6 +121,179 @@ async function mountSummary() {
 }
 
 describe("page summary configuration lifecycle", () => {
+    const press = async (init: KeyboardEventInit = {}) => {
+        const event = new KeyboardEvent("keydown", {
+            code: "KeyS",
+            altKey: true,
+            bubbles: true,
+            cancelable: true,
+            ...init
+        })
+        await act(async () => document.dispatchEvent(event))
+        return event
+    }
+
+    it("opens manually with automatic summaries off and reuses the result", async () => {
+        getDefaultStore().set(writableConfigAtom, {
+            ...config,
+            enablePageSummary: false
+        })
+        await mountSummary()
+        expect(mocks.send).not.toHaveBeenCalled()
+        expect((await press()).defaultPrevented).toBe(true)
+        expect(mocks.open).toHaveBeenCalledTimes(1)
+        expect(mocks.update).toHaveBeenCalledWith(
+            expect.objectContaining({ status: "success" })
+        )
+        await press()
+        expect(mocks.open).toHaveBeenCalledTimes(2)
+        expect(mocks.send).toHaveBeenCalledTimes(1)
+    })
+
+    it("opens an in-flight summary without another request", async () => {
+        let resolve!: (value: unknown) => void
+        mocks.send.mockReturnValue(
+            new Promise(done => {
+                resolve = done
+            })
+        )
+        await mountSummary()
+        await press()
+        await press()
+        expect(mocks.open).toHaveBeenCalledTimes(2)
+        expect(mocks.send).toHaveBeenCalledTimes(1)
+        await act(async () => resolve({ success: true, text: "已完成。" }))
+    })
+
+    it("rebinds and disables shortcuts immediately without clearing the result", async () => {
+        await mountSummary()
+        const removed = mocks.remove.mock.calls.length
+        await act(async () =>
+            getDefaultStore().set(writableConfigAtom, {
+                ...config,
+                pageSummaryShortcut: "F8"
+            })
+        )
+        await press()
+        expect(mocks.open).not.toHaveBeenCalled()
+        await press({ code: "F8", altKey: false })
+        expect(mocks.open).toHaveBeenCalledTimes(1)
+        await act(async () =>
+            getDefaultStore().set(writableConfigAtom, {
+                ...config,
+                pageSummaryShortcut: ""
+            })
+        )
+        await press({ code: "F8", altKey: false })
+        await press()
+        expect(mocks.open).toHaveBeenCalledTimes(1)
+        expect(mocks.send).toHaveBeenCalledTimes(1)
+        expect(mocks.remove).toHaveBeenCalledTimes(removed)
+    })
+
+    it("does not intercept shortcuts when the extension is disabled", async () => {
+        getDefaultStore().set(writableConfigAtom, {
+            ...config,
+            extensionEnabled: false,
+            enablePageSummary: false
+        })
+        await mountSummary()
+        expect((await press()).defaultPrevented).toBe(false)
+        expect(mocks.send).not.toHaveBeenCalled()
+        expect(mocks.open).not.toHaveBeenCalled()
+    })
+
+    it.each([
+        { repeat: true },
+        { isComposing: true },
+        { keyCode: 229 },
+        { code: "KeyQ" }
+    ])("ignores typing and repeated or unrelated events (%j)", async init => {
+        await mountSummary()
+        expect((await press(init)).defaultPrevented).toBe(false)
+        expect(mocks.open).not.toHaveBeenCalled()
+    })
+
+    it.each([
+        "<input>",
+        "<textarea></textarea>",
+        '<div contenteditable="true"><span tabindex="0"></span></div>',
+        '<div role="textbox"><span tabindex="0"></span></div>'
+    ])("does not open while editing in %s", async markup => {
+        await mountSummary()
+        const wrapper = document.createElement("div")
+        wrapper.innerHTML = markup
+        document.body.append(wrapper)
+        const target = wrapper.querySelector<HTMLElement>(
+            "span, input, textarea"
+        )!
+        target.focus()
+        const event = new KeyboardEvent("keydown", {
+            code: "KeyS",
+            altKey: true,
+            bubbles: true,
+            cancelable: true
+        })
+        await act(async () => target.dispatchEvent(event))
+        expect(event.defaultPrevented).toBe(false)
+        expect(mocks.open).not.toHaveBeenCalled()
+    })
+
+    it("protects an editor inside a shadow root", async () => {
+        await mountSummary()
+        const host = document.createElement("div")
+        const shadow = host.attachShadow({ mode: "open" })
+        shadow.innerHTML = "<input>"
+        document.body.append(host)
+        const input = shadow.querySelector("input")!
+        input.focus()
+        const event = new KeyboardEvent("keydown", {
+            code: "KeyS",
+            altKey: true,
+            bubbles: true,
+            composed: true,
+            cancelable: true
+        })
+        await act(async () => input.dispatchEvent(event))
+        expect(mocks.open).not.toHaveBeenCalled()
+        expect(event.defaultPrevented).toBe(false)
+    })
+
+    it.each(["excluded", "short"])(
+        "explains why %s content cannot be summarized",
+        async kind => {
+            getDefaultStore().set(writableConfigAtom, {
+                ...config,
+                enablePageSummary: false,
+                pageSummaryDisabledSites:
+                    kind === "excluded" ? [location.hostname] : []
+            })
+            if (kind === "short") document.body.innerHTML = "<p>short</p>"
+            await mountSummary()
+            await press()
+            expect(mocks.send).not.toHaveBeenCalled()
+            expect(mocks.toast).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    message: expect.stringContaining(
+                        kind === "excluded" ? "禁用" : "不足"
+                    )
+                })
+            )
+        }
+    )
+
+    it("removes the keyboard listener on unmount", async () => {
+        await mountSummary()
+        await act(async () =>
+            mocks.roots.splice(0).forEach(({ root, container }) => {
+                root.unmount()
+                container.remove()
+            })
+        )
+        await press()
+        expect(mocks.open).not.toHaveBeenCalled()
+    })
+
     it.each([false, true])(
         "does not repeat a summary on language detection (pending: %s)",
         async pending => {

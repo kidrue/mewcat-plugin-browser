@@ -4,6 +4,7 @@ import type { PageType } from "./pageTypes"
 
 // cspell:ignore haspopup labelledby
 const dismissedDocuments = new WeakSet<Document>()
+export const PAGE_SUMMARY_DOCK_EVENT = "mewcat-page-summary-dock"
 
 export type PageSummaryRenderState =
     | { status: "loading" }
@@ -25,19 +26,35 @@ export function renderPageSummary(
     host.setAttribute("data-mewcat-page-summary", "true")
     const shadow = host.attachShadow({ mode: "open" })
     document.documentElement.append(host)
+    // 总结与翻译控制器是独立入口，兼容任意挂载顺序。
+    const dock = () => {
+        const slot = document
+            .getElementById("translation-control-center-overlay")
+            ?.shadowRoot?.querySelector("[data-mewcat-page-summary-slot]")
+        if (slot) {
+            slot.append(host)
+            host.setAttribute("data-docked", "")
+        }
+    }
+    document.addEventListener(PAGE_SUMMARY_DOCK_EVENT, dock)
+    dock()
+    host.addEventListener("click", event => event.stopPropagation())
     const style = document.createElement("style")
     style.textContent = `
         :host{all:initial;font:14px/1.7 ${UI_FONT_FAMILY};color:#1a1714}
         *{box-sizing:border-box}
         button{font:inherit;cursor:pointer}
-        .launcher{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2147483646}
-        .trigger{padding:8px 20px;border:1px solid #b7d8ef80;border-radius:24px;background:#ffffff99;backdrop-filter:blur(12px);color:#36536d;box-shadow:0 4px 18px #203b5714;opacity:0.5;transition:opacity 0.2s ease}
-        .launcher:hover .trigger,.launcher:focus-within .trigger{opacity:1}
+        :host([data-docked]){visibility:inherit;pointer-events:inherit}
+        .launcher{position:fixed;top:min(calc(50vh + 79px),calc(100vh - 38px));right:36px;width:30px;height:30px;z-index:2147483646}
+        :host([data-docked]) .launcher{position:relative;top:auto;right:auto;z-index:auto}
+        .trigger{display:flex;align-items:center;justify-content:center;width:30px;height:30px;padding:0;border:1px solid var(--border-color,#cfe0ef);border-radius:var(--radius-md,8px);background:var(--bg-secondary,#fff);box-shadow:var(--shadow-sm,0 1px 2px #203b570f);color:var(--text-tertiary,#6f879c);transition:color 0.2s ease,border-color 0.2s ease,background 0.2s ease}
+        .trigger:hover{background:var(--primary-light,#e8f4ff);border-color:var(--primary-color,#2878c8);color:var(--primary-color,#2878c8)}
+        .trigger svg{width:16px;height:16px}
         @media(prefers-reduced-motion:reduce){.trigger{transition:none}}
-        .dismiss{position:absolute;right:-8px;top:-10px;width:24px;height:24px;border:0;border-radius:50%;background:#fff;color:#dc2626;opacity:0;pointer-events:none;line-height:1}
+        .dismiss{position:absolute;right:-6px;top:-6px;width:16px;height:16px;padding:0;border:0;border-radius:50%;background:#fff;color:#dc2626;opacity:0;pointer-events:none;font-size:12px;line-height:1}
         .launcher:hover .dismiss,.launcher:focus-within .dismiss{opacity:1;pointer-events:auto}
         button:focus-visible{outline:2px solid #2878c8;outline-offset:3px}
-        dialog{position:fixed;inset:0;margin:auto;width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;border:1px solid #cfe0ef;border-radius:16px;padding:24px;background:#ffffff;color:#203b57;font:14px/1.7 ${UI_FONT_FAMILY};box-shadow:0 16px 60px #203b5733}
+        dialog{position:fixed;visibility:visible;pointer-events:auto;inset:0;margin:auto;width:min(560px,calc(100vw - 32px));max-height:80vh;overflow:auto;border:1px solid #cfe0ef;border-radius:16px;padding:24px;background:#ffffff;color:#203b57;font:14px/1.7 ${UI_FONT_FAMILY};box-shadow:0 16px 60px #203b5733}
         dialog::backdrop{background:#0004}
         .close{float:right;border:0;background:transparent;color:#756b5e;font-size:22px}
         .label{font-size:18px;font-weight:600;color:#2878c8;margin-bottom:12px}
@@ -51,7 +68,11 @@ export function renderPageSummary(
     launcher.hidden = dismissedDocuments.has(document)
     const trigger = document.createElement("button")
     trigger.className = "trigger"
-    trigger.textContent = "页面总结"
+    trigger.type = "button"
+    trigger.title = "页面总结"
+    trigger.setAttribute("aria-label", "页面总结")
+    trigger.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>'
     trigger.setAttribute("aria-haspopup", "dialog")
     const dismiss = document.createElement("button")
     dismiss.className = "dismiss"
@@ -120,5 +141,12 @@ export function renderPageSummary(
     }
 
     update(state)
-    return { update, open, remove: () => host.remove() }
+    return {
+        update,
+        open,
+        remove: () => {
+            document.removeEventListener(PAGE_SUMMARY_DOCK_EVENT, dock)
+            host.remove()
+        }
+    }
 }

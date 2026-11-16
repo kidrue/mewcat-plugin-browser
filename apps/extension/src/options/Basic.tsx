@@ -15,11 +15,13 @@ import {
 import FeatureAvailability from "@/components/FeatureAvailability"
 import Icon from "@/components/Icon"
 import ParagraphShortcutInput from "@/components/ParagraphShortcutInput"
+import ShortcutInput from "@/components/ShortcutInput"
 import {
     DEFAULT_VALUES,
     languages,
     TRANSLATION_STYLE_OPTIONS
 } from "@/constants"
+import { DEFAULT_PAGE_SUMMARY_SHORTCUT } from "@/page-summary/pageSummaryShortcut"
 import { configAtom, updateConfigAtom } from "@/state"
 import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/translation/paragraphShortcut"
 import type { TranslationDisplayMode } from "@/types/config"
@@ -190,6 +192,10 @@ export const Basic: React.FunctionComponent = () => {
                                 paragraphTranslationShortcut: value
                             })
                         }
+                        conflictingShortcut={
+                            config.pageSummaryShortcut ??
+                            DEFAULT_PAGE_SUMMARY_SHORTCUT
+                        }
                     />
                 </FormRow>
             </OptionsSection>
@@ -211,6 +217,31 @@ export const Basic: React.FunctionComponent = () => {
             </OptionsSection>
 
             <OptionsSection title="页面总结" artwork="desk" icon="book">
+                <FormRow
+                    label="打开总结快捷键"
+                    description="点击后按键录制，清除可禁用；关闭自动总结后仍可手动打开。输入文字时不触发，浏览器保留的快捷键可能不可用。"
+                    controlId="page-summary-shortcut"
+                >
+                    <ShortcutInput
+                        id="page-summary-shortcut"
+                        label="页面总结快捷键"
+                        value={
+                            config.pageSummaryShortcut ??
+                            DEFAULT_PAGE_SUMMARY_SHORTCUT
+                        }
+                        defaultValue={DEFAULT_PAGE_SUMMARY_SHORTCUT}
+                        resetLabel="恢复页面总结默认快捷键"
+                        allowClear
+                        conflictingShortcut={
+                            config.paragraphTranslationShortcut ??
+                            DEFAULT_PARAGRAPH_SHORTCUT
+                        }
+                        conflictMessage="此快捷键已用于段落翻译，请选择其他按键。"
+                        onChange={value =>
+                            updateConfig({ pageSummaryShortcut: value })
+                        }
+                    />
+                </FormRow>
                 <FormRow
                     label="自动总结页面"
                     description="自动提炼页面重点；页面内容将发送到已配置的生成式 AI 服务。"

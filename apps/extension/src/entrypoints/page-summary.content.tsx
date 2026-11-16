@@ -5,8 +5,13 @@ import { defineContentScript } from "#imports"
 
 import { MonitoringErrorBoundary } from "@/components/MonitoringErrorBoundary"
 import { PageSummaryController } from "@/page-summary/PageSummaryController"
+import {
+    DEFAULT_PAGE_SUMMARY_SHORTCUT,
+    installPageSummaryShortcut
+} from "@/page-summary/pageSummaryShortcut"
 import { configAtom } from "@/state"
 import { registerUiFonts } from "@/utils/fonts"
+import { Toast, ToastType } from "@/utils/toast"
 
 export default defineContentScript({
     matches: ["<all_urls>"],
@@ -31,6 +36,32 @@ export default defineContentScript({
 function PageSummaryApp() {
     const config = useAtomValue(configAtom)
     const [controller] = useState(() => new PageSummaryController(config))
+    useEffect(() => {
+        if (config.extensionEnabled === false) {
+            return
+        }
+        return installPageSummaryShortcut(
+            config.pageSummaryShortcut ?? DEFAULT_PAGE_SUMMARY_SHORTCUT,
+            () => {
+                void controller
+                    .start("manual")
+                    .then(result => {
+                        if (!result.success) {
+                            Toast.show({
+                                type: ToastType.ERROR,
+                                message: result.message
+                            })
+                        }
+                    })
+                    .catch(() => {
+                        Toast.show({
+                            type: ToastType.ERROR,
+                            message: "总结失败，请重试。"
+                        })
+                    })
+            }
+        )
+    }, [config.pageSummaryShortcut, config.extensionEnabled, controller])
     useEffect(() => {
         if (controller.updateConfig(config)) void controller.start()
     }, [config, controller])

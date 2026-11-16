@@ -5,6 +5,7 @@ import styled, { StyleSheetManager } from "styled-components"
 
 import { languages } from "@/constants"
 import { captureExtensionException } from "@/monitoring"
+import { PAGE_SUMMARY_DOCK_EVENT } from "@/page-summary/PageSummaryRenderer"
 import {
     readingStatus,
     type PageActionRequest,
@@ -186,15 +187,23 @@ const SCxTickIcon = styled.div`
 
 const SCxActions = styled.div<{ $visible: boolean }>`
     position: absolute;
-    bottom: -44px;
+    top: 68px;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, 30px);
     gap: 8px;
     opacity: ${props => (props.$visible ? 1 : 0)};
     visibility: ${props => (props.$visible ? "visible" : "hidden")};
     pointer-events: ${props => (props.$visible ? "auto" : "none")};
     transition: opacity var(--transition-base, 0.2s ease);
+`
+
+const SCxSummarySlot = styled.div`
+    grid-column: 1 / -1;
+    justify-self: center;
+    width: 30px;
+    height: 30px;
 `
 
 const SCxActionButton = styled.button`
@@ -360,6 +369,10 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     const alignRight = useMemo(() => {
         return position.x > window.innerWidth / 2
     }, [position.x])
+
+    useEffect(() => {
+        document.dispatchEvent(new Event(PAGE_SUMMARY_DOCK_EVENT))
+    }, [])
 
     // 使用 useClickAway 检测点击外部区域
     useClickAway(ref, e => {
@@ -1073,6 +1086,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
                     </SCxActionButton>
+                    <SCxSummarySlot data-mewcat-page-summary-slot />
                 </SCxActions>
             </SCxContainer>
         </StyleSheetManager>

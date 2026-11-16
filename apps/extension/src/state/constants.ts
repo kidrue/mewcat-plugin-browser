@@ -1,5 +1,6 @@
 import { DEFAULT_VALUES } from "@/constants/options"
 import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import { DEFAULT_PAGE_SUMMARY_SHORTCUT } from "@/page-summary/pageSummaryShortcut"
 import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/translation/paragraphShortcut"
 import { type BaseModel } from "@/types"
 import { AiRole, type ExtensionConfig } from "@/types/config"
@@ -107,6 +108,7 @@ export const defaultExtensionConfig: ExtensionConfig = {
 
     // 网页总结配置
     enablePageSummary: false,
+    pageSummaryShortcut: DEFAULT_PAGE_SUMMARY_SHORTCUT,
     pageSummaryDisabledSites: [],
 
     // 图片翻译配置

@@ -1,10 +1,58 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { renderPageSummary } from "../src/page-summary/PageSummaryRenderer"
+import {
+    PAGE_SUMMARY_DOCK_EVENT,
+    renderPageSummary
+} from "../src/page-summary/PageSummaryRenderer"
+
+const cleanups: Array<() => void> = []
+afterEach(() => cleanups.splice(0).forEach(cleanup => cleanup()))
 
 describe("page summary renderer", () => {
+    it.each([false, true])(
+        "docks beside the floating actions even when they mount later (%s)",
+        mountLater => {
+            const overlay = document.createElement("div")
+            overlay.id = "translation-control-center-overlay"
+            const controls = overlay.attachShadow({ mode: "open" })
+            controls.innerHTML = "<div data-mewcat-page-summary-slot></div>"
+            const slot = controls.firstElementChild!
+            const onTranslate = vi.fn()
+            slot.addEventListener("click", onTranslate)
+            if (!mountLater) document.body.append(overlay)
+            const handle = renderPageSummary(document.body, {
+                status: "loading"
+            })
+            cleanups.push(() => {
+                handle.remove()
+                overlay.remove()
+            })
+            if (mountLater) {
+                document.body.append(overlay)
+                document.dispatchEvent(new Event(PAGE_SUMMARY_DOCK_EVENT))
+            }
+            const host = slot.querySelector<HTMLElement>(".mewcat-page-summary")
+            expect(host).not.toBeNull()
+            const trigger =
+                host!.shadowRoot!.querySelector<HTMLButtonElement>(".trigger")!
+            expect(trigger.getAttribute("aria-label")).toBe("页面总结")
+            expect(trigger.querySelector("svg")).not.toBeNull()
+            const dialog = host!.shadowRoot!.querySelector("dialog")!
+            dialog.showModal = vi.fn(() => {
+                dialog.open = true
+            })
+            trigger.click()
+            expect(dialog.open).toBe(true)
+            expect(onTranslate).not.toHaveBeenCalled()
+            handle.remove()
+            document.dispatchEvent(new Event(PAGE_SUMMARY_DOCK_EVENT))
+            expect(slot.querySelector(".mewcat-page-summary")).toBeNull()
+            overlay.remove()
+        }
+    )
+
     it("opens a modal from the bottom button and keeps dismissal after updates", () => {
         const anchor = document.createElement("article")
         document.body.append(anchor)

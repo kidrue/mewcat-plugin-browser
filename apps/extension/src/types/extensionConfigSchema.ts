@@ -68,6 +68,10 @@ const extensionConfigShape = {
     enableThinking: z.boolean().optional(),
     enableContext: z.boolean().optional(),
     enablePageSummary: z.boolean().optional(),
+    pageSummaryShortcut: z
+        .string()
+        .refine(value => value === "" || isValidParagraphShortcut(value))
+        .optional(),
     pageSummaryDisabledSites: z.array(z.string()).optional(),
     enableImageTranslateButton: z.boolean().optional(),
     imageTranslationModelId: z.string().optional(),
@@ -124,6 +128,14 @@ export function repairExtensionConfig(
         if (fallback.success && fallback.data !== undefined) {
             repaired[key] = fallback.data
         }
+    }
+
+    // 保留已有段落快捷键，避免升级或导入后两个功能使用同一按键。
+    if (
+        repaired.pageSummaryShortcut &&
+        repaired.pageSummaryShortcut === repaired.paragraphTranslationShortcut
+    ) {
+        repaired.pageSummaryShortcut = ""
     }
 
     return ExtensionConfigSchema.parse(repaired) as ExtensionConfig

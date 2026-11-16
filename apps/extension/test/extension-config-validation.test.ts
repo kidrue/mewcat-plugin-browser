@@ -22,6 +22,40 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it.each([undefined, "Alt+KeyS"])(
+        "preserves the paragraph shortcut and disables a colliding summary shortcut (%s)",
+        pageSummaryShortcut => {
+            const repaired = repairExtensionConfig(
+                {
+                    ...defaultExtensionConfig,
+                    paragraphTranslationShortcut: "Alt+KeyS",
+                    pageSummaryShortcut
+                },
+                defaultExtensionConfig
+            )
+            expect(repaired.paragraphTranslationShortcut).toBe("Alt+KeyS")
+            expect(repaired.pageSummaryShortcut).toBe("")
+        }
+    )
+
+    it.each([
+        { stored: undefined, expected: "Alt+KeyS" },
+        { stored: "", expected: "" },
+        { stored: "Ctrl+Shift+KeyS", expected: "Ctrl+Shift+KeyS" },
+        { stored: "F8", expected: "F8" },
+        { stored: "Ctrl+Ctrl+KeyS", expected: "Alt+KeyS" },
+        { stored: 42, expected: "Alt+KeyS" }
+    ])(
+        "repairs the page summary shortcut ($stored)",
+        ({ stored, expected }) => {
+            const config = repairExtensionConfig(
+                { ...defaultExtensionConfig, pageSummaryShortcut: stored },
+                defaultExtensionConfig
+            )
+            expect(config).toHaveProperty("pageSummaryShortcut", expected)
+        }
+    )
+
     it.each([
         { stored: undefined, expected: false },
         { stored: "invalid", expected: false },
