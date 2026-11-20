@@ -5,11 +5,13 @@ import Button from "../Button"
 export default function FeatureAvailability({
     available,
     saved = false,
-    section = "translation"
+    section = "translation",
+    message
 }: {
     available: boolean
     saved?: boolean
     section?: "translation" | "image"
+    message?: string
 }) {
     return (
         <small role="status" style={{ display: "block", lineHeight: 1.6 }}>
@@ -18,9 +20,10 @@ export default function FeatureAvailability({
             ) : (
                 <>
                     待配置：
-                    {section === "image"
-                        ? "请先选择可用的视觉模型。"
-                        : "请先配置可用的生成式 AI 模型。"}
+                    {message ??
+                        (section === "image"
+                            ? "请先选择可用的视觉模型。"
+                            : "请先配置可用的生成式 AI 模型。")}
                     {saved && "已保留启用偏好，配置完成后生效。"}
                     <Button
                         htmlType="button"

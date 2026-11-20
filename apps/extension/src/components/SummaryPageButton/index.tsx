@@ -4,6 +4,7 @@ import {
     summarizeCurrentPage,
     type SummaryActionResult
 } from "@/reading/summaryActions"
+import { PAGE_SUMMARY_UNAVAILABLE_MESSAGE } from "@/utils/pageSummary"
 
 import Button from "../Button"
 import FeatureAvailability from "../FeatureAvailability"
@@ -45,11 +46,17 @@ export default function SummaryPageButton({
                 {pending ? "正在总结…" : "总结本页"}
             </Button>
             {!available && !compact && (
-                <FeatureAvailability available={false} />
+                <FeatureAvailability
+                    available={false}
+                    message={PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
+                />
             )}
             {result && <p role="status">{result.message}</p>}
             {result?.needsConfiguration && (
-                <FeatureAvailability available={false} />
+                <FeatureAvailability
+                    available={false}
+                    message={PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
+                />
             )}
         </div>
     )

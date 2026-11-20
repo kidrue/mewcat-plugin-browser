@@ -104,6 +104,11 @@ export function repairExtensionConfig(
     const repaired: Record<string, unknown> = {}
 
     for (const [key, schema] of Object.entries(extensionConfigShape)) {
+        // 已存储的模型选择损坏时保持未选择，不能自动改用默认服务。
+        if (key === "currentModel") {
+            repaired[key] = typeof source[key] === "string" ? source[key] : ""
+            continue
+        }
         // Preserve absence for one-time legacy image model migration.
         if (
             key === "imageTranslationModelName" &&

@@ -4,6 +4,7 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { AddModel } from "../src/components/AddModel"
 import {
     buildModelSelectionOptions,
     getVisionCapabilityLabel,
@@ -63,6 +64,69 @@ afterEach(async () => {
 })
 
 describe("model discovery field", () => {
+    it("offers SiliconFlow as an independent service in the add menu", async () => {
+        const host = document.createElement("div")
+        document.body.append(host)
+        root = createRoot(host)
+        const add = vi.fn()
+        await act(async () => root?.render(<AddModel onItemClick={add} />))
+        await act(async () => host.querySelector("button")?.click())
+        const item = Array.from(host.querySelectorAll("li")).find(
+            item => item.textContent === "硅基流动"
+        )
+        expect(item).toBeDefined()
+        await act(async () => item?.click())
+        expect(add).toHaveBeenCalledExactlyOnceWith("SILICONFLOW")
+    })
+
+    it.each([false, true])(
+        "keeps model ID entry available when SiliconFlow discovery returns no options (failure: %s)",
+        async failed => {
+            vi.useFakeTimers()
+            if (failed)
+                mocks.discoverModels.mockRejectedValue(
+                    new ModelDiscoveryError(
+                        "AUTHENTICATION_FAILED",
+                        "API Key 无效"
+                    )
+                )
+            else mocks.discoverModels.mockResolvedValue([])
+            const host = document.createElement("div")
+            document.body.append(host)
+            root = createRoot(host)
+            const model = {
+                ...createModel(true),
+                type: AiModel_Platform_Enum.SILICONFLOW
+            }
+            const change = vi.fn()
+            await act(async () =>
+                root?.render(
+                    <ModelDiscoveryField model={model} onChange={change} />
+                )
+            )
+            await act(async () => vi.advanceTimersByTimeAsync(400))
+            const input = host.querySelector<HTMLInputElement>(
+                'input[id="manual-model-name-configured-model"]'
+            )
+            expect(input?.disabled).toBe(false)
+            expect(host.textContent).toContain(
+                failed ? "API Key 无效" : "未返回可用模型"
+            )
+            await act(async () => {
+                Object.getOwnPropertyDescriptor(
+                    HTMLInputElement.prototype,
+                    "value"
+                )!.set!.call(input, "Pro/provider/model")
+                input!.dispatchEvent(new Event("input", { bubbles: true }))
+            })
+            expect(change).toHaveBeenLastCalledWith(
+                "Pro/provider/model",
+                undefined
+            )
+            // The storage update may still be queued when the next keystroke arrives.
+            expect(input?.value).toBe("Pro/provider/model")
+        }
+    )
     it("preserves a configured model that the provider no longer returns", () => {
         expect(
             buildModelSelectionOptions(

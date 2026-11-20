@@ -108,7 +108,7 @@ describe("concept streaming transport", () => {
         expect(await result).toEqual({ success: true, text: "finished" })
         expect(pair.closed).toBe(true)
     })
-    it("streams the real service through a port and keeps model fallback and prompt context", async () => {
+    it("streams the real service through a port and keeps the selected model and prompt context", async () => {
         const pair = ports()
         let source!: ReadableStreamDefaultController<Uint8Array>
         let receivedBody: Record<string, unknown> | undefined
@@ -129,7 +129,7 @@ describe("concept streaming transport", () => {
         const deltas: string[] = []
         const result = streamConceptExplanation(
             {
-                currentModel: "google-translate",
+                currentModel: model.id,
                 aiRole: AiRole.DEFAULT,
                 aiModelList: [model]
             },

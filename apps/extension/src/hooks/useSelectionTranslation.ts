@@ -4,9 +4,10 @@ import type { ConceptExplanationInput } from "@/translation/modelTranslation"
 import { parseSelectionAnalysis } from "@/translation/selectionAnalysis"
 import { translateSelectedText } from "@/translation/selectionTranslation"
 import {
-    isConfiguredGenerativeModel,
+    getSelectedGenerativeModel,
     streamConceptExplanation,
     translateText,
+    TranslationServiceUnavailableError,
     type TranslationRuntimeConfig
 } from "@/translation/translationService"
 
@@ -75,13 +76,16 @@ export function useSelectionTranslation(
                 if (!value.trim())
                     throw new Error("Empty selection translation")
                 publish({ mode: "translate", value, loading: false, notice })
-            } catch {
+            } catch (error) {
                 publish({
                     mode: "translate",
                     value: "",
                     loading: false,
                     notice,
-                    error: "翻译失败，请稍后重试"
+                    error:
+                        error instanceof TranslationServiceUnavailableError
+                            ? error.message
+                            : "翻译失败，请稍后重试"
                 })
             } finally {
                 translating = false
@@ -89,8 +93,8 @@ export function useSelectionTranslation(
         }
 
         const run = async () => {
-            if (!config.aiModelList.some(isConfiguredGenerativeModel)) {
-                await translate("配置 AI 模型后可自动解释术语")
+            if (!getSelectedGenerativeModel(config)) {
+                await translate("当前翻译服务不支持术语解释或模型不可用")
                 return
             }
             let accumulated = ""

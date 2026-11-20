@@ -100,6 +100,13 @@ function getBubbleTheme(style: TranslationStyleType) {
         : undefined
 }
 
+function getSurfaceTextCSS(color: string): string {
+    return `
+        color: ${color} !important;
+        -webkit-text-fill-color: currentColor !important;
+    `
+}
+
 /**
  * 获取翻译样式的CSS文本
  *
@@ -171,7 +178,7 @@ export function getTranslationStyleCSS(
             padding: 0.3em calc(min(4em, 22%) + 0.7em) 0.3em 0.7em;
             border: 1px solid ${bubble.border};
             border-radius: ${bubble.radius};
-            color: ${bubble.color};
+            ${getSurfaceTextCSS(bubble.color)}
             background-color: ${bubble.start};
             background-image: url("${assetUrl}"), ${textures[style as keyof typeof textures]}, linear-gradient(145deg, #ffffffee, ${bubble.start} 55%, ${bubble.end});
             background-size: min(4em, 22%) auto, 32px 14px, 100% 100%;
@@ -203,7 +210,7 @@ export function getTranslationStyleCSS(
                 baseStyle +
                 panelStyle +
                 `
-                color: #203b57;
+                ${getSurfaceTextCSS("#203b57")}
                 background: #f0f7ff;
                 border: 1px solid #dcebf8;
                 border-inline-start: 3px solid #2878c8;
@@ -230,7 +237,7 @@ export function getTranslationStyleCSS(
                 baseStyle +
                 panelStyle +
                 `
-                color: #203b57;
+                ${getSurfaceTextCSS("#203b57")}
                 background: #e8f4ff;
                 border: 1px solid transparent;
             `

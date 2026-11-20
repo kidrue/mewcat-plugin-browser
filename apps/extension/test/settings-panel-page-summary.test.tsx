@@ -116,6 +116,18 @@ async function clickAdvancedSettings() {
 }
 
 describe("quick settings page summary setting", () => {
+    it("does not enable summary for mewCat because another AI model is configured", async () => {
+        mocks.config = createConfig({ currentModel: "mewcat-translate" })
+        await renderSettingsPanel()
+        expect(
+            document.querySelector<HTMLInputElement>(
+                'input[aria-label="自动总结页面"]'
+            )?.disabled
+        ).toBe(true)
+        expect(document.body.textContent).toContain(
+            "没有对应的翻译服务支持页面总结"
+        )
+    })
     it("allows mewCat context without a custom AI model and keeps automatic summary unavailable", async () => {
         mocks.config = createConfig({
             currentModel: "mewcat-translate",
@@ -219,7 +231,7 @@ describe("quick settings page summary setting", () => {
 
         expect(document.body.textContent).toContain("自动总结页面")
         expect(document.body.textContent).toContain(
-            "页面内容将发送到已配置的生成式 AI 服务"
+            "页面内容将发送到当前所选翻译模型"
         )
         const toggle = document.querySelector<HTMLInputElement>(
             'input[role="switch"][aria-label="自动总结页面"]'
@@ -254,7 +266,7 @@ describe("quick settings page summary setting", () => {
         expect(toggle?.checked).toBe(false)
         expect(toggle?.disabled).toBe(true)
         expect(document.body.textContent).toContain(
-            "请先配置可用的生成式 AI 模型"
+            "没有对应的翻译服务支持页面总结"
         )
     })
 

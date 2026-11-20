@@ -39,7 +39,7 @@ vi.mock("@/state/config", () => ({
 }))
 
 vi.mock("@/translation/translationService", () => ({
-    isConfiguredGenerativeModel: () => false,
+    getSelectedGenerativeModel: () => undefined,
     translateText: vi.fn()
 }))
 

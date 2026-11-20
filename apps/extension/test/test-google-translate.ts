@@ -67,8 +67,8 @@ assert.equal(
             fallbackModel
         ]
     }),
-    fallbackModel.id,
-    "The first usable configured model must win before Google fallback"
+    "missing-model",
+    "An invalid selection must not switch to another AI model"
 )
 
 assert.equal(
@@ -79,8 +79,8 @@ assert.equal(
             createModel("missing-key-model", { apiKey: "" })
         ]
     }),
-    GOOGLE_TRANSLATE_MODEL_ID,
-    "Users without a usable model must fall back to Google Translate"
+    "missing-model",
+    "An invalid selection must not switch to Google Translate"
 )
 
 assert.equal(
@@ -97,7 +97,7 @@ const staleConfig = {
     aiModelList: [createModel("missing-key-model", { apiKey: "" })]
 }
 const normalizedConfig = normalizeTranslationServiceSelection(staleConfig)
-assert.equal(normalizedConfig.currentModel, GOOGLE_TRANSLATE_MODEL_ID)
+assert.equal(normalizedConfig.currentModel, "missing-model")
 assert.equal(
     staleConfig.currentModel,
     "missing-model",
@@ -122,7 +122,7 @@ const migratedConfig = await migrationAdapter.getItem(
     "extension-config",
     defaultExtensionConfig
 )
-assert.equal(migratedConfig.currentModel, GOOGLE_TRANSLATE_MODEL_ID)
+assert.equal(migratedConfig.currentModel, "missing-model")
 assert.equal(
     persistedConfigs.length,
     0,

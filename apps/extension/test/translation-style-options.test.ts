@@ -78,6 +78,62 @@ describe("empty page translation results", () => {
 })
 
 describe("additional translation styles", () => {
+    const stylesWithLightSurface = Object.values(TranslationStyle).filter(
+        style =>
+            style.startsWith("bubble-") ||
+            style === TranslationStyle.HIGHLIGHT ||
+            style === TranslationStyle.BACKGROUND
+    )
+
+    it.each(stylesWithLightSurface)(
+        "enforces its foreground on nested text in %s after each render",
+        style => {
+            const element = createTranslationDisplayElement(
+                '<a href="#example" style="color: white !important"><strong style="-webkit-text-fill-color: white !important">初始译文</strong></a>',
+                style
+            ) as HTMLElement
+            expect(element.style.color).not.toBe("")
+            expect(element.style.getPropertyPriority("color")).toBe("important")
+            expect(
+                element.style
+                    .getPropertyValue("-webkit-text-fill-color")
+                    .toLowerCase()
+            ).toBe("currentcolor")
+            for (const child of element.querySelectorAll<HTMLElement>(
+                "a, strong"
+            )) {
+                expect(child.style.color).toBe("inherit")
+                expect(child.style.getPropertyPriority("color")).toBe(
+                    "important"
+                )
+                expect(
+                    child.style
+                        .getPropertyValue("-webkit-text-fill-color")
+                        .toLowerCase()
+                ).toBe("currentcolor")
+            }
+
+            setTranslationDisplayContent(
+                element,
+                '<span style="color: white !important">更新译文</span>'
+            )
+            expect(element.querySelector("span")?.style.color).toBe("inherit")
+            expect(
+                element
+                    .querySelector("span")
+                    ?.style.getPropertyPriority("color")
+            ).toBe("important")
+        }
+    )
+
+    it("keeps the site's inline colors when the translation style has no background", () => {
+        const element = createTranslationDisplayElement(
+            '<a style="color: white">译文</a>',
+            TranslationStyle.NONE
+        )
+        expect(element.querySelector("a")?.style.color).toBe("white")
+    })
+
     it("orders styles from no decoration to richer visual treatments", () => {
         expect(TRANSLATION_STYLE_OPTIONS.map(option => option.value)).toEqual([
             TranslationStyle.NONE,

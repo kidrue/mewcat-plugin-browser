@@ -91,6 +91,12 @@ export const AI_TRANSLATION_SERVICES: TranslationService[] = [
         type: AiModel_Platform_Enum.GEMINI
     },
     {
+        key: "siliconflow",
+        name: "硅基流动",
+        description: "使用硅基流动模型进行翻译",
+        type: AiModel_Platform_Enum.SILICONFLOW
+    },
+    {
         key: "deepl",
         name: "DeepL",
         description: "使用DeepL进行翻译",
@@ -116,6 +122,7 @@ export const platformNameMap: Record<AiModel_Platform_Enum, string> = {
     [AiModel_Platform_Enum.OPENAI]: "ChatGPT",
     [AiModel_Platform_Enum.MOONSHOT]: "Moonshot",
     [AiModel_Platform_Enum.GEMINI]: "Gemini",
+    [AiModel_Platform_Enum.SILICONFLOW]: "硅基流动",
     [AiModel_Platform_Enum.DEEPL]: "DeepL",
     [AiModel_Platform_Enum.DEEPLX]: "DeepLX"
 }

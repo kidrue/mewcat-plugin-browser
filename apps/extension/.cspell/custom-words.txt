@@ -52,6 +52,7 @@ Rerank
 reranker
 Segoe
 sidepanel
+siliconflow
 Songti
 stackoverflow
 volcengine

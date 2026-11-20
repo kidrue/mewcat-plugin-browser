@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import {
     GOOGLE_TRANSLATE_MODEL_ID,
@@ -6,6 +6,7 @@ import {
     MICROSOFT_TRANSLATE_MODEL_ID
 } from "../src/constants/translationServices"
 import type { ModelGatewayRequest } from "../src/messaging/modelGatewayContracts"
+import { normalizeTranslationServiceSelection } from "../src/state/translationService"
 import type { TranslateRequestSender } from "../src/translation/GoogleTranslator"
 import {
     ConceptExplanationUnavailableError,
@@ -43,6 +44,87 @@ const createConfig = (
 })
 
 describe("functional translation service", () => {
+    it.each([
+        "missing-model",
+        "disabled-model",
+        "missing-key-model",
+        "missing-name-model",
+        ""
+    ])(
+        "preserves an unavailable selection and rejects translation without a fallback: %s",
+        async currentModel => {
+            const config = createConfig(currentModel, [
+                model,
+                { ...model, id: "disabled-model", enabled: false },
+                {
+                    ...model,
+                    id: "missing-key-model",
+                    params: { ...model.params, apiKey: "" }
+                },
+                {
+                    ...model,
+                    id: "missing-name-model",
+                    params: { ...model.params, modelName: "" }
+                }
+            ])
+            expect(
+                normalizeTranslationServiceSelection(config).currentModel
+            ).toBe(currentModel)
+            const sender = vi.fn(async () => ({
+                success: true as const,
+                text: "wrong",
+                content: "wrong"
+            }))
+            for (const translate of [translateText, translateBatch]) {
+                await expect(
+                    translate(
+                        config,
+                        [{ role: "user", content: "hello" }],
+                        "zh-CN",
+                        {},
+                        {
+                            modelGatewaySender: sender,
+                            googleRequestSender: sender,
+                            microsoftRequestSender: sender,
+                            mewcatRequestSender: sender
+                        }
+                    )
+                ).rejects.toThrow("没有对应的翻译服务")
+            }
+            expect(sender).not.toHaveBeenCalled()
+        }
+    )
+
+    it.each([
+        GOOGLE_TRANSLATE_MODEL_ID,
+        MICROSOFT_TRANSLATE_MODEL_ID,
+        MEWCAT_TRANSLATE_MODEL_ID,
+        "missing-model"
+    ])(
+        "does not switch models for regular or streaming concept explanation: %s",
+        async currentModel => {
+            const sender = vi.fn(async () => ({
+                success: true as const,
+                text: "wrong"
+            }))
+            const config = createConfig(currentModel)
+            await expect(
+                explainConcept(config, { text: "gravity" }, "zh-CN", {
+                    modelGatewaySender: sender
+                })
+            ).rejects.toBeInstanceOf(ConceptExplanationUnavailableError)
+            await expect(
+                streamConceptExplanation(
+                    config,
+                    { text: "gravity" },
+                    "zh-CN",
+                    {},
+                    { modelGatewayStreamSender: sender }
+                )
+            ).rejects.toBeInstanceOf(ConceptExplanationUnavailableError)
+            expect(sender).not.toHaveBeenCalled()
+        }
+    )
     it.each([translateText, translateBatch])(
         "sends mewCat context only when enabled",
         async translate => {
@@ -75,10 +157,10 @@ describe("functional translation service", () => {
         }
     )
 
-    it("detects and explains terms in one streamed request using a configured AI when Google is selected", async () => {
+    it("detects and explains terms in one streamed request using the selected AI", async () => {
         const requests: ModelGatewayRequest[] = []
         const result = await streamConceptExplanation(
-            createConfig(GOOGLE_TRANSLATE_MODEL_ID),
+            createConfig(model.id),
             {
                 text: "mass and gravity",
                 pageTitle: "Physics",
@@ -326,7 +408,7 @@ describe("functional translation service", () => {
             getConceptExplanationErrorMessage(
                 new ConceptExplanationUnavailableError()
             )
-        ).toBe("配置生成式 AI 模型后可使用概念解释")
+        ).toBe("没有对应的翻译服务支持概念解释，请选择可用的生成式 AI 模型。")
     })
 
     it("uses the selected generative model to explain a concept with page context", async () => {
@@ -433,54 +515,27 @@ describe("functional translation service", () => {
         expect(contextMatch?.[1]).toHaveLength(500)
     })
 
-    it("falls back to a configured generative model when Google handles translation", async () => {
-        let request: ModelGatewayRequest | undefined
-        await explainConcept(
-            createConfig(GOOGLE_TRANSLATE_MODEL_ID),
-            { text: "Ada Lovelace" },
-            "zh-CN",
-            {
-                modelGatewaySender: async value => {
-                    request = value
-                    return { success: true, text: "类别：人物" }
-                }
-            }
-        )
-
-        expect(request).toMatchObject({
-            type: "generate",
-            model: { id: "ai-model" }
-        })
-    })
-
-    it("skips an explanation model with an empty model name and uses the next LLM", async () => {
-        let request: ModelGatewayRequest | undefined
-        const emptyModelName = {
+    it("rejects an empty selected model name even when another LLM is configured", async () => {
+        const emptyModel = {
             ...model,
-            id: "empty-model-name",
             params: { ...model.params, modelName: "   " }
         }
-        const validModel = { ...model, id: "valid-fallback" }
-
-        await explainConcept(
-            createConfig(GOOGLE_TRANSLATE_MODEL_ID, [
-                emptyModelName,
-                validModel
-            ]),
-            { text: "Ada Lovelace" },
-            "zh-CN",
-            {
-                modelGatewaySender: async value => {
-                    request = value
-                    return { success: true, text: "类别：人物" }
-                }
-            }
-        )
-
-        expect(request).toMatchObject({
-            type: "generate",
-            model: { id: "valid-fallback" }
-        })
+        const sender = vi.fn(async () => ({
+            success: true as const,
+            text: "wrong"
+        }))
+        await expect(
+            explainConcept(
+                createConfig(emptyModel.id, [
+                    emptyModel,
+                    { ...model, id: "other" }
+                ]),
+                { text: "Ada Lovelace" },
+                "zh-CN",
+                { modelGatewaySender: sender }
+            )
+        ).rejects.toBeInstanceOf(ConceptExplanationUnavailableError)
+        expect(sender).not.toHaveBeenCalled()
     })
 
     it("skips legacy and malformed stored models before a valid LLM", async () => {
@@ -503,7 +558,7 @@ describe("functional translation service", () => {
         const validModel = { ...model, id: "valid-after-legacy" }
 
         await explainConcept(
-            createConfig(GOOGLE_TRANSLATE_MODEL_ID, [
+            createConfig(validModel.id, [
                 legacyProvider,
                 malformedApiKey,
                 malformedModelName,
@@ -663,18 +718,20 @@ describe("functional translation service", () => {
         expect(modelGatewayCalled).toBe(false)
     })
 
-    it("mewCat 翻译不计为 AI 用量，概念解释仍使用可用 LLM", async () => {
+    it("mewCat 翻译不计为 AI 用量，概念解释不切换到其他 LLM", async () => {
         let request: ModelGatewayRequest | undefined
         const config = createConfig(MEWCAT_TRANSLATE_MODEL_ID)
         expect(hasAITranslationEnabled(config)).toBe(false)
 
-        await explainConcept(config, { text: "Ada Lovelace" }, "zh-CN", {
-            modelGatewaySender: async value => {
-                request = value
-                return { success: true, text: "类别：人物" }
-            }
-        })
-        expect(request).toMatchObject({ model: { id: "ai-model" } })
+        await expect(
+            explainConcept(config, { text: "Ada Lovelace" }, "zh-CN", {
+                modelGatewaySender: async value => {
+                    request = value
+                    return { success: true, text: "类别：人物" }
+                }
+            })
+        ).rejects.toBeInstanceOf(ConceptExplanationUnavailableError)
+        expect(request).toBeUndefined()
     })
 
     it("reports AI usage only for a selected LLM model", () => {

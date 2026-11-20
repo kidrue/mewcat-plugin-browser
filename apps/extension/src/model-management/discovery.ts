@@ -237,6 +237,65 @@ const getErrorStatus = (error: unknown): number | undefined => {
     return undefined
 }
 
+function toSiliconFlowDiscoveredModels(models: unknown[]): DiscoveredModel[] {
+    const byId = new Map<string, DiscoveredModel>()
+    for (const model of models) {
+        if (
+            !isRecord(model) ||
+            typeof model.id !== "string" ||
+            !model.id.trim()
+        ) {
+            continue
+        }
+        byId.set(model.id, {
+            id: model.id,
+            name:
+                typeof model.name === "string" && model.name
+                    ? model.name
+                    : model.id,
+            availability: "verified",
+            vision: "unknown"
+        })
+    }
+    return [...byId.values()].sort((left, right) =>
+        left.id.localeCompare(right.id)
+    )
+}
+
+async function discoverSiliconFlowModels(
+    baseUrl: string,
+    apiKey: string,
+    fetchImpl: typeof fetch,
+    signal?: AbortSignal
+): Promise<DiscoveredModel[]> {
+    try {
+        const response = await fetchImpl(`${baseUrl}models?sub_type=chat`, {
+            headers: { Authorization: `Bearer ${apiKey}` },
+            redirect: "error",
+            signal
+        })
+        if (response.status === 401 || response.status === 403) {
+            throw new ModelDiscoveryError(
+                "AUTHENTICATION_FAILED",
+                "硅基流动 API Key 无效或没有模型访问权限"
+            )
+        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+
+        const body: unknown = await response.json()
+        if (!isRecord(body) || !Array.isArray(body.data)) {
+            throw new Error("Invalid model list")
+        }
+        return toSiliconFlowDiscoveredModels(body.data)
+    } catch (error) {
+        if (signal?.aborted || error instanceof ModelDiscoveryError) throw error
+        throw new ModelDiscoveryError(
+            "NETWORK_FAILURE",
+            "无法获取硅基流动模型列表，请检查 API Key 和网络连接"
+        )
+    }
+}
+
 export async function discoverModels(
     connection: ProviderConnection,
     dependencies: DiscoveryDependencies = {},
@@ -248,16 +307,27 @@ export async function discoverModels(
     }
 
     const fetchImpl = dependencies.fetchImpl ?? fetch
-    const loadCatalog =
-        dependencies.loadCatalog ??
-        (() => loadModelsDevCatalog(connection.provider, fetchImpl))
-    const catalogPromise = loadCatalog().catch(() => [] as CatalogModel[])
     const selection = {
         provider: connection.provider,
         isOfficial: connection.isOfficial,
         customBaseUrl: connection.baseUrl,
         officialEndpointId: connection.officialEndpointId
     }
+    if (connection.isOfficial && definition.discovery === "siliconflow") {
+        return discoverSiliconFlowModels(
+            getGenerationBaseUrl(selection),
+            connection.apiKey,
+            fetchImpl,
+            signal
+        )
+    }
+    const loadCatalog =
+        dependencies.loadCatalog ??
+        (() =>
+            definition.catalogIds.length
+                ? loadModelsDevCatalog(connection.provider, fetchImpl)
+                : Promise.resolve([]))
+    const catalogPromise = loadCatalog().catch(() => [] as CatalogModel[])
     const tokenPlan = isTokenPlanEndpoint(selection)
 
     try {
@@ -275,6 +345,9 @@ export async function discoverModels(
                 "NETWORK_FAILURE",
                 "模型服务返回的模型列表格式无效"
             )
+        }
+        if (definition.discovery === "siliconflow") {
+            return toSiliconFlowDiscoveredModels(remoteModels)
         }
         return mergeDiscoveredModels(remoteModels, await catalogPromise)
     } catch (error) {

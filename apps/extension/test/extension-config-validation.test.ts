@@ -22,6 +22,18 @@ const validModel = {
 }
 
 describe("extension config validation", () => {
+    it.each([undefined, null, 42, "", "missing-model"])(
+        "does not restore a default service for a missing or invalid stored selection (%s)",
+        currentModel => {
+            const repaired = repairExtensionConfig(
+                { ...defaultExtensionConfig, currentModel },
+                defaultExtensionConfig
+            )
+            expect(repaired.currentModel).toBe(
+                typeof currentModel === "string" ? currentModel : ""
+            )
+        }
+    )
     it.each([undefined, "Alt+KeyS"])(
         "preserves the paragraph shortcut and disables a colliding summary shortcut (%s)",
         pageSummaryShortcut => {
@@ -344,7 +356,7 @@ describe("extension config validation", () => {
     it("falls back safely when the stored value is not an object", () => {
         expect(
             repairExtensionConfig("corrupted", defaultExtensionConfig)
-        ).toEqual(defaultExtensionConfig)
+        ).toEqual({ ...defaultExtensionConfig, currentModel: "" })
     })
 
     it("preserves a legal independent image model name", () => {
@@ -480,9 +492,9 @@ describe("extension config validation", () => {
             targetLanguage: 42
         } as unknown as ExtensionConfig)
 
-        expect(setItem).toHaveBeenCalledWith(
-            "extension-config",
-            defaultExtensionConfig
-        )
+        expect(setItem).toHaveBeenCalledWith("extension-config", {
+            ...defaultExtensionConfig,
+            currentModel: ""
+        })
     })
 })

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
 import styled from "styled-components"
 
 import { useModelDiscovery } from "@/hooks/useModelDiscovery"
@@ -135,6 +135,11 @@ export function ModelDiscoveryField({
     const { models, isLoading, errorMessage, manualEntry, refresh } =
         useModelDiscovery(model)
     const apiKey = model.params.apiKey.trim()
+    const allowManualModelId = definition.discovery === "siliconflow"
+    const [manualDraft, setManualDraft] = useState<{
+        modelId: string
+        value: string
+    } | null>(null)
 
     useEffect(() => {
         onChangeRef.current = onChange
@@ -166,7 +171,7 @@ export function ModelDiscoveryField({
         return null
     }
 
-    if (manualEntry) {
+    if (manualEntry && !allowManualModelId) {
         return (
             <FieldStack id={`model-field-${model.id}`} tabIndex={-1}>
                 <ApiKeyInput
@@ -204,6 +209,7 @@ export function ModelDiscoveryField({
                 }
                 disabled={!apiKey || isLoading || options.length === 0}
                 onChange={selected => {
+                    setManualDraft(null)
                     const value = String(selected)
                     const discovered = models.find(item => item.id === value)
                     onChange(
@@ -227,6 +233,33 @@ export function ModelDiscoveryField({
                 </RefreshButton>
             </FieldMeta>
             {errorMessage && <ErrorText role="alert">{errorMessage}</ErrorText>}
+            {allowManualModelId && (
+                <div onBlur={() => setManualDraft(null)}>
+                    <ApiKeyInput
+                        id={`manual-model-name-${model.id}`}
+                        label="手动填写模型 ID"
+                        value={
+                            manualDraft?.modelId === model.id
+                                ? manualDraft.value
+                                : model.params.modelName
+                        }
+                        disabledVisitable
+                        onChange={value => {
+                            setManualDraft({ modelId: model.id, value })
+                            onChange(value, undefined)
+                        }}
+                        placeholder="请输入完整模型 ID"
+                        helperText={
+                            apiKey &&
+                            !isLoading &&
+                            !errorMessage &&
+                            !models.length
+                                ? "未返回可用模型，可手动填写"
+                                : undefined
+                        }
+                    />
+                </div>
+            )}
         </FieldStack>
     )
 }

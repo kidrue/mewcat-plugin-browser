@@ -1,29 +1,19 @@
 import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import {
-    isConfiguredGenerativeModel,
+    getSelectedGenerativeModel,
     type TranslationRuntimeConfig
 } from "@/translation/translationService"
 import type { BaseModel } from "@/types/aiModel"
 
-export const hasUsablePageSummaryModel = (models: BaseModel[]): boolean =>
-    models.some(isConfiguredGenerativeModel)
+export const PAGE_SUMMARY_UNAVAILABLE_MESSAGE =
+    "没有对应的翻译服务支持页面总结。"
 
 export const isTranslationContextAvailable = (
     config: Pick<TranslationRuntimeConfig, "currentModel" | "aiModelList">
 ): boolean =>
     config.currentModel === MEWCAT_TRANSLATE_MODEL_ID ||
-    hasUsablePageSummaryModel(
-        config.aiModelList.filter(model => model.id === config.currentModel)
-    )
+    Boolean(getSelectedGenerativeModel(config))
 
 export const selectPageSummaryModel = (
     config: Pick<TranslationRuntimeConfig, "currentModel" | "aiModelList">
-): BaseModel | null => {
-    const selected = config.aiModelList.find(
-        model => model.id === config.currentModel
-    )
-    if (selected && isConfiguredGenerativeModel(selected)) {
-        return selected
-    }
-    return config.aiModelList.find(isConfiguredGenerativeModel) ?? null
-}
+): BaseModel | null => getSelectedGenerativeModel(config) ?? null

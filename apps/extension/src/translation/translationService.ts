@@ -54,11 +54,18 @@ export interface TranslationServiceDependencies {
     mewcatRequestSender?: TranslateRequestSender
 }
 
+export class TranslationServiceUnavailableError extends Error {
+    constructor() {
+        super("没有对应的翻译服务，请在设置中选择可用的翻译服务。")
+        this.name = "TranslationServiceUnavailableError"
+    }
+}
+
 export class ConceptExplanationUnavailableError extends Error {
     readonly code = "AI_MODEL_REQUIRED"
 
     constructor() {
-        super("配置生成式 AI 模型后可使用概念解释")
+        super("没有对应的翻译服务支持概念解释，请选择可用的生成式 AI 模型。")
         this.name = "ConceptExplanationUnavailableError"
     }
 }
@@ -77,17 +84,32 @@ export function getConceptExplanationErrorMessage(error: unknown): string {
 }
 
 const getSelectedModel = (
-    config: TranslationRuntimeConfig
+    config: Pick<TranslationRuntimeConfig, "currentModel" | "aiModelList">
 ): BaseModel | undefined => {
     const serviceId = resolveTranslationServiceId(config)
-    return serviceId === GOOGLE_TRANSLATE_MODEL_ID ||
+    if (
+        !serviceId ||
+        serviceId === GOOGLE_TRANSLATE_MODEL_ID ||
         serviceId === MICROSOFT_TRANSLATE_MODEL_ID ||
         serviceId === MEWCAT_TRANSLATE_MODEL_ID
-        ? undefined
-        : config.aiModelList.find(model => model.id === serviceId)
+    )
+        return undefined
+
+    const model = config.aiModelList.find(item => item?.id === serviceId)
+    if (isConfiguredGenerativeModel(model)) return model
+    if (
+        model?.enabled === true &&
+        PROVIDER_REGISTRY[model.type]?.kind === "translation-engine" &&
+        typeof model.params?.apiKey === "string" &&
+        model.params.apiKey.trim()
+    )
+        return model
+    return undefined
 }
 
-export const isConfiguredGenerativeModel = (model: BaseModel): boolean => {
+export const isConfiguredGenerativeModel = (
+    model: BaseModel | undefined
+): boolean => {
     if (!model || typeof model !== "object") {
         return false
     }
@@ -103,14 +125,13 @@ export const isConfiguredGenerativeModel = (model: BaseModel): boolean => {
     )
 }
 
-const getConceptExplanationModel = (
-    config: TranslationRuntimeConfig
+export const getSelectedGenerativeModel = (
+    config: Pick<TranslationRuntimeConfig, "currentModel" | "aiModelList">
 ): BaseModel | undefined => {
     const selectedModel = getSelectedModel(config)
-    if (selectedModel && isConfiguredGenerativeModel(selectedModel)) {
-        return selectedModel
-    }
-    return config.aiModelList.find(isConfiguredGenerativeModel)
+    return isConfiguredGenerativeModel(selectedModel)
+        ? selectedModel
+        : undefined
 }
 
 const getGoogleTranslator = (dependencies: TranslationServiceDependencies) =>
@@ -125,6 +146,12 @@ function translateWithService(
     dependencies: TranslationServiceDependencies
 ): Promise<string> {
     const serviceId = resolveTranslationServiceId(config)
+    if (serviceId === GOOGLE_TRANSLATE_MODEL_ID) {
+        return new GoogleTranslator(
+            dependencies.googleRequestSender,
+            config.sourceLanguage
+        )[method](messages, targetLanguage)
+    }
     if (serviceId === MICROSOFT_TRANSLATE_MODEL_ID) {
         return new MicrosoftTranslator(
             dependencies.microsoftRequestSender,
@@ -140,10 +167,7 @@ function translateWithService(
     }
     const model = getSelectedModel(config)
     if (!model) {
-        return new GoogleTranslator(
-            dependencies.googleRequestSender,
-            config.sourceLanguage
-        )[method](messages, targetLanguage)
+        throw new TranslationServiceUnavailableError()
     }
     const translateModel =
         method === "translateText" ? translateModelText : translateModelBatch
@@ -201,7 +225,7 @@ export async function buildAiSummary(
     textContent: string,
     dependencies: TranslationServiceDependencies = {}
 ): Promise<string> {
-    const model = getSelectedModel(config)
+    const model = getSelectedGenerativeModel(config)
     if (!model) {
         return ""
     }
@@ -220,7 +244,7 @@ export function explainConcept(
     targetLanguage: string,
     dependencies: TranslationServiceDependencies = {}
 ): Promise<string> {
-    const model = getConceptExplanationModel(config)
+    const model = getSelectedGenerativeModel(config)
     if (!model) {
         return Promise.reject(new ConceptExplanationUnavailableError())
     }
@@ -240,7 +264,7 @@ export function streamConceptExplanation(
     options: ModelGatewayStreamOptions,
     dependencies: TranslationServiceDependencies = {}
 ): Promise<string> {
-    const model = getConceptExplanationModel(config)
+    const model = getSelectedGenerativeModel(config)
     if (!model) {
         return Promise.reject(new ConceptExplanationUnavailableError())
     }
@@ -256,8 +280,7 @@ export function streamConceptExplanation(
 export function hasAITranslationEnabled(
     config: TranslationRuntimeConfig
 ): boolean {
-    const model = getSelectedModel(config)
-    return Boolean(model && model.type !== "DEEPL" && model.type !== "DEEPLX")
+    return Boolean(getSelectedGenerativeModel(config))
 }
 
 export async function testConfiguredModel(

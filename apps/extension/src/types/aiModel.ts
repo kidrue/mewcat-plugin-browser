@@ -7,6 +7,7 @@ export enum AiModel_Platform_Enum {
     OPENAI = "OPENAI",
     MOONSHOT = "MOONSHOT",
     GEMINI = "GEMINI",
+    SILICONFLOW = "SILICONFLOW",
     DEEPL = "DEEPL",
     DEEPLX = "DEEPLX"
 }

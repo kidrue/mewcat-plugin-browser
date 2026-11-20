@@ -41,24 +41,8 @@ const isUsableModel = (model: BaseModel): boolean =>
 export function resolveTranslationServiceId(
     config: TranslationServiceSelectionConfig
 ): string {
-    if (
-        config.currentModel === GOOGLE_TRANSLATE_MODEL_ID ||
-        config.currentModel === MICROSOFT_TRANSLATE_MODEL_ID ||
-        config.currentModel === MEWCAT_TRANSLATE_MODEL_ID
-    ) {
-        return config.currentModel
-    }
-
-    const currentModel = config.aiModelList.find(
-        model => model.id === config.currentModel
-    )
-    if (currentModel && isUsableModel(currentModel)) {
-        return currentModel.id
-    }
-
-    return (
-        config.aiModelList.find(isUsableModel)?.id ?? GOOGLE_TRANSLATE_MODEL_ID
-    )
+    // 保留显式选择，由调用方提示不可用；不能把内容转发给其他服务。
+    return config.currentModel ?? ""
 }
 
 export function normalizeTranslationServiceSelection<

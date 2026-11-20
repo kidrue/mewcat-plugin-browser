@@ -29,7 +29,10 @@ import {
     DEFAULT_TRANSLATION_STYLE,
     type TranslationStyleType
 } from "@/types/translationStyle"
-import { hasUsablePageSummaryModel } from "@/utils/pageSummary"
+import {
+    PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
+    selectPageSummaryModel
+} from "@/utils/pageSummary"
 
 const SummaryControls = styled.div`
     display: flex;
@@ -66,9 +69,7 @@ export const Basic: React.FunctionComponent = () => {
     const updateConfig = useSetAtom(updateConfigAtom)
 
     const languageOptions = languages.languages
-    const hasUsableGenerativeModel = hasUsablePageSummaryModel(
-        config.aiModelList
-    )
+    const hasUsableGenerativeModel = Boolean(selectPageSummaryModel(config))
 
     return (
         <>
@@ -244,7 +245,7 @@ export const Basic: React.FunctionComponent = () => {
                 </FormRow>
                 <FormRow
                     label="自动总结页面"
-                    description="自动提炼页面重点；页面内容将发送到已配置的生成式 AI 服务。"
+                    description="自动提炼页面重点；页面内容将发送到当前所选翻译模型。"
                     controlId="enable-page-summary"
                 >
                     <SummaryControls>
@@ -261,7 +262,7 @@ export const Basic: React.FunctionComponent = () => {
                             }
                         />
                         <Tooltip
-                            content="总结由已配置的生成式 AI 服务处理，请确认页面内容适合发送给该服务。"
+                            content="总结与翻译使用同一模型，请确认页面内容适合发送给该服务。"
                             position="top"
                             width={240}
                             trigger="both"
@@ -278,6 +279,7 @@ export const Basic: React.FunctionComponent = () => {
                         <FeatureAvailability
                             available={false}
                             saved={config.enablePageSummary}
+                            message={PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
                         />
                     )}
                 </FormRow>

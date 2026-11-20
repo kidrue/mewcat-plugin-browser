@@ -1,4 +1,5 @@
 import { UI_FONT_FAMILY } from "@/constants/fonts"
+import { PAGE_SUMMARY_UNAVAILABLE_MESSAGE } from "@/utils/pageSummary"
 
 import type { PageType } from "./pageTypes"
 
@@ -134,7 +135,7 @@ export function renderPageSummary(
         const messages = {
             loading: "正在总结页面内容…",
             empty: "页面内容不足，暂时无法总结",
-            unavailable: "未配置可用的生成式 AI 模型，页面总结暂不可用",
+            unavailable: PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
             error: "页面总结失败，请稍后重试"
         }
         content.textContent = messages[next.status]

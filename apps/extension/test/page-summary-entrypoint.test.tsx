@@ -121,6 +121,43 @@ async function mountSummary() {
 }
 
 describe("page summary configuration lifecycle", () => {
+    it("does not send automatic or manual summaries to a different configured model", async () => {
+        getDefaultStore().set(writableConfigAtom, {
+            ...config,
+            currentModel: "mewcat-translate"
+        })
+        await mountSummary()
+        await press()
+        expect(mocks.send).not.toHaveBeenCalled()
+        expect(mocks.toast).toHaveBeenCalledWith(
+            expect.objectContaining({
+                message:
+                    expect.stringContaining("没有对应的翻译服务支持页面总结")
+            })
+        )
+    })
+
+    it("cancels the previous model result after switching to mewCat", async () => {
+        let resolve!: (value: unknown) => void
+        mocks.send.mockReturnValue(
+            new Promise(done => {
+                resolve = done
+            })
+        )
+        await mountSummary()
+        await act(async () =>
+            getDefaultStore().set(writableConfigAtom, {
+                ...config,
+                currentModel: "mewcat-translate"
+            })
+        )
+        await act(async () => resolve({ success: true, text: "旧模型结果。" }))
+        await press()
+        expect(mocks.send).toHaveBeenCalledTimes(1)
+        expect(mocks.update).not.toHaveBeenCalledWith(
+            expect.objectContaining({ status: "success" })
+        )
+    })
     const press = async (init: KeyboardEventInit = {}) => {
         const event = new KeyboardEvent("keydown", {
             code: "KeyS",

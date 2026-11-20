@@ -1,7 +1,11 @@
 import { AiModel_Platform_Enum } from "@/types/aiModel"
 
 export type ProviderKind = "llm" | "translation-engine"
-export type ModelDiscoveryStrategy = "openai" | "gemini" | "none"
+export type ModelDiscoveryStrategy =
+    | "openai"
+    | "gemini"
+    | "siliconflow"
+    | "none"
 export type OfficialEndpointMode = "pay-as-you-go" | "token-plan"
 
 export interface OfficialEndpointDefinition {
@@ -47,6 +51,7 @@ const OFFICIAL_GENERATION_BASE_URLS: Record<AiModel_Platform_Enum, string> = {
     [AiModel_Platform_Enum.MOONSHOT]: "https://api.moonshot.cn/v1/",
     [AiModel_Platform_Enum.GEMINI]:
         "https://generativelanguage.googleapis.com/v1beta/openai/",
+    [AiModel_Platform_Enum.SILICONFLOW]: "https://api.siliconflow.cn/v1/",
     [AiModel_Platform_Enum.DEEPL]: "https://api-free.deepl.com/v2/",
     [AiModel_Platform_Enum.DEEPLX]: "https://api.deeplx.org/"
 }
@@ -135,6 +140,13 @@ export const PROVIDER_REGISTRY: Record<
         generationBaseUrl:
             OFFICIAL_GENERATION_BASE_URLS[AiModel_Platform_Enum.GEMINI],
         catalogIds: ["google"]
+    },
+    [AiModel_Platform_Enum.SILICONFLOW]: {
+        kind: "llm",
+        discovery: "siliconflow",
+        generationBaseUrl:
+            OFFICIAL_GENERATION_BASE_URLS[AiModel_Platform_Enum.SILICONFLOW],
+        catalogIds: []
     },
     [AiModel_Platform_Enum.DEEPL]: {
         kind: "translation-engine",

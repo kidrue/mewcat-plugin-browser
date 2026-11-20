@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
-import {
-    hasUsablePageSummaryModel,
-    selectPageSummaryModel
-} from "../src/utils/pageSummary"
+import { selectPageSummaryModel } from "../src/utils/pageSummary"
 
 const configuredModel: BaseModel = {
     id: "configured-model",
@@ -36,14 +33,24 @@ describe("page summary model availability", () => {
             ...overrides
         } as BaseModel
 
-        expect(hasUsablePageSummaryModel([model])).toBe(false)
+        expect(
+            selectPageSummaryModel({
+                currentModel: model.id,
+                aiModelList: [model]
+            })
+        ).toBeNull()
     })
 
     it("accepts an enabled LLM model with credentials and a model name", () => {
-        expect(hasUsablePageSummaryModel([configuredModel])).toBe(true)
+        expect(
+            selectPageSummaryModel({
+                currentModel: configuredModel.id,
+                aiModelList: [configuredModel]
+            })
+        ).toBe(configuredModel)
     })
 
-    it("prefers the selected usable model and falls back to the first usable model", () => {
+    it("uses only the selected usable model", () => {
         const fallbackModel = {
             ...configuredModel,
             id: "fallback-model"
@@ -52,7 +59,7 @@ describe("page summary model availability", () => {
         expect(
             selectPageSummaryModel({
                 currentModel: configuredModel.id,
-                aiModelList: [configuredModel, fallbackModel]
+                aiModelList: [fallbackModel, configuredModel]
             })
         ).toBe(configuredModel)
 
@@ -64,8 +71,43 @@ describe("page summary model availability", () => {
                     fallbackModel
                 ]
             })
-        ).toBe(fallbackModel)
+        ).toBeNull()
     })
+
+    it.each([
+        "mewcat-translate",
+        "google-translate",
+        "microsoft-translate",
+        undefined
+    ])("does not use another configured AI model for %s", currentModel => {
+        expect(
+            selectPageSummaryModel({
+                currentModel,
+                aiModelList: [configuredModel]
+            })
+        ).toBeNull()
+    })
+
+    it.each([
+        { enabled: false },
+        { type: AiModel_Platform_Enum.DEEPL },
+        { type: AiModel_Platform_Enum.DEEPLX },
+        { params: { ...configuredModel.params, apiKey: "" } },
+        { params: { ...configuredModel.params, modelName: "" } }
+    ])(
+        "does not fall back when the selected model is unusable (%j)",
+        overrides => {
+            expect(
+                selectPageSummaryModel({
+                    currentModel: configuredModel.id,
+                    aiModelList: [
+                        { ...configuredModel, ...overrides },
+                        { ...configuredModel, id: "other" }
+                    ]
+                })
+            ).toBeNull()
+        }
+    )
 
     it("returns null when no usable generative model is configured", () => {
         expect(

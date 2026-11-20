@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TranslateTextPanel } from "../src/components/TranslateTextPanel"
 import { parseSelectionAnalysis } from "../src/translation/selectionAnalysis"
+import { TranslationServiceUnavailableError } from "../src/translation/translationService"
+import { AiModel_Platform_Enum } from "../src/types/aiModel"
 import type { ExtensionConfig } from "../src/types/config"
 
 const mocks = vi.hoisted(() => ({
@@ -13,8 +15,10 @@ const mocks = vi.hoisted(() => ({
     explainConcept: vi.fn()
 }))
 vi.mock("@/state/config", () => ({ useConfig: () => mocks.config }))
-vi.mock("@/translation/translationService", () => ({
-    isConfiguredGenerativeModel: () => true,
+vi.mock("@/translation/translationService", async importOriginal => ({
+    ...(await importOriginal<
+        typeof import("../src/translation/translationService")
+    >()),
     translateText: mocks.translateText,
     streamConceptExplanation: mocks.explainConcept
 }))
@@ -57,9 +61,17 @@ beforeEach(() => {
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true })
     mocks.config = {
         targetLanguage: "zh-CN",
-        currentModel: "google-translate",
+        currentModel: "configured-model",
         aiRole: "DEFAULT",
-        aiModelList: [{ id: "configured-model" }]
+        aiModelList: [
+            {
+                id: "configured-model",
+                name: "Configured model",
+                enabled: true,
+                type: AiModel_Platform_Enum.OPENAI,
+                params: { apiKey: "test-key", modelName: "test-model" }
+            }
+        ]
     } as ExtensionConfig
     mocks.translateText.mockReset().mockResolvedValue("凡尔赛条约")
     mocks.explainConcept
@@ -75,6 +87,29 @@ afterEach(async () => {
 })
 
 describe("automatic selection explanation", () => {
+    it("does not analyze with another model when a built-in service is selected", async () => {
+        mocks.config = { ...mocks.config, currentModel: "mewcat-translate" }
+        await render()
+        expect(mocks.explainConcept).not.toHaveBeenCalled()
+        expect(mocks.translateText).toHaveBeenCalledWith(
+            mocks.config,
+            expect.any(Array),
+            "zh-CN"
+        )
+    })
+
+    it("shows an unavailable translation service without masking it as a network failure", async () => {
+        mocks.config = {
+            ...mocks.config,
+            currentModel: "missing",
+            aiModelList: []
+        }
+        mocks.translateText.mockRejectedValueOnce(
+            new TranslationServiceUnavailableError()
+        )
+        await render()
+        expect(host().textContent).toContain("没有对应的翻译服务")
+    })
     it("explains terms automatically in one request with context and no translation or explanation button", async () => {
         const onResultChange = vi.fn()
         await render({
@@ -133,7 +168,9 @@ describe("automatic selection explanation", () => {
         await render()
         expect(mocks.explainConcept).not.toHaveBeenCalled()
         expect(host().textContent).toContain("凡尔赛条约")
-        expect(host().textContent).toContain("配置 AI 模型后可自动解释术语")
+        expect(host().textContent).toContain(
+            "当前翻译服务不支持术语解释或模型不可用"
+        )
     })
     it.each(["", "## unmarked", "[EXPLAIN]\n ", "[TRANSLATE]\ninvalid body"])(
         "falls back once for malformed analysis %j",
@@ -253,7 +290,14 @@ describe("automatic selection explanation", () => {
             await render({ context: "old" })
             await act(async () => stream.onDelta("[EXPLAIN]\n## 旧解释"))
             if (change === "model")
-                mocks.config = { ...mocks.config, currentModel: "new-model" }
+                mocks.config = {
+                    ...mocks.config,
+                    currentModel: "new-model",
+                    aiModelList: mocks.config.aiModelList.map(model => ({
+                        ...model,
+                        id: "new-model"
+                    }))
+                }
             if (change === "language")
                 mocks.config = { ...mocks.config, targetLanguage: "en" }
             await render({

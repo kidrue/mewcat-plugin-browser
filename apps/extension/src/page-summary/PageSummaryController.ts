@@ -5,7 +5,10 @@ import type { SummaryActionResult } from "@/reading/summaryActions"
 import type { ExtensionConfig } from "@/types/config"
 import { matchUrlPatternList } from "@/utils/help"
 
-import { selectPageSummaryModel } from "../utils/pageSummary"
+import {
+    PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
+    selectPageSummaryModel
+} from "../utils/pageSummary"
 import { extractPageContent } from "./pageContent"
 import { buildPageSummaryPrompt } from "./pageSummaryPrompts"
 import {
@@ -105,7 +108,7 @@ export class PageSummaryController {
             if (trigger === "manual") this.handle.open()
             return {
                 success: false,
-                message: "请先配置可用的生成式 AI 模型。",
+                message: PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
                 needsConfiguration: true
             }
         }

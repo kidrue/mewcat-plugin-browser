@@ -16,8 +16,9 @@ import {
     updateConfigAtom
 } from "@/state"
 import {
-    hasUsablePageSummaryModel,
-    isTranslationContextAvailable
+    isTranslationContextAvailable,
+    PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
+    selectPageSummaryModel
 } from "@/utils/pageSummary"
 
 import BrandLogo from "../BrandLogo"
@@ -559,9 +560,7 @@ function SettingsPanel({
     )
 
     const modelOptions = getTranslationServiceOptions(config.aiModelList || [])
-    const hasUsableGenerativeModel = hasUsablePageSummaryModel(
-        config.aiModelList
-    )
+    const hasUsableGenerativeModel = Boolean(selectPageSummaryModel(config))
     const contextAvailable = isTranslationContextAvailable(config)
 
     const handleToggleTranslation = (checked: boolean) => {
@@ -716,7 +715,7 @@ function SettingsPanel({
                         <ListItemLabel>
                             自动总结页面
                             <Tooltip
-                                content="页面内容将发送到已配置的生成式 AI 服务，请确认内容适合发送。"
+                                content="总结与翻译使用同一模型，页面内容将发送到当前所选翻译模型，请确认内容适合发送。"
                                 position="top"
                                 width={220}
                             >
@@ -725,7 +724,8 @@ function SettingsPanel({
                         </ListItemLabel>
                         {!hasUsableGenerativeModel && (
                             <AvailabilityHint role="status">
-                                请先配置可用的生成式 AI 模型；开关状态会保留。
+                                {PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
+                                开关状态会保留。
                             </AvailabilityHint>
                         )}
                     </SummaryInfo>

@@ -126,6 +126,17 @@ export const AI_MODEL_UI_LIST: AiModelUiConfig[] = [
         }
     ),
     provider(
+        AiModel_Platform_Enum.SILICONFLOW,
+        "硅基流动",
+        "使用硅基流动模型进行翻译和总结",
+        "请输入硅基流动 API Key",
+        "填写后可获取对话模型，也可以手动填写模型 ID",
+        {
+            text: "获取 API Key",
+            url: "https://cloud.siliconflow.cn/account/ak"
+        }
+    ),
+    provider(
         AiModel_Platform_Enum.DEEPL,
         "DeepL",
         "使用 DeepL 固定翻译接口",

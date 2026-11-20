@@ -245,16 +245,29 @@ export function createTranslationDisplayElement(
 
 /** 更新译文时复用装饰节点，文字、链接与缓存内容不包含品牌标识。 */
 export function setTranslationDisplayContent(element: Element, text: string) {
+    const wrapper = element as HTMLElement
     const previousMark = element.lastElementChild
     const mark = previousMark?.classList.contains("mewcat-translation-mark")
         ? previousMark
         : createTranslationMark(
-              (element as HTMLElement).style.display === "inline-block"
+              wrapper.style.display === "inline-block"
                   ? "border-corner"
                   : "inline",
               element.ownerDocument
           )
     element.innerHTML = text
+    // 有底色的主题指定了固定前景色。还原的链接等标签也要跟随该颜色，防止沿用网页的浅色文字。
+    if (wrapper.style.getPropertyPriority("color") === "important") {
+        for (const child of element.querySelectorAll("*")) {
+            if (!(child instanceof HTMLElement)) continue
+            child.style.setProperty("color", "inherit", "important")
+            child.style.setProperty(
+                "-webkit-text-fill-color",
+                "currentColor",
+                "important"
+            )
+        }
+    }
     element.appendChild(mark)
 }
 
