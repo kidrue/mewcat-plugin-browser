@@ -46,4 +46,4 @@ pnpm --filter @mewcat/service smoke
 
 测试使用临时 SQLite、本地模拟供应商和假密钥，不调用付费 API。Docker 专属检查在 Linux CI 执行。
 
-monorepo 的 `deploy-service.yml` 仅在 `SERVICE_DEPLOY_ENABLED=true` 时部署。生产服务原仓库为 `kidrue/mewCat-servicer`；未切换入口时需将兼容改动同步至原仓库并通过其发布流程上线。本次功能不自动开启内容采集和付费分析。
+生产发布使用当前仓库的 `deploy-service.yml`，通过 `SERVICE_DEPLOY_ENABLED=true` 启用。配置和恢复步骤见 [GitHub Actions 自动部署](docs/github-actions-deploy.md)。内容采集和付费分析各自通过运行时配置启用。

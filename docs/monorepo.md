@@ -50,16 +50,13 @@ node scripts/container-smoke.mjs
 
 容器 smoke 使用独立临时 Compose 项目、数据库和测试密钥，完成数据库迁移、启动、健康检查、SDK 注册及用量查询，结束后删除自己的临时资源，不调用付费接口。Linux CI 强制执行 Docker 专属检查；缺少 Docker 时该检查直接失败。本地普通测试会明确报告 Compose 测试跳过数量。
 
-## 后续线上切换清单
+## 生产发布配置
 
-本次仅准备代码与构建流程，不操作远程配置、不推送、不部署、不停用原仓库 workflow。
+生产后端由当前仓库的 `deploy-service.yml` 发布，详细部署及恢复操作见 [GitHub Actions 自动部署](../apps/service/docs/github-actions-deploy.md)。
 
-启用新后端发布入口前，在目标仓库完成以下设置：
-
-1. 创建 `production` Environment；迁入以下 Secrets：`ALIYUN_HOST`、`ALIYUN_USER`、`ALIYUN_SSH_PRIVATE_KEY`、`ALIYUN_SSH_KNOWN_HOSTS`、`SILICONFLOW_API_KEY`、`SMTP_HOST`、`SMTP_PORT`、`SMTP_SECURE`、`SMTP_USER`、`SMTP_PASS`、`SMTP_FROM`、`FEEDBACK_TO`。
-2. 迁入仓库 Variables：`ALIYUN_DEPLOY_PATH`、`ALIYUN_COMPOSE_PROJECT`、`ALIYUN_PLATFORM`、`ALIYUN_SSH_PORT`；迁入 production Variables：`SILICONFLOW_BASE_URL`、`SILICONFLOW_MODEL`。GitHub Secrets 无法通过读取 API 取回原值，需从原始凭据来源重新配置。
+1. 在 `production` Environment 配置生产 Secrets，部署分支限制为 `main`。SSH、翻译供应商和反馈邮件的 Secret 名称见部署文档。重新配置时从原始凭据来源获取值。
+2. 在仓库 Variables 配置 `ALIYUN_DEPLOY_PATH`、`ALIYUN_COMPOSE_PROJECT`、`ALIYUN_PLATFORM`、`ALIYUN_SSH_PORT`。在 `production` Variables 配置供应商地址及模型、用量限额、可信代理和管理员设备。
 3. 确认部署目录、Compose 项目名、数据库卷及服务器密钥路径与原部署一致，避免创建空数据库或更换服务器身份。
-4. PR 的 Linux 容器验收通过后，确认切换窗口，再设置仓库 Variable `SERVICE_DEPLOY_ENABLED=true`，手动执行新后端流水线。
-5. 首次部署健康检查、翻译及反馈验证通过后，停用原仓库 `deploy-aliyun.yml`，避免两个仓库同时发布。
+4. 仓库 Variable `SERVICE_DEPLOY_ENABLED=true` 启用生产部署。可在 Actions 中对 `main` 手动执行「后端构建与部署」。
 
 现有扩展 CWS OIDC、CRX 签名与 Sentry 配置保留在当前仓库；本次不修改扩展 ID、公钥指纹或发布版本。
