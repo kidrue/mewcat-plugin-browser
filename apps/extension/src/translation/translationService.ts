@@ -3,6 +3,7 @@ import {
     MEWCAT_TRANSLATE_MODEL_ID,
     MICROSOFT_TRANSLATE_MODEL_ID
 } from "@/constants/translationServices"
+import type { MewCatCompletionSender } from "@/messaging/mewcatCompletion"
 import type {
     ModelGatewayStreamOptions,
     ModelGatewayStreamSender
@@ -38,6 +39,7 @@ export interface TranslationRuntimeConfig {
     enableAutoAiRole?: boolean
     enableThinking?: boolean
     enableContext?: boolean
+    mewcatTranslationPrompt?: string
 }
 
 export interface TranslationCallOptions {
@@ -51,7 +53,7 @@ export interface TranslationServiceDependencies {
     modelGatewayStreamSender?: ModelGatewayStreamSender
     googleRequestSender?: TranslateRequestSender
     microsoftRequestSender?: TranslateRequestSender
-    mewcatRequestSender?: TranslateRequestSender
+    mewcatCompletionSender?: MewCatCompletionSender
 }
 
 export class TranslationServiceUnavailableError extends Error {
@@ -159,11 +161,12 @@ function translateWithService(
         )[method](messages, targetLanguage)
     }
     if (serviceId === MEWCAT_TRANSLATE_MODEL_ID) {
-        return new MewCatTranslator(
-            dependencies.mewcatRequestSender,
-            config.sourceLanguage,
-            config.enableContext ? options.context : undefined
-        )[method](messages, targetLanguage)
+        return new MewCatTranslator(dependencies.mewcatCompletionSender, {
+            aiRole: resolvePageAiRole(config, options.pageContext),
+            sourceLanguage: config.sourceLanguage,
+            context: config.enableContext ? options.context : undefined,
+            customPrompt: config.mewcatTranslationPrompt
+        })[method](messages, targetLanguage)
     }
     const model = getSelectedModel(config)
     if (!model) {

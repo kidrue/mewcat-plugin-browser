@@ -31,7 +31,7 @@ pnpm --filter @mewcat/service admin analytics profile <clientId>
 
 ## API 与协议
 
-接口包含 `GET /health`、`GET /v1/keys`、`POST /v1/clients/register`、`POST /v1/translate`、`POST /v1/usage` 和 `POST /v1/feedback`。POST 业务数据必须通过加密信封发送。
+业务接口包含设备注册、翻译、对话生成、用量和反馈。扩展通过 `POST /v1/chat/completions` 使用自有服务翻译和总结，业务数据通过加密信封发送。
 
 共享 SDK 为 `@mewcat/client`，协议为 `@mewcat/protocol`。详见 [API](docs/api.md) 和 [协议](docs/protocol.md)。
 

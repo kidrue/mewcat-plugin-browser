@@ -114,15 +114,17 @@ export class AnalyticsQuery {
         range: Range,
         now = Date.now(),
         clientId?: string,
-        route?: string,
+        route?: string | readonly string[],
         signal?: AbortSignal
     ) {
         await queryCheckpoint(signal)
         const db = this.analytics.store.db
+        const routes = typeof route === "string" ? [route] : route
+        const routeFilter = routes?.length ? { in: [...routes] } : undefined
         const where = {
             day: this.days(range),
             dimension: "route",
-            ...(route ? { value: route } : {}),
+            ...(routeFilter ? { value: routeFilter } : {}),
             ...(clientId ? { clientId } : {})
         }
         const rows = await db.analyticsDaily.groupBy({
@@ -136,7 +138,7 @@ export class AnalyticsQuery {
             SELECT COUNT(DISTINCT "clientId") AS "count" FROM "AnalyticsDaily"
             WHERE "dimension" = 'route' AND "day" >= ${utcDay(range.from)} AND "day" < ${utcDay(range.to)} AND "clientId" <> ''
             ${clientId ? Prisma.sql`AND "clientId" = ${clientId}` : Prisma.empty}
-            ${route ? Prisma.sql`AND "value" = ${route}` : Prisma.empty}
+            ${routes?.length ? Prisma.sql`AND "value" IN (${Prisma.join(routes)})` : Prisma.empty}
         `)
         await queryCheckpoint(signal)
         const jobs = await db.analysisJob.groupBy({
@@ -173,7 +175,7 @@ export class AnalyticsQuery {
             : "outside-call-retention"
         if (callsComplete) {
             const callWhere = {
-                ...(route ? { route } : {}),
+                ...(routeFilter ? { route: routeFilter } : {}),
                 createdAt: { gte: range.from, lt: range.to },
                 ...(clientId ? { clientId } : {})
             }
@@ -195,7 +197,7 @@ export class AnalyticsQuery {
         const first = await db.analyticsDaily.findFirst({
             where: {
                 dimension: "route",
-                ...(route ? { value: route } : {}),
+                ...(routeFilter ? { value: routeFilter } : {}),
                 ...(clientId ? { clientId } : {})
             },
             orderBy: { day: "asc" },

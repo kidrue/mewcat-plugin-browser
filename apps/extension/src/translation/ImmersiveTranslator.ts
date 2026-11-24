@@ -79,6 +79,7 @@ export interface ImmersiveTranslatorConfig {
     /** AI角色（必传） */
     aiRole: ExtensionConfig["aiRole"]
     enableAutoAiRole?: boolean
+    mewcatTranslationPrompt?: string
     /** 是否启用思考能力（可选，默认false） */
     enableThinking?: boolean
     /** 是否启用缓存（可选，默认true） */
@@ -355,6 +356,7 @@ export class ImmersiveTranslator {
     /** 是否启用AI智能上下文翻译 */
     private enableContext: boolean = false
     private pageTranslationContext?: string
+    private promptCacheKey?: { prompt: string; digest: Promise<string> }
 
     private getPageTranslationContext(): string | undefined {
         if (
@@ -364,6 +366,33 @@ export class ImmersiveTranslator {
             return undefined
         return (this.pageTranslationContext ??=
             extractTranslationContext(document))
+    }
+
+    private async getTranslationCacheContext(): Promise<string | undefined> {
+        if (this.currentModel !== MEWCAT_TRANSLATE_MODEL_ID) return undefined
+        const context = this.getPageTranslationContext() ?? ""
+        const prompt =
+            this.translationRuntimeConfig.mewcatTranslationPrompt?.trim()
+        if (prompt && this.promptCacheKey?.prompt !== prompt) {
+            // Store an opaque key in the page's cache, including on HTTP pages.
+            const bytes = new TextEncoder().encode(prompt)
+            const randomKey = () =>
+                crypto.getRandomValues(new Uint8Array(32)).buffer
+            const digest = (
+                crypto.subtle?.digest("SHA-256", bytes).catch(randomKey) ??
+                Promise.resolve(randomKey())
+            ).then(buffer =>
+                Array.from(new Uint8Array(buffer), byte =>
+                    byte.toString(16).padStart(2, "0")
+                ).join("")
+            )
+            this.promptCacheKey = { prompt, digest }
+        }
+        return JSON.stringify([
+            "chat-completions",
+            prompt ? await this.promptCacheKey?.digest : "",
+            context
+        ])
     }
 
     /** 页面内容摘要（用于AI上下文翻译） */
@@ -398,6 +427,7 @@ export class ImmersiveTranslator {
             aiModelList: config.aiModelList,
             aiRole: resolvePageAiRole(this.roleSelectionConfig),
             enableThinking: config.enableThinking,
+            mewcatTranslationPrompt: config.mewcatTranslationPrompt,
             enableContext: config.enableContext
         }
         this.minVisibleNodesThreshold = config.minVisibleNodesThreshold ?? 20
@@ -519,6 +549,9 @@ export class ImmersiveTranslator {
                     this.currentModel !== (config.currentModel ?? "default") ||
                     previousRuntime.aiRole !== aiRole ||
                     this.enableContext !== (config.enableContext ?? false) ||
+                    (config.currentModel === MEWCAT_TRANSLATE_MODEL_ID &&
+                        previousRuntime.mewcatTranslationPrompt !==
+                            config.mewcatTranslationPrompt) ||
                     Boolean(previousRuntime.enableThinking) !==
                         Boolean(config.enableThinking) ||
                     JSON.stringify(
@@ -562,6 +595,7 @@ export class ImmersiveTranslator {
             aiModelList: config.aiModelList,
             aiRole,
             enableThinking: config.enableThinking,
+            mewcatTranslationPrompt: config.mewcatTranslationPrompt,
             enableContext: config.enableContext
         }
         this.enableViewportTranslation =
@@ -621,13 +655,16 @@ export class ImmersiveTranslator {
         const modelId = this.currentModel
         const sourceLanguage = this.detectedLanguage
         const context = this.getPageTranslationContext()
-        const cacheKey = (node: TranslationNode): CacheKeyParams => ({
+        const cacheContext = this.getTranslationCacheContext()
+        const cacheKey = async (
+            node: TranslationNode
+        ): Promise<CacheKeyParams> => ({
             text: node.originText,
             sourceLang: sourceLanguage,
             targetLang: targetLanguage,
             modelId,
             aiRole: runtime.aiRole,
-            context
+            context: await cacheContext
         })
         this.viewportScheduler = new ViewportTranslationScheduler({
             viewportOnly,
@@ -641,15 +678,16 @@ export class ImmersiveTranslator {
                 )
             }),
             readCache: async node =>
-                this.translationCache?.get(cacheKey(node)) ?? null,
+                this.translationCache?.get(await cacheKey(node)) ?? null,
             writeCache: async (node, text) => {
                 const cache = this.translationCache
+                const params = await cacheKey(node)
                 if (
                     cache &&
                     session === this.translationSession &&
                     !this.isTranslationAborted
                 ) {
-                    await cache.set(cacheKey(node), text)
+                    await cache.set(params, text)
                 }
             },
             translate: async nodes => {
@@ -1076,6 +1114,11 @@ export class ImmersiveTranslator {
             return
         }
 
+        const session = this.translationSession
+        const context = await this.getTranslationCacheContext()
+        if (session !== this.translationSession || this.isTranslationAborted)
+            return
+
         // 批量缓存翻译结果到分层缓存系统
         const cacheEntries = translationResults
             .map(({ id, text }) => {
@@ -1094,7 +1137,7 @@ export class ImmersiveTranslator {
                     targetLang: this.targetLanguage,
                     modelId: this.currentModel,
                     aiRole: this.translationRuntimeConfig.aiRole,
-                    context: this.getPageTranslationContext()
+                    context
                 }
 
                 return {
@@ -1476,6 +1519,8 @@ export class ImmersiveTranslator {
      * @returns 实际提交删除的唯一缓存条目数
      */
     public async clearCurrentPageTranslationCache(): Promise<number> {
+        const cache = this.translationCache
+        const context = this.getTranslationCacheContext()
         const uniqueTexts = new Set(
             this.sourceTextNodes.map(node => node.originText)
         )
@@ -1484,8 +1529,7 @@ export class ImmersiveTranslator {
             sourceLang: this.detectedLanguage,
             targetLang: this.targetLanguage,
             modelId: this.currentModel,
-            aiRole: this.translationRuntimeConfig.aiRole,
-            context: this.getPageTranslationContext()
+            aiRole: this.translationRuntimeConfig.aiRole
         }))
 
         this.isTranslationAborted = true
@@ -1493,11 +1537,14 @@ export class ImmersiveTranslator {
         this.translationSession++
         this.resetRequestState()
 
-        if (!this.translationCache || cacheParams.length === 0) {
+        if (!cache || cacheParams.length === 0) {
             return 0
         }
 
-        await this.translationCache.batchDelete(cacheParams)
+        const cacheContext = await context
+        await cache.batchDelete(
+            cacheParams.map(params => ({ ...params, context: cacheContext }))
+        )
         return cacheParams.length
     }
 
@@ -1650,6 +1697,8 @@ export class ImmersiveTranslator {
 
         // ⚡ 优化：使用 Promise.all() 并行查询缓存
         if (checkCache && this.translationCache) {
+            const context = await this.getTranslationCacheContext()
+            if (!isCurrent()) return false
             // 构建所有缓存查询的 Promise
             const cacheQueries = nodes.map(async node => {
                 try {
@@ -1660,7 +1709,7 @@ export class ImmersiveTranslator {
                         targetLang: this.targetLanguage,
                         modelId: this.currentModel,
                         aiRole: this.translationRuntimeConfig.aiRole,
-                        context: this.getPageTranslationContext()
+                        context
                     }
 
                     // 从分层缓存系统获取

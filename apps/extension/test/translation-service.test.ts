@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from "vitest"
 
+import { AiRoleSystemPrompts } from "../src/constants/aiRole"
 import {
     GOOGLE_TRANSLATE_MODEL_ID,
     MEWCAT_TRANSLATE_MODEL_ID,
     MICROSOFT_TRANSLATE_MODEL_ID
 } from "../src/constants/translationServices"
+import type { MewCatCompletionRequest } from "../src/messaging/mewcatCompletion"
 import type { ModelGatewayRequest } from "../src/messaging/modelGatewayContracts"
 import { normalizeTranslationServiceSelection } from "../src/state/translationService"
 import type { TranslateRequestSender } from "../src/translation/GoogleTranslator"
@@ -44,6 +46,48 @@ const createConfig = (
 })
 
 describe("functional translation service", () => {
+    it("passes the selected role and prompt into mewCat's chat completions without sending model credentials", async () => {
+        const send = vi.fn(async (_request: MewCatCompletionRequest) => ({
+            success: true as const,
+            text: '{"translations":["译文"]}'
+        }))
+        const config = {
+            ...createConfig(MEWCAT_TRANSLATE_MODEL_ID),
+            aiRole: AiRole.TECH_TRANSLATOR,
+            mewcatTranslationPrompt: "请保留术语原文"
+        }
+        await expect(
+            translateText(
+                config,
+                [{ role: "user", content: "Example" }],
+                "zh-CN",
+                {},
+                { mewcatCompletionSender: send }
+            )
+        ).resolves.toBe("译文")
+        expect(send).toHaveBeenCalledExactlyOnceWith({
+            feature: "translation",
+            input: expect.objectContaining({
+                messages: [
+                    {
+                        role: "system",
+                        content: expect.stringContaining("请保留术语原文")
+                    },
+                    {
+                        role: "user",
+                        content: expect.stringContaining("Example")
+                    }
+                ],
+                response_format: { type: "json_object" }
+            })
+        })
+        const [{ input }] = send.mock.calls[0]
+        expect(input.messages[0].content).toContain(
+            AiRoleSystemPrompts[AiRole.TECH_TRANSLATOR]
+        )
+        for (const key of ["model", "apiKey", "baseUrl"])
+            expect(input).not.toHaveProperty(key)
+    })
     it.each([
         "missing-model",
         "disabled-model",
@@ -86,7 +130,7 @@ describe("functional translation service", () => {
                             modelGatewaySender: sender,
                             googleRequestSender: sender,
                             microsoftRequestSender: sender,
-                            mewcatRequestSender: sender
+                            mewcatCompletionSender: sender
                         }
                     )
                 ).rejects.toThrow("没有对应的翻译服务")
@@ -139,17 +183,18 @@ describe("functional translation service", () => {
                     "zh-CN",
                     { context: "Financial markets" },
                     {
-                        mewcatRequestSender: async request => {
-                            sent = request.config
+                        mewcatCompletionSender: async request => {
+                            sent = JSON.parse(request.input.messages[1].content)
                             return {
                                 success: true,
-                                content: { translations: ["银行"] }
+                                text: '{"translations":["银行"]}'
                             }
                         }
                     }
                 )
                 expect(sent).toEqual({
                     texts: ["bank"],
+                    sourceLanguage: "auto",
                     targetLanguage: "zh-CN",
                     ...(enabled ? { context: "Financial markets" } : {})
                 })
@@ -222,35 +267,35 @@ describe("functional translation service", () => {
             ])
         })
     })
-    it.each([
-        GOOGLE_TRANSLATE_MODEL_ID,
-        MICROSOFT_TRANSLATE_MODEL_ID,
-        MEWCAT_TRANSLATE_MODEL_ID
-    ])("passes an explicit source language to %s", async serviceId => {
-        const requests: unknown[] = []
-        const sender: TranslateRequestSender = async request => {
-            requests.push(request)
-            return {
-                success: true,
-                content:
-                    request.type === RequestType.MEWCAT_TRANSLATE
-                        ? { translations: ["你好"] }
-                        : "你好"
+    it.each([GOOGLE_TRANSLATE_MODEL_ID, MICROSOFT_TRANSLATE_MODEL_ID])(
+        "passes an explicit source language to %s",
+        async serviceId => {
+            const requests: unknown[] = []
+            const sender: TranslateRequestSender = async request => {
+                requests.push(request)
+                return {
+                    success: true,
+                    content:
+                        request.type === RequestType.MEWCAT_TRANSLATE
+                            ? { translations: ["你好"] }
+                            : "你好"
+                }
             }
+            await translateText(
+                { ...createConfig(serviceId, []), sourceLanguage: "fr" },
+                [{ role: "user", content: "Bonjour" }],
+                "zh-CN",
+                {},
+                {
+                    googleRequestSender: sender,
+                    microsoftRequestSender: sender
+                }
+            )
+            expect(requests[0]).toMatchObject({
+                config: { sourceLanguage: "fr" }
+            })
         }
-        await translateText(
-            { ...createConfig(serviceId, []), sourceLanguage: "fr" },
-            [{ role: "user", content: "Bonjour" }],
-            "zh-CN",
-            {},
-            {
-                googleRequestSender: sender,
-                microsoftRequestSender: sender,
-                mewcatRequestSender: sender
-            }
-        )
-        expect(requests[0]).toMatchObject({ config: { sourceLanguage: "fr" } })
-    })
+    )
     it.each([
         { name: "text", translate: translateText, separator: "\n" },
         { name: "batch", translate: translateBatch, separator: "\n\n%%\n\n" }
@@ -673,25 +718,26 @@ describe("functional translation service", () => {
 
     it("routes mewCat text and batch translation without invoking the model gateway", async () => {
         let modelGatewayCalled = false
-        const requests: RequestType[] = []
+        const requests: MewCatCompletionRequest[] = []
         const dependencies = {
             modelGatewaySender: async () => {
                 modelGatewayCalled = true
                 return { success: true as const, text: "wrong" }
             },
-            mewcatRequestSender: async request => {
-                requests.push(request.type)
-                const texts =
-                    request.type === RequestType.MEWCAT_TRANSLATE
-                        ? request.config.texts
-                        : []
+            mewcatCompletionSender: async (
+                request: MewCatCompletionRequest
+            ) => {
+                requests.push(request)
                 return {
-                    success: true,
-                    content: { translations: texts.map(() => "你好") }
+                    success: true as const,
+                    text: '{"translations":["你好"]}'
                 }
             }
         }
-        const config = createConfig(MEWCAT_TRANSLATE_MODEL_ID)
+        const config = {
+            ...createConfig(MEWCAT_TRANSLATE_MODEL_ID),
+            sourceLanguage: "fr"
+        }
 
         await expect(
             translateText(
@@ -711,10 +757,15 @@ describe("functional translation service", () => {
                 dependencies
             )
         ).resolves.toBe("你好")
-        expect(requests).toEqual([
-            RequestType.MEWCAT_TRANSLATE,
-            RequestType.MEWCAT_TRANSLATE
+        expect(requests.map(request => request.feature)).toEqual([
+            "translation",
+            "translation"
         ])
+        for (const request of requests) {
+            expect(JSON.parse(request.input.messages[1].content)).toMatchObject(
+                { sourceLanguage: "fr" }
+            )
+        }
         expect(modelGatewayCalled).toBe(false)
     })
 

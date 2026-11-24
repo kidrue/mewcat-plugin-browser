@@ -121,23 +121,24 @@ async function mountSummary() {
 }
 
 describe("page summary configuration lifecycle", () => {
-    it("does not send automatic or manual summaries to a different configured model", async () => {
+    it("uses mewCat for automatic and manual summaries when it is selected", async () => {
         getDefaultStore().set(writableConfigAtom, {
             ...config,
             currentModel: "mewcat-translate"
         })
         await mountSummary()
         await press()
-        expect(mocks.send).not.toHaveBeenCalled()
-        expect(mocks.toast).toHaveBeenCalledWith(
+        expect(mocks.send).toHaveBeenCalledExactlyOnceWith(
+            "mewcat-completion",
             expect.objectContaining({
-                message:
-                    expect.stringContaining("没有对应的翻译服务支持页面总结")
+                feature: "page-summary",
+                input: expect.objectContaining({ messages: expect.any(Array) })
             })
         )
+        expect(mocks.toast).not.toHaveBeenCalled()
     })
 
-    it("cancels the previous model result after switching to mewCat", async () => {
+    it("cancels the previous model result after switching to Google", async () => {
         let resolve!: (value: unknown) => void
         mocks.send.mockReturnValue(
             new Promise(done => {
@@ -148,7 +149,7 @@ describe("page summary configuration lifecycle", () => {
         await act(async () =>
             getDefaultStore().set(writableConfigAtom, {
                 ...config,
-                currentModel: "mewcat-translate"
+                currentModel: "google-translate"
             })
         )
         await act(async () => resolve({ success: true, text: "旧模型结果。" }))

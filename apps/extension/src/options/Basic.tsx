@@ -30,8 +30,8 @@ import {
     type TranslationStyleType
 } from "@/types/translationStyle"
 import {
-    PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
-    selectPageSummaryModel
+    isPageSummaryAvailable,
+    PAGE_SUMMARY_UNAVAILABLE_MESSAGE
 } from "@/utils/pageSummary"
 
 const SummaryControls = styled.div`
@@ -69,7 +69,7 @@ export const Basic: React.FunctionComponent = () => {
     const updateConfig = useSetAtom(updateConfigAtom)
 
     const languageOptions = languages.languages
-    const hasUsableGenerativeModel = Boolean(selectPageSummaryModel(config))
+    const hasUsableGenerativeModel = isPageSummaryAvailable(config)
 
     return (
         <>

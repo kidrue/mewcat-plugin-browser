@@ -110,6 +110,36 @@ describe("管理员分析加密接口", () => {
             sdk.queryAnalytics({ operation: "overview", ...range })
         ).resolves.toMatchObject({ operation: "overview" })
     })
+    it("概览合并旧翻译和对话接口，同时排除设备注册", async () => {
+        const sdk = await client()
+        const id = sdk.getState().clientId!
+        const today = new Date().toISOString().slice(0, 10)
+        for (const [value, requests] of [
+            ["/v1/translate", 2n],
+            ["/v1/chat/completions", 3n]
+        ] as const) {
+            await fixture.store.db.analyticsDaily.create({
+                data: {
+                    clientId: id,
+                    day: today,
+                    dimension: "route",
+                    value,
+                    requests
+                }
+            })
+        }
+        await expect(
+            sdk.queryAnalytics({
+                operation: "overview",
+                from: today,
+                to: range.to
+            })
+        ).resolves.toMatchObject({
+            totals: { requests: "5" },
+            activeDevices: 1,
+            days: [{ day: today, requests: "5" }]
+        })
+    })
     it("分析样本超过聚合执行量时返回未知覆盖率，不拒绝合法查询", async () => {
         const sdk = await client()
         const id = sdk.getState().clientId!

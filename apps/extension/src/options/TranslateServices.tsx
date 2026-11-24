@@ -40,6 +40,7 @@ import {
 } from "@/components/OptionsPageLayout"
 import { DEFAULT_VALUES, platformNameMap } from "@/constants"
 import { AiRoleOptions, AiRoleSystemPrompts } from "@/constants/aiRole"
+import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import {
     getGenerationBaseUrl,
     PROVIDER_REGISTRY
@@ -55,6 +56,7 @@ import { hideScrollBar } from "@/styles/scroll"
 import { testConfiguredModel } from "@/translation/translationService"
 import type { AiModel_Platform_Enum } from "@/types"
 import { AiRole, type BaseModel } from "@/types"
+import { MEWCAT_TRANSLATION_PROMPT_MAX_LENGTH } from "@/types/config"
 import { getModelByModelList, isModelThinkingCapable } from "@/utils/llmModel"
 import { isTranslationContextAvailable } from "@/utils/pageSummary"
 import { Toast, ToastType } from "@/utils/toast"
@@ -86,6 +88,18 @@ const ModelListContainer = styled.div`
 
 const ModelDirectory = styled(OptionsSection)`
     margin-bottom: 0;
+`
+
+const PromptInput = styled.textarea`
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    font: inherit;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-3);
 `
 
 const ModelSearchInput = styled.input`
@@ -1287,6 +1301,45 @@ export const TranslateServices: React.FunctionComponent = () => {
                             }
                         </RoleHelperText>
                     </FormRow>
+                    {config.currentModel === MEWCAT_TRANSLATE_MODEL_ID && (
+                        <FormRow
+                            label="自有服务翻译提示词"
+                            description="在 AI 角色之外补充翻译要求。离开输入框时保存，留空则只使用角色和默认翻译要求。"
+                            controlId="mewcat-translation-prompt"
+                        >
+                            <PromptInput
+                                id="mewcat-translation-prompt"
+                                key={config.mewcatTranslationPrompt ?? ""}
+                                rows={4}
+                                maxLength={MEWCAT_TRANSLATION_PROMPT_MAX_LENGTH}
+                                defaultValue={
+                                    config.mewcatTranslationPrompt ?? ""
+                                }
+                                placeholder="例如：保留产品名原文，使用简洁的技术文档语气。"
+                                onBlur={event => {
+                                    const field = event.currentTarget
+                                    const value = field.value.trim()
+                                    const previous =
+                                        config.mewcatTranslationPrompt ?? ""
+                                    if (value !== previous) {
+                                        void Promise.resolve(
+                                            updateConfig({
+                                                mewcatTranslationPrompt: value
+                                            })
+                                        ).catch(() => {
+                                            if (field.value.trim() === value)
+                                                field.value = previous
+                                            Toast.show({
+                                                type: ToastType.ERROR,
+                                                message:
+                                                    "提示词保存失败，请检查扩展存储空间后重试。"
+                                            })
+                                        })
+                                    }
+                                }}
+                            />
+                        </FormRow>
+                    )}
                     <FormRow
                         label="启用AI智能上下文"
                         description="结合网页上下文提升翻译效果，支持 mewCat 自有服务或已配置的 LLM。mewCat 会发送限长网页上下文并计入额度；开启后可能增加翻译时长。"

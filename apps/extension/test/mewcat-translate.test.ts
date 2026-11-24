@@ -1,12 +1,13 @@
+import { chatCompletionInputSchema } from "@mewcat/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { handleTranslateRequest } from "@/background/messages/translate-request"
 import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import type { MewCatCompletionSender } from "@/messaging/mewcatCompletion"
 import {
     getTranslationServiceOptions,
     resolveTranslationServiceId
 } from "@/state/translationService"
-import type { TranslateRequestSender } from "@/translation/GoogleTranslator"
 import {
     createMewCatBatches,
     MewCatTranslator
@@ -28,20 +29,46 @@ vi.mock("@/background/lib/mewcat-service", () => ({
 describe("MewCatTranslator", () => {
     beforeEach(() => vi.clearAllMocks())
 
+    it("splits batches when escaped input would exceed the completion size limit", async () => {
+        const inputs: string[] = []
+        const translator = new MewCatTranslator(
+            async ({ input }) => {
+                expect(chatCompletionInputSchema.safeParse(input).success).toBe(
+                    true
+                )
+                const { texts } = JSON.parse(input.messages[1].content) as {
+                    texts: string[]
+                }
+                inputs.push(...texts)
+                return {
+                    success: true,
+                    text: JSON.stringify({ translations: texts })
+                }
+            },
+            {
+                customPrompt: "注意术语。".repeat(300),
+                context: "金融领域".repeat(500)
+            }
+        )
+        const text = "开头" + "\u0000".repeat(4500) + "末尾"
+        await expect(
+            translator.translateText([{ role: "user", content: text }], "zh-CN")
+        ).resolves.toBe(text)
+        expect(inputs.length).toBeGreaterThan(1)
+    })
+
     it("limits context without splitting a surrogate pair and repeats it for every batch", async () => {
         const contexts: unknown[] = []
         const translator = new MewCatTranslator(
             async request => {
-                if (request.type !== RequestType.MEWCAT_TRANSLATE)
-                    throw new Error("unexpected request")
-                contexts.push(request.config.context)
+                const data = JSON.parse(request.input.messages[1].content)
+                contexts.push(data.context)
                 return {
                     success: true,
-                    content: { translations: request.config.texts }
+                    text: JSON.stringify({ translations: data.texts })
                 }
             },
-            undefined,
-            "x".repeat(1999) + "😀tail"
+            { context: "x".repeat(1999) + "😀tail" }
         )
         const text = Array.from({ length: 21 }, () => "bank").join("\n\n%%\n\n")
         await expect(
@@ -55,14 +82,14 @@ describe("MewCatTranslator", () => {
 
     it("按服务上限安全分片并原样保留分隔符和空白段", async () => {
         const requests: string[][] = []
-        const sender: TranslateRequestSender = vi.fn(async request => {
-            if (request.type !== RequestType.MEWCAT_TRANSLATE) {
-                throw new Error("unexpected request")
+        const sender: MewCatCompletionSender = vi.fn(async request => {
+            const { texts } = JSON.parse(request.input.messages[1].content) as {
+                texts: string[]
             }
-            requests.push(request.config.texts)
+            requests.push(texts)
             return {
                 success: true,
-                content: { translations: [...request.config.texts] }
+                text: JSON.stringify({ translations: texts })
             }
         })
         const translator = new MewCatTranslator(sender)
@@ -107,15 +134,15 @@ describe("MewCatTranslator", () => {
     })
 
     it("响应数量不匹配时失败且不返回部分结果", async () => {
-        const sender: TranslateRequestSender = vi.fn(async request => ({
-            success: true,
-            content: {
-                translations:
-                    request.type === RequestType.MEWCAT_TRANSLATE
-                        ? request.config.texts.slice(0, -1)
-                        : []
+        const sender: MewCatCompletionSender = vi.fn(async request => {
+            const { texts } = JSON.parse(request.input.messages[1].content) as {
+                texts: string[]
             }
-        }))
+            return {
+                success: true,
+                text: JSON.stringify({ translations: texts.slice(0, -1) })
+            }
+        })
         const translator = new MewCatTranslator(sender)
 
         await expect(
@@ -127,20 +154,23 @@ describe("MewCatTranslator", () => {
         expect(sender).toHaveBeenCalledTimes(1)
     })
 
-    it("拒绝无法识别的响应", async () => {
-        const translator = new MewCatTranslator(
-            vi.fn(async () => ({
-                success: true,
-                content: { translations: [1] }
-            }))
-        )
-        await expect(
-            translator.translateText(
-                [{ role: "user", content: "hello" }],
-                "zh-CN"
+    it.each(['{"translations":[1]}', '{"translations":["  "]}'])(
+        "拒绝无效译文 %s",
+        async text => {
+            const translator = new MewCatTranslator(
+                vi.fn(async () => ({
+                    success: true,
+                    text
+                }))
             )
-        ).rejects.toThrow("mewCat 翻译返回了无法识别的响应")
-    })
+            await expect(
+                translator.translateText(
+                    [{ role: "user", content: "hello" }],
+                    "zh-CN"
+                )
+            ).rejects.toThrow("mewCat 翻译返回了无法识别的响应")
+        }
+    )
 })
 
 describe("mewCat 服务选择", () => {

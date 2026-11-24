@@ -783,6 +783,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         enableAutoAiRole: config.enableAutoAiRole,
         enableThinking: config.enableThinking,
         enableContext: config.enableContext,
+        mewcatTranslationPrompt: config.mewcatTranslationPrompt,
         model: config.aiModelList.find(
             model => model.id === config.currentModel
         )

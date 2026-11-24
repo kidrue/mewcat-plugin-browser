@@ -10,6 +10,7 @@ import {
 } from "./messages/analytics"
 import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
+import { handleMewCatCompletion } from "./messages/mewcat-completion"
 import { handleModelGatewayRequest } from "./messages/model-gateway"
 import { handleModelGatewayStreamPort } from "./messages/model-gateway-stream"
 import { handleStructuredTranslateImage } from "./messages/structured-image-translation"
@@ -125,6 +126,13 @@ export function registerExtensionMessages(register = onMessage) {
         monitorBackgroundHandler(
             "translate-request",
             () => handleTranslateRequest(message.data),
+            message.sender.tab?.url
+        )
+    )
+    register("mewcat-completion", message =>
+        monitorBackgroundHandler(
+            "mewcat-completion",
+            () => handleMewCatCompletion(message.data),
             message.sender.tab?.url
         )
     )

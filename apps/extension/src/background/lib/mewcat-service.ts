@@ -1,6 +1,7 @@
 import * as bundledSdk from "@mewcat/client"
 import type {
     AnalyticsInput,
+    ChatCompletionInput,
     MewCatClientState,
     MewCatRequestOptions,
     MewCatTranslationClient
@@ -47,6 +48,7 @@ interface MewCatServiceDependencies {
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
+    INVALID_REQUEST: "mewCat 请求超出限制或参数无效",
     QUOTA_EXCEEDED: "今日免费翻译额度已用完",
     RATE_LIMITED: "请求过于频繁，请稍后重试",
     CLIENT_REVOKED: "当前设备已被停用",
@@ -208,6 +210,26 @@ export const createMewCatService = (
                 if (controller.signal.aborted) {
                     throw new ManualAbortError()
                 }
+                throw mapServiceError(error)
+            } finally {
+                activeControllers.delete(controller)
+            }
+        },
+        async chatCompletions(
+            input: ChatCompletionInput,
+            cancelWithTranslation: boolean
+        ) {
+            const controller = new AbortController()
+            const signal = AbortSignal.any([
+                controller.signal,
+                AbortSignal.timeout(MEWCAT_TRANSLATE_TIMEOUT_MS)
+            ])
+            if (cancelWithTranslation) activeControllers.add(controller)
+            try {
+                const client = await getClient(signal)
+                return await client.chatCompletions(input, { signal })
+            } catch (error) {
+                if (controller.signal.aborted) throw new ManualAbortError()
                 throw mapServiceError(error)
             } finally {
                 activeControllers.delete(controller)

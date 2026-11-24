@@ -11,6 +11,10 @@ import type { UnifiedRequestBody, UnifiedResponse } from "@/types/request"
 
 import type { ImageTranslationErrorCode } from "./imageTranslationContracts"
 import type {
+    MewCatCompletionRequest,
+    MewCatCompletionResponse
+} from "./mewcatCompletion"
+import type {
     ModelGatewayRequest,
     ModelGatewayResponse
 } from "./modelGatewayContracts"
@@ -132,6 +136,7 @@ export type ConfigUpdateRequest =
     | { type: "model"; updates: { id: string } & DeepPartial<BaseModel> }
 
 export interface ExtensionProtocolMap {
+    "mewcat-completion"(data: MewCatCompletionRequest): MewCatCompletionResponse
     "analytics-query"(data: AnalyticsQueryMessage): AnalyticsResponse
     "analytics-cancel"(data: { requestId: string }): { success: boolean }
     "analytics-identity"(): AnalyticsIdentityResponse

@@ -1,5 +1,7 @@
+import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import { sendMessage } from "@/messaging"
 import { BackgroundResponseError } from "@/messaging/BackgroundResponseError"
+import { requestMewCatCompletion } from "@/messaging/mewcatCompletion"
 import { captureExtensionException } from "@/monitoring"
 import type { SummaryActionResult } from "@/reading/summaryActions"
 import type { ExtensionConfig } from "@/types/config"
@@ -10,7 +12,10 @@ import {
     selectPageSummaryModel
 } from "../utils/pageSummary"
 import { extractPageContent } from "./pageContent"
-import { buildPageSummaryPrompt } from "./pageSummaryPrompts"
+import {
+    buildPageSummaryInstruction,
+    buildPageSummaryPrompt
+} from "./pageSummaryPrompts"
 import {
     renderPageSummary,
     type PageSummaryHandle
@@ -25,6 +30,7 @@ const summaryConfigKey = (config: ExtensionConfig): string =>
         enableThinking: config.enableThinking,
         neverTranslateUrls: config.neverTranslateUrls,
         disabledSites: config.pageSummaryDisabledSites,
+        serviceId: config.currentModel,
         model: selectPageSummaryModel(config)
     })
 
@@ -101,7 +107,8 @@ export class PageSummaryController {
         const generation = ++this.generation
         const pageUrl = window.location.href
         const model = selectPageSummaryModel(this.config)
-        if (!model) {
+        const useMewCat = this.config.currentModel === MEWCAT_TRANSLATE_MODEL_ID
+        if (!model && !useMewCat) {
             this.handle = renderPageSummary(snapshot.anchor, {
                 status: "unavailable"
             })
@@ -117,30 +124,51 @@ export class PageSummaryController {
         this.handle = renderPageSummary(snapshot.anchor, { status: "loading" })
         if (trigger === "manual") this.handle.open()
         try {
-            const response = await sendMessage("model-gateway", {
-                type: "generate",
-                feature: "page-summary",
-                model,
-                messages: [
-                    {
-                        role: "user",
-                        content: buildPageSummaryPrompt(
-                            pageType,
-                            snapshot.title,
-                            snapshot.text,
-                            this.config.targetLanguage
-                        )
-                    }
-                ],
-                enableThinking: this.config.enableThinking
-            })
-            if (!response.success && "error" in response) {
-                throw new BackgroundResponseError(
-                    response.error.code,
-                    response.error.message
-                )
-            }
-            const summary = normalizeSummaryResult(response.text)
+            const text =
+                model && !useMewCat
+                    ? await sendMessage("model-gateway", {
+                          type: "generate",
+                          feature: "page-summary",
+                          model,
+                          messages: [
+                              {
+                                  role: "user",
+                                  content: buildPageSummaryPrompt(
+                                      pageType,
+                                      snapshot.title,
+                                      snapshot.text,
+                                      this.config.targetLanguage
+                                  )
+                              }
+                          ],
+                          enableThinking: this.config.enableThinking
+                      }).then(response => {
+                          if (response.success === false)
+                              throw new BackgroundResponseError(
+                                  response.error.code,
+                                  response.error.message
+                              )
+                          return response.text
+                      })
+                    : await requestMewCatCompletion({
+                          feature: "page-summary",
+                          input: {
+                              messages: [
+                                  {
+                                      role: "system",
+                                      content: buildPageSummaryInstruction(
+                                          pageType,
+                                          this.config.targetLanguage
+                                      )
+                                  },
+                                  {
+                                      role: "user",
+                                      content: `标题：${snapshot.title.slice(0, 500)}\n\n${snapshot.text}`
+                                  }
+                              ]
+                          }
+                      })
+            const summary = normalizeSummaryResult(text)
             if (
                 generation !== this.generation ||
                 pageUrl !== window.location.href
@@ -174,7 +202,13 @@ export class PageSummaryController {
                 pageUrl: location.href
             })
             this.handle?.update({ status: "error" })
-            return { success: false, message: "页面总结失败，请重试。" }
+            return {
+                success: false,
+                message:
+                    useMewCat && error instanceof BackgroundResponseError
+                        ? error.message
+                        : "页面总结失败，请重试。"
+            }
         }
     }
 

@@ -2,6 +2,7 @@ import type { BaseModel } from "./aiModel"
 import type { TranslationStyleType } from "./translationStyle"
 
 export type TranslationDisplayMode = "bilingual" | "translation"
+export const MEWCAT_TRANSLATION_PROMPT_MAX_LENGTH = 2000
 
 /**
  * 插件主配置对象
@@ -21,6 +22,7 @@ export interface ExtensionConfig {
 
     /** 是否根据当前网页自动选择 AI 专家角色（默认 false） */
     enableAutoAiRole?: boolean
+    mewcatTranslationPrompt?: string
 
     /** 永不翻译的语言列表 */
     neverTranslateLanguages?: string[]

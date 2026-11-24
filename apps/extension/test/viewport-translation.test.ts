@@ -2,6 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { MEWCAT_TRANSLATE_MODEL_ID } from "../src/constants/translationServices"
 import rules from "../src/public/assets/rule.json"
 import { defaultExtensionConfig } from "../src/state/constants"
 import * as cacheModule from "../src/translation/cache"
@@ -102,6 +103,41 @@ const requested = () =>
     service.translate.mock.calls.map(call => call[1][0].content)
 
 describe("viewport translation integration", () => {
+    it("uses opaque cache keys and retranslates after the mewCat prompt changes", async () => {
+        const cache = new cacheModule.TieredTranslationCache({
+            enableL2: false
+        })
+        vi.spyOn(cacheModule, "createDefaultCache").mockReturnValue(cache)
+        const write = vi.spyOn(cache, "set")
+        makeNode("An English paragraph to translate", 0)
+        const settings = {
+            ...config,
+            currentModel: MEWCAT_TRANSLATE_MODEL_ID,
+            cacheEnabled: true,
+            mewcatTranslationPrompt: "Private glossary"
+        }
+        translator = new ImmersiveTranslator(settings)
+        await translator.startImmersiveTranslation()
+        await vi.advanceTimersByTimeAsync(200)
+
+        const first = write.mock.calls[0][0]
+        expect(first.context).toMatch(/"chat-completions","[0-9a-f]{64}"/)
+        expect(first.context).not.toContain(settings.mewcatTranslationPrompt)
+        expect(await cache.get(first)).toContain("译文")
+
+        await translator.updateConfig({
+            ...settings,
+            mewcatTranslationPrompt: "New glossary"
+        })
+        await translator.startImmersiveTranslation()
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate).toHaveBeenCalledTimes(2)
+        const second = write.mock.calls[1][0]
+        expect(second.context).not.toBe(first.context)
+        await translator.clearCurrentPageTranslationCache()
+        expect(await cache.get(second)).toBeNull()
+    })
+
     it.each([true, false])(
         "applies cache enable/disable changes to an existing translator (viewport: %s)",
         async enableViewportTranslation => {

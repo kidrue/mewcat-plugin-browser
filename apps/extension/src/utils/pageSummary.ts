@@ -14,6 +14,8 @@ export const isTranslationContextAvailable = (
     config.currentModel === MEWCAT_TRANSLATE_MODEL_ID ||
     Boolean(getSelectedGenerativeModel(config))
 
+export const isPageSummaryAvailable = isTranslationContextAvailable
+
 export const selectPageSummaryModel = (
     config: Pick<TranslationRuntimeConfig, "currentModel" | "aiModelList">
 ): BaseModel | null => getSelectedGenerativeModel(config) ?? null

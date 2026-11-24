@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { CHAT_COMPLETIONS_PATH } from "./contracts.js"
+
 const date = z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -20,7 +22,8 @@ export const analyticsRoutes = [
     "/v1/clients/register",
     "/v1/usage",
     "/v1/feedback",
-    "/v1/translate"
+    "/v1/translate",
+    CHAT_COMPLETIONS_PATH
 ] as const
 export const analyticsQuerySchema = z
     .discriminatedUnion("operation", [

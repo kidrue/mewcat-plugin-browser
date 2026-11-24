@@ -82,15 +82,15 @@ async function renderBasic() {
 }
 
 describe("options page summary setting", () => {
-    it("does not enable summary for mewCat because another AI model is configured", async () => {
+    it("enables summary when mewCat is selected", async () => {
         mocks.config = createConfig({ currentModel: "mewcat-translate" })
         await renderBasic()
         expect(
             document.querySelector<HTMLInputElement>(
                 'input[aria-label="自动总结页面"]'
             )?.disabled
-        ).toBe(true)
-        expect(document.body.textContent).toContain(
+        ).toBe(false)
+        expect(document.body.textContent).not.toContain(
             "没有对应的翻译服务支持页面总结"
         )
     })

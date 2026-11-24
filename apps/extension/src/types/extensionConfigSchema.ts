@@ -4,7 +4,11 @@ import { isValidParagraphShortcut } from "@/translation/paragraphShortcut"
 
 import { AiModel_Platform_Enum } from "./aiModel"
 import type { BaseModel } from "./aiModel"
-import { AiRole, type ExtensionConfig } from "./config"
+import {
+    AiRole,
+    MEWCAT_TRANSLATION_PROMPT_MAX_LENGTH,
+    type ExtensionConfig
+} from "./config"
 import { TranslationStyle } from "./translationStyle"
 
 export const BaseModelSchema = z.object({
@@ -29,6 +33,10 @@ const extensionConfigShape = {
     detectedLanguage: z.string(),
     aiRole: z.nativeEnum(AiRole),
     enableAutoAiRole: z.boolean().optional(),
+    mewcatTranslationPrompt: z
+        .string()
+        .max(MEWCAT_TRANSLATION_PROMPT_MAX_LENGTH)
+        .optional(),
     neverTranslateLanguages: z.array(z.string()).optional(),
     alwaysTranslateUrls: z.array(z.string()).optional(),
     neverTranslateUrls: z.array(z.string()).optional(),

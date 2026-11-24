@@ -116,19 +116,19 @@ async function clickAdvancedSettings() {
 }
 
 describe("quick settings page summary setting", () => {
-    it("does not enable summary for mewCat because another AI model is configured", async () => {
+    it("enables summary when mewCat is selected", async () => {
         mocks.config = createConfig({ currentModel: "mewcat-translate" })
         await renderSettingsPanel()
         expect(
             document.querySelector<HTMLInputElement>(
                 'input[aria-label="自动总结页面"]'
             )?.disabled
-        ).toBe(true)
-        expect(document.body.textContent).toContain(
+        ).toBe(false)
+        expect(document.body.textContent).not.toContain(
             "没有对应的翻译服务支持页面总结"
         )
     })
-    it("allows mewCat context without a custom AI model and keeps automatic summary unavailable", async () => {
+    it("allows mewCat context without a custom AI model and enables automatic summary", async () => {
         mocks.config = createConfig({
             currentModel: "mewcat-translate",
             aiModelList: [],
@@ -145,7 +145,7 @@ describe("quick settings page summary setting", () => {
             document.querySelector<HTMLInputElement>(
                 'input[aria-label="自动总结页面"]'
             )?.disabled
-        ).toBe(true)
+        ).toBe(false)
     })
 
     it("opens the independent feedback page from the popup", async () => {

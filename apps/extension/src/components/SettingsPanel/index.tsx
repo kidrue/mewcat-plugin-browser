@@ -16,9 +16,9 @@ import {
     updateConfigAtom
 } from "@/state"
 import {
+    isPageSummaryAvailable,
     isTranslationContextAvailable,
-    PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
-    selectPageSummaryModel
+    PAGE_SUMMARY_UNAVAILABLE_MESSAGE
 } from "@/utils/pageSummary"
 
 import BrandLogo from "../BrandLogo"
@@ -560,7 +560,7 @@ function SettingsPanel({
     )
 
     const modelOptions = getTranslationServiceOptions(config.aiModelList || [])
-    const hasUsableGenerativeModel = Boolean(selectPageSummaryModel(config))
+    const hasUsableGenerativeModel = isPageSummaryAvailable(config)
     const contextAvailable = isTranslationContextAvailable(config)
 
     const handleToggleTranslation = (checked: boolean) => {

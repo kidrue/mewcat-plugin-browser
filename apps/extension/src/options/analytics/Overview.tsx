@@ -95,7 +95,11 @@ export function Overview({ data }: { data: AnalyticsOverview }) {
         <>
             <Metrics>
                 {[
-                    ["翻译调用", fmt(data.totals.requests), "仅 /v1/translate"],
+                    [
+                        "翻译与生成调用",
+                        fmt(data.totals.requests),
+                        "自有翻译与对话接口"
+                    ],
                     [
                         "成功率",
                         percent(data.totals.successRate),

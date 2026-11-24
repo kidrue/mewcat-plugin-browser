@@ -1,3 +1,9 @@
+import type {
+    ChatCompletionInput,
+    ChatCompletionResult,
+    MewCatRequestOptions
+} from "@mewcat/client"
+import { TranslationError } from "@mewcat/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
@@ -5,8 +11,6 @@ import {
     type MewCatSdkAdapter
 } from "@/background/lib/mewcat-service"
 import { MEWCAT_SERVICE_ORIGIN } from "@/constants/translationServices"
-import type { MewCatRequestOptions } from "@mewcat/client"
-import { TranslationError } from "@mewcat/client"
 
 const identity = {
     signing: {} as CryptoKeyPair,
@@ -37,6 +41,20 @@ const createFixture = () => {
         getState: () => state,
         register,
         translate,
+        chatCompletions: vi.fn(
+            async (
+                _input: ChatCompletionInput,
+                _options: MewCatRequestOptions
+            ): Promise<ChatCompletionResult> => ({
+                choices: [
+                    {
+                        index: 0,
+                        message: { role: "assistant", content: "示例摘要。" },
+                        finish_reason: "stop"
+                    }
+                ]
+            })
+        ),
         submitFeedback
     }
     const sdk = {
@@ -65,6 +83,48 @@ const createFixture = () => {
 
 describe("mewCat background 服务", () => {
     beforeEach(() => vi.restoreAllMocks())
+
+    it("使用同一设备发送对话请求，并且页面总结不随译文取消", async () => {
+        const { sdk, client, register } = createFixture()
+        const service = createMewCatService({ sdk })
+        const request = {
+            messages: [{ role: "user" as const, content: "示例网页" }]
+        }
+        await service.chatCompletions(request, false)
+        await service.chatCompletions(request, true)
+        expect(register).toHaveBeenCalledOnce()
+        expect(client.translate).not.toHaveBeenCalled()
+
+        const signals: AbortSignal[] = []
+        let release!: () => void
+        const waiting = new Promise<void>(resolve => {
+            release = resolve
+        })
+        client.chatCompletions.mockImplementation(async (_input, options) => {
+            signals.push(options.signal!)
+            await waiting
+            if (options.signal?.aborted) options.signal.throwIfAborted()
+            return {
+                choices: [
+                    {
+                        index: 0,
+                        message: { role: "assistant", content: "示例摘要。" },
+                        finish_reason: "stop"
+                    }
+                ]
+            }
+        })
+        const summary = service.chatCompletions(request, false)
+        const translation = service.chatCompletions(request, true)
+        const rejected = expect(translation).rejects.toThrow("已取消")
+        await vi.waitFor(() => expect(signals).toHaveLength(2), { interval: 1 })
+        service.abortAll()
+        release()
+        await rejected
+        await expect(summary).resolves.toMatchObject({
+            choices: [{ message: { content: "示例摘要。" } }]
+        })
+    })
 
     it.each(["feedback", "translate"])(
         "SDK 以实例方法调用默认 fetch 时保持 WorkerGlobalScope 接收者：%s",
