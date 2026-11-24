@@ -1,6 +1,9 @@
 import {
     analyticsQuerySchema,
     analyticsResultSchema,
+    CHAT_COMPLETIONS_PATH,
+    chatCompletionInputSchema,
+    chatCompletionResultSchema,
     createIdentity,
     feedbackResultSchema,
     feedbackSchema,
@@ -13,6 +16,7 @@ import {
     translationSchema,
     usageSchema,
     type AnalyticsInput,
+    type ChatCompletionInput,
     type FeedbackInput,
     type Identity,
     type ServerPublicKeys
@@ -229,6 +233,15 @@ export class TranslationClient {
     async usage(options: RequestOptions = {}) {
         return usageSchema.parse(
             await this.request("/v1/usage", {}, false, options)
+        )
+    }
+    async chatCompletions(
+        input: ChatCompletionInput,
+        options: RequestOptions = {}
+    ) {
+        const data = chatCompletionInputSchema.parse(input)
+        return chatCompletionResultSchema.parse(
+            await this.request(CHAT_COMPLETIONS_PATH, data, false, options)
         )
     }
     async queryAnalytics(input: AnalyticsInput, options: RequestOptions = {}) {

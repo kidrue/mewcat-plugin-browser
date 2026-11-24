@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 
 import { buildApp } from "../src/app.js"
 import { loadConfig } from "../src/config.js"
+import { clientDailyKey, dayWindow } from "../src/limits.js"
 import { testStore } from "./helpers.js"
 
 describe("浏览器兼容客户端", () => {
@@ -17,9 +18,11 @@ describe("浏览器兼容客户端", () => {
     let app: FastifyInstance
     let server: Identity
     let upstreamInput: unknown
+    let completionRequest: Record<string, unknown> | undefined
     beforeEach(async () => {
         fixture = await testStore()
         server = await createIdentity()
+        completionRequest = undefined
         app = await buildApp({
             config: loadConfig({
                 NODE_ENV: "test",
@@ -33,9 +36,28 @@ describe("浏览器兼容客户端", () => {
                 ipHashSecret: "test-secret"
             },
             fetcher: async (_url, init) => {
-                upstreamInput = JSON.parse(
-                    JSON.parse(String(init?.body)).messages[1].content
-                )
+                const body = JSON.parse(String(init?.body))
+                if (body.messages[0]?.content === "Use a concise style") {
+                    completionRequest = body
+                    return Response.json({
+                        model: "test-model",
+                        choices: [
+                            {
+                                message: {
+                                    role: "assistant",
+                                    content: "示例摘要。"
+                                },
+                                finish_reason: "stop"
+                            }
+                        ],
+                        usage: {
+                            prompt_tokens: 22,
+                            completion_tokens: 8,
+                            total_tokens: 30
+                        }
+                    })
+                }
+                upstreamInput = JSON.parse(body.messages[1].content)
                 return Response.json({
                     choices: [
                         {
@@ -63,6 +85,80 @@ describe("浏览器兼容客户端", () => {
             headers: { "content-type": "application/json" }
         })
     }
+
+    it("使用设备加密身份传递对话参数，模型由服务端选择", async () => {
+        const client = await TranslationClient.connect({
+            baseUrl: "http://localhost:3000",
+            fetcher
+        })
+        await client.register("completion-client")
+        const messages = [
+            { role: "system" as const, content: "Use a concise style" },
+            { role: "user" as const, content: "Summarize this page." }
+        ]
+        const request = {
+            messages,
+            temperature: 0.3,
+            top_p: 0.8,
+            max_tokens: 192,
+            stop: ["END"]
+        }
+        await expect(client.chatCompletions(request)).resolves.toEqual({
+            choices: [
+                {
+                    index: 0,
+                    message: { role: "assistant", content: "示例摘要。" },
+                    finish_reason: "stop"
+                }
+            ],
+            usage: { prompt_tokens: 22, completion_tokens: 8, total_tokens: 30 }
+        })
+        expect(completionRequest).toMatchObject({
+            ...request,
+            model: "test-model",
+            stream: false
+        })
+        expect(await client.usage()).toMatchObject({ usedCharacters: 39 })
+    })
+
+    it("拒绝超出输出上限的请求，而且不会调用上游或扣额度", async () => {
+        const client = await TranslationClient.connect({
+            baseUrl: "http://localhost:3000",
+            fetcher
+        })
+        await client.register("completion-client")
+        await expect(
+            client.chatCompletions({
+                messages: [{ role: "system", content: "Use a concise style" }],
+                max_tokens: 4097
+            })
+        ).rejects.toMatchObject({ status: 400 })
+        expect(completionRequest).toBeUndefined()
+        expect(await client.usage()).toMatchObject({ usedCharacters: 0 })
+    })
+
+    it("对话和翻译共享设备每日字符额度", async () => {
+        const client = await TranslationClient.connect({
+            baseUrl: "http://localhost:3000",
+            fetcher
+        })
+        const clientId = await client.register("completion-client")
+        await fixture.store.consumeBuckets([
+            {
+                key: clientDailyKey(clientId),
+                amount: 499_999,
+                limit: 500_000,
+                expiresAt: dayWindow().expiresAt
+            }
+        ])
+        await expect(
+            client.chatCompletions({
+                messages: [{ role: "system", content: "Use a concise style" }]
+            })
+        ).rejects.toMatchObject({ code: "QUOTA_EXCEEDED" })
+        expect(completionRequest).toBeUndefined()
+        expect(await client.usage()).toMatchObject({ usedCharacters: 499_999 })
+    })
 
     it("通过加密 SDK 传送上下文并将参考字符计入用量", async () => {
         const client = await TranslationClient.connect({

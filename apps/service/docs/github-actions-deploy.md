@@ -1,12 +1,12 @@
 # GitHub Actions 自动部署到阿里云
 
-推送到 `main` 后，工作流运行测试、类型检查、构建和 smoke 检查，构建 runtime/tools 两个镜像，以提交 SHA 标记，通过 SSH 上传到阿里云服务器。服务器导入镜像、停止 API、备份 SQLite 数据与配置、执行迁移，再启动 API 并等待健康检查。也可以在 Actions → 部署到阿里云 → Run workflow 手动重跑 `main`。
+推送到 `main` 后，工作流运行测试、类型检查、构建和 smoke 检查，构建 runtime/tools 两个镜像，以提交 SHA 标记，通过 SSH 上传到阿里云服务器。服务器导入镜像、停止 API、备份 SQLite 数据与配置、执行迁移，再启动 API 并等待健康检查。也可以在 Actions → 后端构建与部署 → Run workflow 手动重跑 `main`。
 
 使用镜像文件直传，不需要 ACR、Docker Hub 或 GHCR 账号，服务器更新时也无需访问镜像仓库。镜像包含原生 SQLite 依赖，目标架构必须与服务器一致。上传包含工具镜像，耗时与 GitHub 到服务器的带宽有关。
 
 ## 1. 服务器准备（一次）
 
-先按照 [Ubuntu 部署命令](deploy-aliyun.md) 完成初次部署、`.env`、服务器密钥、Nginx 和 HTTPS。默认目录 `/opt/mewCat-service`，默认 Linux x86_64；首次初始化仍按原文档构建。之后自动部署不再拉取源码或现场构建镜像。
+先按照 [Ubuntu 部署命令](deploy-aliyun.md) 从本仓库源码完成初次部署、`.env`、服务器密钥、Nginx 和 HTTPS。默认目录 `/opt/mewCat-service`，默认 Linux x86_64。后续自动部署通过 SSH 上传镜像，无需服务器访问 GitHub。
 
 SSH 用户必须能执行 Docker、读写部署目录和备份密钥。现有文档使用 root；如果使用专用部署账户，需要预先配置 Docker 权限及目录权限。需要 Bash、tar、gzip、flock 和支持 `docker compose up --wait --wait-timeout` 的 Compose v2 插件。
 
@@ -49,7 +49,7 @@ ssh-keygen -lf aliyun_known_hosts
 
 ## 3. GitHub 配置
 
-在仓库 Settings → Environments 创建 `production`，可限制部署分支为 `main`。需要完全自动执行时，不设置人工审批。以下 Secrets 可以放在该环境或仓库 Settings → Secrets and variables → Actions 中：
+在仓库 Settings → Environments 配置 `production`，部署分支使用 `main`。在仓库 Settings → Secrets and variables → Actions 的 Variables 中设置 `SERVICE_DEPLOY_ENABLED=true`。以下 Secrets 存放在 `production` 环境中。
 
 | Secret | 内容 |
 | --- | --- |

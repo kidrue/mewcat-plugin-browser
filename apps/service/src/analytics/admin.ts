@@ -2,6 +2,7 @@ import {
     analyticsQuerySchema,
     analyticsResultSchema,
     analyticsRoutes,
+    CHAT_COMPLETIONS_PATH,
     type AnalyticsResult,
     type AnalyticsQuery as QueryInput
 } from "@mewcat/protocol"
@@ -16,6 +17,8 @@ import {
     type Range
 } from "./query.js"
 import { DAY_MS, utcDay, type AnalyticsStore } from "./store.js"
+
+const generationRoutes = ["/v1/translate", CHAT_COMPLETIONS_PATH]
 
 const projectTotals = (
     value: Awaited<ReturnType<AnalyticsQuery["summary"]>>["totals"]
@@ -53,13 +56,13 @@ export class AdminAnalytics {
         range: Range,
         now: number,
         clientId?: string,
-        route?: string
+        routes?: readonly string[]
     ) {
         const first = await this.analytics.store.db.analyticsDaily.findFirst({
             where: {
                 dimension: "route",
                 ...(clientId ? { clientId } : {}),
-                ...(route ? { value: route } : {})
+                ...(routes?.length ? { value: { in: [...routes] } } : {})
             },
             orderBy: { day: "asc" },
             select: { day: true }
@@ -180,9 +183,9 @@ export class AdminAnalytics {
                 ? input.clientId
                 : undefined,
             input.operation === "overview"
-                ? "/v1/translate"
-                : input.operation === "calls"
-                  ? input.route
+                ? generationRoutes
+                : input.operation === "calls" && input.route
+                  ? [input.route]
                   : undefined
         )
         const base = {
@@ -195,7 +198,7 @@ export class AdminAnalytics {
                 range,
                 now,
                 undefined,
-                "/v1/translate",
+                generationRoutes,
                 signal
             )
             await queryCheckpoint(signal)
@@ -203,7 +206,7 @@ export class AdminAnalytics {
                 by: ["day"],
                 where: {
                     dimension: "route",
-                    value: "/v1/translate",
+                    value: { in: generationRoutes },
                     day: { gte: input.from, lt: input.to }
                 },
                 _sum: { requests: true, characters: true },
@@ -251,7 +254,7 @@ export class AdminAnalytics {
             const errors = await db.apiCall.groupBy({
                 by: ["errorCode"],
                 where: {
-                    route: "/v1/translate",
+                    route: { in: generationRoutes },
                     createdAt: { gte: range.from, lt: range.to },
                     errorCode: { not: null }
                 },

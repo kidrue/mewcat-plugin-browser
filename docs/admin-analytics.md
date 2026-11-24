@@ -10,7 +10,7 @@
 
 该配置默认为空。页面无法自行授权，不要将管理员变量设置为 `WXT_`/`VITE_` 前缀，也不要向扩展提供通用管理密钥。移除白名单或撤销设备后，新请求立即受限（环境变量修改需要重启服务）。
 
-生产仍由 `kidrue/mewCat-servicer` 部署。GitHub Actions 使用同名 repository variable `ANALYTICS_ADMIN_CLIENT_IDS`；变量为空/未设置时保留服务器已有配置。若需清空所有管理权限，将 `ANALYTICS_ADMIN_CLEAR=true` 后部署；清空优先于 ID 列表，完成后将此变量移除或改回 `false`。直接运行配置更新器时，`ANALYTICS_ADMIN_CLIENT_IDS=` 表示显式清空。
+当前仓库的 GitHub Actions 从 `production` 环境读取 `ANALYTICS_ADMIN_CLIENT_IDS`；变量为空/未设置时保留服务器已有配置。若需清空所有管理权限，将 `ANALYTICS_ADMIN_CLEAR=true` 后部署；清空优先于 ID 列表，完成后将此变量移除或改回 `false`。直接运行配置更新器时，`ANALYTICS_ADMIN_CLIENT_IDS=` 表示显式清空。
 
 ## 数据口径
 

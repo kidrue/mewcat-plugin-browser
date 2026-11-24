@@ -2,7 +2,7 @@
 
 适用：**Ubuntu 22.04 / 24.04 系统镜像**、单台服务器，Docker Compose + Nginx + HTTPS。其他系统（例如 Alibaba Cloud Linux）不能照抄 apt 命令。以下命令在服务器 SSH 终端运行，不是在本机 PowerShell 运行。建议至少 2 GB 内存用于本机构建；不需要在宿主机安装 Node.js。
 
-GitHub 仓库：`kidrue/mewCat-servicer`。私有仓库建议使用只读 Deploy key 拉取。
+以下步骤用于首次初始化服务器。已有生产实例的更新、备份与排障见 [GitHub Actions 自动部署](github-actions-deploy.md)。
 
 ## 1. 云端准备
 
@@ -44,31 +44,33 @@ docker compose version
 
 安装方式依据 [Docker Ubuntu 官方文档](https://docs.docker.com/engine/install/ubuntu/)。如果已有 docker.io、podman 或旧版 containerd，不直接覆盖安装；先按官方文档处理冲突。若阿里云节点无法连接 Docker Hub/GitHub，应使用自己的可信镜像源或在 CI 构建后上传阿里云镜像仓库；不要随意运行未知镜像加速脚本。
 
-## 3. 拉取私有仓库
+## 3. 获取源码并构建镜像
 
-在服务器生成专用只读拉取密钥，已有文件不会重新生成：
-
-```bash
-install -m 0700 -d /root/.ssh
-test -f /root/.ssh/mewcat_github || ssh-keygen -t ed25519 -N '' -C 'mewcat-server-readonly' -f /root/.ssh/mewcat_github
-cat /root/.ssh/mewcat_github.pub
-```
-
-将输出的**公钥**添加到 GitHub 仓库 Settings → Deploy keys → Add deploy key，不勾选写权限。不要上传私钥。
+源码目录用于构建镜像。运行配置和密钥保存在 `/opt/mewCat-service`，供后续自动部署沿用。以下命令和后续示例在同一个 Bash 会话中执行。
 
 ```bash
-export GIT_SSH_COMMAND='ssh -i /root/.ssh/mewcat_github -o IdentitiesOnly=yes'
-git clone git@github.com:kidrue/mewCat-servicer.git /opt/mewCat-service
-cd /opt/mewCat-service
-```
+MEWCAT_SOURCE=/opt/mewCat-service-src
+MEWCAT_DEPLOY=/opt/mewCat-service
+git clone https://github.com/kidrue/mewcat-plugin-browser.git "$MEWCAT_SOURCE"
+install -m 0700 -d "$MEWCAT_DEPLOY"
+export MEWCAT_IMAGE_TAG="$(git -C "$MEWCAT_SOURCE" rev-parse HEAD)"
 
-首次连接按 GitHub 官方公布的 SSH 主机指纹核对确认，不禁用主机密钥检查。若目录已有代码，则进入已有目录，不重复 clone。
+docker build --target tools -t "mewcat-tools:$MEWCAT_IMAGE_TAG" \
+  -f "$MEWCAT_SOURCE/apps/service/Dockerfile" "$MEWCAT_SOURCE"
+docker build --target runtime -t "mewcat-api:$MEWCAT_IMAGE_TAG" \
+  -f "$MEWCAT_SOURCE/apps/service/Dockerfile" "$MEWCAT_SOURCE"
+cp "$MEWCAT_SOURCE/apps/service/compose.yaml" \
+  "$MEWCAT_SOURCE/apps/service/deploy/compose.images.yaml" "$MEWCAT_DEPLOY/"
+cd "$MEWCAT_DEPLOY"
+dc=(docker compose --project-directory "$PWD" -p mewcat-service \
+  -f compose.yaml -f compose.images.yaml)
+```
 
 ## 4. 配置服务器密钥与供应商
 
 ```bash
 cd /opt/mewCat-service
-test -f .env || cp .env.example .env
+test -f .env || install -m 0600 "$MEWCAT_SOURCE/.env.example" .env
 chmod 600 .env
 nano .env
 ```
@@ -83,22 +85,21 @@ ALLOWED_ORIGINS=
 MAX_CONCURRENT_REQUESTS=4
 ```
 
-接口访问白名单统一维护在仓库的 `config/allowed-origins.json`，当前包含 Chrome Web Store 正式扩展、私钥构建扩展与本机 unpacked 开发扩展。构建会校验来源格式并将列表打包进产物和镜像；`ALLOWED_ORIGINS` 未设置或为空时使用这份列表，显式配置时以 `.env` 为准，多个来源使用逗号分隔。修改仓库列表后重新构建部署即可生效；若旧 `.env` 中已填写白名单，手动部署前将其清空以使用新版仓库配置。扩展 ID 与发布渠道、Chrome 配置及加载路径绑定，变更渠道、开发机或路径后应按 `chrome://extensions` 显示的新 ID 更新允许列表。
+接口访问白名单统一维护在仓库的 `apps/service/config/allowed-origins.json`，当前包含 Chrome Web Store 正式扩展、私钥构建扩展与本机 unpacked 开发扩展。构建会校验来源格式并将列表打包进产物和镜像；`ALLOWED_ORIGINS` 未设置或为空时使用这份列表，显式配置时以 `.env` 为准，多个来源使用逗号分隔。修改仓库列表后重新构建部署即可生效；若旧 `.env` 中已填写白名单，手动部署前将其清空以使用新版仓库配置。扩展 ID 与发布渠道、Chrome 配置及加载路径绑定，变更渠道、开发机或路径后应按 `chrome://extensions` 显示的新 ID 更新允许列表。
 
 建议选择支持 JSON 输出及非思考模式的文本模型。其余限额按预算调整。先构建，再使用工具容器在服务器本地生成密钥，不需要把开发机私钥上传：
 
 ```bash
-docker compose build
 install -d -m 0700 -o 1000 -g 1000 secrets
 
-docker compose run --rm --no-deps \
+"${dc[@]}" run --rm --no-deps --pull never \
   -e KEYS_FILE=/app/secrets/server-keys.json \
   -v "$PWD/secrets:/app/secrets" \
   migrate node dist/scripts/admin.js keys
 
-docker compose run --rm migrate
-docker compose up -d api
-docker compose ps
+"${dc[@]}" run --rm --no-deps --pull never migrate
+"${dc[@]}" up -d --no-deps --no-build --wait api
+"${dc[@]}" ps
 curl --fail http://127.0.0.1:3000/health
 ```
 
@@ -110,14 +111,14 @@ curl --fail http://127.0.0.1:3000/health
 
 ```bash
 cd /opt/mewCat-service
-MEWCAT_GATEWAY=$(docker inspect "$(docker compose ps -q api)" --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}')
+MEWCAT_GATEWAY=$(docker inspect "$("${dc[@]}" ps -q api)" --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}')
 test -n "$MEWCAT_GATEWAY" || { echo '未找到运行中的容器网关'; exit 1; }
 sed -i "s/^TRUST_PROXY=.*/TRUST_PROXY=127.0.0.1,::1,$MEWCAT_GATEWAY/" .env
-docker compose up -d --no-deps api
+"${dc[@]}" up -d --no-deps --no-build --wait api
 
 # 替换成你的真实域名。
 MEWCAT_DOMAIN='translate.example.com'
-sed "s/translate.example.com/$MEWCAT_DOMAIN/g" deploy/nginx.conf \
+sed "s/translate.example.com/$MEWCAT_DOMAIN/g" "$MEWCAT_SOURCE/apps/service/deploy/nginx.conf" \
   > /etc/nginx/conf.d/mewcat.conf
 nginx -t && systemctl reload nginx
 ```
@@ -145,36 +146,20 @@ Certbot 会申请证书并修改 Nginx 配置，参见 [Certbot Nginx 指南](ht
 
 ```bash
 cd /opt/mewCat-service
-docker compose run --rm migrate node dist/scripts/admin.js clients
+"${dc[@]}" run --rm --no-deps --pull never migrate node dist/scripts/admin.js clients
 ```
 
-扩展配置服务地址 `https://你的域名` 后会按设备密钥自动注册；配置对应 host_permissions，并使用服务器签名公钥指纹。公网部署应保留注册 IP 日限额。接入代码见 [README](../README.md#chrome-扩展接入)。
+扩展配置服务地址 `https://你的域名` 后会按设备密钥自动注册；配置对应 host_permissions，并使用服务器签名公钥指纹。公网部署应保留注册 IP 日限额。接口见 [服务端 API 文档](api.md)。
 
 撤销某个设备：
 
 ```bash
-docker compose run --rm migrate node dist/scripts/admin.js revoke 实际clientId
+"${dc[@]}" run --rm --no-deps --pull never migrate node dist/scripts/admin.js revoke 实际clientId
 ```
 
-## 8. 更新代码
+## 8. 启用自动部署
 
-需要每次推送 `main` 后自动部署镜像，请使用 [GitHub Actions 自动部署](github-actions-deploy.md)。启用后日常管理使用该文档中的发布配置，不再执行下面的源码构建更新命令。
-
-先执行下一节备份，然后：
-
-```bash
-cd /opt/mewCat-service
-export GIT_SSH_COMMAND='ssh -i /root/.ssh/mewcat_github -o IdentitiesOnly=yes'
-git pull --ff-only
-docker compose build
-docker compose stop api
-docker compose run --rm migrate
-docker compose up -d --no-deps api
-docker compose ps
-curl --fail http://127.0.0.1:3000/health
-```
-
-迁移失败时不要继续启动新版本；保留备份并排查，不对数据库强制重置。停止服务迁移会产生短暂停机。不要运行 `docker compose down -v`，它会删除数据库卷。
+按 [GitHub Actions 自动部署](github-actions-deploy.md) 配置生产环境。首次自动发布完成后，通过 `.deploy/current` 中的 Compose 文件管理运行实例。
 
 ## 9. 备份与排障
 
@@ -184,18 +169,18 @@ curl --fail http://127.0.0.1:3000/health
 cd /opt/mewCat-service
 MEWCAT_BACKUP="/var/backups/mewcat/$(date +%Y%m%d-%H%M%S)"
 install -d -m 0700 "$MEWCAT_BACKUP"
-docker compose stop api
-docker compose cp api:/app/data "$MEWCAT_BACKUP/data"
+"${dc[@]}" stop api
+"${dc[@]}" cp api:/app/data "$MEWCAT_BACKUP/data"
 cp -a secrets "$MEWCAT_BACKUP/secrets"
 cp -a .env "$MEWCAT_BACKUP/.env"
-docker compose start api
+"${dc[@]}" start api
 ```
 
 备份包含供应商密钥及服务身份，不能提交到 GitHub，也不要放进网站目录。恢复时须同时恢复数据库和原服务器密钥。
 
 ```bash
-docker compose logs --tail=100 api
-docker compose logs --tail=100 migrate
+"${dc[@]}" logs --tail=100 api
+"${dc[@]}" logs --tail=100 migrate
 nginx -t
 systemctl status nginx --no-pager
 ss -lntp | grep -E ':80 |:443 |:3000 '

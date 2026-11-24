@@ -58,10 +58,32 @@ console.log(usage);
 | `GET` | `/v1/keys` | 否 | `200` | 获取服务器协议版本和公钥 |
 | `POST` | `/v1/clients/register` | 是 | `201` | 注册客户端设备身份 |
 | `POST` | `/v1/translate` | 是 | `200` | 批量翻译文本 |
+| `POST` | `/v1/chat/completions` | 是 | `200` | 使用服务端模型生成文本，供自定义翻译和页面总结使用 |
 | `POST` | `/v1/usage` | 是 | `200` | 查询当前客户端当日字符用量 |
 | `POST` | `/v1/feedback` | 是 | `201` | 通过服务器 SMTP 发送意见反馈 |
 
 服务只接受以上路径。POST 路径不接受查询参数。
+
+## 对话生成
+
+调用 `client.chatCompletions(input)` 时，SDK 会使用已注册设备的签名和加密身份。例如，以下请求让服务生成一句话总结：
+
+```js
+const result = await client.chatCompletions({
+  messages: [
+    { role: 'system', content: '用简体中文总结正文，只输出一句话。' },
+    { role: 'user', content: '这里是页面正文。' },
+  ],
+  temperature: 0.2,
+  max_tokens: 256,
+});
+console.log(result.choices[0].message.content);
+```
+
+- `messages` 支持 `system`、`user` 和 `assistant` 的纯文本消息，1–20 条，合计最多 16,000 个 UTF-16 代码单元。业务 JSON 转成 UTF-8 后最多 54,000 字节，外层加密信封也需符合下文的大小限制。
+- 可选 `temperature`、`top_p`、`max_tokens`、`stop` 和 `response_format`。`max_tokens` 不能超过服务端的 `MAX_OUTPUT_TOKENS`，`response_format.type` 支持 `text` 和 `json_object`。接口使用非流式响应，可省略 `stream` 或传 `false`。
+- 上游地址、凭据和模型由服务端设置。业务请求不接受 `baseUrl`、`apiKey` 或 `model`，响应也不包含上游模型名称。
+- 返回 `choices[0]` 中的 `message.content` 和 `finish_reason`，以及供应商提供的 `usage`。与翻译共用设备、IP、全站额度和并发限制，按所有消息的长度占用字符额度。对话正文及输出不进入内容画像表。
 
 ## 公共约定
 

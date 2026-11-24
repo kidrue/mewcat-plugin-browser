@@ -31,7 +31,7 @@ pnpm --filter @mewcat/service admin analytics profile <clientId>
 
 ## API 与协议
 
-接口包含 `GET /health`、`GET /v1/keys`、`POST /v1/clients/register`、`POST /v1/translate`、`POST /v1/usage` 和 `POST /v1/feedback`。POST 业务数据必须通过加密信封发送。
+业务接口包含设备注册、翻译、对话生成、用量和反馈。扩展通过 `POST /v1/chat/completions` 使用自有服务翻译和总结，业务数据通过加密信封发送。
 
 共享 SDK 为 `@mewcat/client`，协议为 `@mewcat/protocol`。详见 [API](docs/api.md) 和 [协议](docs/protocol.md)。
 
@@ -46,4 +46,4 @@ pnpm --filter @mewcat/service smoke
 
 测试使用临时 SQLite、本地模拟供应商和假密钥，不调用付费 API。Docker 专属检查在 Linux CI 执行。
 
-monorepo 的 `deploy-service.yml` 仅在 `SERVICE_DEPLOY_ENABLED=true` 时部署。生产服务原仓库为 `kidrue/mewCat-servicer`；未切换入口时需将兼容改动同步至原仓库并通过其发布流程上线。本次功能不自动开启内容采集和付费分析。
+生产发布使用当前仓库的 `deploy-service.yml`，通过 `SERVICE_DEPLOY_ENABLED=true` 启用。配置和恢复步骤见 [GitHub Actions 自动部署](docs/github-actions-deploy.md)。内容采集和付费分析各自通过运行时配置启用。

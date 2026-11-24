@@ -3,6 +3,8 @@ import cors from "@fastify/cors"
 import helmet from "@fastify/helmet"
 import rateLimit from "@fastify/rate-limit"
 import {
+    CHAT_COMPLETIONS_PATH,
+    chatCompletionInputSchema,
     decryptEnvelope,
     feedbackSchema,
     readSigned,
@@ -89,7 +91,8 @@ export async function buildApp({
         "/v1/clients/register",
         "/v1/usage",
         "/v1/feedback",
-        "/v1/translate"
+        "/v1/translate",
+        CHAT_COMPLETIONS_PATH
     ])
     const mailer = feedbackMailer ?? createFeedbackMailer(config)
     app.addHook("onClose", async () => {
@@ -422,6 +425,63 @@ export async function buildApp({
             )
         }
         return { accepted: true }
+    })
+    secureRoute(CHAT_COMPLETIONS_PATH, 200, async (auth, request) => {
+        const data = chatCompletionInputSchema.parse(auth.request.data)
+        if (
+            data.max_tokens !== undefined &&
+            data.max_tokens > config.MAX_OUTPUT_TOKENS
+        )
+            throw new ApiError(
+                400,
+                "INVALID_REQUEST",
+                "输出 token 数超过服务上限"
+            )
+        if (inFlight >= config.MAX_CONCURRENT_REQUESTS)
+            throw new ApiError(503, "SERVER_BUSY", "服务繁忙，请稍后重试")
+        inFlight++
+        try {
+            const characters = data.messages.reduce(
+                (sum, message) => sum + message.content.length,
+                0
+            )
+            const record = await store.reserveTranslation(
+                auth.clientId,
+                characters,
+                translationBuckets(
+                    config,
+                    auth.clientId,
+                    hashIp(request.ip, keys.ipHashSecret),
+                    characters
+                ),
+                { model: config.SILICONFLOW_MODEL }
+            )
+            contexts.get(request)!.translationRequestId = record.id
+            const started = performance.now()
+            let result
+            try {
+                result = await provider.chatCompletions(data)
+            } catch (error) {
+                await store.finishTranslation(record.id, "failed", null, null, {
+                    errorCode: publicError(error).code,
+                    upstreamDurationMs: performance.now() - started
+                })
+                throw error
+            }
+            // 对话内容可能含自定义提示词，不写入内容分析表。
+            await store.finishTranslation(
+                record.id,
+                "success",
+                result.usage?.prompt_tokens,
+                result.usage?.completion_tokens,
+                {
+                    upstreamDurationMs: performance.now() - started
+                }
+            )
+            return result
+        } finally {
+            inFlight--
+        }
     })
     secureRoute("/v1/translate", 200, async (auth, request) => {
         const data = translationSchema.parse(auth.request.data)

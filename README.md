@@ -45,9 +45,8 @@ pnpm format                  # 格式化
 
 - PR：始终生成 `CI 结果` 检查，按改动范围验证受影响应用；文档 PR 也能正常完成检查。
 - 扩展：推送 `main` 且涉及扩展、共享包或公共构建配置时检查并构建；扩展版本升级后才发布到 GitHub Release / Chrome Web Store。
-- 后端：推送 `main` 且涉及后端、共享包或公共构建配置时检查、构建镜像并保存产物。
-- 后端部署只有在目标仓库配置 `SERVICE_DEPLOY_ENABLED=true` 后启用。本次迁移保持关闭，原仓库的线上发布入口保持原状。
+- 后端：推送 `main` 且涉及后端、共享包或公共构建配置时运行检查并构建镜像。`SERVICE_DEPLOY_ENABLED=true` 时，`deploy-service.yml` 会将镜像发布到阿里云生产环境。
 
-详细触发规则、Docker 验收和后续切换清单见 [monorepo 使用说明](docs/monorepo.md)。
+详细触发规则、Docker 验收和生产发布配置见 [monorepo 使用说明](docs/monorepo.md)。
 
 扩展功能说明见 [扩展 README](apps/extension/README.md)；服务端接口与运行说明见 [服务端 README](apps/service/README.md)。
