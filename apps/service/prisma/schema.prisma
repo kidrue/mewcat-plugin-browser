@@ -10,15 +10,17 @@ datasource db {
 }
 
 model Client {
-  id            String               @id @default(uuid())
-  name          String
-  signingKey    String
-  encryptionKey String
-  keyThumbprint String               @unique
-  createdAt     DateTime             @default(now())
-  revokedAt     DateTime?
-  nonces        Nonce[]
-  requests      TranslationRequest[]
+  id               String               @id @default(uuid())
+  name             String
+  signingKey       String
+  encryptionKey    String
+  keyThumbprint    String               @unique
+  createdAt        DateTime             @default(now())
+  revokedAt        DateTime?
+  activityRevision Int                  @default(0)
+  nonces           Nonce[]
+  requests         TranslationRequest[]
+  activity         DeviceActivity?
 }
 
 model Nonce {
@@ -174,4 +176,32 @@ model TopicSample {
 
   @@id([clientId, day, version, digest])
   @@index([day])
+}
+
+model DeviceActivity {
+  clientId           String               @id
+  enabled            Boolean
+  installedAt        DateTime?
+  uninstalledAt      DateTime?
+  firstTranslationAt DateTime?
+  lastTranslationAt  DateTime?
+  uninstallTokenHash String?              @unique
+  client             Client               @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  pages              DeviceActivityPage[]
+
+  @@index([installedAt])
+  @@index([uninstalledAt])
+  @@index([firstTranslationAt])
+}
+
+model DeviceActivityPage {
+  clientId String
+  eventId  String
+  day      String
+  pageKey  String?
+  activity DeviceActivity @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+
+  @@id([clientId, eventId])
+  @@unique([clientId, day, pageKey])
+  @@index([day, clientId])
 }

@@ -17,7 +17,12 @@ import { AiRole } from "../src/types/config"
 const service = vi.hoisted(() => ({
     translate: vi.fn(),
     summary: vi.fn(),
-    abort: vi.fn()
+    abort: vi.fn(),
+    sendMessage: vi.fn()
+}))
+vi.mock("../src/messaging", async importOriginal => ({
+    ...(await importOriginal<typeof import("../src/messaging")>()),
+    sendMessage: service.sendMessage
 }))
 vi.mock("../src/translation/translationService", () => ({
     translateBatch: service.translate,
@@ -91,6 +96,7 @@ beforeEach(() => {
         )
     service.summary.mockReset().mockResolvedValue("全文摘要")
     service.abort.mockReset().mockResolvedValue(undefined)
+    service.sendMessage.mockReset().mockResolvedValue({ enabled: true })
 })
 afterEach(() => {
     translator?.destroy()
@@ -103,6 +109,145 @@ const requested = () =>
     service.translate.mock.calls.map(call => call[1][0].content)
 
 describe("viewport translation integration", () => {
+    it.each([true, false])(
+        "reports one successful whole page even when it renders several batches (viewport: %s)",
+        async enableViewportTranslation => {
+            makeNode("first paragraph", 0)
+            makeNode("second paragraph", 30)
+            translator = new ImmersiveTranslator({
+                ...config,
+                enableViewportTranslation
+            })
+            await translator.startImmersiveTranslation()
+            await vi.advanceTimersByTimeAsync(200)
+
+            expect(service.translate).toHaveBeenCalledTimes(2)
+            expect(service.sendMessage).toHaveBeenCalledExactlyOnceWith(
+                "device-activity",
+                {
+                    type: "page-translated"
+                }
+            )
+        }
+    )
+
+    it("does not report a page when its translation never renders", async () => {
+        makeNode("first paragraph", 0)
+        service.translate.mockRejectedValue(new Error("provider failed"))
+        translator = new ImmersiveTranslator(config)
+        await translator.startImmersiveTranslation()
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.sendMessage).not.toHaveBeenCalled()
+    })
+
+    it("does not count a paragraph translation as a page", async () => {
+        const node = makeNode("first paragraph", 0)
+        vi.spyOn(
+            DomSelector.prototype,
+            "extractParagraphTextNodes"
+        ).mockReturnValue({
+            result: [node],
+            stayOriginalMap: {},
+            visibleNodes: [node],
+            nonVisibleNodes: []
+        })
+        translator = new ImmersiveTranslator(config)
+        await translator.translateParagraph(node.container)
+        await vi.advanceTimersByTimeAsync(200)
+
+        expect(translator.getReadingProgress().translated).toBe(1)
+        expect(service.sendMessage).not.toHaveBeenCalled()
+    })
+
+    it("waits for a whole-page result when a separate paragraph is translated first", async () => {
+        makeNode("whole page paragraph", 0)
+        let resolvePage!: (text: string) => void
+        service.translate.mockImplementationOnce(
+            () =>
+                new Promise<string>(resolve => {
+                    resolvePage = resolve
+                })
+        )
+        translator = new ImmersiveTranslator({
+            ...config,
+            enableViewportTranslation: false
+        })
+        const page = translator.startImmersiveTranslation()
+        await vi.advanceTimersByTimeAsync(50)
+        expect(service.translate).toHaveBeenCalledTimes(1)
+
+        const node = makeNode("separate paragraph", 30)
+        vi.spyOn(
+            DomSelector.prototype,
+            "extractParagraphTextNodes"
+        ).mockReturnValue({
+            result: [node],
+            stayOriginalMap: {},
+            visibleNodes: [node],
+            nonVisibleNodes: []
+        })
+        await translator.translateParagraph(node.container)
+        expect(translator.getReadingProgress().translated).toBe(1)
+        expect(service.sendMessage).not.toHaveBeenCalled()
+
+        resolvePage("整页译文")
+        await page
+        expect(service.sendMessage).toHaveBeenCalledExactlyOnceWith(
+            "device-activity",
+            {
+                type: "page-translated"
+            }
+        )
+    })
+
+    it("does not report a page when only a preserved standalone paragraph renders", async () => {
+        const pageNode = makeNode("whole page paragraph", 0)
+        const separate = makeNode(
+            "a standalone paragraph excluded by the page rules",
+            30
+        )
+        vi.mocked(DomSelector.prototype.extractTargetTextNodes).mockReturnValue(
+            {
+                result: [pageNode],
+                stayOriginalMap: {},
+                visibleNodes: [pageNode],
+                nonVisibleNodes: []
+            }
+        )
+        vi.spyOn(
+            DomSelector.prototype,
+            "extractParagraphTextNodes"
+        ).mockReturnValue({
+            result: [separate],
+            stayOriginalMap: {},
+            visibleNodes: [separate],
+            nonVisibleNodes: []
+        })
+        translator = new ImmersiveTranslator({
+            ...config,
+            enableViewportTranslation: false
+        })
+        expect(await translator.translateParagraph(separate.container)).toBe(
+            true
+        )
+        await vi.advanceTimersByTimeAsync(200)
+        expect(translator.getReadingProgress().translated).toBe(1)
+
+        service.translate
+            .mockClear()
+            .mockImplementation(async (_config, messages) => {
+                if (messages[0].content.includes(pageNode.originText)) {
+                    throw new Error("whole page translation failed")
+                }
+                return "恢复的独立段落译文"
+            })
+        await translator.startImmersiveTranslation()
+        await vi.advanceTimersByTimeAsync(200)
+        expect(service.translate).toHaveBeenCalledTimes(2)
+        expect(document.body.textContent).toContain("恢复的独立段落译文")
+        expect(service.sendMessage).not.toHaveBeenCalled()
+    })
+
     it("uses opaque cache keys and retranslates after the mewCat prompt changes", async () => {
         const cache = new cacheModule.TieredTranslationCache({
             enableL2: false

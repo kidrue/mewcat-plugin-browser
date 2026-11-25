@@ -106,8 +106,8 @@ export function Devices({
         <Card>
             <h3>设备画像</h3>
             <Muted>
-                业务调用包含注册、额度查询和反馈。统计范围内的活跃设备，按设备
-                ID 排序。
+                按设备 ID
+                排列区间内有活动记录的设备。业务调用包含注册、额度查询和反馈。
             </Muted>
             {data.items.length ? (
                 <TableScroll>
@@ -117,7 +117,7 @@ export function Devices({
                                 <th>设备</th>
                                 <th>业务调用</th>
                                 <th>翻译字符</th>
-                                <th>最近活跃（UTC 日）</th>
+                                <th>最近记录（UTC 日）</th>
                                 <th>状态</th>
                                 <th>操作</th>
                             </tr>

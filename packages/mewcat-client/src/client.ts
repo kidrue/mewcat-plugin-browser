@@ -5,6 +5,12 @@ import {
     chatCompletionInputSchema,
     chatCompletionResultSchema,
     createIdentity,
+    DEVICE_ACTIVITY_ANALYTICS_PATH,
+    DEVICE_ACTIVITY_PATH,
+    deviceActivityAnalyticsSchema,
+    deviceActivityInputSchema,
+    deviceActivityQuerySchema,
+    deviceActivityResultSchema,
     feedbackResultSchema,
     feedbackSchema,
     open,
@@ -17,6 +23,8 @@ import {
     usageSchema,
     type AnalyticsInput,
     type ChatCompletionInput,
+    type DeviceActivityInput,
+    type DeviceActivityQuery,
     type FeedbackInput,
     type Identity,
     type ServerPublicKeys
@@ -244,6 +252,34 @@ export class TranslationClient {
             await this.request(CHAT_COMPLETIONS_PATH, data, false, options)
         )
     }
+    async deviceActivity(
+        input: DeviceActivityInput,
+        options: RequestOptions = {}
+    ) {
+        return deviceActivityResultSchema.parse(
+            await this.request(
+                DEVICE_ACTIVITY_PATH,
+                deviceActivityInputSchema.parse(input),
+                false,
+                options
+            )
+        )
+    }
+
+    async queryDeviceActivity(
+        input: DeviceActivityQuery,
+        options: RequestOptions = {}
+    ) {
+        return deviceActivityAnalyticsSchema.parse(
+            await this.request(
+                DEVICE_ACTIVITY_ANALYTICS_PATH,
+                deviceActivityQuerySchema.parse(input),
+                false,
+                options
+            )
+        )
+    }
+
     async queryAnalytics(input: AnalyticsInput, options: RequestOptions = {}) {
         return analyticsResultSchema.parse(
             await this.request(

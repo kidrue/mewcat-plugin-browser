@@ -1,3 +1,8 @@
+import type {
+    DeviceActivityAnalytics,
+    DeviceActivityQuery
+} from "@mewcat/client"
+
 import type { BaseModel } from "@/types/aiModel"
 import type {
     AnalyticsIdentityResponse,
@@ -135,11 +140,30 @@ export type ConfigUpdateRequest =
     | { type: "patch"; updates: DeepPartial<ExtensionConfig> }
     | { type: "model"; updates: { id: string } & DeepPartial<BaseModel> }
 
+export type DeviceActivityRequest =
+    | { type: "page-translated" }
+    | { type: "get-status" }
+    | { type: "set-enabled"; enabled: boolean }
+
+export interface DeviceActivityStatus {
+    enabled: boolean
+    message?: string
+}
+
+export type DeviceActivityQueryResponse =
+    | { success: true; data: DeviceActivityAnalytics }
+    | { success: false; message: string }
+
 export interface ExtensionProtocolMap {
     "mewcat-completion"(data: MewCatCompletionRequest): MewCatCompletionResponse
     "analytics-query"(data: AnalyticsQueryMessage): AnalyticsResponse
     "analytics-cancel"(data: { requestId: string }): { success: boolean }
     "analytics-identity"(): AnalyticsIdentityResponse
+    "device-activity"(data: DeviceActivityRequest): DeviceActivityStatus
+    "device-activity-query"(data: {
+        requestId: string
+        query: DeviceActivityQuery
+    }): DeviceActivityQueryResponse
     "submit-feedback"(data: FeedbackSubmission): FeedbackResponse
     "update-config"(data: ConfigUpdateRequest): ExtensionConfig
     "canvas-hook-event"(data: CanvasHookEventRequest): CanvasHookEventResponse

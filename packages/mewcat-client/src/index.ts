@@ -7,6 +7,18 @@ import type {
 export * from "./client.js"
 export * from "./storage.js"
 export {
+    DEVICE_ACTIVITY_MAX_REVISION,
+    DEVICE_ACTIVITY_UNINSTALL_PATH,
+    deviceActivityAnalyticsSchema,
+    deviceActivityQuerySchema
+} from "@mewcat/protocol"
+export type {
+    DeviceActivityAnalytics,
+    DeviceActivityInput,
+    DeviceActivityQuery,
+    DeviceActivityResult
+} from "@mewcat/protocol"
+export {
     CHAT_COMPLETIONS_MAX_INPUT,
     chatCompletionInputSchema,
     analyticsQuerySchema,
@@ -30,4 +42,9 @@ export type MewCatTranslationClient = Pick<
     TranslationClient,
     "getState" | "register" | "translate" | "submitFeedback" | "chatCompletions"
 > &
-    Partial<Pick<TranslationClient, "queryAnalytics">>
+    Partial<
+        Pick<
+            TranslationClient,
+            "queryAnalytics" | "deviceActivity" | "queryDeviceActivity"
+        >
+    >

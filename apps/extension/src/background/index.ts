@@ -6,9 +6,15 @@ import { monitorBackgroundHandler } from "./lib/monitor-background-handler"
 import {
     handleAnalyticsCancel,
     handleAnalyticsIdentity,
-    handleAnalyticsQuery
+    handleAnalyticsQuery,
+    handleDeviceActivityQuery
 } from "./messages/analytics"
 import { handleCanvasHookEvent } from "./messages/canvas-hook-event"
+import {
+    getDeviceActivityStatus,
+    handleDeviceActivity,
+    noteDeviceActivityInstall
+} from "./messages/device-activity"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
 import { handleMewCatCompletion } from "./messages/mewcat-completion"
 import { handleModelGatewayRequest } from "./messages/model-gateway"
@@ -67,6 +73,18 @@ export function registerExtensionMessages(register = onMessage) {
     )
     register("analytics-identity", message =>
         handleAnalyticsIdentity(message.sender as chrome.runtime.MessageSender)
+    )
+    register("device-activity-query", message =>
+        handleDeviceActivityQuery(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
+        )
+    )
+    register("device-activity", message =>
+        handleDeviceActivity(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
+        )
     )
     // 反馈正文和联系邮箱不进入通用错误上报链路。
     register("submit-feedback", message =>
@@ -153,7 +171,12 @@ export function registerBackgroundListeners() {
         handleModelGatewayStreamPort(port)
     )
 
-    chrome.runtime.onInstalled.addListener(() => {
+    chrome.runtime.onStartup.addListener(() => {
+        void getDeviceActivityStatus().catch(() => {})
+    })
+
+    chrome.runtime.onInstalled.addListener(({ reason }) => {
+        void noteDeviceActivityInstall(reason).catch(() => {})
         chrome.contextMenus.create({
             id: CONTEXT_MENU_ID,
             title: "开始翻译",

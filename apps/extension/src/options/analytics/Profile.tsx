@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import styled from "styled-components"
 
 import { copyDeviceId } from "./clipboard"
+import { DeviceActivityProfile } from "./DeviceActivity"
 import { DeviceId } from "./DeviceId"
 import { AnalysisStatus, Languages } from "./Overview"
 import {
@@ -135,6 +136,7 @@ export function Profile({
                             最近保留调用：{localTime(profile.lastObservedCall)}
                         </Muted>
                     </Card>
+                    <DeviceActivityProfile clientId={clientId} />
                     <Metrics>
                         {[
                             [

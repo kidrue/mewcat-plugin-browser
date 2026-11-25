@@ -3,17 +3,54 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ query: vi.fn(), identity: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+    query: vi.fn(),
+    identity: vi.fn(),
+    deviceActivity: vi.fn()
+}))
 vi.mock("@/services/analytics", () => ({
     queryAnalytics: mocks.query,
     getAnalyticsIdentity: mocks.identity
 }))
+vi.mock("@/messaging", () => ({ sendMessage: mocks.deviceActivity }))
 const act = (
     React as typeof React & {
         unstable_act: typeof import("react-dom/test-utils").act
     }
 ).unstable_act
 let root: Root
+const overview = {
+    operation: "overview",
+    asOf: "2026-11-05T00:00:00Z",
+    coverage: {
+        earliestObservedDay: "2026-11-01",
+        aggregateComplete: false,
+        callsComplete: false
+    },
+    totals: {
+        requests: "2",
+        successes: "2",
+        failures: "0",
+        successRate: 1,
+        characters: "5",
+        averageDurationMs: 100,
+        promptTokens: "0",
+        completionTokens: "0"
+    },
+    activeDevices: 1,
+    days: [],
+    languages: [],
+    errors: [],
+    p95DurationMs: null,
+    p95UnavailableReason: null,
+    analysis: {
+        captureContent: false,
+        autoAnalyze: false,
+        completed: 0,
+        coverage: null,
+        jobs: []
+    }
+}
 beforeEach(() => {
     Object.assign(globalThis, {
         IS_REACT_ACT_ENVIRONMENT: true,
@@ -22,6 +59,10 @@ beforeEach(() => {
     document.body.innerHTML = '<div id="host"></div>'
     root = createRoot(document.getElementById("host")!)
     mocks.query.mockReset()
+    mocks.deviceActivity.mockReset().mockResolvedValue({
+        success: false,
+        message: "设备使用统计暂不可用"
+    })
     mocks.identity.mockReset().mockResolvedValue({
         success: true,
         data: {
@@ -32,8 +73,101 @@ beforeEach(() => {
 })
 afterEach(async () => {
     await act(async () => root.unmount())
+    vi.restoreAllMocks()
 })
 describe("管理员分析入口和页面", () => {
+    it("切换统计日期后只显示当前日期的设备用量", async () => {
+        vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-25"))
+        let resolveOld!: (value: unknown) => void
+        mocks.query.mockResolvedValue({ success: true, data: overview })
+        const activity = {
+            operation: "overview",
+            installs: 5,
+            uninstalls: 1,
+            activeDevices: 4,
+            firstTranslationDevices: 3,
+            pages: 17,
+            days: [
+                {
+                    day: "2026-11-04",
+                    installs: 5,
+                    uninstalls: 1,
+                    activeDevices: 4,
+                    firstTranslationDevices: 3,
+                    pages: 17
+                }
+            ]
+        }
+        mocks.deviceActivity
+            .mockReturnValueOnce(new Promise(resolve => (resolveOld = resolve)))
+            .mockResolvedValue({ success: true, data: activity })
+        const { Analytics } = await import("../src/options/Analytics")
+        await act(async () => root.render(<Analytics />))
+        const button = (label: string) =>
+            [...document.querySelectorAll("button")].find(
+                element => element.textContent === label
+            )!
+        const oldRequestId = mocks.deviceActivity.mock.lastCall?.[1].requestId
+        await act(async () => button("近 30 天").click())
+        expect(mocks.deviceActivity).toHaveBeenCalledWith("analytics-cancel", {
+            requestId: oldRequestId
+        })
+        expect(mocks.deviceActivity.mock.lastCall).toEqual([
+            "device-activity-query",
+            {
+                requestId: expect.any(String),
+                query: mocks.query.mock.lastCall?.[0]
+            }
+        ])
+        const section = document.querySelector('[aria-label="设备使用统计"]')!
+        expect(section.textContent).toContain("设备平均翻译页数4.3")
+        expect(section.textContent).toContain(
+            "仅从 2026-11-04（UTC）起有统计覆盖"
+        )
+        await act(async () =>
+            resolveOld({ success: true, data: { ...activity, pages: 100 } })
+        )
+        expect(section.textContent).toContain("设备平均翻译页数4.3")
+        await act(async () => button("安装与卸载").click())
+        expect(button("安装与卸载").getAttribute("aria-pressed")).toBe("true")
+        expect(
+            [...section.querySelectorAll("tbody tr td")].map(
+                cell => cell.textContent
+            )
+        ).toEqual(["2026-11-04", "5", "1", "4", "3", "17"])
+    })
+
+    it("设备用量接口不可用时仍可读取原有概览", async () => {
+        mocks.query.mockResolvedValue({ success: true, data: overview })
+        const { Analytics } = await import("../src/options/Analytics")
+        await act(async () => root.render(<Analytics />))
+        const section = document.querySelector('[aria-label="设备使用统计"]')
+        expect(section?.textContent).toContain("设备使用统计暂不可用")
+        expect(section?.querySelector("strong")).toBeNull()
+        expect(document.body.textContent).toContain("翻译与生成调用")
+    })
+
+    it("提示所选日期无统计覆盖，不显示零值指标", async () => {
+        mocks.query.mockResolvedValue({ success: true, data: overview })
+        mocks.deviceActivity.mockResolvedValue({
+            success: true,
+            data: {
+                operation: "overview",
+                installs: 0,
+                uninstalls: 0,
+                activeDevices: 0,
+                firstTranslationDevices: 0,
+                pages: 0,
+                days: []
+            }
+        })
+        const { Analytics } = await import("../src/options/Analytics")
+        await act(async () => root.render(<Analytics />))
+        const section = document.querySelector('[aria-label="设备使用统计"]')
+        expect(section?.textContent).toContain("超出设备使用统计的覆盖范围")
+        expect(section?.querySelector("strong")).toBeNull()
+    })
+
     it.each([
         "37156ad6-e1c6-4628-8ec3-55b329f4f1a3",
         "76aa2488-3241-4f38-b0a6-4f5df933417b"
@@ -158,6 +292,17 @@ describe("管理员分析入口和页面", () => {
             createdAt: "2026-11-01T00:00:00Z",
             revokedAt: null
         }
+        mocks.deviceActivity.mockResolvedValue({
+            success: true,
+            data: {
+                operation: "profile",
+                installedAt: "2026-11-02T00:00:00Z",
+                uninstalledAt: null,
+                lastTranslationAt: "2026-11-05T00:00:00Z",
+                pagesLast7: 7,
+                pagesLast30: 23
+            }
+        })
         Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
             configurable: true,
             value: function (this: HTMLDialogElement) {
@@ -247,6 +392,19 @@ describe("管理员分析入口和页面", () => {
         await act(async () => button("受控测试设备").click())
         expect(document.querySelector("dialog")?.open).toBe(true)
         expect(document.body.textContent).toContain("固定近 30 天画像")
+        const activity = document.querySelector(
+            'dialog [aria-label="设备使用统计"]'
+        )
+        expect(activity?.textContent).toContain("近 7 天翻译页面7")
+        expect(activity?.textContent).toContain("近 30 天翻译页面23")
+        expect(activity?.textContent).toContain("已确认卸载时间未收到回调")
+        expect(mocks.deviceActivity.mock.lastCall).toEqual([
+            "device-activity-query",
+            {
+                requestId: expect.any(String),
+                query: { operation: "profile", clientId: id }
+            }
+        ])
         await act(async () => button("查看该设备调用记录").click())
         expect(document.querySelector("dialog")).toBeNull()
         expect(mocks.query.mock.lastCall?.[0]).toMatchObject({
