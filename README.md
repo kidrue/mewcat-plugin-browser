@@ -2,6 +2,8 @@
 
 浏览器翻译扩展及其后端服务的 pnpm monorepo。需要 Node.js 22.12+ 和 pnpm 10.20.0。
 
+[隐私政策](PRIVACY.md)
+
 | 包 | 目录 | 用途 |
 | --- | --- | --- |
 | `@mewcat/extension` | `apps/extension` | WXT / React 浏览器扩展 |
