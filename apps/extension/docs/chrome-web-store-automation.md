@@ -129,6 +129,12 @@ IAM 配置可能需要几分钟才能生效。
 
 商店数据使用披露需要与扩展行为一致：生产环境会把错误堆栈、浏览网页的完整 URL（包括查询参数和片段）发送给 Sentry，用于定位和修复故障。网页 content script 与 background 不启用 Replay；Replay 仅用于 popup、options、sidepanel 中错误发生前的交互，并遮盖所有文字和输入、阻挡媒体。扩展不主动上报账号、手机号、Cookie、API Key、翻译原文、译文、Prompt、图片或请求体。完整 URL 仍可能包含敏感信息，商店后台应按浏览历史与用户活动等实际数据类别披露，并在隐私政策中说明第三方 Sentry 处理和诊断用途。代码文档不代替商店后台的人工披露更新。上报复验步骤见 [Sentry 上报修复与验证](sentry-reporting-verification.md)。
 
+从 1.1.14 起，商店隐私实践与公开隐私政策还需要说明扩展「关于 → 使用统计」的可选上报。可使用以下说明：
+
+> 使用统计默认关闭。开启后，译趣喵服务会接收随机设备 ID、授权安装与卸载回执及整页翻译使用记录，用于统计功能使用情况。扩展在本地根据网页地址生成加盐标识，服务器据此统计去重页数。该统计不上报网站地址、IP、地理位置、原文或译文。页面明细最多保留 90 天。关闭使用统计会立即停止本机上报，设备重新连接服务后删除该设备的统计数据。
+
+Chrome Web Store 的隐私披露与公开隐私政策链接在开发者后台维护。自动发布工作流上传扩展包并提交审核。参见 [Chrome Web Store 隐私字段说明](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy)。
+
 1. 修改 `package.json` 的 `version`，版本必须高于商店当前版本。
 2. 提交并推送到 `main`。
 3. GitHub Actions 执行 `pnpm check`、构建 ZIP/CRX，生成 `SHA256SUMS`，并把三者组成的单一 recovery bundle 保存到 draft GitHub Release。

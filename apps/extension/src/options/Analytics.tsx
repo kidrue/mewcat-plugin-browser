@@ -9,6 +9,7 @@ import {
 } from "@/types/analytics"
 
 import { copyDeviceId } from "./analytics/clipboard"
+import { DeviceActivityOverview } from "./analytics/DeviceActivity"
 import { DeviceId } from "./analytics/DeviceId"
 import { Overview } from "./analytics/Overview"
 import { Profile } from "./analytics/Profile"
@@ -32,6 +33,7 @@ import {
     Toolbar
 } from "./analytics/styles"
 import { useAnalyticsRequest } from "./analytics/useAnalyticsRequest"
+import { useDeviceActivity } from "./analytics/useDeviceActivity"
 
 const day = (time: number) => new Date(time).toISOString().slice(0, 10)
 const emptyFilters: RecordFilters = { clientId: "", route: "", outcome: "" }
@@ -93,7 +95,16 @@ export function Analytics() {
     const request = useAnalyticsRequest(
         parsed.success ? (parsed.data as AnalyticsInput) : null
     )
-    const { data, error, loading, refresh } = request
+    const { data, error, loading } = request
+    const activity = useDeviceActivity(
+        data?.operation === "overview"
+            ? { operation: "overview", from: range.from, to }
+            : null
+    )
+    const refresh = () => {
+        request.refresh()
+        activity.refresh()
+    }
     const forbidden =
         error &&
         ["ANALYTICS_FORBIDDEN", "CLIENT_REVOKED", "UNAUTHORIZED"].includes(
@@ -320,7 +331,20 @@ export function Analytics() {
                             ))}
                         </LoadingCards>
                     )}
-                    {data?.operation === "overview" && <Overview data={data} />}
+                    {data?.operation === "overview" && (
+                        <>
+                            <DeviceActivityOverview
+                                data={
+                                    activity.data?.operation === "overview"
+                                        ? activity.data
+                                        : null
+                                }
+                                loading={activity.loading}
+                                from={range.from}
+                            />
+                            <Overview data={data} />
+                        </>
+                    )}
                     {data?.operation === "devices" && (
                         <Devices data={data} onProfile={setProfile} />
                     )}
@@ -365,7 +389,7 @@ export function Analytics() {
                                 !data.coverage.callsComplete) &&
                                 " · 部分历史数据覆盖不足"}
                             <br />
-                            仅统计此后端收到的调用，不包含扩展直接调用其他翻译服务的数据。
+                            服务调用统计仅涵盖此后端收到的请求。
                         </Muted>
                     )}
                 </>

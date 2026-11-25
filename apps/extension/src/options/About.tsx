@@ -2,7 +2,14 @@ import { useAtom, useSetAtom } from "jotai"
 import * as React from "react"
 import styled from "styled-components"
 
-import { InfoDisplay, OptionsSection, ToggleRow } from "@/components"
+import {
+    Button,
+    FormRow,
+    InfoDisplay,
+    OptionsSection,
+    Switch,
+    ToggleRow
+} from "@/components"
 import FeedbackButton from "@/components/FeedbackButton"
 import GitHubIcon from "@/components/GitHubIcon"
 import {
@@ -11,6 +18,11 @@ import {
 } from "@/components/OptionsPageLayout"
 import { SkyReadingPortrait } from "@/components/SkyArtwork"
 import { EXTENSION_INFO } from "@/constants"
+import { sendMessage } from "@/messaging"
+import type {
+    DeviceActivityRequest,
+    DeviceActivityStatus
+} from "@/messaging/protocol"
 import { configAtom, updateConfigAtom } from "@/state"
 
 import { AuthorAnalyticsEntry } from "./analytics/navigation"
@@ -140,6 +152,94 @@ const FeatureList = styled.dl`
     }
 `
 
+type ActivitySettingRequest = Exclude<
+    DeviceActivityRequest,
+    { type: "page-translated" }
+>
+
+const activityStatusRequest = { type: "get-status" } as const
+
+function DeviceActivitySection() {
+    const controlId = React.useId()
+    const [status, setStatus] = React.useState<DeviceActivityStatus | null>(
+        null
+    )
+    const [pending, setPending] = React.useState(true)
+    const [retry, setRetry] = React.useState<ActivitySettingRequest | null>(
+        null
+    )
+
+    const update = React.useCallback(
+        async (request: ActivitySettingRequest) => {
+            setPending(true)
+            try {
+                const result = await sendMessage("device-activity", request)
+                if (typeof result?.enabled !== "boolean") {
+                    throw new Error("Missing activity status")
+                }
+                setStatus(result)
+                setRetry(result.message ? request : null)
+            } catch {
+                setStatus(null)
+                setRetry(request)
+            } finally {
+                setPending(false)
+            }
+        },
+        []
+    )
+
+    React.useEffect(() => {
+        void update(activityStatusRequest)
+    }, [update])
+
+    let statusText = status?.enabled ? "使用统计已开启。" : "使用统计已关闭。"
+    if (!status) {
+        statusText = "无法读取使用统计状态，请重试。"
+    }
+    if (status?.message) {
+        statusText = status.message
+    }
+    if (pending) {
+        statusText = "正在读取或更新使用统计…"
+    }
+
+    return (
+        <OptionsSection title="使用统计" icon="ledger">
+            <FormRow
+                label="分享使用统计"
+                controlId={controlId}
+                description="服务器管理员可查看随机设备 ID、经授权的安装与确认卸载记录，以及翻译页数。网页地址仅在本地用于生成加盐的页面标识，单页统计明细最多保存 90 天。"
+            >
+                <Switch
+                    id={controlId}
+                    aria-describedby={`${controlId}-description`}
+                    checked={status?.enabled ?? false}
+                    disabled={pending || !status}
+                    onChange={enabled =>
+                        void update({ type: "set-enabled", enabled })
+                    }
+                />
+                <div role="status">{statusText}</div>
+                {retry && (
+                    <Button
+                        type="secondary"
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => void update(retry)}
+                    >
+                        重试
+                    </Button>
+                )}
+            </FormRow>
+            <Note>
+                开启后，Chrome
+                会在卸载时发送回执。关闭统计会停止上报并请求删除本设备的统计数据。
+            </Note>
+        </OptionsSection>
+    )
+}
+
 export const About: React.FunctionComponent = () => {
     const [config] = useAtom(configAtom)
     const updateConfig = useSetAtom(updateConfigAtom)
@@ -202,6 +302,7 @@ export const About: React.FunctionComponent = () => {
                     <Note>再次遇到相同内容时，可优先使用已有译文。</Note>
                 </OptionsSection>
             </OptionsCardGrid>
+            <DeviceActivitySection />
             <OptionsSection
                 title="陪你阅读的翻译工具"
                 artwork="desk"

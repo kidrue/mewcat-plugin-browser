@@ -2,6 +2,7 @@ import { find, reduce } from "ramda"
 
 import { DEFAULT_VALUES } from "@/constants/options"
 import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
+import { sendMessage } from "@/messaging"
 import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
 import {
     createLoadingELement,
@@ -105,6 +106,8 @@ interface DisplayElementNode {
 export class ImmersiveTranslator {
     private manualSession = false
     private translationScope: "page" | "paragraph" = "paragraph"
+    private reportedPageSession = -1
+    private pageTranslationTargets = new WeakSet<TranslationNode>()
     private paragraphTargets = new Set<HTMLElement>()
     private domReady: Promise<void>
 
@@ -770,10 +773,14 @@ export class ImmersiveTranslator {
             result: extractedNodes,
             stayOriginalMap,
             visibleNodes,
-            nonVisibleNodes
+            nonVisibleNodes,
+            pageNodeIds
         } = this.extractObservedTextNodes()
 
         this.sourceTextNodes = extractedNodes
+        this.pageTranslationTargets = new WeakSet(
+            extractedNodes.filter(node => pageNodeIds.has(node.id))
+        )
         this.stayOriginalMap = stayOriginalMap
 
         // 如果启用了可视区域优先，使用 DomSelector 返回的分类结果
@@ -1416,6 +1423,19 @@ export class ImmersiveTranslator {
                 translateNode.container.appendChild(translateELement)
             }
             this.updateOriginalVisibility(sourceNode, translateNode)
+
+            if (
+                this.translationScope === "page" &&
+                this.reportedPageSession !== this.translationSession &&
+                this.pageTranslationTargets.has(sourceNode) &&
+                window === window.top &&
+                translateNode.container.isConnected
+            ) {
+                this.reportedPageSession = this.translationSession
+                void sendMessage("device-activity", {
+                    type: "page-translated"
+                }).catch(() => {})
+            }
         })
     }
 
@@ -2071,6 +2091,7 @@ export class ImmersiveTranslator {
                 })
             }
         }
+        const pageNodeIds = new Set(nodes.keys())
         for (const target of this.paragraphTargets) {
             if (!target.isConnected) {
                 this.paragraphTargets.delete(target)
@@ -2089,6 +2110,7 @@ export class ImmersiveTranslator {
                     ...node,
                     stayOriginalMap: extracted.stayOriginalMap
                 })
+                pageNodeIds.delete(node.id)
                 if (!pageNode) nonVisibleNodes.push(node)
             }
         }
@@ -2096,7 +2118,8 @@ export class ImmersiveTranslator {
             result: Array.from(nodes.values()),
             stayOriginalMap: {} as Record<string, Element>,
             visibleNodes: visibleNodes.map(node => nodes.get(node.id)!),
-            nonVisibleNodes: nonVisibleNodes.map(node => nodes.get(node.id)!)
+            nonVisibleNodes: nonVisibleNodes.map(node => nodes.get(node.id)!),
+            pageNodeIds
         }
     }
 
@@ -2190,6 +2213,11 @@ export class ImmersiveTranslator {
                 this.sourceTextNodes = this.sourceTextNodes
                     .filter(node => !obsolete(node.id))
                     .concat(changed)
+                this.pageTranslationTargets = new WeakSet(
+                    this.sourceTextNodes.filter(node =>
+                        extracted.pageNodeIds.has(node.id)
+                    )
+                )
                 this.viewportScheduler?.remove(Array.from(detachedIds))
                 const restored = changed.filter(node => node.translateText)
                 this.createTranslationContainers(restored)

@@ -2,6 +2,8 @@ import * as bundledSdk from "@mewcat/client"
 import type {
     AnalyticsInput,
     ChatCompletionInput,
+    DeviceActivityInput,
+    DeviceActivityQuery,
     MewCatClientState,
     MewCatRequestOptions,
     MewCatTranslationClient
@@ -185,6 +187,38 @@ export const createMewCatService = (
             const client = await getClient(signal)
             if (!client.queryAnalytics) throw { code: "ANALYTICS_UNAVAILABLE" }
             return client.queryAnalytics(input, { signal, timeoutMs: 30_000 })
+        },
+        async queryDeviceActivity(
+            input: DeviceActivityQuery,
+            callerSignal?: AbortSignal
+        ) {
+            const timeout = AbortSignal.timeout(30_000)
+            const signal = callerSignal
+                ? AbortSignal.any([callerSignal, timeout])
+                : timeout
+            const client = await getClient(signal)
+            if (!client.queryDeviceActivity) {
+                throw { code: "ANALYTICS_UNAVAILABLE" }
+            }
+            return client.queryDeviceActivity(input, {
+                signal,
+                timeoutMs: 30_000
+            })
+        },
+        async deviceActivity(
+            input: DeviceActivityInput,
+            callerSignal?: AbortSignal
+        ) {
+            const timeoutMs = 8_000
+            const timeout = AbortSignal.timeout(timeoutMs)
+            const signal = callerSignal
+                ? AbortSignal.any([callerSignal, timeout])
+                : timeout
+            const client = await getClient(signal)
+            if (!client.deviceActivity) {
+                throw new Error("Device activity unavailable")
+            }
+            return client.deviceActivity(input, { signal, timeoutMs })
         },
         async translate(input: MewCatTranslateInput): Promise<string[]> {
             const controller = new AbortController()

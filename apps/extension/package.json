@@ -3,7 +3,7 @@
     "displayName": "mewCat",
     "private": true,
     "type": "module",
-    "version": "1.1.13",
+    "version": "1.1.14",
     "scripts": {
         "predev": "pnpm -w build:packages && node scripts/check-legacy-output.cjs",
         "dev": "node ../../scripts/run-with-env.mjs dev:raw",
@@ -32,7 +32,7 @@
         "test:feedback": "vitest run --config test/vitest.image-translation.config.ts test/feedback-background.test.ts test/feedback-page.test.tsx test/mewcat-background-service.test.ts",
         "test:config-migration": "vitest run --config test/vitest.image-translation.config.ts test/request-concurrency-migration.test.ts",
         "test:cache": "vitest run --config test/vitest.image-translation.config.ts test/page-translation-cache-persistence.test.ts",
-        "test:analytics": "vitest run --config test/vitest.image-translation.config.ts test/analytics-background.test.ts test/analytics-page.test.tsx",
+        "test:analytics": "vitest run --config test/vitest.image-translation.config.ts test/analytics-background.test.ts test/analytics-page.test.tsx test/device-activity-background.test.ts test/device-activity-options.test.tsx",
         "test:reading": "vitest run --config test/vitest.image-translation.config.ts test/extension-navigation.test.ts test/reading-actions.test.ts test/reading-guide.test.tsx test/sidepanel-reading.test.tsx test/page-reading-controls.test.tsx test/page-summary-manual.test.ts test/page-summary-entrypoint.test.tsx test/paragraph-translation.test.ts test/br-translation.test.ts test/paragraph-shortcut.test.ts",
         "test:sentry": "vitest run --config test/vitest.image-translation.config.ts test/sentry-real-sdk.test.ts test/sentry-worker-sdk.test.ts",
         "sentry:smoke": "node ../../scripts/run-with-env.mjs sentry:smoke:raw",

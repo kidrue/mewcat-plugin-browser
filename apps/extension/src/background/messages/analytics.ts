@@ -1,8 +1,16 @@
-import { analyticsQuerySchema } from "@mewcat/client"
+import { analyticsQuerySchema, deviceActivityQuerySchema } from "@mewcat/client"
+import type {
+    AnalyticsInput,
+    AnalyticsResult,
+    DeviceActivityAnalytics,
+    DeviceActivityQuery
+} from "@mewcat/client"
 import { z } from "zod"
 
+import type { DeviceActivityQueryResponse } from "@/messaging/protocol"
 import {
     analyticsFailure,
+    type AnalyticsFailure,
     type AnalyticsIdentityResponse,
     type AnalyticsResponse
 } from "@/types/analytics"
@@ -25,10 +33,14 @@ function isOptions(sender: chrome.runtime.MessageSender) {
             chrome.runtime.getURL("options.html")
     )
 }
-export async function handleAnalyticsQuery(
+async function runOptionsQuery<Query, Data>(
     input: unknown,
-    sender: chrome.runtime.MessageSender
-): Promise<AnalyticsResponse> {
+    sender: chrome.runtime.MessageSender,
+    parseQuery: (
+        input: unknown
+    ) => { success: true; data: Query } | { success: false },
+    query: (input: Query, signal: AbortSignal) => Promise<Data>
+): Promise<{ success: true; data: Data } | AnalyticsFailure> {
     if (!isOptions(sender)) {
         return analyticsFailure({ code: "ANALYTICS_FORBIDDEN" })
     }
@@ -37,7 +49,7 @@ export async function handleAnalyticsQuery(
         query?: unknown
     }
     const id = requestIdSchema.safeParse(message.requestId)
-    const parsed = analyticsQuerySchema.safeParse(message.query)
+    const parsed = parseQuery(message.query)
     if (!parsed.success || !id.success || pending.has(id.data)) {
         return analyticsFailure({ code: "INVALID_REQUEST" })
     }
@@ -49,10 +61,7 @@ export async function handleAnalyticsQuery(
     try {
         return {
             success: true,
-            data: await mewCatService.queryAnalytics(
-                parsed.data,
-                controller.signal
-            )
+            data: await query(parsed.data, controller.signal)
         }
     } catch (error) {
         if (controller.signal.aborted) {
@@ -62,6 +71,17 @@ export async function handleAnalyticsQuery(
     } finally {
         pending.delete(id.data)
     }
+}
+export function handleAnalyticsQuery(
+    input: unknown,
+    sender: chrome.runtime.MessageSender
+): Promise<AnalyticsResponse> {
+    return runOptionsQuery<AnalyticsInput, AnalyticsResult>(
+        input,
+        sender,
+        raw => analyticsQuerySchema.safeParse(raw),
+        (query, signal) => mewCatService.queryAnalytics(query, signal)
+    )
 }
 export function handleAnalyticsCancel(
     input: { requestId: string },
@@ -91,4 +111,16 @@ export async function handleAnalyticsIdentity(
     } catch (error) {
         return analyticsFailure(error)
     }
+}
+
+export function handleDeviceActivityQuery(
+    input: unknown,
+    sender: chrome.runtime.MessageSender
+): Promise<DeviceActivityQueryResponse> {
+    return runOptionsQuery<DeviceActivityQuery, DeviceActivityAnalytics>(
+        input,
+        sender,
+        raw => deviceActivityQuerySchema.safeParse(raw),
+        (query, signal) => mewCatService.queryDeviceActivity(query, signal)
+    )
 }
