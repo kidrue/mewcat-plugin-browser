@@ -6,6 +6,10 @@ import {
     CHAT_COMPLETIONS_PATH,
     chatCompletionInputSchema,
     decryptEnvelope,
+    DEVICE_ACTIVITY_ANALYTICS_PATH,
+    DEVICE_ACTIVITY_PATH,
+    DEVICE_ACTIVITY_UNINSTALL_PATH,
+    deviceActivityInputSchema,
     feedbackSchema,
     readSigned,
     registrationSchema,
@@ -22,6 +26,7 @@ import { z, ZodError } from "zod"
 import { AdminAnalytics } from "./analytics/admin.js"
 import { AnalyticsStore, type CallInput } from "./analytics/store.js"
 import type { Config } from "./config.js"
+import { DeviceActivity } from "./device-activity.js"
 import { ApiError, publicError } from "./errors.js"
 import { createFeedbackMailer, type FeedbackMailer } from "./feedback-mailer.js"
 import type { ServerKeys } from "./keys.js"
@@ -84,6 +89,11 @@ export async function buildApp({
     )
     const analytics = new AnalyticsStore(store, config)
     const adminAnalytics = new AdminAnalytics(analytics)
+    const activity = new DeviceActivity(
+        store,
+        keys.ipHashSecret,
+        config.ANALYTICS_CALL_RETENTION_DAYS
+    )
     const contexts = new WeakMap<FastifyRequest, CallInput>()
     const knownRoutes = new Set([
         "/health",
@@ -305,7 +315,7 @@ export async function buildApp({
             const context = contexts.get(request)!
             if (auth.clientId !== "registration") {
                 context.clientId = auth.clientId
-                if (path !== "/v1/analytics/query")
+                if (knownRoutes.has(path))
                     context.epoch = await analytics.epoch(auth.clientId)
             }
             let body: unknown
@@ -359,23 +369,47 @@ export async function buildApp({
             return reply.code(responseStatus).send({ envelope })
         })
     }
-    secureRoute("/v1/analytics/query", 200, async (auth, request) => {
-        const controller = new AbortController()
-        const abort = () => controller.abort()
-        request.raw.once("aborted", abort)
-        request.raw.socket.once("close", abort)
-        if (request.raw.aborted || request.raw.socket.destroyed) abort()
-        try {
-            return await adminAnalytics.query(
-                auth.clientId,
-                auth.request.data,
-                controller.signal
-            )
-        } finally {
-            request.raw.off("aborted", abort)
-            request.raw.socket.off("close", abort)
-        }
+    function adminRoute(
+        path: string,
+        action: (auth: Authenticated, signal: AbortSignal) => Promise<unknown>
+    ) {
+        secureRoute(path, 200, async (auth, request) => {
+            const controller = new AbortController()
+            const abort = () => controller.abort()
+            request.raw.once("aborted", abort)
+            request.raw.socket.once("close", abort)
+            if (request.raw.aborted || request.raw.socket.destroyed) abort()
+            try {
+                return await action(auth, controller.signal)
+            } finally {
+                request.raw.off("aborted", abort)
+                request.raw.socket.off("close", abort)
+            }
+        })
+    }
+    adminRoute("/v1/analytics/query", (auth, signal) =>
+        adminAnalytics.query(auth.clientId, auth.request.data, signal)
+    )
+    adminRoute(DEVICE_ACTIVITY_ANALYTICS_PATH, (auth, signal) =>
+        adminAnalytics.queryActivity(
+            auth.clientId,
+            auth.request.data,
+            activity,
+            signal
+        )
+    )
+    secureRoute(DEVICE_ACTIVITY_PATH, 200, async auth => {
+        const input = deviceActivityInputSchema.parse(auth.request.data)
+        return activity.report(auth.clientId, input)
     })
+    app.get<{ Params: { token: string } }>(
+        `${DEVICE_ACTIVITY_UNINSTALL_PATH}/:token`,
+        { exposeHeadRoute: false },
+        async (request, reply) => {
+            await activity.uninstall(request.params.token)
+            return reply.code(204).send()
+        }
+    )
     secureRoute("/v1/clients/register", 201, async (auth, request) => {
         const data = registrationSchema.parse(auth.request.data)
         const window = dayWindow()

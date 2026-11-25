@@ -1,3 +1,5 @@
+import { DEVICE_ACTIVITY_MAX_REVISION } from "@mewcat/protocol"
+
 import type { Config } from "../config.js"
 import type { Prisma } from "../generated/prisma/client.js"
 import type { Store } from "../store.js"
@@ -224,6 +226,14 @@ export class AnalyticsStore {
                     })
                 ).count
             }
+            await tx.deviceActivity.deleteMany({ where: { clientId } })
+            await tx.client.updateMany({
+                where: {
+                    id: clientId,
+                    activityRevision: { lt: DEVICE_ACTIVITY_MAX_REVISION }
+                },
+                data: { activityRevision: { increment: 1 } }
+            })
             return counts
         })
     }

@@ -3,6 +3,7 @@ import { startAnalysisWorker } from "./analytics/worker.js"
 import { buildApp } from "./app.js"
 import { loadConfig } from "./config.js"
 import { ensureDatabaseDirectory } from "./database-path.js"
+import { DeviceActivity } from "./device-activity.js"
 import { loadKeys } from "./keys.js"
 import { createStore } from "./store.js"
 
@@ -17,9 +18,16 @@ async function main() {
         await store.db.client.count()
         await store.db.apiCall.count()
         await store.db.analysisJob.count()
+        await store.db.deviceActivity.count()
         const analytics = new AnalyticsStore(store, config)
+        const activity = new DeviceActivity(
+            store,
+            keys.ipHashSecret,
+            config.ANALYTICS_CALL_RETENTION_DAYS
+        )
         const cleanupData = async () => {
             await analytics.cleanup()
+            await activity.cleanup()
             await store.cleanup(
                 Date.now(),
                 config.ANALYTICS_CALL_RETENTION_DAYS

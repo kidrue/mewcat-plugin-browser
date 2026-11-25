@@ -3,12 +3,20 @@ import {
     analyticsResultSchema,
     analyticsRoutes,
     CHAT_COMPLETIONS_PATH,
+    deviceActivityAnalyticsSchema,
+    deviceActivityQuerySchema,
     type AnalyticsResult,
+    type DeviceActivityAnalytics,
     type AnalyticsQuery as QueryInput
 } from "@mewcat/protocol"
 import { z } from "zod"
 
+import {
+    retainedActivityRange,
+    type DeviceActivity
+} from "../device-activity.js"
 import { ApiError } from "../errors.js"
+import { Prisma } from "../generated/prisma/client.js"
 import { queryCheckpoint } from "./cancellation.js"
 import {
     AnalyticsQuery,
@@ -98,16 +106,7 @@ export class AdminAnalytics {
         input: unknown,
         signal?: AbortSignal
     ): Promise<AnalyticsResult> {
-        if (signal?.aborted)
-            throw new ApiError(499, "ANALYTICS_CANCELLED", "分析查询已取消")
-        if (
-            !this.analytics.config.ANALYTICS_ADMIN_CLIENT_IDS.includes(clientId)
-        )
-            throw new ApiError(
-                403,
-                "ANALYTICS_FORBIDDEN",
-                "当前设备尚未获得管理员权限"
-            )
+        this.authorize(clientId, signal)
         const parsed = analyticsQuerySchema.safeParse(input)
         if (!parsed.success)
             throw new ApiError(400, "INVALID_REQUEST", "分析查询参数不正确")
@@ -131,6 +130,54 @@ export class AdminAnalytics {
                 throw new ApiError(400, "INVALID_REQUEST", "无效分页游标")
             }
         }
+        return this.runQuery(clientId, signal, async () => {
+            const value = await this.execute(parsed.data, signal)
+            const json = stringifyAnalytics(value)
+            if (Buffer.byteLength(json) > 256 * 1024)
+                throw new ApiError(
+                    503,
+                    "ANALYTICS_BUSY",
+                    "查询结果过大，请缩小范围"
+                )
+            return analyticsResultSchema.parse(JSON.parse(json))
+        })
+    }
+
+    async queryActivity(
+        clientId: string,
+        input: unknown,
+        activity: DeviceActivity,
+        signal?: AbortSignal
+    ): Promise<DeviceActivityAnalytics> {
+        this.authorize(clientId, signal)
+        const parsed = deviceActivityQuerySchema.safeParse(input)
+        if (!parsed.success)
+            throw new ApiError(400, "INVALID_REQUEST", "活动查询参数不正确")
+        return this.runQuery(clientId, signal, async () =>
+            deviceActivityAnalyticsSchema.parse(
+                await activity.query(parsed.data)
+            )
+        )
+    }
+
+    private authorize(clientId: string, signal?: AbortSignal) {
+        if (signal?.aborted)
+            throw new ApiError(499, "ANALYTICS_CANCELLED", "分析查询已取消")
+        if (
+            !this.analytics.config.ANALYTICS_ADMIN_CLIENT_IDS.includes(clientId)
+        )
+            throw new ApiError(
+                403,
+                "ANALYTICS_FORBIDDEN",
+                "当前设备尚未获得管理员权限"
+            )
+    }
+
+    private async runQuery<T>(
+        clientId: string,
+        signal: AbortSignal | undefined,
+        execute: () => Promise<T>
+    ): Promise<T> {
         const minute = Math.floor(Date.now() / 60000)
         await this.analytics.store.consumeBuckets([
             {
@@ -150,16 +197,9 @@ export class AdminAnalytics {
         this.inFlight++
         try {
             await queryCheckpoint(signal)
-            const value = await this.execute(parsed.data, signal)
+            const value = await execute()
             await queryCheckpoint(signal)
-            const json = stringifyAnalytics(value)
-            if (Buffer.byteLength(json) > 256 * 1024)
-                throw new ApiError(
-                    503,
-                    "ANALYTICS_BUSY",
-                    "查询结果过大，请缩小范围"
-                )
-            return analyticsResultSchema.parse(JSON.parse(json))
+            return value
         } catch (error) {
             if (signal?.aborted)
                 throw new ApiError(499, "ANALYTICS_CANCELLED", "分析查询已取消")
@@ -362,25 +402,49 @@ export class AdminAnalytics {
                     throw new ApiError(400, "INVALID_REQUEST", "无效分页游标")
                 }
             }
-            const rows = await db.analyticsDaily.groupBy({
-                by: ["clientId"],
-                where: {
-                    dimension: "route",
-                    value: { in: [...analyticsRoutes] },
-                    day: { gte: input.from, lt: input.to },
-                    clientId: input.clientId ?? {
-                        not: "",
-                        ...(after ? { gt: after } : {})
-                    },
-                    ...(input.clientId && after
-                        ? { AND: { clientId: { gt: after } } }
-                        : {})
-                },
-                _sum: { requests: true, characters: true },
-                _max: { day: true },
-                orderBy: { clientId: "asc" },
-                take: input.limit + 1
-            })
+            const activityRange = retainedActivityRange(
+                input,
+                now,
+                this.analytics.config.ANALYTICS_CALL_RETENTION_DAYS
+            )
+            const activityFrom = new Date(activityRange.from)
+            const activityTo = new Date(activityRange.to)
+            const clientFilter = Prisma.sql`
+                "clientId" > ${after ?? ""}
+                ${input.clientId ? Prisma.sql`AND "clientId" = ${input.clientId}` : Prisma.empty}
+            `
+            const rows = await db.$queryRaw<
+                {
+                    clientId: string
+                    requests: bigint
+                    characters: bigint
+                    lastObservedDay: string
+                }[]
+            >`
+                WITH "deviceDays" AS (
+                    SELECT "clientId", "day", "requests", "characters"
+                    FROM "AnalyticsDaily"
+                    WHERE "dimension" = 'route' AND "value" IN (${Prisma.join(analyticsRoutes)})
+                        AND "day" >= ${input.from} AND "day" < ${input.to} AND ${clientFilter}
+                    UNION ALL
+                    SELECT "clientId", "day", 0, 0 FROM "DeviceActivityPage"
+                    WHERE "day" >= ${activityRange.from} AND "day" < ${activityRange.to}
+                        AND "pageKey" IS NOT NULL AND ${clientFilter}
+                    GROUP BY "clientId", "day"
+                    UNION ALL
+                    SELECT "clientId", substr("installedAt", 1, 10), 0, 0 FROM "DeviceActivity"
+                    WHERE "installedAt" >= ${activityFrom} AND "installedAt" < ${activityTo} AND ${clientFilter}
+                    UNION ALL
+                    SELECT "clientId", substr("uninstalledAt", 1, 10), 0, 0 FROM "DeviceActivity"
+                    WHERE "uninstalledAt" >= ${activityFrom} AND "uninstalledAt" < ${activityTo} AND ${clientFilter}
+                )
+                SELECT "clientId", SUM("requests") AS "requests", SUM("characters") AS "characters",
+                    MAX("day") AS "lastObservedDay"
+                FROM "deviceDays"
+                GROUP BY "clientId"
+                ORDER BY "clientId"
+                LIMIT ${input.limit + 1}
+            `
             await queryCheckpoint(signal)
             const more = rows.length > input.limit
             if (more) rows.pop()
@@ -404,9 +468,9 @@ export class AdminAnalytics {
                         ? [
                               {
                                   client,
-                                  requests: row._sum.requests ?? 0n,
-                                  characters: row._sum.characters ?? 0n,
-                                  lastObservedDay: row._max.day!
+                                  requests: row.requests,
+                                  characters: row.characters,
+                                  lastObservedDay: row.lastObservedDay
                               }
                           ]
                         : []

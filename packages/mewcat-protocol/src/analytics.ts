@@ -13,6 +13,18 @@ const date = z
         )
     }, "无效 UTC 日期")
 const range = { from: date, to: date }
+export { date as analyticsDate }
+
+export function isAnalyticsDateRange({
+    from,
+    to
+}: {
+    from: string
+    to: string
+}) {
+    const duration = Date.parse(to) - Date.parse(from)
+    return duration > 0 && duration <= 90 * 86400000
+}
 const id = z.string().uuid()
 const page = {
     cursor: z.string().min(1).max(500).optional(),
@@ -45,10 +57,7 @@ export const analyticsQuerySchema = z
         })
     ])
     .refine(
-        input =>
-            !("from" in input) ||
-            (Date.parse(input.to) > Date.parse(input.from) &&
-                Date.parse(input.to) - Date.parse(input.from) <= 90 * 86400000),
+        input => !("from" in input) || isAnalyticsDateRange(input),
         "日期区间须为 1–90 天"
     )
 export type AnalyticsInput = z.input<typeof analyticsQuerySchema>
