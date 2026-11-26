@@ -3,6 +3,10 @@ import type {
     DeviceActivityQuery
 } from "@mewcat/client"
 
+import type {
+    TextTranslationUsageEntry,
+    TextTranslationUsageRequest
+} from "@/token-usage/textTranslationUsage"
 import type { BaseModel } from "@/types/aiModel"
 import type {
     AnalyticsIdentityResponse,
@@ -12,6 +16,7 @@ import type {
 import type { CanvasHookError } from "@/types/canvas-hook"
 import type { DeepPartial, ExtensionConfig } from "@/types/config"
 import type { FeedbackResponse, FeedbackSubmission } from "@/types/feedback"
+import type { MewCatUsageResponse } from "@/types/mewcatUsage"
 import type { UnifiedRequestBody, UnifiedResponse } from "@/types/request"
 
 import type { ImageTranslationErrorCode } from "./imageTranslationContracts"
@@ -156,6 +161,7 @@ export type DeviceActivityQueryResponse =
 
 export interface ExtensionProtocolMap {
     "mewcat-completion"(data: MewCatCompletionRequest): MewCatCompletionResponse
+    "mewcat-usage"(): MewCatUsageResponse
     "analytics-query"(data: AnalyticsQueryMessage): AnalyticsResponse
     "analytics-cancel"(data: { requestId: string }): { success: boolean }
     "analytics-identity"(): AnalyticsIdentityResponse
@@ -175,5 +181,8 @@ export interface ExtensionProtocolMap {
         data: LegacyTranslateImageRequest
     ): LegacyTranslateImageResponse
     "translate-request"(data: UnifiedRequestBody): UnifiedResponse
+    "text-translation-usage"(
+        data: TextTranslationUsageRequest
+    ): TextTranslationUsageEntry[] | undefined
     "model-gateway"(data: ModelGatewayRequest): ModelGatewayResponse
 }

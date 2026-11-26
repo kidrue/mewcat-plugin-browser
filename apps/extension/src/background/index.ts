@@ -17,10 +17,12 @@ import {
 } from "./messages/device-activity"
 import { handleInjectMainWorldHook } from "./messages/inject-main-world-hook"
 import { handleMewCatCompletion } from "./messages/mewcat-completion"
+import { handleMewCatUsage } from "./messages/mewcat-usage"
 import { handleModelGatewayRequest } from "./messages/model-gateway"
 import { handleModelGatewayStreamPort } from "./messages/model-gateway-stream"
 import { handleStructuredTranslateImage } from "./messages/structured-image-translation"
 import { handleSubmitFeedback } from "./messages/submit-feedback"
+import { handleTextTranslationUsage } from "./messages/text-translation-usage"
 import { handleTranslateImage } from "./messages/translate-image"
 import { handleTranslateRequest } from "./messages/translate-request"
 import { handleUpdateConfig } from "./messages/update-config"
@@ -58,6 +60,15 @@ async function handleToggleImmersiveTranslate(tabId: number) {
 }
 
 export function registerExtensionMessages(register = onMessage) {
+    register("text-translation-usage", message =>
+        handleTextTranslationUsage(
+            message.data,
+            message.sender as chrome.runtime.MessageSender
+        )
+    )
+    register("mewcat-usage", message =>
+        handleMewCatUsage(message.sender as chrome.runtime.MessageSender)
+    )
     register("analytics-cancel", message =>
         handleAnalyticsCancel(
             message.data,

@@ -35,6 +35,8 @@ export interface TranslationNode {
     container: HTMLElement
     /**  当前textNodes所含文本 */
     originText?: string
+    /** 实际提取的原文字数，不含生成的标签或保留原样占位符。 */
+    sourceCharacterCount?: number
     /** 提取时保存占位符原文快照，避免后续 DOM 修改同时改变新旧指纹。 */
     originalContentKey?: string
     /** 文本或不含块标签的行内标签节点 */
@@ -412,8 +414,9 @@ export class DOMTraverser {
 
         const result = reduce<TranslationNode, TranslationNode[]>(
             (p, c) => {
-                const text = this.extractTranslateBlocksText(c)?.trim?.()
-                if (text) {
+                const extracted = this.extractTranslateBlocksText(c)
+                if (extracted) {
+                    const { text, sourceCharacterCount } = extracted
                     const { total } = getCountWords(text)
 
                     return [
@@ -421,6 +424,7 @@ export class DOMTraverser {
                         {
                             ...c,
                             originText: text,
+                            sourceCharacterCount,
                             insertTagType:
                                 c.segmentAnchor ||
                                 this.rule.blockMinTextCount < text.length ||
@@ -493,9 +497,12 @@ export class DOMTraverser {
      * @param element 块级元素
      * @returns 翻译节点信息（如果通过验证）
      */
-    private extractTranslateBlocksText(node: TranslationNode): string | null {
+    private extractTranslateBlocksText(
+        node: TranslationNode
+    ): { text: string; sourceCharacterCount: number } | null {
         // 聚合文本内容
         const textList: string[] = []
+        let sourceCharacterCount = 0
         const traverseNode = (node: Node, output = textList) => {
             if (this.manualParagraph && node instanceof Element) {
                 if (this.isHiddenElement(node as HTMLElement)) return
@@ -522,7 +529,11 @@ export class DOMTraverser {
                 if (this.manualParagraph) {
                     for (const child of Array.from(node.childNodes))
                         traverseNode(child, parts)
-                } else parts.push(node.textContent.trim())
+                } else {
+                    const text = node.textContent.trim()
+                    parts.push(text)
+                    sourceCharacterCount += text.length
+                }
                 output.push(`<${tag}>${parts.join("")}</${tag}>`)
                 return
             }
@@ -537,6 +548,7 @@ export class DOMTraverser {
                 }
 
                 output.push(textContent)
+                sourceCharacterCount += textContent.length
                 return
             }
             const isExclude = this.isExcludeNode(node)
@@ -570,7 +582,7 @@ export class DOMTraverser {
             return null
         }
 
-        return fullText.trim()
+        return { text: fullText.trim(), sourceCharacterCount }
     }
 
     /**

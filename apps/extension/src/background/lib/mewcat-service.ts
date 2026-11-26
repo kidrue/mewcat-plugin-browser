@@ -171,6 +171,15 @@ export const createMewCatService = (
     }
 
     return {
+        async usageDetails() {
+            const timeoutMs = 8_000
+            const signal = AbortSignal.timeout(timeoutMs)
+            const client = await getClient(signal)
+            if (!client.usageDetails) {
+                throw new Error("mewCat 额度查询暂不可用")
+            }
+            return client.usageDetails({ signal, timeoutMs })
+        },
         async analyticsIdentity() {
             const client = await getClient(AbortSignal.timeout(30_000))
             const clientId = client.getState().clientId

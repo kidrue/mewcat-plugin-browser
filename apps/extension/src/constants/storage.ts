@@ -19,6 +19,10 @@ export function createStorageNames(mode: StorageBuildMode) {
         accessToken: withEnvironmentSuffix("accessToken", mode),
         refreshToken: withEnvironmentSuffix("refreshToken", mode),
         tokenUsage: withEnvironmentSuffix("token-usage", mode),
+        textTranslationUsage: withEnvironmentSuffix(
+            "text-translation-usage",
+            mode
+        ),
         translationCacheDatabase: withEnvironmentSuffix(
             "translation-cache-db",
             mode

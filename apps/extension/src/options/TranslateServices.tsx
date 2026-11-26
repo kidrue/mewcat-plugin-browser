@@ -67,6 +67,7 @@ import {
     canExplicitlyConfigureVision
 } from "./BailianOfficialEndpointFields"
 import { AI_MODEL_UI_LIST } from "./constants"
+import { MewCatQuota } from "./MewCatQuota"
 
 const ModelListContainer = styled.div`
     display: grid;
@@ -877,6 +878,9 @@ export const TranslateServices: React.FunctionComponent = () => {
                         placeholder="选择服务"
                     />
                 </FormRow>
+                {config.currentModel === MEWCAT_TRANSLATE_MODEL_ID && (
+                    <MewCatQuota />
+                )}
             </OptionsSection>
             {hasModels ? (
                 <ModelListContainer>

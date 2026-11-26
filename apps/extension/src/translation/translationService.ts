@@ -1,7 +1,8 @@
 import {
     GOOGLE_TRANSLATE_MODEL_ID,
     MEWCAT_TRANSLATE_MODEL_ID,
-    MICROSOFT_TRANSLATE_MODEL_ID
+    MICROSOFT_TRANSLATE_MODEL_ID,
+    platformNameMap
 } from "@/constants/translationServices"
 import type { MewCatCompletionSender } from "@/messaging/mewcatCompletion"
 import type {
@@ -10,7 +11,9 @@ import type {
 } from "@/messaging/modelGatewayContracts"
 import { PROVIDER_REGISTRY } from "@/model-management/providers"
 import { resolveTranslationServiceId } from "@/state/translationService"
+import { recordTextTranslationUsage } from "@/token-usage/textTranslationUsage"
 import type { AiRole, BaseModel, Message } from "@/types"
+import { splitTranslationResults } from "@/utils/help"
 
 import {
     GoogleTranslator,
@@ -46,6 +49,7 @@ export interface TranslationCallOptions {
     pageTitle?: string
     context?: string
     pageContext?: PageRoleContext
+    sourceCharacterCounts?: readonly number[]
 }
 
 export interface TranslationServiceDependencies {
@@ -139,6 +143,47 @@ export const getSelectedGenerativeModel = (
 const getGoogleTranslator = (dependencies: TranslationServiceDependencies) =>
     new GoogleTranslator(dependencies.googleRequestSender)
 
+function countTranslatedCharacters(
+    method: "translateText" | "translateBatch",
+    messages: Message[],
+    translated: string,
+    sourceCharacterCounts?: readonly number[]
+): number {
+    if (!translated.trim()) {
+        return 0
+    }
+    const source = messages
+        .filter(
+            message => message.role !== "system" && message.role !== "assistant"
+        )
+        .map(message => message.content)
+    if (method === "translateText") {
+        return source.reduce(
+            (total, text) => total + (text.trim() ? text.length : 0),
+            0
+        )
+    }
+
+    const segments = source.flatMap(text => text.split("\n\n%%\n\n"))
+    const results = splitTranslationResults(translated)
+    // An omitted separator leaves the original segment positions ambiguous.
+    if (segments.length !== results.length) {
+        return 0
+    }
+    const counts =
+        sourceCharacterCounts?.length === segments.length
+            ? sourceCharacterCounts
+            : undefined
+    return segments.reduce(
+        (total, text, index) =>
+            total +
+            (text.trim() && results[index].trim()
+                ? (counts?.[index] ?? text.length)
+                : 0),
+        0
+    )
+}
+
 function translateWithService(
     method: "translateText" | "translateBatch",
     config: TranslationRuntimeConfig,
@@ -148,25 +193,64 @@ function translateWithService(
     dependencies: TranslationServiceDependencies
 ): Promise<string> {
     const serviceId = resolveTranslationServiceId(config)
+
+    async function translateAndRecord(
+        translation: Promise<string>,
+        usageServiceId: string,
+        serviceName: string
+    ): Promise<string> {
+        const result = await translation
+        void Promise.resolve()
+            .then(() => {
+                const characters = countTranslatedCharacters(
+                    method,
+                    messages,
+                    result,
+                    options.sourceCharacterCounts
+                )
+                if (characters > 0) {
+                    return recordTextTranslationUsage({
+                        serviceId: usageServiceId,
+                        serviceName,
+                        characters
+                    })
+                }
+            })
+            .catch(() => {})
+        return result
+    }
+
     if (serviceId === GOOGLE_TRANSLATE_MODEL_ID) {
-        return new GoogleTranslator(
-            dependencies.googleRequestSender,
-            config.sourceLanguage
-        )[method](messages, targetLanguage)
+        return translateAndRecord(
+            new GoogleTranslator(
+                dependencies.googleRequestSender,
+                config.sourceLanguage
+            )[method](messages, targetLanguage),
+            serviceId,
+            "Google Translate"
+        )
     }
     if (serviceId === MICROSOFT_TRANSLATE_MODEL_ID) {
-        return new MicrosoftTranslator(
-            dependencies.microsoftRequestSender,
-            config.sourceLanguage
-        )[method](messages, targetLanguage)
+        return translateAndRecord(
+            new MicrosoftTranslator(
+                dependencies.microsoftRequestSender,
+                config.sourceLanguage
+            )[method](messages, targetLanguage),
+            serviceId,
+            "微软翻译"
+        )
     }
     if (serviceId === MEWCAT_TRANSLATE_MODEL_ID) {
-        return new MewCatTranslator(dependencies.mewcatCompletionSender, {
-            aiRole: resolvePageAiRole(config, options.pageContext),
-            sourceLanguage: config.sourceLanguage,
-            context: config.enableContext ? options.context : undefined,
-            customPrompt: config.mewcatTranslationPrompt
-        })[method](messages, targetLanguage)
+        return translateAndRecord(
+            new MewCatTranslator(dependencies.mewcatCompletionSender, {
+                aiRole: resolvePageAiRole(config, options.pageContext),
+                sourceLanguage: config.sourceLanguage,
+                context: config.enableContext ? options.context : undefined,
+                customPrompt: config.mewcatTranslationPrompt
+            })[method](messages, targetLanguage),
+            serviceId,
+            "mewCat AI 翻译"
+        )
     }
     const model = getSelectedModel(config)
     if (!model) {
@@ -174,17 +258,24 @@ function translateWithService(
     }
     const translateModel =
         method === "translateText" ? translateModelText : translateModelBatch
-    return translateModel(
-        model,
-        messages,
-        targetLanguage,
-        {
-            aiRole: resolvePageAiRole(config, options.pageContext),
-            enableThinking: config.enableThinking,
-            pageTitle: options.pageTitle,
-            sourceLanguage: config.sourceLanguage
-        },
-        dependencies.modelGatewaySender
+    const isCustom = model.params.isOfficial === false
+    return translateAndRecord(
+        translateModel(
+            model,
+            messages,
+            targetLanguage,
+            {
+                aiRole: resolvePageAiRole(config, options.pageContext),
+                enableThinking: config.enableThinking,
+                pageTitle: options.pageTitle,
+                sourceLanguage: config.sourceLanguage
+            },
+            dependencies.modelGatewaySender
+        ),
+        isCustom
+            ? `custom:${model.id}`
+            : `provider:${model.type.toLowerCase()}`,
+        isCustom ? model.name || "未命名模型" : platformNameMap[model.type]
     )
 }
 

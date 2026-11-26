@@ -708,7 +708,15 @@ export class ImmersiveTranslator {
                         }
                     ],
                     targetLanguage,
-                    { pageTitle: document.title, context }
+                    {
+                        pageTitle: document.title,
+                        context,
+                        sourceCharacterCounts: nodes.map(
+                            node =>
+                                node.sourceCharacterCount ??
+                                node.originText.length
+                        )
+                    }
                 )
                 return splitTranslationResults(result, nodes.length)
             },
@@ -1874,6 +1882,12 @@ export class ImmersiveTranslator {
                     this.targetLanguage,
                     {
                         pageTitle: document.title,
+                        sourceCharacterCounts: messageBatch.map(
+                            message =>
+                                sourceSnapshots.get(message.id)?.node
+                                    .sourceCharacterCount ??
+                                message.content.length
+                        ),
                         context: this.getPageTranslationContext()
                     }
                 )

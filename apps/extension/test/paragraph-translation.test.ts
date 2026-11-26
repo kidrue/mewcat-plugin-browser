@@ -187,6 +187,18 @@ describe("paragraph translation", () => {
             document.querySelector(".mewcat-wrapper code")?.textContent
         ).toBe("new command")
     })
+    it("forwards the original character count without generated markup", async () => {
+        document.body.innerHTML =
+            '<article><p>Text 😀 <a href="/example">useful link</a> <code>not sent</code> ends.</p></article>'
+        translator = new ImmersiveTranslator(config)
+        await translator.translateParagraph(document.querySelector("p")!)
+        await vi.advanceTimersByTimeAsync(200)
+
+        const [, messages, , options] = service.translate.mock.calls[0]
+        expect(messages[0].content).toMatch(/<a\d+>useful link<\/a\d+>/)
+        expect(messages[0].content).toMatch(/@\d+#/)
+        expect(options.sourceCharacterCounts).toEqual([23])
+    })
     it("preserves block-level code descendants instead of extracting their text", async () => {
         document.body.innerHTML =
             '<article><div id="root">Normal paragraph text<div role="code">secret_code_content</div><pre>another_secret</pre>Paragraph ending.</div></article>'

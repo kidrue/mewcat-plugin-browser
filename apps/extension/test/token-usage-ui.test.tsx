@@ -7,13 +7,50 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
     clear: vi.fn(),
-    read: vi.fn()
+    read: vi.fn(),
+    clearCharacters: vi.fn(),
+    readCharacters: vi.fn()
 }))
 
 vi.mock("../src/token-usage/storage.ts", () => ({
     clearTokenUsage: mocks.clear,
     readTokenUsage: mocks.read
 }))
+
+vi.mock("@/messaging", () => ({
+    sendMessage: (topic: string, request: { type: string }) => {
+        if (topic === "text-translation-usage") {
+            if (request.type === "read") {
+                return mocks.readCharacters()
+            }
+            if (request.type === "clear") {
+                return mocks.clearCharacters()
+            }
+        }
+        throw new Error("Unexpected background message")
+    }
+}))
+
+const characterEntries = [
+    {
+        date: "2026-09-08",
+        serviceId: "google",
+        serviceName: "Google Translate",
+        characters: 75
+    },
+    {
+        date: "2026-09-09",
+        serviceId: "mewcat",
+        serviceName: "mewCat",
+        characters: 1200
+    },
+    {
+        date: "2026-09-02",
+        serviceId: "google",
+        serviceName: "Google Translate",
+        characters: 30
+    }
+]
 
 const act = (
     React as typeof React & {
@@ -33,6 +70,14 @@ describe("token usage options page", () => {
         return button!
     }
 
+    const getCharacterSection = () => {
+        const section = Array.from(container.querySelectorAll("section")).find(
+            item => item.querySelector("h3")?.textContent === "翻译字符统计"
+        )
+        expect(section).toBeDefined()
+        return section!
+    }
+
     beforeEach(() => {
         const dom = new JSDOM("<!doctype html><html><body></body></html>", {
             url: "https://extension.test"
@@ -46,6 +91,8 @@ describe("token usage options page", () => {
         root = createRoot(container)
         mocks.clear.mockReset()
         mocks.read.mockReset()
+        mocks.clearCharacters.mockReset().mockResolvedValue(undefined)
+        mocks.readCharacters.mockReset().mockResolvedValue([])
         mocks.read.mockResolvedValue({
             version: 1,
             entries: [
@@ -205,5 +252,123 @@ describe("token usage options page", () => {
         expect(container.querySelector('[role="alert"]')).toBeNull()
         expect(container.textContent).toContain("暂无 token 用量记录")
         expect(container.querySelector("table")).toBeNull()
+    })
+
+    it("shows local character periods and service rows above the Token overview", async () => {
+        vi.setSystemTime(new Date(2026, 8, 9, 12))
+        mocks.readCharacters.mockResolvedValue(characterEntries)
+        const { TokenUsage } = await import("../src/options/TokenUsage")
+        await act(async () => root.render(<TokenUsage />))
+
+        const section = getCharacterSection()
+        const tokenOverview = container.querySelector(
+            '[aria-label="Token 用量概览"]'
+        )!
+        expect(
+            section.compareDocumentPosition(tokenOverview) &
+                window.Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBe(window.Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(
+            Array.from(section.querySelectorAll("article"), card =>
+                card.textContent?.trim()
+            )
+        ).toEqual(["今天1,200 字符", "本周1,275 字符", "本月1,305 字符"])
+        expect(
+            Array.from(
+                section.querySelectorAll("thead th"),
+                cell => cell.textContent
+            )
+        ).toEqual(["翻译服务", "今天", "本周", "本月"])
+        expect(
+            Array.from(section.querySelectorAll("tbody tr"), row =>
+                Array.from(row.children, cell => cell.textContent)
+            )
+        ).toEqual([
+            ["mewCat", "1,200", "1,200", "1,200"],
+            ["Google Translate", "0", "75", "105"]
+        ])
+        expect(section.querySelector("time")?.dateTime).toBe("2026-09-09")
+        expect(section.textContent).toContain("本机时间")
+        expect(section.textContent).toContain("新版开始记录")
+    })
+
+    it("shows unavailable character numbers on storage failure while keeping Token data visible", async () => {
+        mocks.readCharacters.mockRejectedValue(new Error("Storage unavailable"))
+        const { TokenUsage } = await import("../src/options/TokenUsage")
+        await act(async () => root.render(<TokenUsage />))
+
+        const section = getCharacterSection()
+        expect(section.querySelector('[role="alert"]')?.textContent).toMatch(
+            /无法读取/
+        )
+        expect(section.querySelector("table")).toBeNull()
+        expect(
+            Array.from(section.querySelectorAll("article"), card =>
+                card.textContent?.trim()
+            )
+        ).toEqual(["今天— 字符", "本周— 字符", "本月— 字符"])
+        expect(section.textContent).not.toContain("暂无")
+        expect(getButton("清空字符统计").disabled).toBe(true)
+        expect(container.textContent).toContain("GPT Test")
+        expect(getButton("清空统计").disabled).toBe(false)
+    })
+
+    it("keeps clearing disabled until the current statistics read completes", async () => {
+        let finishDiscardedRead!: (entries: typeof characterEntries) => void
+        let finishCurrentRead!: (entries: typeof characterEntries) => void
+        mocks.readCharacters
+            .mockReturnValueOnce(
+                new Promise(resolve => {
+                    finishDiscardedRead = resolve
+                })
+            )
+            .mockReturnValueOnce(
+                new Promise(resolve => {
+                    finishCurrentRead = resolve
+                })
+            )
+        const { TokenUsage } = await import("../src/options/TokenUsage")
+        await act(async () =>
+            root.render(
+                <React.StrictMode>
+                    <TokenUsage />
+                </React.StrictMode>
+            )
+        )
+        await act(async () => finishDiscardedRead(characterEntries))
+        expect(getButton("清空字符统计").disabled).toBe(true)
+
+        await act(async () => finishCurrentRead([]))
+        expect(getCharacterSection().textContent).toContain("暂无翻译字符记录")
+    })
+
+    it("retains character rows on clear failure and refreshes after a successful retry", async () => {
+        vi.setSystemTime(new Date(2026, 8, 9, 12))
+        mocks.readCharacters.mockResolvedValue(characterEntries)
+        mocks.clearCharacters
+            .mockRejectedValueOnce(new Error("Storage write failed"))
+            .mockImplementationOnce(async () => {
+                mocks.readCharacters.mockResolvedValue([])
+            })
+        const { TokenUsage } = await import("../src/options/TokenUsage")
+        await act(async () => root.render(<TokenUsage />))
+
+        const section = getCharacterSection()
+        await act(async () => getButton("清空字符统计").click())
+        await act(async () => getButton("确认清空字符统计").click())
+        expect(section.querySelector('[role="alert"]')?.textContent).toMatch(
+            /清空失败/
+        )
+        expect(section.querySelectorAll("tbody tr")).toHaveLength(2)
+
+        await act(async () => getButton("清空字符统计").click())
+        await act(async () => getButton("确认清空字符统计").click())
+        expect(section.querySelector('[role="alert"]')).toBeNull()
+        expect(section.querySelector('[role="status"]')?.textContent).toMatch(
+            /暂无翻译字符记录/
+        )
+        expect(section.querySelector("table")).toBeNull()
+        expect(container.textContent).toContain("GPT Test")
+        expect(mocks.clear).not.toHaveBeenCalled()
     })
 })
