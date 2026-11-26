@@ -4,11 +4,11 @@
 
 ## 运行时结构
 
-- `src/model-management/providers.ts`：供应商类型、官方 `baseURL` 与发现策略的唯一注册表。
-- `src/model-management/discovery.ts`：优先调用供应商模型接口，并用 `models.dev` 补充名称和图片输入能力。
+- `src/features/model-management/providers.ts`：供应商类型、官方 `baseURL` 与发现策略的唯一注册表。
+- `src/features/model-management/discovery.ts`：优先调用供应商模型接口，并用 `models.dev` 补充名称和图片输入能力。
 - `src/background/messages/model-gateway.ts`：统一执行文本、结构化图片、DeepL 与 DeepLX 请求，处理超时、中断和稳定错误码。
-- `src/translation/modelTranslation.ts`：构建翻译提示词并调用后台网关。
-- `src/translation/translationService.ts`：在 Google Translate、AI 模型和固定翻译引擎之间进行函数式路由。
+- `src/features/translation/modelTranslation.ts`：构建翻译提示词并调用后台网关。
+- `src/features/translation/translationService.ts`：在 Google Translate、AI 模型和固定翻译引擎之间进行函数式路由。
 
 ## 模型列表
 

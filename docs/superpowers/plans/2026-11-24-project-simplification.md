@@ -114,3 +114,17 @@
 - 检查覆盖可以从文件发现列表核对，生产包能够加载，性能指标可用固定夹具复测。
 
 建议先审阅第一批。代码清理通过前后对照即可验收。运行路径改动额外提供实测收益，并以功能等价验证作为合入条件。
+
+## Knip 清理保留记录
+
+| 保留项 | 用途 |
+| --- | --- |
+| `apps/extension/src/features/translation/ListenEvent.ts` | 保留翻译事件监听模块，路径已随翻译功能目录迁移。 |
+| `apps/extension/scripts/fixme.mjs` | 保留手动扫描待办标记的脚本。 |
+| `apps/extension/scripts/pre-commit.mjs`、`husky`、`zx` | 根目录 Husky 在提交前调用脚本，脚本通过 `zx` 依次执行格式、扩展 ESLint、共享包构建、扩展类型和拼写检查。 |
+| `@floating-ui/core` | 扩展保留精确的直接依赖版本 `1.7.3`。 |
+| `eslint-config-prettier`、`eslint-plugin-prettier` | 保留 ESLint 与 Prettier 的集成依赖。 |
+| `@types/styled-components` | 保留扩展的 styled-components 类型依赖。 |
+| `esbuild` | 保留扩展和服务端的直接构建依赖，以及共享客户端的浏览器打包依赖。服务端 Docker 构建会显式重建 esbuild。 |
+
+已有检出的仓库可在根目录运行 `pnpm prepare` 启用钩子，再运行 `git hook run pre-commit` 验证。

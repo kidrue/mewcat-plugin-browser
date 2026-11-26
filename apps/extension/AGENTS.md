@@ -25,51 +25,84 @@
 
 ---
 
-## 目录结构
+## Agent 编码规范
 
+### `src` 目录结构
+
+| 目录 | 职责 |
+| --- | --- |
+| `entrypoints/` | 存放 WXT 一级入口，负责注册、初始化和挂载。 |
+| `pages/` | 组织 `options`、`popup`、`sidepanel`、`feedback` 的页面布局与页面级状态。 |
+| `components/` | 存放通用 UI 组件和可复用的业务组件。 |
+| `features/` | 按业务组织翻译、图片翻译、页面总结、阅读和用量统计等能力。 |
+| `hooks/` | 存放跨组件复用的自定义 Hook。 |
+| `contexts/` | 存放 React Context、Provider 组件和对应的读取 Hook。 |
+| `state/` | 存放全局状态、状态更新和持久化逻辑。 |
+| `services/` | 封装 API 请求、监控和外部服务调用。 |
+| `messaging/` | 存放扩展各运行环境之间的消息协议、类型和通信封装。 |
+| `background/` | 处理后台任务、浏览器事件和后台消息。 |
+| `contents/` | 负责网页注入、DOM 集成和页面生命周期管理。 |
+| `types/` | 存放跨模块共享的 TypeScript 类型。 |
+| `constants/` | 存放跨模块共享的常量和固定配置。 |
+| `utils/` | 存放跨模块复用的工具函数。 |
+| `styles/` | 存放全局主题、CSS 变量和共享样式。 |
+| `public/` | 存放扩展使用的静态资源。 |
+| `docs/` | 存放与源码直接相关的实现说明。 |
+
+### 组件目录与导出
+
+`src/components/` 根目录只允许 `index.ts` 作为独立文件。组件目录内的主组件、原子组件和辅助文件同级平铺。
+
+```text
+components/
+├── index.ts
+└── TranslationRolePicker/
+    ├── index.ts
+    ├── TranslationRolePicker.tsx
+    ├── PinnedRoleTag.tsx
+    ├── types.ts
+    ├── constants.ts
+    ├── utils.ts
+    └── styles.ts
 ```
-src/
-├── background/          # Service Worker（MV3 后台脚本）
-│   ├── index.ts         # 右键菜单、消息路由
-│   ├── config/          # canvas-sites、hotlink-sites 配置
-│   ├── lib/             # hotlink-dnr（声明式网络请求规则）
-│   └── messages/        # 消息处理器（translate-request、translate-image、canvas-hook-event、inject-main-world-hook）
-│
-├── contents/            # 注入页面的 Content Scripts
-│   ├── initialize.tsx              # 语言检测与初始化
-│   ├── TranslationControlCenter.tsx # 主翻译控制器（浮动按钮）
-│   ├── selectionTranslate.tsx      # 划词翻译
-│   ├── imageTranslate.tsx          # 图片翻译 UI
-│   ├── MewCat.tsx                  # mewCat 页面 token 同步脚本
-│   ├── bridges/canvas-hook-bridge.ts
-│   └── inject/canvas-image-hook.ts
-│
-├── entrypoints/         # WXT 入口（background、content scripts、popup、options、sidepanel）
-├── messaging/           # 类型安全的扩展消息协议
-├── popup/               # 弹出窗口（点击扩展图标）
-├── sidepanel/           # 侧边栏
-├── options/             # 设置页（Basic、TranslateServices、Selection、Image、About）
-│
-├── components/          # 可复用 React 组件（25+）
-├── translation/         # 核心翻译引擎（见下方详述）
-├── state/               # Jotai 状态管理
-├── services/            # 服务层（HTTP 请求）
-├── types/               # TypeScript 类型定义
-├── constants/           # 应用常量
-├── utils/               # 工具函数
-└── hooks/               # React Hooks
+
+- `index.ts` 是组件目录的公开导出入口。外部从组件目录导入，目录内的文件彼此直接引用。
+- 主组件组装界面和协调交互。原子组件的职责应单一，例如 `PinnedRoleTag.tsx` 负责展示一枚常用角色标签并处理选择和移除操作。
+- `types.ts` 存放 Props 和组件专用类型。`constants.ts` 存放固定配置。`utils.ts` 存放纯工具函数。`styles.ts` 存放组件样式。
+- 按实际内容创建辅助文件。类型、常量和工具需要跨模块复用时，迁入对应的公共目录。
+- `index.ts` 导出公开成员。整个工具模块都需要公开时，可以写 `export * from "./utils"`。
+
+### React 组件与 Context
+
+主组件和原子组件统一使用具名的 `export const Test: React.FC<TestProps>` 声明。无 Props 的组件可以写 `React.FC`。
+
+```tsx
+export const Test: React.FC<TestProps> = ({ label }) => {
+    return <span>{label}</span>
+}
 ```
+
+需要 `React.memo` 时，可以声明内部组件，再具名导出包装后的组件。需要向外透传 DOM 或组件 `ref` 时，可以具名导出 `React.forwardRef` 包装的组件，保持 React 18 的 `ref` 接口。
+
+自定义 Context 必须封装为独立的 Provider 组件。Provider 负责管理状态、组织上下文值并渲染 `children`，便于独立优化。需要统一读取方式时，可提供相应的自定义 Hook。
+
+### Hook、组件内函数与注释
+
+- Hook 按类型分组，不同组之间空一行。建议顺序为 `useContext`、`useState`、`useRef`、`useMemo`、`useCallback`、`useEffect`，有先后依赖时按实际依赖顺序排列。
+- 在组件渲染体内声明的具名函数统一使用 `useCallback`。Hook 自身的回调以及 `map`、`filter` 的就地回调可以直接传入。
+- `useMemo`、`useCallback` 和 `useEffect` 的依赖数组按实际引用填写，并遵循 `react-hooks/exhaustive-deps`。
+- 每条代码注释用一句话写完，控制在一行。优先说明业务意图、兼容约束或容易误判的边界。
 
 ---
 
 ## 核心架构
 
-### 翻译引擎（src/translation/）
+### 翻译引擎（`src/features/translation/`）
 
 ```
 ImmersiveTranslator.ts       # 沉浸式翻译编排器（入口）
-UniversalTranslator.ts       # 通用翻译器，对接各 LLM 平台
-TranslationServiceManager.ts # 根据配置选择并管理翻译器实例
+translationService.ts        # 根据配置选择翻译服务
+modelTranslation.ts          # 构建提示词并调用后台模型网关
 DOMTraverser.ts              # DOM 树遍历与文本节点提取
 DomSelector.ts               # DOM 元素选择与去重
 MutationObserverManager.ts   # 动态内容监听（SPA 页面）
@@ -83,8 +116,8 @@ cache/                       # 两级缓存（L1 内存 + L2 IndexedDB）
 2. `DOMTraverser` 遍历 DOM，提取待翻译文本节点
 3. `RuleEngine` 按站点规则过滤
 4. `TieredTranslationCache` 查缓存，命中则直接渲染
-5. `TranslationServiceManager` 选取当前模型对应的 `UniversalTranslator`
-6. `UniversalTranslator` 构建请求并调用第三方 LLM API
+5. `translationService.ts` 根据配置选择翻译服务
+6. `modelTranslation.ts` 构建生成式模型请求，后台模型网关负责调用对应 API
 7. 翻译结果写入缓存，`ImmersiveTranslator` 将译文插入 DOM
 
 ### 状态管理（src/state/，Jotai）
@@ -101,7 +134,6 @@ cache/                       # 两级缓存（L1 内存 + L2 IndexedDB）
 
 ### 服务层（src/services/）
 
-- **request.ts**：`mewCatRequest`（Axios 实例），含 401 自动刷新 token 拦截器
 - **user.ts**：调用后端接口获取用户信息、订阅额度、模型列表
 - **imageTranslation.ts**：图片翻译服务
 
@@ -131,7 +163,7 @@ OPENAI / MOONSHOT / GEMINI / BASE / DEEPL / DEEPLX
 }
 ```
 
-**官方 / 自定义**：`isOfficial` 为 true 时 baseUrl 不落库，统一从 `PLATFORM_OFFICIAL_BASE_URLS`（`src/constants/model.ts`）取；自定义模式下才使用 `params.baseUrl`。用户在设置页填写 API Key，`UniversalTranslator` 直接调用对应平台 API。
+**官方与自定义地址**。官方端点由 `src/features/model-management/providers.ts` 提供。自定义模式读取 `params.baseUrl`，模型网关按当前模型配置调用 API。
 
 ### CSS 类名 / DOM 属性前缀
 
