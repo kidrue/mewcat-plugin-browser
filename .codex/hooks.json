@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d=''; process.stdin.on('data',c=>d+=c); process.stdin.on('end',()=>{ const f=(JSON.parse(d).tool_input||{}).file_path||''; if(/^src[\\\\/]/.test(f)) require('child_process').execSync('pnpm format',{stdio:'inherit',cwd:process.env.CLAUDE_PROJECT_DIR||process.cwd()}); });\"",
+            "statusMessage": "Running pnpm format..."
+          }
+        ]
+      }
+    ]
+  }
+}

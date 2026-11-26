@@ -14,6 +14,12 @@ export default defineConfig({
         baseIconPath: "public/assets/icon.png"
     },
     vite: env => ({
+        server: {
+            watch: {
+                // 等编辑器写完文件，避免热更新缓存写入中的空模块。
+                awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 20 }
+            }
+        },
         build: { sourcemap: env.mode === "production" ? "hidden" : false }
     }),
     hooks: {
