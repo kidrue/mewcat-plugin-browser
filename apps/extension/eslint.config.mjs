@@ -1,4 +1,5 @@
 import js from "@eslint/js"
+import prettierRecommended from "eslint-plugin-prettier/recommended"
 import reactHooks from "eslint-plugin-react-hooks"
 import tseslint from "typescript-eslint"
 
@@ -56,8 +57,13 @@ export default [
                 }
             ],
             // 强化：if 块内有 return 时，禁用 else if（强制用独立 if）
-            "no-else-return": ["warn", { allowElseIf: false }], // allowElseIf: false 彻底禁用 else if
-            // 可选：强制 if 加花括号（避免单行 if 语法歧义）
+            "no-else-return": ["warn", { allowElseIf: false }] // allowElseIf: false 彻底禁用 else if
+        }
+    },
+    prettierRecommended,
+    {
+        rules: {
+            // 保留与 Prettier 兼容的花括号检查。
             curly: ["warn", "all"]
         }
     }

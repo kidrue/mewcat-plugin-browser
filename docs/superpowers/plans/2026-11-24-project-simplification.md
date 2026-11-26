@@ -123,8 +123,9 @@
 | `apps/extension/scripts/fixme.mjs` | 保留手动扫描待办标记的脚本。 |
 | `apps/extension/scripts/pre-commit.mjs`、`husky`、`zx` | 根目录 Husky 在提交前调用脚本，脚本通过 `zx` 依次执行格式、扩展 ESLint、共享包构建、扩展类型和拼写检查。 |
 | `@floating-ui/core` | 扩展保留精确的直接依赖版本 `1.7.3`。 |
-| `eslint-config-prettier`、`eslint-plugin-prettier` | 保留 ESLint 与 Prettier 的集成依赖。 |
-| `@types/styled-components` | 保留扩展的 styled-components 类型依赖。 |
+| `eslint-config-prettier`、`eslint-plugin-prettier` | 扩展 ESLint 通过 `eslint-plugin-prettier/recommended` 启用两项依赖，报告 Prettier 格式错误并关闭冲突规则。 |
 | `esbuild` | 保留扩展和服务端的直接构建依赖，以及共享客户端的浏览器打包依赖。服务端 Docker 构建会显式重建 esbuild。 |
 
 已有检出的仓库可在根目录运行 `pnpm prepare` 启用钩子，再运行 `git hook run pre-commit` 验证。
+
+后续已移除 `@types/styled-components`，扩展使用 `styled-components@6.1.8` 自带的类型。
