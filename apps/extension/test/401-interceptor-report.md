@@ -1,5 +1,7 @@
 # services/request.ts 401 响应拦截器分析报告
 
+> 本文记录旧版实现。`src/services/request.ts` 已在 Knip 清理中移除，相关手工测试仍可用于运行各自的模拟场景。
+
 **日期**: 2025-12-05
 **测试脚本**: `test/test-401-interceptor.ts`
 **测试结果**: ✅ 所有测试通过

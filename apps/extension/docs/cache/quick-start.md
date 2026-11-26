@@ -190,7 +190,6 @@ src/translation/cache/
 ├── TieredTranslationCache.ts    # 分层缓存管理器
 ├── TranslationCacheFactory.ts   # 缓存工厂
 ├── index.ts                     # 统一导出
-├── examples.ts                  # 使用示例（9个）
 ├── __tests__/
 │   └── cache.test.ts           # 测试套件
 ├── README.md                    # 完整文档
@@ -294,7 +293,6 @@ await runAllTests()
 - **CACHE_SYSTEM_COMPLETION_REPORT.md** (787行) - 项目完成报告
 
 ### 示例代码
-- **examples.ts** (410行) - 9个完整的使用示例
 - **cache.test.ts** (310行) - 完整的测试套件
 
 ---
@@ -456,7 +454,6 @@ const cache = createStorageCache()
 
 ### 文档资源
 - `src/translation/cache/README.md` - 完整API文档
-- `src/translation/cache/examples.ts` - 使用示例
 - `src/translation/ImmersiveTranslator.integration.md` - 集成指南
 
 ### 测试资源
@@ -470,7 +467,7 @@ const cache = createStorageCache()
 在集成前，请确认：
 
 - [ ] 已阅读 README.md
-- [ ] 已查看 examples.ts 中的示例
+- [ ] 已查看本指南的快速开始示例
 - [ ] 已阅读集成指南
 - [ ] 已在浏览器中运行测试
 - [ ] 已理解缓存键的生成规则
@@ -491,7 +488,7 @@ const cache = createStorageCache()
 ✅ **可维护性** - 模块化设计
 ✅ **可扩展性** - 灵活的配置系统
 
-**开始使用**: 参考本指南的"快速开始"部分，或查看 `examples.ts` 中的示例代码。
+参考本指南的“快速开始”部分查看示例代码。
 
 **需要帮助**: 查看 `README.md` 获取完整文档，或运行测试套件验证功能。
 

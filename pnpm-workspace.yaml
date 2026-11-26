@@ -3,7 +3,6 @@ packages:
   - packages/*
 
 onlyBuiltDependencies:
-  - '@bufbuild/buf'
   - '@parcel/watcher'
   - '@swc/core'
   - '@prisma/engines'

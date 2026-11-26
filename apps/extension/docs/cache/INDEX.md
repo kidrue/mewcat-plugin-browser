@@ -61,7 +61,6 @@
 ### 代码位置
 - **核心代码**: `src/translation/cache/`
 - **测试代码**: `src/translation/cache/__tests__/`
-- **使用示例**: `src/translation/cache/examples.ts`
 
 ### 外部链接
 - [项目仓库](https://github.com/NoEdgeAI/SideTranslateBrowserPlugin)

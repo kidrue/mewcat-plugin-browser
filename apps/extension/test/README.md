@@ -25,9 +25,6 @@ pnpm exec vitest run --config test/vitest.image-translation.config.ts test/viewp
 ```
 test/
 ├── README.md                    # 本文件：测试目录说明
-├── test-rpc.ts                  # gRPC/Connect RPC 测试（Node.js）
-├── test-rpc.html                # gRPC/Connect RPC 测试（浏览器版）
-├── test-server.mjs              # RPC 测试开发服务器
 ├── test-401-interceptor.ts      # 401 响应拦截器测试 ✨ NEW
 ├── test-token-refresh.ts        # Token 刷新机制测试（需要额外依赖）
 ├── test-token-refresh.html      # Token 刷新测试（浏览器版）
@@ -37,49 +34,10 @@ test/
 
 ## 测试文件说明
 
-### 1. RPC 调用测试
-
-**test-rpc.ts** - gRPC/Connect RPC 测试（命令行）
-- 测试 ChatService 的 completion 方法
-- 使用 @connectrpc/connect 和 @connectrpc/connect-web
-- 连接到开发环境 API: `https://api-dev.doc2x.noedgeai.com`
-- 测试场景：
-  - 调用 completion API 进行翻译
-
-运行方式：
-```bash
-pnpm test:rpc
-```
-
-**test-rpc.html** - gRPC/Connect RPC 测试（浏览器可视化）
-- 可视化测试界面，支持配置和实时查看结果
-- 支持测试两个接口：
-  - Completion 测试
-  - CommonTranslate 测试
-- 功能：
-  - 配置 API 端点
-  - 选择模型（DEEPSEEK_CHAT、GLM4_PLUS、DOUBAO_1d5_PRO）
-  - 调整温度参数
-  - 实时日志输出
-
-运行方式：
-```bash
-pnpm test:rpc:web
-# 自动在浏览器中打开 http://localhost:3333
-```
-
-**test-server.mjs** - 开发服务器
-- 为 test-rpc.html 提供本地服务器
-- 端口：3333
-- 自动打开浏览器
-- 支持 CORS
-
----
-
-### 2. Token 刷新测试
+### 1. Token 刷新测试
 
 **test-401-interceptor.ts** - 401 响应拦截器测试 ✨ **推荐使用**
-- **完全模拟** `src/services/request.ts` 中的 401 拦截器实现
+- 在测试脚本内模拟旧版 401 拦截器的行为
 - **无需额外依赖**，使用 Node.js 内置功能和 axios
 - 测试场景：
   1. ✅ 单个请求触发 401，自动刷新 token
@@ -97,7 +55,7 @@ pnpm run test:401
 ---
 
 **test-token-refresh.ts** - Token 刷新机制测试（旧版）
-- 测试 `src/services/request.ts` 中的 401 响应拦截器
+- 在测试脚本内复现旧版 401 响应拦截器
 - 验证 token 自动刷新机制
 - 测试场景：
   1. 单个请求触发 401，自动刷新 token
@@ -118,7 +76,7 @@ pnpm run test:401
 
 ---
 
-### 3. 已归档测试
+### 2. 已归档测试
 
 **archive/web3-test.js** - Web3 连接测试
 - 原因：项目已移除 web3 依赖
@@ -138,18 +96,6 @@ pnpm add -D web3
 ---
 
 ## 如何运行测试
-
-### 运行 RPC 测试（命令行）
-```bash
-pnpm test:rpc
-```
-
-### 运行 RPC 测试（浏览器）
-```bash
-pnpm test:rpc:web
-# 或
-pnpm run test:rpc:web
-```
 
 ### 运行 401 拦截器测试 ✨ 推荐
 ```bash
@@ -184,17 +130,14 @@ pnpm run test:401
 
 ## 注意事项
 
-1. **API Token**: test-rpc.ts 中包含测试用的 Bearer Token，仅用于开发测试
-2. **环境要求**:
+1. **环境要求**:
    - Node.js 版本：建议使用项目指定版本
    - 包管理器：强制使用 pnpm
-3. **Mock 依赖**: token 刷新测试需要 `axios-mock-adapter`，暂未添加到项目依赖中
-4. **浏览器测试**: HTML 测试文件可直接在浏览器中打开，或通过本地服务器访问
+2. **Mock 依赖**: token 刷新测试需要 `axios-mock-adapter`，暂未添加到项目依赖中
+3. **浏览器测试**: HTML 测试文件可直接在浏览器中打开，或通过本地服务器访问
 
 ---
 
 ## 相关文档
 
-- [Connect RPC 文档](https://connectrpc.com/docs/web/getting-started)
 - [Axios 拦截器文档](https://axios-http.com/docs/interceptors)
-- [项目 API 文档](https://api-dev.doc2x.noedgeai.com)

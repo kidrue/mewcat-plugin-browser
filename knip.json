@@ -1,0 +1,45 @@
+{
+    "$schema": "https://knip.dev/schema.json",
+    "workspaces": {
+        ".": {
+            "entry": ["scripts/require-docker.mjs"],
+            "project": ["{scripts,tests}/**/*.{js,mjs,cjs}"],
+            "ignoreBinaries": ["dev"]
+        },
+        "apps/extension": {
+            "wxt": {
+                "entry": ["src/entrypoints/**/*.{ts,tsx,html}"]
+            },
+            "vitest": {
+                "config": ["test/vitest.image-translation.config.ts"]
+            },
+            "entry": [
+                "changelog.config.cjs",
+                "example/app.js",
+                "test/fixtures/viewport-translation.html",
+                "scripts/gen-crx-key.cjs",
+                "scripts/pre-commit.mjs"
+            ],
+            "ignoreDependencies": ["git-cz"],
+            "project": [
+                "{src,scripts,test,example}/**/*.{ts,tsx,js,mjs,cjs}",
+                "*.{ts,mjs,cjs}"
+            ]
+        },
+        "apps/service": {
+            "ignoreDependencies": ["@prisma/client"],
+            "entry": [
+                "scripts/{analytics,export-allowed-origins,update-runtime-env}.ts"
+            ],
+            "project": [
+                "{src,scripts,tests,client}/**/*.{ts,tsx,mjs,js}",
+                "*.ts",
+                "prisma/**/*.prisma",
+                "!src/generated/**"
+            ]
+        },
+        "packages/*": {
+            "project": ["src/**/*.ts"]
+        }
+    }
+}
