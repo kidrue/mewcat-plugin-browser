@@ -6,6 +6,8 @@ import { initializeSentry } from "@/monitoring"
 import SidePanel from "@/sidepanel"
 import { registerUiFonts } from "@/utils/fonts"
 
+import "./style.css"
+
 initializeSentry({ runtimeContext: "sidepanel", enableReplay: true })
 registerUiFonts()
 

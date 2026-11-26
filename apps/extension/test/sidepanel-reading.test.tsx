@@ -5,21 +5,34 @@ import { act } from "react-dom/test-utils"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 
 import SidePanel from "../src/sidepanel"
+import { AiRole } from "../src/types/config"
 
 const mocks = vi.hoisted(() => ({ translate: vi.fn() }))
+const config = {
+    targetLanguage: "ja",
+    detectedLanguage: "en",
+    currentModel: "mewcat-translate",
+    aiModelList: [],
+    aiRole: AiRole.NEWS_TRANSLATOR,
+    enableAutoAiRole: true
+}
 vi.mock("@/state/config", () => ({
-    useConfig: () => ({ targetLanguage: "ja", detectedLanguage: "en" })
+    useConfig: () => config
 }))
-vi.mock("@/translation/translationService", () => ({
+vi.mock("@/translation/translationService", async importOriginal => ({
+    ...(await importOriginal<
+        typeof import("@/translation/translationService")
+    >()),
     translateText: mocks.translate
 }))
-vi.mock("@/components/SkyArtwork", () => ({ SkyMascot: () => null }))
 vi.mock("@/components/BrandLogo", () => ({ default: () => null }))
 vi.mock("@/components/TranslationMark", () => ({ default: () => null }))
 
 let root: ReturnType<typeof createRoot>
 beforeEach(() => {
     mocks.translate.mockReset().mockResolvedValue("译文")
+    config.currentModel = "mewcat-translate"
+    localStorage.clear()
 })
 afterEach(async () => {
     await act(async () => root?.unmount())
@@ -46,6 +59,33 @@ async function input(text: string) {
         )!.set!.call(el, text)
         el.dispatchEvent(new Event("input", { bubbles: true }))
     })
+}
+
+function roleSelect() {
+    return document.querySelector<HTMLSelectElement>(
+        'select[aria-label="翻译角色"]'
+    )!
+}
+
+async function selectRole(role: AiRole) {
+    await act(async () => {
+        const select = roleSelect()
+        select.value = role
+        select.dispatchEvent(new Event("change", { bubbles: true }))
+    })
+}
+
+async function pressEnter(options: KeyboardEventInit = {}) {
+    const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+        ...options
+    })
+    await act(async () =>
+        document.querySelector("textarea")!.dispatchEvent(event)
+    )
+    return event.defaultPrevented
 }
 
 // jsdom 不执行系统粘贴的默认插入；模拟默认编辑后发出原生 input 事件。
@@ -261,25 +301,107 @@ it("lets users retry a failed automatic translation manually", async () => {
     expect(mocks.translate).toHaveBeenCalledTimes(2)
     expect(document.body.textContent).toContain("重试译文")
 })
-it.each([{ ctrlKey: true }, { metaKey: true }])(
-    "keeps manual Enter shortcuts with %j",
+it.each([{}, { ctrlKey: true }, { metaKey: true }])(
+    "translates from the input with Enter and modifiers %j",
     async keys => {
         await render()
         await input("hello")
-        await act(async () =>
-            document
-                .querySelector("textarea")!
-                .dispatchEvent(
-                    new KeyboardEvent("keydown", {
-                        key: "Enter",
-                        bubbles: true,
-                        ...keys
-                    })
-                )
-        )
+        expect(await pressEnter(keys)).toBe(true)
         expect(mocks.translate).toHaveBeenCalledTimes(1)
     }
 )
+
+it.each([{ shiftKey: true }, { isComposing: true }])(
+    "leaves Enter to the editor when %j",
+    async keys => {
+        await render()
+        await input("hello")
+        expect(await pressEnter(keys)).toBe(false)
+        expect(mocks.translate).not.toHaveBeenCalled()
+    }
+)
+
+it("ignores repeated Enter after a translation finishes", async () => {
+    await render()
+    await input("hello")
+    await pressEnter()
+    await pressEnter({ repeat: true })
+    expect(mocks.translate).toHaveBeenCalledTimes(1)
+})
+
+it("defaults independently to standard translation", async () => {
+    await render()
+    expect(roleSelect().value).toBe(AiRole.DEFAULT)
+    await input("hello")
+    await pressEnter()
+    expect(mocks.translate.mock.calls[0][0]).toMatchObject({
+        aiRole: AiRole.DEFAULT,
+        enableAutoAiRole: false
+    })
+    expect(config.aiRole).toBe(AiRole.NEWS_TRANSLATOR)
+})
+
+it("uses the selected role for automatic paste translation", async () => {
+    vi.useFakeTimers()
+    await render()
+    await selectRole(AiRole.FREE_TRANSLATOR)
+    expect(roleSelect().value).toBe(AiRole.FREE_TRANSLATOR)
+    expect(mocks.translate).not.toHaveBeenCalled()
+    await paste("hello")
+    await finishPaste()
+    expect(mocks.translate.mock.calls[0][0]).toMatchObject({
+        aiRole: AiRole.FREE_TRANSLATOR,
+        enableAutoAiRole: false
+    })
+})
+
+it("restores pinned roles on reopen and removes unpinned tags", async () => {
+    await render()
+    await selectRole(AiRole.FREE_TRANSLATOR)
+    await act(async () => button("固定").click())
+    await act(async () => root.unmount())
+    await render()
+    expect(roleSelect().value).toBe(AiRole.DEFAULT)
+    await act(async () => button("意译大师").click())
+    expect(roleSelect().value).toBe(AiRole.FREE_TRANSLATOR)
+    expect(button("意译大师").getAttribute("aria-pressed")).toBe("true")
+    await act(async () => button("取消固定").click())
+    await act(async () => root.unmount())
+    await render()
+    expect(button("意译大师")).toBeUndefined()
+    expect(button("标准翻译")).toBeDefined()
+})
+
+it("limits engines without role support to standard translation", async () => {
+    config.currentModel = "google-translate"
+    await render()
+    expect(roleSelect().disabled).toBe(true)
+    expect(document.body.textContent).toContain("切换到支持角色的翻译服务")
+    await input("hello")
+    await pressEnter()
+    expect(mocks.translate.mock.calls[0][0]).toMatchObject({
+        currentModel: "google-translate",
+        aiRole: AiRole.DEFAULT
+    })
+})
+
+it("ignores a pending result when switching roles", async () => {
+    let resolve!: (value: string) => void
+    mocks.translate.mockReturnValueOnce(
+        new Promise<string>(done => {
+            resolve = done
+        })
+    )
+    await render()
+    await input("hello")
+    await pressEnter()
+    await selectRole(AiRole.FREE_TRANSLATOR)
+    await act(async () => resolve("旧角色译文"))
+    expect(document.body.textContent).not.toContain("旧角色译文")
+    expect(document.querySelector("textarea")!.value).toBe("hello")
+    await pressEnter()
+    expect(mocks.translate.mock.calls[1][0].aiRole).toBe(AiRole.FREE_TRANSLATOR)
+})
 it("inherits target language and rejects a result after clearing the input", async () => {
     let resolve!: (value: string) => void
     mocks.translate.mockReturnValue(

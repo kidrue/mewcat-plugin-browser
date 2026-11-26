@@ -5,14 +5,20 @@ import styled from "styled-components"
 import "@/styles/theme.scss"
 
 import { AUTO_DETECT_OPTION, languages } from "@/constants"
+import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import { useConfig } from "@/state/config"
-import { translateText } from "@/translation/translationService"
+import {
+    getSelectedGenerativeModel,
+    translateText
+} from "@/translation/translationService"
+import { AiRole } from "@/types/config"
 
 import BrandLogo from "../components/BrandLogo"
 import LoadingDots from "../components/LoadingDots"
 import NativeSelect from "../components/NativeSelect"
-import { SkyMascot } from "../components/SkyArtwork"
+import { getSkySceneUrl, SkyMascot } from "../components/SkyArtwork"
 import TranslationMark from "../components/TranslationMark"
+import { TranslationRolePicker } from "./TranslationRolePicker"
 
 // ============================================
 // Layout
@@ -20,15 +26,16 @@ import TranslationMark from "../components/TranslationMark"
 
 const Container = styled.div`
     width: 100%;
-    min-height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     background:
-        radial-gradient(
-            circle at 100% 0,
-            rgba(126, 190, 235, 0.18),
-            transparent 16rem
+        linear-gradient(
+            180deg,
+            rgba(242, 248, 254, 0.48),
+            rgba(242, 248, 254, 0.08) 85%
         ),
+        url("${getSkySceneUrl("sidepanel")}") center bottom / cover no-repeat,
         var(--bg-primary);
     font-family: var(--font-family);
     color: var(--text-primary);
@@ -100,7 +107,10 @@ const HeaderMascot = styled(SkyMascot)`
 // ============================================
 
 const TranslatePane = styled.div`
+    --translation-text-bg: rgba(255, 255, 255, 0.65);
+
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     padding: var(--space-4);
@@ -109,6 +119,7 @@ const TranslatePane = styled.div`
 `
 
 const LanguageRow = styled.div`
+    flex: none;
     display: flex;
     align-items: center;
     gap: var(--space-2);
@@ -150,6 +161,7 @@ const SwapButton = styled.button`
 `
 
 const TextAreaWrapper = styled.div`
+    flex: none;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -160,19 +172,19 @@ const StyledTextarea = styled.textarea`
     min-height: 120px;
     padding: var(--space-3);
     padding-right: var(--space-8);
-    background: var(--bg-secondary);
+    background: var(--translation-text-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
     font-family: var(--font-family);
     line-height: var(--line-height-relaxed);
     color: var(--text-primary);
-    resize: vertical;
+    resize: none;
     box-sizing: border-box;
     transition: border-color var(--transition-fast);
 
     &::placeholder {
-        color: var(--text-tertiary);
+        color: var(--text-secondary);
     }
 
     &:focus {
@@ -210,6 +222,7 @@ const ClearButton = styled.button`
 `
 
 const ActionRow = styled.div`
+    flex: none;
     display: flex;
     gap: var(--space-2);
 `
@@ -274,34 +287,42 @@ const TranslateButton = styled.button<{ $loading?: boolean }>`
 `
 
 const Divider = styled.div`
+    flex: none;
     height: 1px;
     background: var(--border-light);
 `
 
 const ResultBox = styled.div`
-    background: rgba(255, 255, 255, 0.82);
+    flex: 1 0 100px;
+    box-sizing: border-box;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--translation-text-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    min-height: 100px;
     padding: var(--space-3);
     position: relative;
 `
 
 const ResultText = styled.div<{ $empty?: boolean; $error?: boolean }>`
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     font-size: var(--font-size-sm);
     line-height: var(--line-height-relaxed);
     color: ${p =>
         p.$error
             ? "var(--error)"
             : p.$empty
-              ? "var(--text-tertiary)"
+              ? "var(--text-secondary)"
               : "var(--text-primary)"};
     white-space: pre-wrap;
     word-break: break-word;
-    min-height: 60px;
 `
 
 const ResultActions = styled.div`
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: flex-end;
@@ -359,16 +380,21 @@ const SlidePanel: React.FunctionComponent = () => {
     const [copied, setCopied] = useState(false)
     const [sourceLang, setSourceLang] = useState("auto")
     const [targetLang, setTargetLang] = useState(config.targetLanguage)
+    const [selectedRole, setSelectedRole] = useState(AiRole.DEFAULT)
+    const supportsRoles =
+        config.currentModel === MEWCAT_TRANSLATE_MODEL_ID ||
+        Boolean(getSelectedGenerativeModel(config))
+    const aiRole = supportsRoles ? selectedRole : AiRole.DEFAULT
     const requestRef = useRef(0)
     const [notice, setNotice] = useState("")
     const copyTimer = useRef<ReturnType<typeof setTimeout>>()
     const pasteTimer = useRef<ReturnType<typeof setTimeout>>()
-    const invalidate = useCallback(() => {
+    const invalidate = useCallback((keepResult = false) => {
         requestRef.current++
         clearTimeout(pasteTimer.current)
         pasteTimer.current = undefined
         setLoading(false)
-        setResult("")
+        if (!keepResult) setResult("")
         setError("")
         setNotice("")
         setCopied(false)
@@ -396,7 +422,12 @@ const SlidePanel: React.FunctionComponent = () => {
             setLoading(true)
 
             try {
-                const newConfig = { ...config, sourceLanguage: sourceLang }
+                const newConfig = {
+                    ...config,
+                    sourceLanguage: sourceLang,
+                    aiRole,
+                    enableAutoAiRole: false
+                }
 
                 const translated = await translateText(
                     newConfig,
@@ -415,7 +446,7 @@ const SlidePanel: React.FunctionComponent = () => {
                 if (request === requestRef.current) setLoading(false)
             }
         },
-        [config, sourceLang, targetLang, invalidate]
+        [config, sourceLang, targetLang, aiRole, invalidate]
     )
 
     const handleTranslate = useCallback(() => {
@@ -491,10 +522,18 @@ const SlidePanel: React.FunctionComponent = () => {
 
     const handleKeyDown = useCallback(
         (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-            if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-                e.preventDefault()
-                handleTranslate()
-            }
+            if (
+                e.key !== "Enter" ||
+                e.defaultPrevented ||
+                e.shiftKey ||
+                e.altKey ||
+                e.nativeEvent.isComposing ||
+                e.nativeEvent.keyCode === 229
+            )
+                return
+
+            e.preventDefault()
+            if (!e.repeat) handleTranslate()
         },
         [handleTranslate]
     )
@@ -552,6 +591,16 @@ const SlidePanel: React.FunctionComponent = () => {
                     </LangBox>
                 </LanguageRow>
 
+                <TranslationRolePicker
+                    value={aiRole}
+                    disabled={!supportsRoles}
+                    onChange={role => {
+                        if (role === aiRole) return
+                        invalidate(true)
+                        setSelectedRole(role)
+                    }}
+                />
+
                 <TextAreaWrapper>
                     <StyledTextarea
                         value={inputText}
@@ -565,7 +614,8 @@ const SlidePanel: React.FunctionComponent = () => {
                         }}
                         onPaste={handleTextPaste}
                         onKeyDown={handleKeyDown}
-                        placeholder="粘贴文本后自动翻译…&#10;手动输入后按 Ctrl+Enter / ⌘Enter 翻译"
+                        aria-label="原文"
+                        placeholder="粘贴文本后自动翻译…&#10;Enter 翻译，Shift+Enter 换行"
                         rows={5}
                     />
                     {inputText && (
