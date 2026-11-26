@@ -15,6 +15,7 @@ import {
     registrationSchema,
     seal,
     translationSchema,
+    USAGE_DETAILS_PATH,
     validateRequest,
     verifySigned,
     type SignedRequest
@@ -431,14 +432,22 @@ export async function buildApp({
         context.epoch = await analytics.epoch(client.id)
         return { clientId: client.id }
     })
-    secureRoute("/v1/usage", 200, async auth => {
+    async function readUsage(auth: Authenticated) {
         z.strictObject({}).parse(auth.request.data)
+        const now = Date.now()
         return {
-            usedCharacters: await store.used(clientDailyKey(auth.clientId)),
+            usedCharacters: await store.used(
+                clientDailyKey(auth.clientId, now)
+            ),
             limitCharacters: config.CLIENT_DAILY_CHARACTERS,
-            resetsAt: dayWindow().expiresAt.toISOString()
+            resetsAt: dayWindow(now).expiresAt.toISOString()
         }
-    })
+    }
+    secureRoute("/v1/usage", 200, readUsage)
+    secureRoute(USAGE_DETAILS_PATH, 200, async auth => ({
+        ...(await readUsage(auth)),
+        ipLimitCharacters: config.IP_DAILY_CHARACTERS
+    }))
     secureRoute("/v1/feedback", 201, async (auth, request) => {
         const data = feedbackSchema.parse(auth.request.data)
         await store.consumeBuckets(

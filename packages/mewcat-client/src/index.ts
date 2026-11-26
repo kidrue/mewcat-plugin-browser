@@ -33,7 +33,8 @@ export type {
     AnalyticsOverview,
     AnalyticsDevices,
     AnalyticsProfile,
-    AnalyticsCalls
+    AnalyticsCalls,
+    UsageDetails as MewCatUsageDetails
 } from "@mewcat/protocol"
 
 export type MewCatClientState = ClientState
@@ -45,6 +46,9 @@ export type MewCatTranslationClient = Pick<
     Partial<
         Pick<
             TranslationClient,
-            "queryAnalytics" | "deviceActivity" | "queryDeviceActivity"
+            | "queryAnalytics"
+            | "deviceActivity"
+            | "queryDeviceActivity"
+            | "usageDetails"
         >
     >

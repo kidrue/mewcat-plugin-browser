@@ -20,6 +20,8 @@ import {
     serverKeysSchema,
     translationResultSchema,
     translationSchema,
+    USAGE_DETAILS_PATH,
+    usageDetailsSchema,
     usageSchema,
     type AnalyticsInput,
     type ChatCompletionInput,
@@ -241,6 +243,11 @@ export class TranslationClient {
     async usage(options: RequestOptions = {}) {
         return usageSchema.parse(
             await this.request("/v1/usage", {}, false, options)
+        )
+    }
+    async usageDetails(options: RequestOptions = {}) {
+        return usageDetailsSchema.parse(
+            await this.request(USAGE_DETAILS_PATH, {}, false, options)
         )
     }
     async chatCompletions(

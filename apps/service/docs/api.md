@@ -60,6 +60,7 @@ console.log(usage);
 | `POST` | `/v1/translate` | 是 | `200` | 批量翻译文本 |
 | `POST` | `/v1/chat/completions` | 是 | `200` | 使用服务端模型生成文本，供自定义翻译和页面总结使用 |
 | `POST` | `/v1/usage` | 是 | `200` | 查询当前客户端当日字符用量 |
+| `POST` | `/v1/usage/details` | 是 | `200` | 查询当前设备用量及设备与公网 IP 每日限额 |
 | `POST` | `/v1/feedback` | 是 | `201` | 通过服务器 SMTP 发送意见反馈 |
 
 服务只接受以上路径。POST 路径不接受查询参数。
@@ -331,6 +332,10 @@ HTTP `200`，解密后的 `data`：
 | `usedCharacters` | 当日已预占的翻译输入字符数，上游失败也计入 |
 | `limitCharacters` | 当前客户端每日字符上限 |
 | `resetsAt` | 当前 UTC 日额度过期时间，ISO 8601 |
+
+## `POST /v1/usage/details`
+
+扩展通过 SDK 的 `usageDetails()` 读取免费额度提示。请求仍为签名加密的空对象，响应沿用上表的用量字段，并返回 `ipLimitCharacters`，表示同一公网 IP 共同使用的每日字符上限。此接口只返回当前设备已用字符数。
 
 ## 状态码与错误码
 

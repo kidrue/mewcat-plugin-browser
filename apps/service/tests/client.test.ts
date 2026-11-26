@@ -86,6 +86,20 @@ describe("浏览器兼容客户端", () => {
         })
     }
 
+    it("SDK 从加密接口读取设备用量和 IP 上限", async () => {
+        const client = await TranslationClient.connect({
+            baseUrl: "http://localhost:3000",
+            fetcher
+        })
+        await client.register()
+        await expect(client.usageDetails()).resolves.toEqual({
+            usedCharacters: 0,
+            limitCharacters: 500_000,
+            ipLimitCharacters: 500_000,
+            resetsAt: expect.stringMatching(/T00:00:00\.000Z$/)
+        })
+    })
+
     it("使用设备加密身份传递对话参数，模型由服务端选择", async () => {
         const client = await TranslationClient.connect({
             baseUrl: "http://localhost:3000",

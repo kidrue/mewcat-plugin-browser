@@ -27,6 +27,7 @@ describe("真实加密 HTTP 链路", () => {
         SILICONFLOW_API_KEY: "test-key",
         SILICONFLOW_MODEL: "test-model",
         CLIENT_DAILY_CHARACTERS: "20",
+        IP_DAILY_CHARACTERS: "53",
         ALLOWED_ORIGINS: "chrome-extension://abcdefghijklmnopabcdefghijklmnop"
     })
     beforeAll(async () => {
@@ -173,15 +174,48 @@ describe("真实加密 HTTP 链路", () => {
             url: "/v1/usage",
             payload: { envelope: usage.envelope }
         })
+        const resetsAt = new Date(
+            Date.parse(new Date().toISOString().slice(0, 10)) + 86_400_000
+        ).toISOString()
+        expect(usageResponse.statusCode).toBe(200)
+        const usagePayload = await open(
+            usageResponse.json().envelope as string,
+            clientIdentity.encryption.privateKey,
+            serverIdentity.signing.publicKey,
+            "server",
+            clientId
+        )
+        expect((usagePayload as { data: unknown }).data).toEqual({
+            usedCharacters: 5,
+            limitCharacters: 20,
+            resetsAt
+        })
+        const details = await wire(clientId, "/v1/usage/details", {})
+        const detailsResponse = await app.inject({
+            method: "POST",
+            url: "/v1/usage/details",
+            payload: { envelope: details.envelope }
+        })
+        expect(detailsResponse.statusCode).toBe(200)
         expect(
             await open(
-                usageResponse.json().envelope as string,
+                detailsResponse.json().envelope as string,
                 clientIdentity.encryption.privateKey,
                 serverIdentity.signing.publicKey,
                 "server",
                 clientId
             )
-        ).toMatchObject({ data: { usedCharacters: 5, limitCharacters: 20 } })
+        ).toMatchObject({
+            path: "/v1/usage/details",
+            nonce: details.nonce,
+            ok: true,
+            data: {
+                usedCharacters: 5,
+                limitCharacters: 20,
+                ipLimitCharacters: 53,
+                resetsAt
+            }
+        })
         const logs = JSON.stringify(
             await fixture.store.db.translationRequest.findMany()
         )

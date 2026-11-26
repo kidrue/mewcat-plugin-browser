@@ -112,6 +112,11 @@ export const usageSchema = z.strictObject({
     limitCharacters: z.number().int().positive(),
     resetsAt: z.string().datetime()
 })
+export const USAGE_DETAILS_PATH = "/v1/usage/details"
+export const usageDetailsSchema = usageSchema.extend({
+    ipLimitCharacters: z.number().int().positive()
+})
+export type UsageDetails = z.infer<typeof usageDetailsSchema>
 
 export const feedbackSchema = z.strictObject({
     message: z.string().trim().min(5).max(5000),
