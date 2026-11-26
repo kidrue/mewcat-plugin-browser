@@ -43,7 +43,7 @@ const SelectContainer = styled.div`
 
 const SelectButton = styled.button`
     width: 100%;
-    height: 36px;
+    height: var(--select-trigger-height, 36px);
     padding: 0 var(--space-3);
     display: flex;
     align-items: center;

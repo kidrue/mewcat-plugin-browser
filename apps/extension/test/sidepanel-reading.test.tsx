@@ -61,18 +61,29 @@ async function input(text: string) {
     })
 }
 
-function roleSelect() {
-    return document.querySelector<HTMLSelectElement>(
-        'select[aria-label="翻译角色"]'
+function labeledButton(label: string) {
+    return document.querySelector<HTMLButtonElement>(
+        `button[aria-label="${label}"]`
     )!
 }
 
-async function selectRole(role: AiRole) {
-    await act(async () => {
-        const select = roleSelect()
-        select.value = role
-        select.dispatchEvent(new Event("change", { bubbles: true }))
-    })
+function roleTag(label: string) {
+    return [
+        ...document.querySelectorAll<HTMLButtonElement>(
+            '[aria-label="常用翻译角色"] button[aria-pressed]'
+        )
+    ].find(tag => tag.textContent === label)
+}
+
+async function selectOption(label: string, option: string) {
+    const trigger = labeledButton(label)
+    expect(trigger).not.toBeNull()
+    await act(async () => trigger.click())
+    const choice = [
+        ...document.querySelectorAll<HTMLButtonElement>('[role="option"]')
+    ].find(item => item.textContent === option)
+    expect(choice).toBeDefined()
+    await act(async () => choice!.click())
 }
 
 async function pressEnter(options: KeyboardEventInit = {}) {
@@ -256,12 +267,7 @@ it.each(["clear", "edit", "language", "unmount"])(
                     .click()
             )
         if (action === "edit") await input("manual edit")
-        if (action === "language")
-            await act(async () => {
-                const select = document.querySelectorAll("select")[1]
-                select.value = "en"
-                select.dispatchEvent(new Event("change", { bubbles: true }))
-            })
+        if (action === "language") await selectOption("目标语言", "英语")
         if (action === "unmount") await act(async () => root.unmount())
         await finishPaste()
         expect(mocks.translate).not.toHaveBeenCalled()
@@ -331,7 +337,7 @@ it("ignores repeated Enter after a translation finishes", async () => {
 
 it("defaults independently to standard translation", async () => {
     await render()
-    expect(roleSelect().value).toBe(AiRole.DEFAULT)
+    expect(labeledButton("翻译角色").textContent).toBe("标准翻译")
     await input("hello")
     await pressEnter()
     expect(mocks.translate.mock.calls[0][0]).toMatchObject({
@@ -344,8 +350,8 @@ it("defaults independently to standard translation", async () => {
 it("uses the selected role for automatic paste translation", async () => {
     vi.useFakeTimers()
     await render()
-    await selectRole(AiRole.FREE_TRANSLATOR)
-    expect(roleSelect().value).toBe(AiRole.FREE_TRANSLATOR)
+    await selectOption("翻译角色", "意译大师")
+    expect(labeledButton("翻译角色").textContent).toBe("意译大师")
     expect(mocks.translate).not.toHaveBeenCalled()
     await paste("hello")
     await finishPaste()
@@ -357,25 +363,68 @@ it("uses the selected role for automatic paste translation", async () => {
 
 it("restores pinned roles on reopen and removes unpinned tags", async () => {
     await render()
-    await selectRole(AiRole.FREE_TRANSLATOR)
+    await selectOption("翻译角色", "意译大师")
     await act(async () => button("固定").click())
     await act(async () => root.unmount())
     await render()
-    expect(roleSelect().value).toBe(AiRole.DEFAULT)
-    await act(async () => button("意译大师").click())
-    expect(roleSelect().value).toBe(AiRole.FREE_TRANSLATOR)
-    expect(button("意译大师").getAttribute("aria-pressed")).toBe("true")
+    expect(labeledButton("翻译角色").textContent).toBe("标准翻译")
+    await act(async () => roleTag("意译大师")!.click())
+    expect(labeledButton("翻译角色").textContent).toBe("意译大师")
+    expect(roleTag("意译大师")?.getAttribute("aria-pressed")).toBe("true")
     await act(async () => button("取消固定").click())
     await act(async () => root.unmount())
     await render()
-    expect(button("意译大师")).toBeUndefined()
-    expect(button("标准翻译")).toBeDefined()
+    expect(roleTag("意译大师")).toBeUndefined()
+    expect(roleTag("标准翻译")).toBeDefined()
+})
+
+it("uses source and target options from the sidebar dropdowns", async () => {
+    await render()
+    await selectOption("源语言", "英语")
+    await selectOption("目标语言", "法语")
+    await input("hello")
+    await pressEnter()
+    expect(mocks.translate.mock.calls[0][0].sourceLanguage).toBe("en")
+    expect(mocks.translate.mock.calls[0][2]).toBe("fr")
+})
+
+it("removes a pinned tag without changing the selected role", async () => {
+    await render()
+    await selectOption("翻译角色", "意译大师")
+    await act(async () => button("固定").click())
+    const remove = labeledButton("从常用翻译角色移除意译大师")
+    expect(remove).not.toBeNull()
+    await act(async () => {
+        remove.focus()
+        remove.click()
+    })
+    expect(roleTag("意译大师")).toBeUndefined()
+    expect(labeledButton("翻译角色").textContent).toBe("意译大师")
+    expect(document.activeElement).toBe(roleTag("标准翻译"))
+    await act(async () => root.unmount())
+    await render()
+    expect(roleTag("意译大师")).toBeUndefined()
+    expect(labeledButton("从常用翻译角色移除标准翻译")).toBeNull()
+})
+
+it("can remove a pinned role even when the current engine disables role selection", async () => {
+    await render()
+    await selectOption("翻译角色", "意译大师")
+    await act(async () => button("固定").click())
+    await act(async () => root.unmount())
+    config.currentModel = "google-translate"
+    await render()
+    expect(roleTag("意译大师")?.disabled).toBe(true)
+    const remove = labeledButton("从常用翻译角色移除意译大师")
+    expect(remove.disabled).toBe(false)
+    await act(async () => remove.click())
+    expect(roleTag("意译大师")).toBeUndefined()
 })
 
 it("limits engines without role support to standard translation", async () => {
     config.currentModel = "google-translate"
     await render()
-    expect(roleSelect().disabled).toBe(true)
+    expect(labeledButton("翻译角色").disabled).toBe(true)
     expect(document.body.textContent).toContain("切换到支持角色的翻译服务")
     await input("hello")
     await pressEnter()
@@ -395,7 +444,7 @@ it("ignores a pending result when switching roles", async () => {
     await render()
     await input("hello")
     await pressEnter()
-    await selectRole(AiRole.FREE_TRANSLATOR)
+    await selectOption("翻译角色", "意译大师")
     await act(async () => resolve("旧角色译文"))
     expect(document.body.textContent).not.toContain("旧角色译文")
     expect(document.querySelector("textarea")!.value).toBe("hello")

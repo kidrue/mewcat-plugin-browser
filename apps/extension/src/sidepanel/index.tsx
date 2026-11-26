@@ -15,7 +15,7 @@ import { AiRole } from "@/types/config"
 
 import BrandLogo from "../components/BrandLogo"
 import LoadingDots from "../components/LoadingDots"
-import NativeSelect from "../components/NativeSelect"
+import Select from "../components/Select"
 import { getSkySceneUrl, SkyMascot } from "../components/SkyArtwork"
 import TranslationMark from "../components/TranslationMark"
 import { TranslationRolePicker } from "./TranslationRolePicker"
@@ -119,6 +119,9 @@ const TranslatePane = styled.div`
 `
 
 const LanguageRow = styled.div`
+    --language-control-size: 32px;
+    --select-trigger-height: var(--language-control-size);
+
     flex: none;
     display: flex;
     align-items: center;
@@ -135,8 +138,8 @@ const LangBox = styled.div`
 `
 
 const SwapButton = styled.button`
-    width: 32px;
-    height: 32px;
+    width: var(--language-control-size);
+    height: var(--language-control-size);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     background: var(--bg-secondary);
@@ -552,15 +555,19 @@ const SlidePanel: React.FunctionComponent = () => {
             <TranslatePane>
                 <LanguageRow>
                     <LangBox>
-                        <NativeSelect
+                        <Select
+                            aria-label="源语言"
                             value={sourceLang}
                             onChange={value => {
+                                if (typeof value !== "string") {
+                                    return
+                                }
                                 invalidate()
                                 setSourceLang(value)
                             }}
                             options={sourceOptions}
                             placeholder="源语言"
-                            size="sm"
+                            withinPortal
                         />
                     </LangBox>
                     <SwapButton
@@ -578,15 +585,19 @@ const SlidePanel: React.FunctionComponent = () => {
                         </svg>
                     </SwapButton>
                     <LangBox>
-                        <NativeSelect
+                        <Select
+                            aria-label="目标语言"
                             value={targetLang}
                             onChange={value => {
+                                if (typeof value !== "string") {
+                                    return
+                                }
                                 invalidate()
                                 setTargetLang(value)
                             }}
                             options={targetOptions}
                             placeholder="目标语言"
-                            size="sm"
+                            withinPortal
                         />
                     </LangBox>
                 </LanguageRow>

@@ -1,18 +1,20 @@
-import { useEffect, useState } from "react"
-import styled from "styled-components"
+import styled, { css } from "styled-components"
 
-import NativeSelect from "@/components/NativeSelect"
+
 import { AiRoleOptions } from "@/constants/aiRole"
-import { withEnvironmentSuffix } from "@/constants/storage"
+
 import { AiRole } from "@/types/config"
 
-const PINNED_ROLES_KEY = withEnvironmentSuffix(
-    "sidepanel-pinned-roles",
-    import.meta.env.MODE
-)
-const roleLabels = new Map(
-    AiRoleOptions.map(({ value, label }) => [value, label])
-)
+import type React from "react"
+
+
+import { CloseIcon } from "@/components/Icon"
+
+import { useCallback, useEffect, useRef, useState } from "react"
+
+import Select from "@/components/Select"
+
+import { withEnvironmentSuffix } from "@/constants/storage"
 
 const RoleControls = styled.div`
     flex: none;
@@ -27,34 +29,43 @@ const RoleRow = styled.div`
     gap: var(--space-2);
 `
 
-const RoleSelect = styled(NativeSelect)`
+const RoleSelectBox = styled.div`
     flex: 1;
     min-width: 0;
 `
 
 const TagList = styled.div`
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
-    overflow-x: auto;
 `
 
-const RoleButton = styled.button`
+const rolePill = css`
     flex: none;
-    padding: var(--space-1) var(--space-2);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-full);
     background: var(--bg-secondary);
     color: var(--text-secondary);
     font-family: inherit;
     font-size: var(--font-size-xs);
-    cursor: pointer;
 
     &[aria-pressed="true"],
+    &:has(> button[aria-pressed="true"]),
     &:hover:not(:disabled) {
         border-color: var(--primary-color);
         background: var(--primary-light);
         color: var(--primary-hover);
     }
+`
+
+const RoleAction = styled.button`
+    padding: var(--space-1) var(--space-2);
+    border: 0;
+    border-radius: inherit;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
 
     &:focus-visible {
         outline: 2px solid var(--primary-color);
@@ -67,11 +78,55 @@ const RoleButton = styled.button`
     }
 `
 
+const RoleButton = styled(RoleAction)`
+    ${rolePill}
+`
+
+const RoleTag = styled.div`
+    ${rolePill}
+    display: inline-flex;
+
+    > :first-child {
+        padding-inline-end: 0;
+    }
+`
+
+const RemoveRoleButton = styled(RoleAction)`
+    display: grid;
+    place-items: center start;
+    min-width: var(--space-6);
+    padding-inline: var(--space-1);
+
+    svg {
+        width: 12px;
+        height: 12px;
+        fill: currentColor;
+    }
+`
+
 const RoleHint = styled.p`
     margin: 0;
     color: var(--text-secondary);
     font-size: var(--font-size-xs);
 `
+
+interface TranslationRolePickerProps {
+    value: AiRole
+    disabled: boolean
+    onChange: (role: AiRole) => void
+}
+
+interface PinnedRoleTagProps {
+    role: AiRole
+    selected: boolean
+    disabled: boolean
+    onSelect: (role: AiRole) => void
+    onRemove: (role: AiRole, restoreFocus: boolean) => void
+}
+
+const roleLabels = new Map(
+    AiRoleOptions.map(({ value, label }) => [value, label])
+)
 
 function parsePinnedRoles(value: string | null): AiRole[] {
     try {
@@ -92,6 +147,48 @@ function parsePinnedRoles(value: string | null): AiRole[] {
     return []
 }
 
+const PinnedRoleTag: React.FC<PinnedRoleTagProps> = ({
+    role,
+    selected,
+    disabled,
+    onSelect,
+    onRemove
+}) => {
+    const label = roleLabels.get(role)
+    const select = useCallback(() => onSelect(role), [onSelect, role])
+    const remove = useCallback(
+        (event: React.MouseEvent<HTMLButtonElement>) => {
+            onRemove(role, document.activeElement === event.currentTarget)
+        },
+        [onRemove, role]
+    )
+
+    return (
+        <RoleTag>
+            <RoleAction
+                type="button"
+                aria-pressed={selected}
+                onClick={select}
+                disabled={disabled}
+            >
+                {label}
+            </RoleAction>
+            <RemoveRoleButton
+                type="button"
+                aria-label={`从常用翻译角色移除${label}`}
+                onClick={remove}
+            >
+                <CloseIcon />
+            </RemoveRoleButton>
+        </RoleTag>
+    )
+}
+
+const PINNED_ROLES_KEY = withEnvironmentSuffix(
+    "sidepanel-pinned-roles",
+    import.meta.env.MODE
+)
+
 function loadPinnedRoles(): AiRole[] {
     try {
         return parsePinnedRoles(localStorage.getItem(PINNED_ROLES_KEY))
@@ -100,19 +197,15 @@ function loadPinnedRoles(): AiRole[] {
     }
 }
 
-interface TranslationRolePickerProps {
-    value: AiRole
-    disabled: boolean
-    onChange: (role: AiRole) => void
-}
-
-export function TranslationRolePicker({
+export const TranslationRolePicker: React.FC<TranslationRolePickerProps> = ({
     value,
     disabled,
     onChange
-}: TranslationRolePickerProps) {
+}) => {
     const [pinnedRoles, setPinnedRoles] = useState(loadPinnedRoles)
     const [storageFailed, setStorageFailed] = useState(false)
+
+    const defaultRoleRef = useRef<HTMLButtonElement>(null)
     const isPinned = pinnedRoles.includes(value)
 
     useEffect(() => {
@@ -125,56 +218,81 @@ export function TranslationRolePicker({
         return () => window.removeEventListener("storage", syncPinnedRoles)
     }, [])
 
-    const togglePinnedRole = () => {
-        const update = (roles: AiRole[]) => {
-            const next = new Set(roles)
-            if (isPinned) next.delete(value)
-            else next.add(value)
-            return [...next]
-        }
-        let next: AiRole[]
-        try {
-            const stored = storageFailed
-                ? pinnedRoles
-                : parsePinnedRoles(localStorage.getItem(PINNED_ROLES_KEY))
-            next = update(stored)
-            localStorage.setItem(PINNED_ROLES_KEY, JSON.stringify(next))
-            setStorageFailed(false)
-        } catch {
-            next = update(pinnedRoles)
-            setStorageFailed(true)
-        }
-        setPinnedRoles(next)
-    }
+    const setRolePinned = useCallback(
+        (role: AiRole, pinned: boolean) => {
+            const update = (roles: AiRole[]) => {
+                const next = new Set(roles)
+                if (pinned) next.add(role)
+                else next.delete(role)
+                return [...next]
+            }
+            let next: AiRole[]
+            try {
+                const stored = storageFailed
+                    ? pinnedRoles
+                    : parsePinnedRoles(localStorage.getItem(PINNED_ROLES_KEY))
+                next = update(stored)
+                localStorage.setItem(PINNED_ROLES_KEY, JSON.stringify(next))
+                setStorageFailed(false)
+            } catch {
+                next = update(pinnedRoles)
+                setStorageFailed(true)
+            }
+            setPinnedRoles(next)
+        },
+        [pinnedRoles, storageFailed]
+    )
+
+    const removeRole = useCallback(
+        (role: AiRole, restoreFocus: boolean) => {
+            if (restoreFocus) {
+                defaultRoleRef.current?.focus()
+            }
+            setRolePinned(role, false)
+        },
+        [setRolePinned]
+    )
 
     return (
         <RoleControls>
             <RoleRow>
-                <RoleSelect
-                    aria-label="翻译角色"
-                    value={value}
-                    onChange={role => onChange(role as AiRole)}
-                    options={AiRoleOptions}
-                    size="sm"
-                    disabled={disabled}
-                />
+                <RoleSelectBox>
+                    <Select
+                        aria-label="翻译角色"
+                        value={value}
+                        onChange={role => onChange(role as AiRole)}
+                        options={AiRoleOptions}
+                        disabled={disabled}
+                        withinPortal
+                    />
+                </RoleSelectBox>
                 {!disabled && value !== AiRole.DEFAULT && (
-                    <RoleButton type="button" onClick={togglePinnedRole}>
+                    <RoleButton
+                        type="button"
+                        onClick={() => setRolePinned(value, !isPinned)}
+                    >
                         {isPinned ? "取消固定" : "固定"}
                     </RoleButton>
                 )}
             </RoleRow>
             <TagList role="group" aria-label="常用翻译角色">
-                {[AiRole.DEFAULT, ...pinnedRoles].map(role => (
-                    <RoleButton
+                <RoleButton
+                    ref={defaultRoleRef}
+                    type="button"
+                    aria-pressed={value === AiRole.DEFAULT}
+                    onClick={() => onChange(AiRole.DEFAULT)}
+                >
+                    {roleLabels.get(AiRole.DEFAULT)}
+                </RoleButton>
+                {pinnedRoles.map(role => (
+                    <PinnedRoleTag
                         key={role}
-                        type="button"
-                        aria-pressed={role === value}
-                        onClick={() => onChange(role)}
-                        disabled={disabled && role !== AiRole.DEFAULT}
-                    >
-                        {roleLabels.get(role)}
-                    </RoleButton>
+                        role={role}
+                        selected={role === value}
+                        disabled={disabled}
+                        onSelect={onChange}
+                        onRemove={removeRole}
+                    />
                 ))}
             </TagList>
             {disabled && (
