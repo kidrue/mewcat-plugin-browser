@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { AiRoleOptions, AiRoleSystemPrompts } from "../src/constants/aiRole"
-import { resolvePageAiRole } from "../src/translation/pageAiRole"
+import { resolvePageAiRole } from "../src/features/translation/pageAiRole"
 import { AiRole } from "../src/types/config"
 
 const auto = { aiRole: AiRole.FREE_TRANSLATOR, enableAutoAiRole: true }

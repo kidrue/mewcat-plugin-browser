@@ -2,8 +2,19 @@ import { generateObject } from "@xsai/generate-object"
 import { generateText } from "@xsai/generate-text"
 import { streamText } from "@xsai/stream-text"
 
-import { visionTranslationPrompt } from "@/image-translation/prompt"
-import { visionTranslationSchema } from "@/image-translation/schema"
+import { visionTranslationPrompt } from "@/features/image-translation/prompt"
+import { visionTranslationSchema } from "@/features/image-translation/schema"
+import {
+    getGenerationBaseUrl,
+    isTokenPlanEndpoint,
+    ProviderConfigurationError
+} from "@/features/model-management/providers"
+import {
+    estimateUsage,
+    normalizeReportedUsage
+} from "@/features/token-usage/estimate"
+import { recordTokenUsage } from "@/features/token-usage/storage"
+import type { TokenUsageEvent } from "@/features/token-usage/types"
 import type {
     ModelGatewayErrorCode,
     ModelGatewayFailureResponse,
@@ -14,14 +25,6 @@ import type {
     ModelGatewayStreamOptions,
     ModelGatewayTranslateEngineRequest
 } from "@/messaging/modelGatewayContracts"
-import {
-    getGenerationBaseUrl,
-    isTokenPlanEndpoint,
-    ProviderConfigurationError
-} from "@/model-management/providers"
-import { estimateUsage, normalizeReportedUsage } from "@/token-usage/estimate"
-import { recordTokenUsage } from "@/token-usage/storage"
-import type { TokenUsageEvent } from "@/token-usage/types"
 import { AiModel_Platform_Enum, type BaseModel } from "@/types/aiModel"
 
 import { withFailureCause } from "../lib/failure-cause"

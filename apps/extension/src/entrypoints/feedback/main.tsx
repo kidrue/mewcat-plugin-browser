@@ -1,7 +1,7 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
-import Feedback from "@/feedback"
+import Feedback from "@/pages/feedback"
 import { registerUiFonts } from "@/utils/fonts"
 
 registerUiFonts()

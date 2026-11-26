@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { readingStatus, websiteRulePatch } from "../src/reading/pageActions"
+import { readingStatus, websiteRulePatch } from "../src/features/reading/pageActions"
 
 describe("reading actions", () => {
     it("keeps website rules exclusive without touching other sites", () => {

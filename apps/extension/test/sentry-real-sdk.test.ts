@@ -7,7 +7,7 @@ import {
     captureExtensionException,
     flushSentry,
     initializeSentry
-} from "../src/monitoring/sentry"
+} from "../src/services/monitoring/sentry"
 
 const stateSymbol = Symbol.for("mewcat.sentry.state")
 beforeEach(() => {

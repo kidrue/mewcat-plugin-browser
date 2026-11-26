@@ -12,7 +12,7 @@ import {
     readTextTranslationUsage,
     summarizeTextTranslationUsage,
     type TextTranslationUsageEntry
-} from "../src/token-usage/textTranslationUsage"
+} from "../src/features/token-usage/textTranslationUsage"
 import {
     buildAiSummary,
     explainConcept,
@@ -20,7 +20,7 @@ import {
     translateBatch,
     translateText,
     type TranslationRuntimeConfig
-} from "../src/translation/translationService"
+} from "../src/features/translation/translationService"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
 
 const { sendMessage } = vi.hoisted(() => ({ sendMessage: vi.fn() }))

@@ -3,13 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
     decorateBlocksWithColors,
     type VisionPixelBuffer
-} from "../src/image-translation/colors"
+} from "../src/features/image-translation/colors"
 import {
     MAX_VISION_IMAGE_BYTES,
     prepareVisionImage,
     resizeDimensions,
     type VisionImageCodec
-} from "../src/image-translation/preprocess"
+} from "../src/features/image-translation/preprocess"
 import {
     configureImageTranslationCache,
     createImageTranslationCacheKey,
@@ -19,7 +19,7 @@ import {
     setCachedImageTranslation,
     withImageTranslationDeduplication,
     type ImageTranslationCacheStorage
-} from "../src/translation/PictureCache"
+} from "../src/features/translation/PictureCache"
 import { createVisionModelSelectionKey } from "../src/utils/visionModels"
 
 const encoder = new TextEncoder()

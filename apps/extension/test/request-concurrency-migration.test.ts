@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
     initializeSentry: vi.fn()
 }))
 vi.mock("@/background", () => ({ registerBackgroundListeners: mocks.register }))
-vi.mock("@/monitoring", () => ({ initializeSentry: mocks.initializeSentry }))
+vi.mock("@/services/monitoring", () => ({ initializeSentry: mocks.initializeSentry }))
 
 async function connectStorage() {
     const { storage } = await import("#imports")

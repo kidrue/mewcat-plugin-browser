@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { isValidParagraphShortcut } from "@/translation/paragraphShortcut"
+import { isValidParagraphShortcut } from "@/features/translation/paragraphShortcut"
 
 import { AiModel_Platform_Enum } from "./aiModel"
 import type { BaseModel } from "./aiModel"

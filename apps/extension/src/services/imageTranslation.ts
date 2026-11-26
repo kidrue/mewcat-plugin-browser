@@ -44,10 +44,8 @@ const sendStructuredTranslateImageMessage = (
     request: TranslateImageRequest
 ): Promise<TranslateImageResponse> => sendMessage("translate-image", request)
 
-/**
- * Requests a structured image translation without exposing the legacy raster
- * result path to new content-script callers.
- */
+// Requests a structured image translation without exposing the legacy raster
+// result path to new content-script callers.
 export function translateStructuredImageViaBackground(params: {
     imageUrl?: string
     targetLanguage: string
@@ -142,18 +140,14 @@ export function translateStructuredImageViaBackground(params: {
     })
 }
 
-/**
- * Request image translation via background service worker.
- * All network operations happen in the background to avoid CORS issues.
- *
- * Uses triple-channel response for reliability:
- * 1. Primary: typed extension messaging
- * 2. Message: chrome.tabs.sendMessage from background
- * 3. Storage: chrome.storage.local — completely bypasses messaging
- *
- * In dev mode (HMR) or MV3 edge cases, messaging channels can break.
- * The storage channel ensures the result still arrives.
- */
+// Request image translation via background service worker.
+// All network operations happen in the background to avoid CORS issues.
+// Uses triple-channel response for reliability:
+// 1. Primary: typed extension messaging
+// 2. Message: chrome.tabs.sendMessage from background
+// 3. Storage: chrome.storage.local — completely bypasses messaging
+// In dev mode (HMR) or MV3 edge cases, messaging channels can break.
+// The storage channel ensures the result still arrives.
 export function translateImageViaBackground(params: {
     imageUrl?: string
     targetLanguage: string

@@ -1,0 +1,62 @@
+import type React from "react"
+import { useEffect, useRef, useState } from "react"
+
+import type { SummaryActionResult } from "@/features/reading/summaryActions"
+import { summarizeCurrentPage } from "@/features/reading/summaryActions"
+import { PAGE_SUMMARY_UNAVAILABLE_MESSAGE } from "@/utils/pageSummary"
+
+import Button from "../Button"
+import FeatureAvailability from "../FeatureAvailability"
+import type { SummaryPageButtonProps } from "./types"
+
+export const SummaryPageButton: React.FC<SummaryPageButtonProps> = ({
+    available,
+    compact = false
+}) => {
+    const [pending, setPending] = useState(false)
+    const [result, setResult] = useState<SummaryActionResult>()
+
+    const mounted = useRef(true)
+
+    useEffect(() => {
+        mounted.current = true
+        return () => {
+            mounted.current = false
+        }
+    }, [])
+    return (
+        <div style={{ padding: compact ? 0 : "8px 0" }}>
+            <Button
+                htmlType="button"
+                type="secondary"
+                fullWidth
+                size={compact ? "sm" : "md"}
+                disabled={!available || pending}
+                onClick={async () => {
+                    setPending(true)
+                    setResult(undefined)
+                    const next = await summarizeCurrentPage()
+                    if (mounted.current) {
+                        setResult(next)
+                        setPending(false)
+                    }
+                }}
+            >
+                {pending ? "正在总结…" : "总结本页"}
+            </Button>
+            {!available && !compact && (
+                <FeatureAvailability
+                    available={false}
+                    message={PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
+                />
+            )}
+            {result && <p role="status">{result.message}</p>}
+            {result?.needsConfiguration && (
+                <FeatureAvailability
+                    available={false}
+                    message={PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
+                />
+            )}
+        </div>
+    )
+}

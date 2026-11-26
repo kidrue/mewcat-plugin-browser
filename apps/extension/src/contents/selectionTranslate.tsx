@@ -1,4 +1,5 @@
 import { useAtom } from "jotai"
+import type React from "react"
 
 import "react"
 
@@ -17,9 +18,9 @@ import "../constants"
 import { useCallback, useMemo, useState } from "react"
 
 import { INTERACTION_MODE_OPTIONS, TRIGGER_MODE_OPTIONS } from "../constants"
+import { getSelectionPanelVisibility } from "../features/translation/selectionTranslation"
 import { useSelectionTranslate } from "../hooks/useSelectionTranslate"
 import { configAtom } from "../state"
-import { getSelectionPanelVisibility } from "../translation/selectionTranslation"
 
 export const getShadowHostId = () => "mewcat-overlay-selection"
 
@@ -99,12 +100,15 @@ const SCxContent = styled.div`
     overflow-y: auto;
 `
 
-const SelectionTranslate = () => {
+export const SelectionTranslate: React.FC = () => {
     const [config] = useAtom(configAtom)
 
-    const getRootElement = () =>
-        (document.querySelector(`#${getShadowHostId()}`)?.shadowRoot ??
-            undefined) as unknown as HTMLElement | undefined
+    const getRootElement = useCallback(
+        () =>
+            (document.querySelector(`#${getShadowHostId()}`)?.shadowRoot ??
+                undefined) as unknown as HTMLElement | undefined,
+        []
+    )
 
     // 使用划词翻译 Hook
     const {
@@ -125,6 +129,7 @@ const SelectionTranslate = () => {
         active: boolean
         result: SelectionResult
     }>()
+
     const onResultChange = useCallback(
         (result: SelectionResult) => {
             setSnapshot({
@@ -137,6 +142,7 @@ const SelectionTranslate = () => {
         },
         [state.text, state.context, state.isVisible, config]
     )
+
     const result = useMemo<SelectionResult>(
         () =>
             snapshot &&

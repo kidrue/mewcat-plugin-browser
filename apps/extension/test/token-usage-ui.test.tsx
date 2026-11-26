@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
     readCharacters: vi.fn()
 }))
 
-vi.mock("../src/token-usage/storage.ts", () => ({
+vi.mock("../src/features/token-usage/storage.ts", () => ({
     clearTokenUsage: mocks.clear,
     readTokenUsage: mocks.read
 }))
@@ -131,7 +131,7 @@ describe("token usage options page", () => {
     })
 
     it("shows range totals, dimensions, sources, and clears after confirmation", async () => {
-        const { TokenUsage } = await import("../src/options/TokenUsage")
+        const { TokenUsage } = await import("../src/pages/options/TokenUsage")
         await act(async () => root.render(<TokenUsage />))
 
         expect(container.textContent).toContain("用量统计")
@@ -161,7 +161,7 @@ describe("token usage options page", () => {
                 rejectRead = reject
             })
         )
-        const { TokenUsage } = await import("../src/options/TokenUsage")
+        const { TokenUsage } = await import("../src/pages/options/TokenUsage")
         await act(async () => root.render(<TokenUsage />))
 
         const overview = container.querySelector(
@@ -198,7 +198,7 @@ describe("token usage options page", () => {
                 resolveClear = resolve
             })
         )
-        const { TokenUsage } = await import("../src/options/TokenUsage")
+        const { TokenUsage } = await import("../src/pages/options/TokenUsage")
         await act(async () => root.render(<TokenUsage />))
         await act(async () => getButton("清空统计").click())
         await act(async () => getButton("确认清空").click())
@@ -224,7 +224,7 @@ describe("token usage options page", () => {
         mocks.clear
             .mockRejectedValueOnce(new Error("Storage write failed"))
             .mockResolvedValueOnce(undefined)
-        const { TokenUsage } = await import("../src/options/TokenUsage")
+        const { TokenUsage } = await import("../src/pages/options/TokenUsage")
         await act(async () => root.render(<TokenUsage />))
         const originalRows = container.querySelector("tbody")?.textContent
         const originalOverview = container.querySelector(
@@ -257,7 +257,7 @@ describe("token usage options page", () => {
     it("shows local character periods and service rows above the Token overview", async () => {
         vi.setSystemTime(new Date(2026, 8, 9, 12))
         mocks.readCharacters.mockResolvedValue(characterEntries)
-        const { TokenUsage } = await import("../src/options/TokenUsage")
+        const { TokenUsage } = await import("../src/pages/options/TokenUsage")
         await act(async () => root.render(<TokenUsage />))
 
         const section = getCharacterSection()
@@ -294,7 +294,7 @@ describe("token usage options page", () => {
 
     it("shows unavailable character numbers on storage failure while keeping Token data visible", async () => {
         mocks.readCharacters.mockRejectedValue(new Error("Storage unavailable"))
-        const { TokenUsage } = await import("../src/options/TokenUsage")
+        const { TokenUsage } = await import("../src/pages/options/TokenUsage")
         await act(async () => root.render(<TokenUsage />))
 
         const section = getCharacterSection()
@@ -327,7 +327,7 @@ describe("token usage options page", () => {
                     finishCurrentRead = resolve
                 })
             )
-        const { TokenUsage } = await import("../src/options/TokenUsage")
+        const { TokenUsage } = await import("../src/pages/options/TokenUsage")
         await act(async () =>
             root.render(
                 <React.StrictMode>
@@ -350,7 +350,7 @@ describe("token usage options page", () => {
             .mockImplementationOnce(async () => {
                 mocks.readCharacters.mockResolvedValue([])
             })
-        const { TokenUsage } = await import("../src/options/TokenUsage")
+        const { TokenUsage } = await import("../src/pages/options/TokenUsage")
         await act(async () => root.render(<TokenUsage />))
 
         const section = getCharacterSection()

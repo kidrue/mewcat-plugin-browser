@@ -1,12 +1,8 @@
-/**
- * 翻译请求类型定义
- */
+// 翻译请求类型定义
 
 import type { Message } from "@/types"
 
-/**
- * 请求类型枚举
- */
+// 请求类型枚举
 export enum RequestType {
     /** AI 模型普通 HTTP 请求 */
     AI_HTTP = "ai_http",
@@ -20,9 +16,7 @@ export enum RequestType {
     ABORT = "abort"
 }
 
-/**
- * AI 普通 HTTP 请求配置
- */
+// AI 普通 HTTP 请求配置
 export interface AiHttpRequestConfig {
     apiKey: string
     baseUrl: string
@@ -39,9 +33,7 @@ export interface AiHttpRequestConfig {
     [key: string]: unknown
 }
 
-/**
- * 翻译引擎请求配置
- */
+// 翻译引擎请求配置
 export interface TranslationEngineRequestConfig {
     apiKey: string
     baseUrl: string
@@ -73,9 +65,7 @@ export interface MewCatTranslateRequestConfig {
     context?: string
 }
 
-/**
- * 统一请求体
- */
+// 统一请求体
 export type UnifiedRequestBody =
     | {
           type: RequestType.MEWCAT_TRANSLATE
@@ -96,9 +86,7 @@ export type UnifiedRequestBody =
       }
     | { type: RequestType.ABORT; config: null }
 
-/**
- * 统一响应体
- */
+// 统一响应体
 export interface UnifiedResponse {
     content?: string | Record<string, unknown>
     error?: string

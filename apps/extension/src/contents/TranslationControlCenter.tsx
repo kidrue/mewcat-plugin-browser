@@ -4,29 +4,29 @@ import { useClickAway, useLatest } from "react-use"
 import styled, { StyleSheetManager } from "styled-components"
 
 import { languages } from "@/constants"
-import { captureExtensionException } from "@/monitoring"
-import { PAGE_SUMMARY_DOCK_EVENT } from "@/page-summary/PageSummaryRenderer"
+import { PAGE_SUMMARY_DOCK_EVENT } from "@/features/page-summary/PageSummaryRenderer"
 import {
     readingStatus,
     type PageActionRequest,
     type ReadingState
-} from "@/reading/pageActions"
+} from "@/features/reading/pageActions"
+import { captureExtensionException } from "@/services/monitoring"
 
 import BrandLogo from "../components/BrandLogo"
 import Icon from "../components/Icon"
 import Tooltip from "../components/Tooltip"
-import { useDrag } from "../hooks/useDrag"
-import { configAtom } from "../state"
 import {
     notifyFrameTranslation,
     type FrameTranslationState
-} from "../translation/frameTranslation"
-import { ImmersiveTranslator } from "../translation/ImmersiveTranslator"
-import { isSameTranslationPage } from "../translation/pageNavigation"
+} from "../features/translation/frameTranslation"
+import { ImmersiveTranslator } from "../features/translation/ImmersiveTranslator"
+import { isSameTranslationPage } from "../features/translation/pageNavigation"
 import {
     DEFAULT_PARAGRAPH_SHORTCUT,
     installParagraphShortcut
-} from "../translation/paragraphShortcut"
+} from "../features/translation/paragraphShortcut"
+import { useDrag } from "../hooks/useDrag"
+import { configAtom } from "../state"
 import { detectPageLanguage } from "../utils/detectPageLanguage"
 import { Toast, ToastType } from "../utils/toast"
 
@@ -289,10 +289,13 @@ const SCxRefreshIcon = styled.button<{ $visible: boolean }>`
     }
 `
 
-const TranslationControlCenter: React.FunctionComponent = () => {
+export const TranslationControlCenter: React.FC = () => {
     const [config] = useAtom(configAtom)
+
     const configRef = useLatest(config)
+
     const locationHrefRef = useRef(window.location.href)
+
     const autoTranslateDelayRef = useLatest(config.autoTranslateDelay)
 
     const { ref, position, isDragging, isDragged } = useDrag()
@@ -310,6 +313,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         sourceLanguage: "auto",
         manual: false
     })
+
     const syncFrames = useCallback(
         (
             enabled: boolean,
@@ -327,6 +331,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         },
         []
     )
+
     useEffect(() => {
         const listener = (
             message: { type?: string },
@@ -339,6 +344,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         chrome.runtime.onMessage.addListener(listener)
         return () => chrome.runtime.onMessage.removeListener(listener)
     }, [])
+
     const pageSession = useRef({
         active: false,
         busy: false,
@@ -348,6 +354,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         generation: 0,
         reason: ""
     })
+
     const resolveSourceLanguage = useCallback(() => {
         if (pageSession.current.source !== "auto") {
             return pageSession.current.source
@@ -358,11 +365,15 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         }
         return pageSession.current.detectedSource ?? "auto"
     }, [])
+
     const [isTranslate, setIsTranslate] = React.useState(false)
     const [loading, setLoading] = useState(false)
     const [refreshing, setRefreshing] = useState(false)
+
     const refreshTask = useRef(0)
+
     const [showActions, setShowActions] = useState(false)
+
     const hideIconTimerRef = useRef<NodeJS.Timeout | null>(null)
 
     // 判断面板应该显示在左侧还是右侧
@@ -411,22 +422,25 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         }, 200)
     }, [])
 
-    const openExtensionPage = (type: "OPEN_SIDE_PANEL" | "OPEN_OPTIONS") => {
-        const fail = (message = "无法连接扩展，请刷新网页后重试。") =>
-            Toast.show({ type: ToastType.ERROR, message })
-        try {
-            chrome.runtime.sendMessage(
-                { type },
-                (response?: { success: boolean; message?: string }) => {
-                    if (chrome.runtime.lastError || !response?.success) {
-                        fail(response?.message)
+    const openExtensionPage = useCallback(
+        (type: "OPEN_SIDE_PANEL" | "OPEN_OPTIONS") => {
+            const fail = (message = "无法连接扩展，请刷新网页后重试。") =>
+                Toast.show({ type: ToastType.ERROR, message })
+            try {
+                chrome.runtime.sendMessage(
+                    { type },
+                    (response?: { success: boolean; message?: string }) => {
+                        if (chrome.runtime.lastError || !response?.success) {
+                            fail(response?.message)
+                        }
                     }
-                }
-            )
-        } catch {
-            fail()
-        }
-    }
+                )
+            } catch {
+                fail()
+            }
+        },
+        []
+    )
 
     // 开始翻译任务
     const doTranslate = useCallback(
@@ -616,6 +630,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     )
 
     const onToggleTranslateRef = useLatest(onToggleTranslate)
+
     const executePageAction = useCallback(
         async (request: PageActionRequest): Promise<ReadingState> => {
             const engine = immersiveTranslatorRef.current
@@ -683,7 +698,9 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         },
         [doTranslate, onClearTranslate, resolveSourceLanguage]
     )
+
     const executePageActionRef = useLatest(executePageAction)
+
     useEffect(() => {
         const listener = (
             request: PageActionRequest,
@@ -789,6 +806,7 @@ const TranslationControlCenter: React.FunctionComponent = () => {
         )
     })
     const previousSettingsKey = useRef(settingsKey)
+
     useEffect(() => {
         if (
             config.extensionEnabled === false ||
@@ -955,9 +973,12 @@ const TranslationControlCenter: React.FunctionComponent = () => {
     ])
 
     // 自动翻译 -- end
-    const getRootElement = () =>
-        (document.querySelector(`#${getShadowHostId()}`)?.shadowRoot ??
-            undefined) as unknown as HTMLElement | undefined
+    const getRootElement = useCallback(
+        () =>
+            (document.querySelector(`#${getShadowHostId()}`)?.shadowRoot ??
+                undefined) as unknown as HTMLElement | undefined,
+        []
+    )
 
     return (
         <StyleSheetManager target={getRootElement()}>

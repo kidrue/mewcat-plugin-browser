@@ -76,7 +76,7 @@ afterEach(async () => {
 })
 
 async function renderBasic() {
-    const { Basic } = await import("../src/options/Basic")
+    const { Basic } = await import("../src/pages/options/Basic")
     root = createRoot(document.querySelector<HTMLDivElement>("#host")!)
     await act(async () => root?.render(<Basic />))
 }

@@ -4,12 +4,12 @@ import {
     getTranslationServiceOptions,
     resolveTranslationServiceId
 } from "../src/state/translationService"
-import type { TranslateRequestSender } from "../src/translation/GoogleTranslator"
-import { MicrosoftTranslator } from "../src/translation/MicrosoftTranslator"
+import type { TranslateRequestSender } from "../src/features/translation/GoogleTranslator"
+import { MicrosoftTranslator } from "../src/features/translation/MicrosoftTranslator"
 import {
     translateBatch,
     translateText
-} from "../src/translation/translationService"
+} from "../src/features/translation/translationService"
 import { AiRole } from "../src/types"
 import { RequestType } from "../src/types/request"
 

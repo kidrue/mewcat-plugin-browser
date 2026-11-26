@@ -25,7 +25,7 @@ const matches = (paths, file) =>
 
 test("main 发布触发器与 PR 变更分类对同一组文件作出相同判断", () => {
     for (const file of [
-        "apps/extension/src/popup/index.tsx",
+        "apps/extension/src/pages/popup/index.tsx",
         "apps/service/src/server.ts",
         ".dockerignore",
         "packages/mewcat-client/src/client.ts",

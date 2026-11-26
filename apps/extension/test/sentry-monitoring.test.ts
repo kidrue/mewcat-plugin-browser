@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest"
 
-import { createSentryRuntimeConfig } from "@/monitoring/config"
+import { createSentryRuntimeConfig } from "@/services/monitoring/config"
 import {
     sanitizeBreadcrumb,
     sanitizeSentryEvent,
     sanitizeSentryValue
-} from "@/monitoring/sanitize"
+} from "@/services/monitoring/sanitize"
 
 describe("Sentry monitoring privacy and configuration", () => {
     it("only enables production monitoring with a DSN and labels the runtime", () => {

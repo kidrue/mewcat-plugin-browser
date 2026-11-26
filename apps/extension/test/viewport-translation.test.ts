@@ -5,13 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { MEWCAT_TRANSLATE_MODEL_ID } from "../src/constants/translationServices"
 import rules from "../src/public/assets/rule.json"
 import { defaultExtensionConfig } from "../src/state/constants"
-import * as cacheModule from "../src/translation/cache"
-import { DomSelector } from "../src/translation/DomSelector"
+import * as cacheModule from "../src/features/translation/cache"
+import { DomSelector } from "../src/features/translation/DomSelector"
 import {
     InsertPosition,
     type TranslationNode
-} from "../src/translation/DOMTraverser"
-import { ImmersiveTranslator } from "../src/translation/ImmersiveTranslator"
+} from "../src/features/translation/DOMTraverser"
+import { ImmersiveTranslator } from "../src/features/translation/ImmersiveTranslator"
 import { AiRole } from "../src/types/config"
 
 const service = vi.hoisted(() => ({
@@ -24,7 +24,7 @@ vi.mock("../src/messaging", async importOriginal => ({
     ...(await importOriginal<typeof import("../src/messaging")>()),
     sendMessage: service.sendMessage
 }))
-vi.mock("../src/translation/translationService", () => ({
+vi.mock("../src/features/translation/translationService", () => ({
     translateBatch: service.translate,
     buildAiSummary: service.summary,
     abortAllTranslations: service.abort,

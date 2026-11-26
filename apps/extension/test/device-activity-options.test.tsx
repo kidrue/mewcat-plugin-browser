@@ -41,7 +41,7 @@ describe("关于页的使用统计开关", () => {
         sendMessage
             .mockResolvedValueOnce({ enabled: false })
             .mockResolvedValueOnce({ enabled: true })
-        const { About } = await import("../src/options/About")
+        const { About } = await import("../src/pages/options/About")
         await act(async () => root.render(<About />))
 
         const toggle = document.querySelector<HTMLInputElement>(
@@ -76,7 +76,7 @@ describe("关于页的使用统计开关", () => {
                 message: "服务端删除尚未完成"
             })
             .mockResolvedValueOnce({ enabled: false })
-        const { About } = await import("../src/options/About")
+        const { About } = await import("../src/pages/options/About")
         await act(async () => root.render(<About />))
 
         const toggle = document.querySelector<HTMLInputElement>(

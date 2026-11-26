@@ -1,4 +1,4 @@
-import { captureExtensionException, flushSentry } from "@/monitoring"
+import { captureExtensionException, flushSentry } from "@/services/monitoring"
 
 import { getFailureCause } from "./failure-cause"
 

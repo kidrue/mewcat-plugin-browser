@@ -1,7 +1,7 @@
 import { DEFAULT_VALUES } from "@/constants/options"
 import { GOOGLE_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
-import { DEFAULT_PAGE_SUMMARY_SHORTCUT } from "@/page-summary/pageSummaryShortcut"
-import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/translation/paragraphShortcut"
+import { DEFAULT_PAGE_SUMMARY_SHORTCUT } from "@/features/page-summary/pageSummaryShortcut"
+import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/features/translation/paragraphShortcut"
 import { type BaseModel } from "@/types"
 import { AiRole, type ExtensionConfig } from "@/types/config"
 import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
@@ -12,9 +12,7 @@ logEnvironmentInfo()
 
 const aiModelList: BaseModel[] = []
 
-/**
- * 基础配置（不包含敏感信息）
- */
+// 基础配置（不包含敏感信息）
 export const defaultExtensionConfig: ExtensionConfig = {
     isSelectedTranslate: true,
     detectedLanguage: "auto",

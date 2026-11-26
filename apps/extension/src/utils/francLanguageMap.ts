@@ -1,8 +1,6 @@
-/**
- * Mapping from franc's ISO 639-3 language codes to i18n common codes
- * franc returns 3-letter ISO 639-3 codes, we need to map them to 2-letter ISO 639-1 codes
- * used in our translation system
- */
+// Mapping from franc's ISO 639-3 language codes to i18n common codes
+// franc returns 3-letter ISO 639-3 codes, we need to map them to 2-letter ISO 639-1 codes
+// used in our translation system
 export const francToI18nMap = new Map<string, string>([
     // Chinese variants
     ["cmn", "zh"], // Mandarin Chinese (Simplified)
@@ -59,18 +57,14 @@ export const francToI18nMap = new Map<string, string>([
     ["afr", "af"] // Afrikaans
 ])
 
-/**
- * Convert franc language code to i18n common code
- * @param francCode - The 3-letter ISO 639-3 code returned by franc
- * @returns The corresponding i18n common code or 'en' as fallback
- */
+// Convert franc language code to i18n common code
+/** @param francCode - The 3-letter ISO 639-3 code returned by franc */
+/** @returns The corresponding i18n common code or 'en' as fallback */
 export function francToI18n(francCode: string): string {
     return francToI18nMap.get(francCode) || "en"
 }
 
-/**
- * 简体中文常用字符集（部分）
- */
+// 简体中文常用字符集（部分）
 const SIMPLIFIED_CHARS = new Set([
     "个",
     "这",
@@ -269,9 +263,7 @@ const SIMPLIFIED_CHARS = new Set([
     "小"
 ])
 
-/**
- * 繁体中文常用字符集（部分）
- */
+// 繁体中文常用字符集（部分）
 const TRADITIONAL_CHARS = new Set([
     "個",
     "這",
@@ -470,11 +462,9 @@ const TRADITIONAL_CHARS = new Set([
     "小"
 ])
 
-/**
- * 检测文本是简体中文还是繁体中文
- * @param text - 要检测的中文文本
- * @returns 'zh-CN' for simplified Chinese, 'zh-TW' for traditional Chinese, null if unclear
- */
+// 检测文本是简体中文还是繁体中文
+/** @param text - 要检测的中文文本 */
+/** @returns 'zh-CN' for simplified Chinese, 'zh-TW' for traditional Chinese, null if unclear */
 export function detectChineseVariant(text: string): "zh-CN" | "zh-TW" | null {
     if (!text || typeof text !== "string") {
         return null
@@ -513,12 +503,10 @@ export function detectChineseVariant(text: string): "zh-CN" | "zh-TW" | null {
     return "zh-CN"
 }
 
-/**
- * 增强版语言检测，包含中文简繁体识别
- * @param francCode - franc返回的语言代码
- * @param originalText - 原始文本，用于中文简繁体检测
- * @returns 精确的语言代码
- */
+// 增强版语言检测，包含中文简繁体识别
+/** @param francCode - franc返回的语言代码 */
+/** @param originalText - 原始文本，用于中文简繁体检测 */
+/** @returns 精确的语言代码 */
 export function getEnhancedLanguageCode(
     francCode: string,
     originalText?: string

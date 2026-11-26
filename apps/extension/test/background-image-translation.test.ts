@@ -9,11 +9,11 @@ import {
     type StructuredImageTranslationDependencies
 } from "../src/background/messages/structured-image-translation"
 import { captureImageForTranslation } from "../src/background/messages/translate-image"
-import { VisionProviderError } from "../src/image-translation/errors"
+import { VisionProviderError } from "../src/features/image-translation/errors"
 import type {
     PreparedVisionImage,
     VisionTranslationResult
-} from "../src/image-translation/types"
+} from "../src/features/image-translation/types"
 import type {
     ImageTranslationResult,
     TranslateImageRequest

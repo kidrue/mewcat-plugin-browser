@@ -1,6 +1,4 @@
-/**
- * 单词数统计配置项
- */
+// 单词数统计配置项
 interface WordCountOptions {
     // 允许的单词特殊字符（默认支持撇号、连字符，用于don't、mother-in-law等合法单词）
     allowedSpecialChars?: string[]
@@ -8,9 +6,7 @@ interface WordCountOptions {
     caseSensitive?: boolean
 }
 
-/**
- * 单词数统计结果
- */
+// 单词数统计结果
 interface WordCountResult {
     // 总单词数
     total: number
@@ -20,12 +16,10 @@ interface WordCountResult {
     uniqueWords?: string[]
 }
 
-/**
- * 统计文本中的单词数量
- * @param text 待统计的文本
- * @param options 配置项（可选）
- * @returns 统计结果（总单词数+单词列表）
- */
+// 统计文本中的单词数量
+/** @param text 待统计的文本 */
+/** @param options 配置项（可选） */
+/** @returns 统计结果（总单词数+单词列表） */
 export function getCountWords(
     text: string,
     options: WordCountOptions = {}

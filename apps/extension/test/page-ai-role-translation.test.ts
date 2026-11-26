@@ -5,7 +5,7 @@ import { defaultExtensionConfig } from "../src/state/constants"
 import {
     translateBatch,
     translateText
-} from "../src/translation/translationService"
+} from "../src/features/translation/translationService"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 import { AiRole } from "../src/types/config"
 import { repairExtensionConfig } from "../src/types/extensionConfigSchema"

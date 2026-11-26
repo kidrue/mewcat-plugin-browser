@@ -1,0 +1,1 @@
+export { MonitoringErrorBoundary } from "./MonitoringErrorBoundary"

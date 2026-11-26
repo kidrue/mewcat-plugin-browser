@@ -2,8 +2,8 @@ import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
 import { MonitoringErrorBoundary } from "@/components/MonitoringErrorBoundary"
-import { initializeSentry } from "@/monitoring"
-import SidePanel from "@/sidepanel"
+import SidePanel from "@/pages/sidepanel"
+import { initializeSentry } from "@/services/monitoring"
 import { registerUiFonts } from "@/utils/fonts"
 
 import "./style.css"

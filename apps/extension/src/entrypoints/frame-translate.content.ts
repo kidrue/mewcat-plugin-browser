@@ -1,10 +1,10 @@
 import { defineContentScript } from "#imports"
 
+import { createFrameTranslationRuntime } from "@/features/translation/frameTranslationRuntime"
+import { ImmersiveTranslator } from "@/features/translation/ImmersiveTranslator"
 import { defaultExtensionConfig } from "@/state/constants"
 import { createTranslationServiceStorageAdapter } from "@/state/translationService"
 import { chromeStorageAdapter } from "@/state/util"
-import { createFrameTranslationRuntime } from "@/translation/frameTranslationRuntime"
-import { ImmersiveTranslator } from "@/translation/ImmersiveTranslator"
 
 export default defineContentScript({
     matches: ["<all_urls>"],

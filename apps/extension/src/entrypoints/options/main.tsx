@@ -1,8 +1,8 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
 
-import { initializeSentry } from "@/monitoring"
-import Options from "@/options"
+import Options from "@/pages/options"
+import { initializeSentry } from "@/services/monitoring"
 import { registerUiFonts } from "@/utils/fonts"
 
 initializeSentry({ runtimeContext: "options", enableReplay: true })

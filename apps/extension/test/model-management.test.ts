@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest"
 import {
     mergeDiscoveredModels,
     migrateLegacyModel
-} from "../src/model-management/catalog"
+} from "../src/features/model-management/catalog"
 import {
     discoverModels,
     extractModelsDevCatalog,
     ModelDiscoveryError,
     parseGeminiModelResponse
-} from "../src/model-management/discovery"
+} from "../src/features/model-management/discovery"
 import {
     canFallbackToCatalog,
     getGenerationBaseUrl,
@@ -17,7 +17,7 @@ import {
     isTokenPlanEndpoint,
     normalizeBaseUrl,
     ProviderConfigurationError
-} from "../src/model-management/providers"
+} from "../src/features/model-management/providers"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 
 describe("model provider configuration", () => {

@@ -1,12 +1,12 @@
 import { z } from "zod"
 
+import { PROVIDER_REGISTRY } from "@/features/model-management/providers"
 import {
     MODEL_GATEWAY_STREAM_PORT,
     MODEL_GATEWAY_STREAM_TIMEOUT_MS,
     type ModelGatewayResponse,
     type ModelGatewayStreamEvent
 } from "@/messaging/modelGatewayContracts"
-import { PROVIDER_REGISTRY } from "@/model-management/providers"
 import { BaseModelSchema } from "@/types/extensionConfigSchema"
 
 import { monitorBackgroundHandler } from "../lib/monitor-background-handler"

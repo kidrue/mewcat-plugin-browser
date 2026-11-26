@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { handleModelGatewayRequest } from "../src/background/messages/model-gateway"
-import { discoverModels } from "../src/model-management/discovery"
+import { discoverModels } from "../src/features/model-management/discovery"
 import { defaultExtensionConfig } from "../src/state/constants"
 import { normalizeStoredConfig } from "../src/state/translationService"
-import { translateBatch } from "../src/translation/translationService"
+import { translateBatch } from "../src/features/translation/translationService"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 import { selectPageSummaryModel } from "../src/utils/pageSummary"
 

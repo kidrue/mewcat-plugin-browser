@@ -1,10 +1,6 @@
-/**
- * XPath 解析相关的工具函数
- */
+// XPath 解析相关的工具函数
 
-/**
- * XPath 解析异常类
- */
+// XPath 解析异常类
 export class XPathError extends Error {
     constructor(
         message: string,
@@ -15,9 +11,7 @@ export class XPathError extends Error {
     }
 }
 
-/**
- * XPath 解析选项
- */
+// XPath 解析选项
 export interface XPathOptions {
     /** 是否返回第一个匹配的元素 */
     single?: boolean
@@ -27,12 +21,10 @@ export interface XPathOptions {
     contextNode?: Node
 }
 
-/**
- * 使用 XPath 表达式查询 DOM 元素
- * @param xpath XPath 表达式
- * @param options 解析选项
- * @returns 匹配的元素或元素数组
- */
+// 使用 XPath 表达式查询 DOM 元素
+/** @param xpath XPath 表达式 */
+/** @param options 解析选项 */
+/** @returns 匹配的元素或元素数组 */
 export function evaluateXPath(
     xpath: string,
     options: XPathOptions & { single: true }
@@ -112,12 +104,10 @@ export function evaluateXPath(
     }
 }
 
-/**
- * 查询单个元素（evaluateXPath 的简化版本）
- * @param xpath XPath 表达式
- * @param contextNode 上下文节点，默认为 document
- * @returns 第一个匹配的元素或 null
- */
+// 查询单个元素（evaluateXPath 的简化版本）
+/** @param xpath XPath 表达式 */
+/** @param contextNode 上下文节点，默认为 document */
+/** @returns 第一个匹配的元素或 null */
 export function querySelector(
     xpath: string,
     contextNode?: Node
@@ -125,21 +115,17 @@ export function querySelector(
     return evaluateXPath(xpath, { single: true, contextNode })
 }
 
-/**
- * 查询所有匹配的元素（evaluateXPath 的简化版本）
- * @param xpath XPath 表达式
- * @param contextNode 上下文节点，默认为 document
- * @returns 匹配的元素数组
- */
+// 查询所有匹配的元素（evaluateXPath 的简化版本）
+/** @param xpath XPath 表达式 */
+/** @param contextNode 上下文节点，默认为 document */
+/** @returns 匹配的元素数组 */
 export function querySelectorAll(xpath: string, contextNode?: Node): Element[] {
     return evaluateXPath(xpath, { contextNode })
 }
 
-/**
- * 获取元素的 XPath 路径
- * @param element 目标元素
- * @returns 元素的 XPath 路径
- */
+// 获取元素的 XPath 路径
+/** @param element 目标元素 */
+/** @returns 元素的 XPath 路径 */
 export function getElementXPath(element: Element): string {
     if (!element || !(element instanceof Element)) {
         throw new XPathError("Element must be a valid Element instance")
@@ -176,11 +162,9 @@ export function getElementXPath(element: Element): string {
     }
 }
 
-/**
- * 验证 XPath 表达式的语法
- * @param xpath XPath 表达式
- * @returns 是否为有效的 XPath 表达式
- */
+// 验证 XPath 表达式的语法
+/** @param xpath XPath 表达式 */
+/** @returns 是否为有效的 XPath 表达式 */
 export function isValidXPath(xpath: string): boolean {
     if (!xpath || typeof xpath !== "string") {
         return false

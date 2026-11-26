@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client"
 import { act } from "react-dom/test-utils"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
 
-import SidePanel from "../src/sidepanel"
+import SidePanel from "../src/pages/sidepanel"
 import { AiRole } from "../src/types/config"
 
 const mocks = vi.hoisted(() => ({ translate: vi.fn() }))
@@ -19,9 +19,9 @@ const config = {
 vi.mock("@/state/config", () => ({
     useConfig: () => config
 }))
-vi.mock("@/translation/translationService", async importOriginal => ({
+vi.mock("@/features/translation/translationService", async importOriginal => ({
     ...(await importOriginal<
-        typeof import("@/translation/translationService")
+        typeof import("@/features/translation/translationService")
     >()),
     translateText: mocks.translate
 }))

@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest"
 import {
     installParagraphShortcut,
     shortcutFromEvent
-} from "../src/translation/paragraphShortcut"
+} from "../src/features/translation/paragraphShortcut"
 
 let cleanup: (() => void) | undefined
 afterEach(() => {

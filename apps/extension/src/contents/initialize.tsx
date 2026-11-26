@@ -7,11 +7,8 @@ import { detectPageLanguage } from "../utils/detectPageLanguage"
 
 export const getShadowHostId = () => "mewcat-overlay-init"
 
-/***
- * 此组件负责初始化配置以及接受配置更新的消息并处理
- *
- */
-const Initialize: React.FunctionComponent = () => {
+// 此组件负责初始化配置以及接受配置更新的消息并处理
+export const Initialize: React.FC = () => {
     const updateConfig = useSetAtom(updateConfigAtom)
     // 加载网站时解析其语言
     const { retry } = useAsyncRetry(async () => {

@@ -1,9 +1,9 @@
-import { VisionProviderError } from "@/image-translation/errors"
+import { VisionProviderError } from "@/features/image-translation/errors"
+import { getCachedTranslation } from "@/features/translation/PictureCache"
 import type {
     LegacyTranslateImageRequest,
     LegacyTranslateImageResponse
 } from "@/messaging/protocol"
-import { getCachedTranslation } from "@/translation/PictureCache"
 
 import { resolveAllHotlinkHeaders } from "../config/hotlink-sites"
 import { withTemporaryHotlinkRule } from "../lib/hotlink-dnr"
@@ -90,10 +90,8 @@ function fetchWithTimeout(
     return fetch(input, fetchInit).finally(() => clearTimeout(timer))
 }
 
-/**
- * Primary path: fetch image directly in background (no CORS restrictions).
- * Returns null if MIME type is not a supported image (anti-hotlink 200 with HTML).
- */
+// Primary path: fetch image directly in background (no CORS restrictions).
+// Returns null if MIME type is not a supported image (anti-hotlink 200 with HTML).
 async function transcodeImageBlobToPng(inputBlob: Blob): Promise<Blob> {
     const bitmap = await createImageBitmap(inputBlob)
     try {
@@ -207,11 +205,9 @@ function buildAutoPageRetryCandidate(
     }
 }
 
-/**
- * Enhanced download path:
- * 1) direct background fetch
- * 2) if needed and site is recognized as anti-hotlink, retry with temporary DNR headers
- */
+// Enhanced download path:
+// 1) direct background fetch
+// 2) if needed and site is recognized as anti-hotlink, retry with temporary DNR headers
 async function downloadImageWithHotlinkRetry(
     imageUrl: string,
     pageUrl?: string
@@ -312,10 +308,8 @@ async function downloadImageWithHotlinkRetry(
 const EXTENSION_UI_SELECTORS =
     "#mewcat-image-translate, #mewcat-overlay-selection, #translation-control-center-overlay"
 
-/**
- * Fallback path: capture visible tab and crop to image bounds.
- * Scrolls the image into full view before capturing to avoid partial screenshots.
- */
+// Fallback path: capture visible tab and crop to image bounds.
+// Scrolls the image into full view before capturing to avoid partial screenshots.
 async function captureAndCropTarget(
     tabId: number,
     target: CaptureTarget,
@@ -688,13 +682,10 @@ export async function handleTranslateImage(
     }
 }
 
-/**
- * Backup response channels to ensure the content script receives the result
- * even when the primary response channel breaks (HMR / MV3 edge cases).
- *
- * Channel 1: chrome.tabs.sendMessage — independent message to the tab
- * Channel 2: chrome.storage.local — completely bypasses messaging
- */
+// Backup response channels to ensure the content script receives the result
+// even when the primary response channel breaks (HMR / MV3 edge cases).
+// Channel 1: chrome.tabs.sendMessage — independent message to the tab
+// Channel 2: chrome.storage.local — completely bypasses messaging
 function sendBackupResponse(
     sender: chrome.runtime.MessageSender,
     request: LegacyTranslateImageRequest,

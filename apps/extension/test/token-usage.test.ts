@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest"
 import {
     estimateTokenCount,
     normalizeReportedUsage
-} from "../src/token-usage/estimate"
+} from "../src/features/token-usage/estimate"
 import {
     clearTokenUsage,
     readTokenUsage,
     recordTokenUsage,
     type TokenUsageStorageArea
-} from "../src/token-usage/storage"
+} from "../src/features/token-usage/storage"
 
 class MemoryStorage implements TokenUsageStorageArea {
     data: Record<string, unknown> = {}

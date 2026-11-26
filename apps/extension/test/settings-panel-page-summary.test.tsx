@@ -4,7 +4,7 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import type { PageActionExecutor } from "../src/reading/pageActions"
+import type { PageActionExecutor } from "../src/features/reading/pageActions"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 import type { ExtensionConfig } from "../src/types/config"
 
@@ -173,7 +173,7 @@ describe("quick settings page summary setting", () => {
     })
 
     it("offers the same feedback page from About and reuses an open draft tab", async () => {
-        const { About } = await import("../src/options/About")
+        const { About } = await import("../src/pages/options/About")
         const update = vi.fn().mockResolvedValue({})
         const focus = vi.fn().mockResolvedValue({})
         vi.mocked(chrome.tabs.query).mockResolvedValue([

@@ -36,7 +36,7 @@ afterEach(async () => {
 describe("自有翻译服务额度提示", () => {
     it("用服务器返回的额度显示设备、共享网络和重置时间", async () => {
         sendMessage.mockResolvedValue({ success: true, data: details })
-        const { MewCatQuota } = await import("../src/options/MewCatQuota")
+        const { MewCatQuota } = await import("../src/components/MewCatQuota")
         await act(async () => root.render(<MewCatQuota />))
 
         expect(sendMessage).toHaveBeenCalledExactlyOnceWith(
@@ -56,7 +56,7 @@ describe("自有翻译服务额度提示", () => {
             success: true,
             data: { ...details, usedCharacters: 3_500_000 }
         })
-        const { MewCatQuota } = await import("../src/options/MewCatQuota")
+        const { MewCatQuota } = await import("../src/components/MewCatQuota")
         await act(async () => root.render(<MewCatQuota />))
 
         expect(document.body.textContent).toContain("暂时无法读取")

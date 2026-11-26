@@ -7,7 +7,7 @@ const { capture, flush } = vi.hoisted(() => ({
     capture: vi.fn(),
     flush: vi.fn().mockResolvedValue(true)
 }))
-vi.mock("@/monitoring", () => ({
+vi.mock("@/services/monitoring", () => ({
     captureExtensionException: capture,
     flushSentry: flush
 }))

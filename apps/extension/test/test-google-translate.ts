@@ -17,9 +17,9 @@ import {
     normalizeTranslationServiceSelection,
     resolveTranslationServiceId
 } from "../src/state/translationService"
-import { GoogleTranslator } from "../src/translation/GoogleTranslator"
-import { translateSelectedText } from "../src/translation/selectionTranslation"
-import { hasAITranslationEnabled } from "../src/translation/translationService"
+import { GoogleTranslator } from "../src/features/translation/GoogleTranslator"
+import { translateSelectedText } from "../src/features/translation/selectionTranslation"
+import { hasAITranslationEnabled } from "../src/features/translation/translationService"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
 import {
     RequestType,

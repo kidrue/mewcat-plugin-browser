@@ -4,9 +4,7 @@ import type { TranslationStyleType } from "./translationStyle"
 export type TranslationDisplayMode = "bilingual" | "translation"
 export const MEWCAT_TRANSLATION_PROMPT_MAX_LENGTH = 2000
 
-/**
- * 插件主配置对象
- */
+// 插件主配置对象
 export interface ExtensionConfig {
     /** 是否启用划词翻译（true为划词，false为整页） */
     isSelectedTranslate: boolean

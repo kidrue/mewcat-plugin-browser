@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
     PAGE_SUMMARY_DOCK_EVENT,
     renderPageSummary
-} from "../src/page-summary/PageSummaryRenderer"
+} from "../src/features/page-summary/PageSummaryRenderer"
 
 const cleanups: Array<() => void> = []
 afterEach(() => cleanups.splice(0).forEach(cleanup => cleanup()))

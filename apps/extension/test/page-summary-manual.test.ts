@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-import { PageSummaryController } from "../src/page-summary/PageSummaryController"
+import { PageSummaryController } from "../src/features/page-summary/PageSummaryController"
 import { defaultExtensionConfig } from "../src/state/constants"
 
 const mocks = vi.hoisted(() => ({
@@ -13,11 +13,11 @@ const mocks = vi.hoisted(() => ({
     model: { id: "ai", params: {} }
 }))
 vi.mock("@/messaging", () => ({ sendMessage: mocks.send }))
-vi.mock("@/monitoring", () => ({ captureExtensionException: vi.fn() }))
+vi.mock("@/services/monitoring", () => ({ captureExtensionException: vi.fn() }))
 vi.mock("../src/utils/pageSummary", () => ({
     selectPageSummaryModel: () => mocks.model
 }))
-vi.mock("../src/page-summary/PageSummaryRenderer", () => ({
+vi.mock("../src/features/page-summary/PageSummaryRenderer", () => ({
     renderPageSummary: mocks.render
 }))
 beforeEach(() => {

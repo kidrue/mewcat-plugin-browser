@@ -1,7 +1,5 @@
-/**
- * ISO 639-1 语言代码（原子类型）
- * 兜底 string 兼容自定义语言码
- */
+// ISO 639-1 语言代码（原子类型）
+// 兜底 string 兼容自定义语言码
 export type LanguageCode =
     | "zh"
     | "zh-CN"
@@ -19,14 +17,10 @@ export type LanguageCode =
     | "auto" // 自动检测
     | string
 
-/**
- * CSS 选择器（原子类型）
- */
+// CSS 选择器（原子类型）
 export type CssSelector = string
 
-/**
- * 页面类型
- */
+// 页面类型
 export type PageType =
     | "subtitleBuilder"
     | "pdfReader"
@@ -35,9 +29,7 @@ export type PageType =
     | "normal"
 
 export type TranslationMode = "translation" | "dual"
-/**
- * 替换规则原子（文本替换的最小单元）
- */
+// 替换规则原子（文本替换的最小单元）
 export interface ReplaceRuleAtom {
     /** 匹配内容（字符串/正则表达式字符串） */
     match: string
@@ -51,9 +43,7 @@ export interface ReplaceRuleAtom {
     ignoreCase?: boolean
 }
 
-/**
- * 暗黑模式规则
- */
+// 暗黑模式规则
 export interface DarkModeRule {
     /** 检测元素 */
     element: string
@@ -61,9 +51,7 @@ export interface DarkModeRule {
     selectors: string[]
 }
 
-/**
- * 输入配置
- */
+// 输入配置
 export interface InputConfig {
     /** 是否启用清除内容 */
     clearContentEnable?: boolean
@@ -81,9 +69,7 @@ export interface InputConfig {
     autoLanguageSitesMainland?: string[]
 }
 
-/**
- * 变更配置
- */
+// 变更配置
 export interface MutationConfig {
     /** 消费超时时间 */
     consumeTimeout?: number
@@ -93,9 +79,7 @@ export interface MutationConfig {
     checkSelfUpdate?: boolean
 }
 
-/**
- * 图片规则
- */
+// 图片规则
 export interface ImageRule {
     /** 类型 */
     type?: string
@@ -163,9 +147,7 @@ export interface ImageRule {
     replaceTextRegexes?: Array<[string, string]>
 }
 
-/**
- * 字幕规则
- */
+// 字幕规则
 export interface SubtitleRule {
     /** ID */
     id?: string
@@ -220,9 +202,7 @@ export interface SubtitleRule {
     enableIOSFullScreenTextTrack?: boolean
 }
 
-/**
- * Body 规则
- */
+// Body 规则
 export interface BodyRule {
     /** 是否启用 */
     enable?: boolean
@@ -232,9 +212,7 @@ export interface BodyRule {
     articleSelector?: string
 }
 
-/**
- * 词汇表项
- */
+// 词汇表项
 export interface GlossaryItem {
     /** 键 */
     k: string
@@ -242,9 +220,7 @@ export interface GlossaryItem {
     v: string
 }
 
-/**
- * 高级合并配置项
- */
+// 高级合并配置项
 export interface AdvanceMergeConfigItem {
     /** 条件表达式 */
     condition: string
@@ -252,9 +228,7 @@ export interface AdvanceMergeConfigItem {
     advanceConfig: Record<string, unknown>
 }
 
-/**
- * 全局规则配置
- */
+// 全局规则配置
 export interface GeneralRule {
     /** 注释 */
     _comment?: string
@@ -478,9 +452,7 @@ export interface GeneralRule {
     subtitleRule?: SubtitleRule
 }
 
-/**
- * 站点特定规则
- */
+// 站点特定规则
 export interface SiteRule {
     // ========== 基础信息 ==========
     id: string // 规则唯一标识符，如 "github"
@@ -604,9 +576,7 @@ export interface SiteRule {
     targetLanguage?: string
 }
 
-/**
- * 完整规则配置
- */
+// 完整规则配置
 export interface RuleConfig {
     /** 全局规则 */
     generalRule: GeneralRule
@@ -614,7 +584,5 @@ export interface RuleConfig {
     rules: SiteRule[]
 }
 
-/**
- * 翻译规则
- */
+// 翻译规则
 export type TranslationRule = SiteRule & GeneralRule

@@ -1,7 +1,5 @@
-/**
- * DOM操作相关工具函数
- * 包含元素文本提取、选择器匹配等功能
- */
+// DOM操作相关工具函数
+// 包含元素文本提取、选择器匹配等功能
 
 import { UI_FONT_FAMILY } from "@/constants/fonts"
 import { DEFAULT_TRANSLATION_STYLE } from "@/types/translationStyle"
@@ -132,9 +130,7 @@ export function hasSelectionChanged(
     )
 }
 
-/**
- * 检查元素是否被全局排除规则排除
- */
+// 检查元素是否被全局排除规则排除
 export function isGloballyExcluded(
     element: Element,
     excludeSelectors: string[]
@@ -151,9 +147,7 @@ export function isGloballyExcluded(
     })
 }
 
-/**
- * 检查元素是否被规则特定排除选择器排除
- */
+// 检查元素是否被规则特定排除选择器排除
 export function isExcludedByRuleSelectors(
     element: Element,
     excludeSelectors: string[]
@@ -170,10 +164,8 @@ export function isExcludedByRuleSelectors(
     })
 }
 
-/**
- * 创建翻译展示容器
- * 使用标准化的样式和属性，支持不同的翻译样式
- */
+// 创建翻译展示容器
+// 使用标准化的样式和属性，支持不同的翻译样式
 export function createTranslationContainerElement(
     targetLanguage: string,
     uniqueId: string,
@@ -224,12 +216,10 @@ export function createTranslationContainerElement(
     return containerElement
 }
 
-/**
- * 创建翻译样式容器
- * @param text
- * @param style
- * @returns
- */
+// 创建翻译样式容器
+/** @param text */
+/** @param style */
+/** @returns */
 export function createTranslationDisplayElement(
     text: string,
     style: TranslationStyleUnion = DEFAULT_TRANSLATION_STYLE
@@ -256,7 +246,7 @@ export function setTranslationDisplayContent(element: Element, text: string) {
               element.ownerDocument
           )
     element.innerHTML = text
-    // 有底色的主题指定了固定前景色。还原的链接等标签也要跟随该颜色，防止沿用网页的浅色文字。
+    // 还原标签沿用有底色主题的固定前景色，避免继承网页的浅色文字。
     if (wrapper.style.getPropertyPriority("color") === "important") {
         for (const child of element.querySelectorAll("*")) {
             if (!(child instanceof HTMLElement)) continue
@@ -304,13 +294,11 @@ export function createLoadingELement(size = 30) {
     }
 }
 
-/**
- * 创建 SVG 图标元素
- * @param viewBox - SVG viewBox 属性
- * @param pathData - SVG path d 属性
- * @param size - 图标大小（像素）
- * @returns SVG 元素
- */
+// 创建 SVG 图标元素
+/** @param viewBox - SVG viewBox 属性 */
+/** @param pathData - SVG path d 属性 */
+/** @param size - 图标大小（像素） */
+/** @returns SVG 元素 */
 function createSVGIcon(
     viewBox: string,
     pathData: string,
@@ -333,13 +321,11 @@ function createSVGIcon(
     return svg
 }
 
-/**
- * 创建翻译错误 UI（包含重试按钮和错误原因按钮）
- * @param errorType - 错误类型（如"网络错误"、"翻译失败"等）
- * @param errorDetails - 详细错误信息
- * @param onRetry - 点击重试按钮的回调函数
- * @returns 错误 UI 容器和相关方法
- */
+// 创建翻译错误 UI（包含重试按钮和错误原因按钮）
+/** @param errorType - 错误类型（如"网络错误"、"翻译失败"等） */
+/** @param errorDetails - 详细错误信息 */
+/** @param onRetry - 点击重试按钮的回调函数 */
+/** @returns 错误 UI 容器和相关方法 */
 export function createTranslationErrorUI(
     errorType: string,
     errorDetails: string,
@@ -594,9 +580,7 @@ export function createTranslationErrorUI(
     }
 }
 
-/**
- * 安全地移除DOM元素
- */
+// 安全地移除DOM元素
 export function safeRemoveElement(element: Element): void {
     try {
         if (element?.parentNode) {
@@ -608,12 +592,10 @@ export function safeRemoveElement(element: Element): void {
 }
 
 //边界计算，得出选中内容的边界
-/**
- * 计算元素b相对于锚点a的合适位置
- * @param a 锚点元素的位置信息
- * @param b 需要定位的元素的位置信息
- * @returns 包含top和left的位置对象
- */
+// 计算元素b相对于锚点a的合适位置
+/** @param a 锚点元素的位置信息 */
+/** @param b 需要定位的元素的位置信息 */
+/** @returns 包含top和left的位置对象 */
 export function calculatePosition(
     aRect: DOMRect,
     bRect: DOMRect,
@@ -668,11 +650,9 @@ export function calculatePosition(
     return { top, left }
 }
 
-/**
- * 插入到指定节点的后面
- * @param {Node} newNode - 要插入的新节点
- * @param {Node} targetNode - 目标节点（插入到这个节点后面）
- */
+// 插入到指定节点的后面
+/** @param {Node} newNode - 要插入的新节点 */
+/** @param {Node} targetNode - 目标节点（插入到这个节点后面） */
 export function insertAfter(newNode: Element, targetNode: HTMLElement) {
     const parent = targetNode.parentNode
     // 若目标节点是最后一个子节点，直接插最后；否则插在目标节点的下一个兄弟节点前

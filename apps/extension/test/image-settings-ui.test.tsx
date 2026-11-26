@@ -87,9 +87,9 @@ vi.mock("../src/hooks/useModelDiscovery.ts", () => ({
     useModelDiscovery: () => mocks.discovery
 }))
 
-vi.mock("@/translation/translationService", async importOriginal => ({
+vi.mock("@/features/translation/translationService", async importOriginal => ({
     ...(await importOriginal<
-        typeof import("@/translation/translationService")
+        typeof import("@/features/translation/translationService")
     >()),
     testConfiguredModel: mocks.testConfiguredModel
 }))
@@ -310,7 +310,7 @@ afterEach(async () => {
 describe("image translation settings", () => {
     it("groups model configuration with the shortcut and capability test cards", async () => {
         mocks.config = createConfig()
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         const group = document.querySelector(
@@ -351,7 +351,7 @@ describe("image translation settings", () => {
         mocks.updateConfig.mockImplementation(updates => {
             mocks.config = { ...mocks.config!, ...updates }
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         const serviceSelector = rowByLabel("翻译服务").querySelector(
@@ -395,7 +395,7 @@ describe("image translation settings", () => {
                 })
             ]
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         const serviceSelector = rowByLabel("翻译服务").querySelector(
@@ -425,7 +425,7 @@ describe("image translation settings", () => {
         })
         mocks.discovery.manualEntry = true
         mocks.discovery.errorMessage = "当前自定义接口不支持自动获取模型列表"
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         const manualInput = rowByLabel("视觉模型").querySelector("input")
@@ -459,7 +459,7 @@ describe("image translation settings", () => {
                 vision: "supported"
             }
         ]
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         const modelSelector = rowByLabel("视觉模型").querySelector(
@@ -495,7 +495,7 @@ describe("image translation settings", () => {
         mocks.updateConfig.mockImplementation(updates => {
             mocks.config = { ...mocks.config!, ...updates }
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         const serviceSelector = rowByLabel("翻译服务").querySelector("select")
@@ -562,7 +562,7 @@ describe("image translation settings", () => {
         mocks.updateConfig.mockImplementation(updates => {
             mocks.config = { ...mocks.config!, ...updates }
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         const serviceSelector = rowByLabel("翻译服务").querySelector(
@@ -594,7 +594,7 @@ describe("image translation settings", () => {
             enableImageTranslateButton: true,
             imageTranslationModelId: ""
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         expect(document.body.textContent).toContain(
@@ -630,7 +630,7 @@ describe("image translation settings", () => {
                 createModel("disabled-service", { enabled: false })
             ]
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         expect(
@@ -655,7 +655,7 @@ describe("image translation settings", () => {
         mocks.updateConfig.mockImplementation(updates => {
             mocks.config = { ...mocks.config!, ...updates }
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         expect(mocks.updateConfig).toHaveBeenCalledWith({
@@ -684,7 +684,7 @@ describe("image translation settings", () => {
             aiModelList: [createModel("vision")],
             imageTranslationModelId: "vision"
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
         const testButton = Array.from(document.querySelectorAll("button")).find(
             button => button.textContent === "测试视觉能力"
@@ -719,7 +719,7 @@ describe("image translation settings", () => {
             aiModelList: [createModel("vision-a"), createModel("vision-b")],
             imageTranslationModelId: "vision-a"
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         await click(capabilityTestButton())
@@ -755,7 +755,7 @@ describe("image translation settings", () => {
             aiModelList: [createModel("vision-a"), createModel("vision-b")],
             imageTranslationModelId: "vision-a"
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         await click(capabilityTestButton())
@@ -785,7 +785,7 @@ describe("image translation settings", () => {
                 aiModelList: [createModel("vision")],
                 imageTranslationModelId: "vision"
             })
-            const { Image } = await import("../src/options/Image")
+            const { Image } = await import("../src/pages/options/Image")
             root = await render(<Image />)
             await click(capabilityTestButton())
 
@@ -813,7 +813,7 @@ describe("image translation settings", () => {
             aiModelList: [createModel("vision")],
             imageTranslationModelId: "vision"
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         await click(capabilityTestButton())
@@ -831,7 +831,7 @@ describe("image translation settings", () => {
             aiModelList: [createModel("vision")],
             imageTranslationModelId: "vision"
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
 
         await click(capabilityTestButton())
@@ -842,7 +842,7 @@ describe("image translation settings", () => {
     })
 
     it("keeps the generated capability image runtime-only", () => {
-        const source = readFileSync("src/options/Image.tsx", "utf8")
+        const source = readFileSync("src/pages/options/Image.tsx", "utf8")
         expect(source).not.toMatch(
             /(?:import|from)\s*[('"].*\.(?:png|jpe?g|webp|gif|svg)/i
         )
@@ -854,7 +854,7 @@ describe("image translation settings", () => {
             aiModelList: [createModel("vision")],
             imageTranslationModelId: "vision"
         })
-        const { Image } = await import("../src/options/Image")
+        const { Image } = await import("../src/pages/options/Image")
         root = await render(<Image />)
         const testButton = Array.from(document.querySelectorAll("button")).find(
             button => button.textContent === "测试视觉能力"
@@ -873,7 +873,7 @@ describe("custom model visual capability", () => {
     it("defaults automatic webpage roles off and saves only the opt-in", async () => {
         mocks.config = createConfig({ aiModelList: [createModel("service")] })
         const { TranslateServices } = await import(
-            "../src/options/TranslateServices"
+            "../src/pages/options/TranslateServices"
         )
         root = await render(<TranslateServices />)
         const toggle = document.querySelector<HTMLInputElement>(
@@ -902,7 +902,7 @@ describe("custom model visual capability", () => {
             currentModel: "openai-service"
         })
         const { TranslateServices } = await import(
-            "../src/options/TranslateServices"
+            "../src/pages/options/TranslateServices"
         )
         root = await render(<TranslateServices />)
 
@@ -940,7 +940,7 @@ describe("custom model visual capability", () => {
             currentModel: "custom-model"
         })
         const { TranslateServices } = await import(
-            "../src/options/TranslateServices"
+            "../src/pages/options/TranslateServices"
         )
         root = await render(<TranslateServices />)
 
@@ -965,7 +965,7 @@ describe("custom model visual capability", () => {
             currentModel: "official-model"
         })
         const { TranslateServices } = await import(
-            "../src/options/TranslateServices"
+            "../src/pages/options/TranslateServices"
         )
         root = await render(<TranslateServices />)
 
@@ -988,7 +988,7 @@ describe("translation service model validation", () => {
             }
         ]
         const [{ TranslateServices }, { Toast }] = await Promise.all([
-            import("../src/options/TranslateServices"),
+            import("../src/pages/options/TranslateServices"),
             import("../src/utils/toast")
         ])
         const showToast = vi.spyOn(Toast, "show").mockImplementation(() => {})
@@ -1016,7 +1016,7 @@ describe("translation service model validation", () => {
         })
         mocks.discovery.manualEntry = true
         const { TranslateServices } = await import(
-            "../src/options/TranslateServices"
+            "../src/pages/options/TranslateServices"
         )
         root = await render(<TranslateServices />)
 
@@ -1045,7 +1045,7 @@ describe("translation service model validation", () => {
             currentModel: "service"
         })
         const [{ TranslateServices }, { Toast }] = await Promise.all([
-            import("../src/options/TranslateServices"),
+            import("../src/pages/options/TranslateServices"),
             import("../src/utils/toast")
         ])
         const showToast = vi.spyOn(Toast, "show").mockImplementation(() => {})

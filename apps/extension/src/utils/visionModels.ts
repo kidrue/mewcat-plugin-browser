@@ -1,6 +1,9 @@
 import { platformNameMap } from "../constants/translationServices"
-import type { DiscoveredModel } from "../model-management/catalog"
-import { PROVIDER_REGISTRY } from "../model-management/providers"
+import type { DiscoveredModel } from "../features/model-management/catalog"
+import {
+    isTokenPlanEndpoint,
+    PROVIDER_REGISTRY
+} from "../features/model-management/providers"
 import type { AiModel_Platform_Enum, BaseModel } from "../types/aiModel"
 import type { ExtensionConfig } from "../types/config"
 
@@ -37,6 +40,23 @@ export interface ImageTranslationEnableConfig {
     imageTranslationModelId?: string
     imageTranslationModelName?: string
     aiModelList?: BaseModel[]
+}
+
+export function canExplicitlyConfigureVision(model: BaseModel): boolean {
+    const isOfficial = model.params.isOfficial !== false
+    if (!isOfficial) {
+        return true
+    }
+
+    try {
+        return isTokenPlanEndpoint({
+            provider: model.type,
+            isOfficial,
+            officialEndpointId: model.params.officialEndpointId
+        })
+    } catch {
+        return false
+    }
 }
 
 export function isVisionCapableModel(

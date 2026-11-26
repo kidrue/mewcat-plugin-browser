@@ -2,7 +2,7 @@ import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import {
     getSelectedGenerativeModel,
     type TranslationRuntimeConfig
-} from "@/translation/translationService"
+} from "@/features/translation/translationService"
 import type { BaseModel } from "@/types/aiModel"
 
 export const PAGE_SUMMARY_UNAVAILABLE_MESSAGE =

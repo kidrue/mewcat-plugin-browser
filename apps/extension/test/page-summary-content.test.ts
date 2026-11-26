@@ -2,8 +2,8 @@
 
 import { describe, expect, it } from "vitest"
 
-import { extractPageContent } from "../src/page-summary/pageContent"
-import { classifyPageType } from "../src/page-summary/pageTypes"
+import { extractPageContent } from "../src/features/page-summary/pageContent"
+import { classifyPageType } from "../src/features/page-summary/pageTypes"
 
 describe("page summary content extraction", () => {
     it("extracts a bounded article snapshot and real content anchor", () => {

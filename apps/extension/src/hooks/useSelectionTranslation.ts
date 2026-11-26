@@ -1,15 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import type { ConceptExplanationInput } from "@/translation/modelTranslation"
-import { parseSelectionAnalysis } from "@/translation/selectionAnalysis"
-import { translateSelectedText } from "@/translation/selectionTranslation"
+import type { ConceptExplanationInput } from "@/features/translation/modelTranslation"
+import { parseSelectionAnalysis } from "@/features/translation/selectionAnalysis"
+import { translateSelectedText } from "@/features/translation/selectionTranslation"
 import {
     getSelectedGenerativeModel,
     streamConceptExplanation,
     translateText,
     TranslationServiceUnavailableError,
     type TranslationRuntimeConfig
-} from "@/translation/translationService"
+} from "@/features/translation/translationService"
 
 export interface SelectionResult {
     mode: "analyzing" | "translate" | "explain"

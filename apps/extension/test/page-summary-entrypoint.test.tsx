@@ -31,7 +31,7 @@ const mocks = vi.hoisted(() => ({
     listeners: new Set<MessageListener>()
 }))
 vi.mock("@/messaging", () => ({ sendMessage: mocks.send }))
-vi.mock("@/monitoring", () => ({ captureExtensionException: vi.fn() }))
+vi.mock("@/services/monitoring", () => ({ captureExtensionException: vi.fn() }))
 vi.mock("@/utils/fonts", () => ({ registerUiFonts: vi.fn() }))
 vi.mock("@/utils/toast", () => ({
     Toast: { show: mocks.toast },
@@ -56,7 +56,7 @@ vi.mock("react-dom/client", async importOriginal => {
         }
     }
 })
-vi.mock("../src/page-summary/PageSummaryRenderer", () => ({
+vi.mock("../src/features/page-summary/PageSummaryRenderer", () => ({
     renderPageSummary: () => ({
         update: mocks.update,
         remove: mocks.remove,

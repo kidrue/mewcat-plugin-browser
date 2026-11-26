@@ -1,8 +1,8 @@
 import { IDBFactory, IDBKeyRange, IDBObjectStore } from "fake-indexeddb"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-import { L2PersistentCache } from "../src/translation/cache/L2PersistentCache"
-import { TieredTranslationCache } from "../src/translation/cache/TieredTranslationCache"
+import { L2PersistentCache } from "../src/features/translation/cache/L2PersistentCache"
+import { TieredTranslationCache } from "../src/features/translation/cache/TieredTranslationCache"
 
 const caches: TieredTranslationCache[] = []
 const params = {

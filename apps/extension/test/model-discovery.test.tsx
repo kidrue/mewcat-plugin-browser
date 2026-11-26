@@ -7,14 +7,14 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import ApiKeyInput from "../src/components/ApiKeyInput"
 import { useDrag } from "../src/hooks/useDrag"
 import { useModelDiscovery } from "../src/hooks/useModelDiscovery"
-import { ModelDiscoveryError } from "../src/model-management/discovery"
+import { ModelDiscoveryError } from "../src/features/model-management/discovery"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 
 const mocks = vi.hoisted(() => ({ discoverModels: vi.fn() }))
 
-vi.mock("../src/model-management/discovery", async importOriginal => ({
+vi.mock("../src/features/model-management/discovery", async importOriginal => ({
     ...(await importOriginal<
-        typeof import("../src/model-management/discovery")
+        typeof import("../src/features/model-management/discovery")
     >()),
     discoverModels: mocks.discoverModels
 }))

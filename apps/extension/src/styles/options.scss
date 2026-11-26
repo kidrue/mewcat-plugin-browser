@@ -44,7 +44,7 @@ a {
     text-decoration: none;
 }
 
-// 焦点使用天空蓝环。不写 outline: none —— 键盘用户需要它。
+// 保留天空蓝焦点环，为键盘用户标示当前控件。
 :focus-visible {
     outline: 2px solid var(--primary-color);
     outline-offset: 2px;

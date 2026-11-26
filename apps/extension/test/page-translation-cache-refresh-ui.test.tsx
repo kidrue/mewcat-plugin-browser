@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type {
     PageActionRequest,
     ReadingState
-} from "../src/reading/pageActions"
+} from "../src/features/reading/pageActions"
 import type { ExtensionConfig } from "../src/types/config"
 
 const mocks = vi.hoisted(() => ({
@@ -61,7 +61,7 @@ vi.mock("../src/hooks/useDrag", () => ({
     })
 }))
 
-vi.mock("../src/translation/ImmersiveTranslator", () => ({
+vi.mock("../src/features/translation/ImmersiveTranslator", () => ({
     ImmersiveTranslator: class {
         constructor(config: {
             onRequestStateChange?: (loading: boolean) => void

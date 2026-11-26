@@ -8,9 +8,7 @@ export interface BaseUser {
 }
 
 export interface SubscriptionRemainingQuota {
-    /**
-     * @deprecated 已废弃，请使用 available_pages
-     */
+    /** @deprecated 已废弃，请使用 available_pages */
     parse_pages: string
     // 订阅过期时间
     subscription_end: string
@@ -18,13 +16,9 @@ export interface SubscriptionRemainingQuota {
     subscribed: boolean
     // 订阅等级 1 免费 2 年度会员
     subscription_level: 1 | 2
-    /**
-     * @deprecated 已废弃，请使用 available_pages
-     */
+    /** @deprecated 已废弃，请使用 available_pages */
     image_quota: string
-    /**
-     * @deprecated 已废弃，请使用 available_pages
-     */
+    /** @deprecated 已废弃，请使用 available_pages */
     extra_image_quota: string
     // 可用积分
     available_points: string
@@ -35,13 +29,9 @@ export interface SubscriptionRemainingQuota {
 }
 
 export interface FreeRemainingQuota {
-    /**
-     * @deprecated 已废弃，请使用 available_pages
-     */
+    /** @deprecated 已废弃，请使用 available_pages */
     parse_pages: string
-    /**
-     * @deprecated 已废弃，请使用 available_pages
-     */
+    /** @deprecated 已废弃，请使用 available_pages */
     image_quota: string
     // 共享解析额度
     available_pages: string

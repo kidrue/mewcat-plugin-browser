@@ -4,7 +4,7 @@ export interface GoogleTranslateFormConfig {
     sourceLanguage?: string
 }
 
-export const GOOGLE_TRANSLATE_TIMEOUT_MS = 30_000
+const GOOGLE_TRANSLATE_TIMEOUT_MS = 30_000
 
 export function normalizeGoogleTranslateTimeout(timeout?: number): number {
     if (timeout === undefined || !Number.isFinite(timeout)) {

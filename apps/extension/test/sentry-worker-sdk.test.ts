@@ -4,7 +4,7 @@ import {
     captureExtensionException,
     flushSentry,
     initializeSentry
-} from "../src/monitoring/sentry"
+} from "../src/services/monitoring/sentry"
 
 it("sends with the real SDK without window or document in a service worker", async () => {
     const envelopes: unknown[] = []

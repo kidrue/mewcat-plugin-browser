@@ -7,10 +7,8 @@ export function getModelByModelList(modelList: BaseModel[], model: string) {
     return find(item => item.id === model, modelList)
 }
 
-/**
- * 检查 BaseModel 是否支持思考能力
- * 按 platform 白名单判断
- */
+// 检查 BaseModel 是否支持思考能力
+// 按 platform 白名单判断
 export function isModelThinkingCapable(
     model: BaseModel | undefined | null
 ): boolean {

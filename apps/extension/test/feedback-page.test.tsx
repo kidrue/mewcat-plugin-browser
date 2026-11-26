@@ -24,7 +24,7 @@ afterEach(async () => {
     await act(async () => root.unmount())
 })
 async function render() {
-    const { default: Feedback } = await import("../src/feedback")
+    const { default: Feedback } = await import("../src/pages/feedback")
     await act(async () => root.render(<Feedback />))
 }
 async function fill(id: string, value: string) {

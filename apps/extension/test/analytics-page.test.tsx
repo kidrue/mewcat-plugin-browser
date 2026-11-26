@@ -101,7 +101,7 @@ describe("管理员分析入口和页面", () => {
         mocks.deviceActivity
             .mockReturnValueOnce(new Promise(resolve => (resolveOld = resolve)))
             .mockResolvedValue({ success: true, data: activity })
-        const { Analytics } = await import("../src/options/Analytics")
+        const { Analytics } = await import("../src/pages/options/Analytics")
         await act(async () => root.render(<Analytics />))
         const button = (label: string) =>
             [...document.querySelectorAll("button")].find(
@@ -139,7 +139,7 @@ describe("管理员分析入口和页面", () => {
 
     it("设备用量接口不可用时仍可读取原有概览", async () => {
         mocks.query.mockResolvedValue({ success: true, data: overview })
-        const { Analytics } = await import("../src/options/Analytics")
+        const { Analytics } = await import("../src/pages/options/Analytics")
         await act(async () => root.render(<Analytics />))
         const section = document.querySelector('[aria-label="设备使用统计"]')
         expect(section?.textContent).toContain("设备使用统计暂不可用")
@@ -161,7 +161,7 @@ describe("管理员分析入口和页面", () => {
                 days: []
             }
         })
-        const { Analytics } = await import("../src/options/Analytics")
+        const { Analytics } = await import("../src/pages/options/Analytics")
         await act(async () => root.render(<Analytics />))
         const section = document.querySelector('[aria-label="设备使用统计"]')
         expect(section?.textContent).toContain("超出设备使用统计的覆盖范围")
@@ -172,7 +172,9 @@ describe("管理员分析入口和页面", () => {
         "37156ad6-e1c6-4628-8ec3-55b329f4f1a3",
         "76aa2488-3241-4f38-b0a6-4f5df933417b"
     ])("在作者设备 %s 的完整与缩略 ID 旁标记 kidrue", async clientId => {
-        const { DeviceId } = await import("../src/options/analytics/DeviceId")
+        const { DeviceId } = await import(
+            "../src/components/Analytics"
+        )
         await act(async () =>
             root.render(
                 <>
@@ -191,7 +193,9 @@ describe("管理员分析入口和页面", () => {
     })
 
     it("不将普通设备或未认证记录标记为作者设备", async () => {
-        const { DeviceId } = await import("../src/options/analytics/DeviceId")
+        const { DeviceId } = await import(
+            "../src/components/Analytics"
+        )
         await act(async () =>
             root.render(
                 <>
@@ -227,7 +231,7 @@ describe("管理员分析入口和页面", () => {
             value: { writeText }
         })
         try {
-            const { Analytics } = await import("../src/options/Analytics")
+            const { Analytics } = await import("../src/pages/options/Analytics")
             await act(async () => root.render(<Analytics />))
             expect(
                 document.querySelector('[aria-label="作者 kidrue 的设备"]')
@@ -256,7 +260,7 @@ describe("管理员分析入口和页面", () => {
                 nextCursor: "next"
             }
         })
-        const { Analytics } = await import("../src/options/Analytics")
+        const { Analytics } = await import("../src/pages/options/Analytics")
         await act(async () => root.render(<Analytics />))
         await act(async () =>
             (
@@ -369,7 +373,7 @@ describe("管理员分析入口和页面", () => {
                             nextCursor: null
                         }
         }))
-        const { Analytics } = await import("../src/options/Analytics")
+        const { Analytics } = await import("../src/pages/options/Analytics")
         await act(async () => root.render(<Analytics />))
         await act(async () =>
             (
@@ -413,9 +417,10 @@ describe("管理员分析入口和页面", () => {
         })
     })
     it("作者是键盘可用的隐藏入口，analytics hash 可恢复", async () => {
-        const { AuthorAnalyticsEntry, resolveOptionsTab } = await import(
-            "../src/options/analytics/navigation"
+        const { AuthorAnalyticsEntry } = await import(
+            "../src/components/Analytics"
         )
+        const { resolveOptionsTab } = await import("../src/pages/options/navigation")
         await act(async () =>
             root.render(<AuthorAnalyticsEntry author="kidrue" />)
         )
@@ -432,7 +437,7 @@ describe("管理员分析入口和页面", () => {
             code: "ANALYTICS_FORBIDDEN",
             message: "当前设备尚未获得管理员权限"
         })
-        const { Analytics } = await import("../src/options/Analytics")
+        const { Analytics } = await import("../src/pages/options/Analytics")
         await act(async () => root.render(<Analytics />))
         expect(document.body.textContent).toContain(
             "当前设备尚未获得管理员权限"
@@ -460,7 +465,7 @@ describe("管理员分析入口和页面", () => {
                     nextCursor: null
                 }
             })
-        const { Analytics } = await import("../src/options/Analytics")
+        const { Analytics } = await import("../src/pages/options/Analytics")
         await act(async () => root.render(<Analytics />))
         await act(async () =>
             (

@@ -1,7 +1,7 @@
 import {
     isFrameTranslationState,
     type FrameTranslationState
-} from "@/translation/frameTranslation"
+} from "@/features/translation/frameTranslation"
 
 export function registerFrameTranslation(): void {
     const injected = new Map<string, string>()

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import type { DiscoveredModel } from "../src/model-management/catalog"
+import type { DiscoveredModel } from "../src/features/model-management/catalog"
 import { defaultExtensionConfig } from "../src/state/constants"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 import {

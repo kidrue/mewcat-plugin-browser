@@ -5,7 +5,7 @@ describe("page translation cache dimensions", () => {
     it("uses the active AI role and model for cache reads, writes, and page clearing", () => {
         const source = readFileSync(
             new URL(
-                "../src/translation/ImmersiveTranslator.ts",
+                "../src/features/translation/ImmersiveTranslator.ts",
                 import.meta.url
             ),
             "utf8"

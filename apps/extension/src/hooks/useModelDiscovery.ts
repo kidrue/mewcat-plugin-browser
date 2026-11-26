@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react"
 
-import type { DiscoveredModel } from "@/model-management/catalog"
+import type { DiscoveredModel } from "@/features/model-management/catalog"
 import {
     discoverModels,
     ModelDiscoveryError
-} from "@/model-management/discovery"
-import { PROVIDER_REGISTRY } from "@/model-management/providers"
+} from "@/features/model-management/discovery"
+import { PROVIDER_REGISTRY } from "@/features/model-management/providers"
 import type { BaseModel } from "@/types/aiModel"
 
 export interface ModelDiscoveryState {

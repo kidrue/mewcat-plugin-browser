@@ -1,0 +1,372 @@
+import { useAtom, useSetAtom } from "jotai"
+import * as React from "react"
+import styled from "styled-components"
+
+import {
+    CustomSelect,
+    CustomToggle,
+    FormRow,
+    NumberInput,
+    OptionsSection,
+    StylePreview,
+    Tooltip,
+    UrlManager
+} from "@/components"
+import FeatureAvailability from "@/components/FeatureAvailability"
+import Icon from "@/components/Icon"
+import { OptionsFeatureCards } from "@/components/OptionsPageLayout"
+import ParagraphShortcutInput from "@/components/ParagraphShortcutInput"
+import ShortcutInput from "@/components/ShortcutInput"
+import {
+    DEFAULT_VALUES,
+    languages,
+    TRANSLATION_STYLE_OPTIONS
+} from "@/constants"
+import { DEFAULT_PAGE_SUMMARY_SHORTCUT } from "@/features/page-summary/pageSummaryShortcut"
+import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/features/translation/paragraphShortcut"
+import { configAtom, updateConfigAtom } from "@/state"
+import type { TranslationDisplayMode } from "@/types/config"
+import {
+    DEFAULT_TRANSLATION_STYLE,
+    type TranslationStyleType
+} from "@/types/translationStyle"
+import {
+    isPageSummaryAvailable,
+    PAGE_SUMMARY_UNAVAILABLE_MESSAGE
+} from "@/utils/pageSummary"
+
+const ReadingFormRow = styled(FormRow).attrs({ compact: true })``
+
+const SummaryControls = styled.div`
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+`
+
+const SummaryHelp = styled.button`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: help;
+
+    &:hover,
+    &:focus-visible {
+        color: var(--primary-color);
+        background: var(--bg-tertiary);
+    }
+    &:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 2px;
+    }
+`
+
+export const Basic: React.FC = () => {
+    const [config] = useAtom(configAtom)
+
+    const updateConfig = useSetAtom(updateConfigAtom)
+
+    const languageOptions = languages.languages
+    const hasUsableGenerativeModel = isPageSummaryAvailable(config)
+
+    return (
+        <>
+            <OptionsSection
+                title="翻译语言配置"
+                layout="grid"
+                artwork="coast"
+                icon="mail"
+            >
+                <FormRow
+                    label="总是翻译"
+                    description="检测到这些语言时将自动翻译"
+                >
+                    <CustomSelect
+                        value={config.alwaysTranslateLanguages || []}
+                        onChange={value =>
+                            updateConfig({
+                                alwaysTranslateLanguages: value as string[]
+                            })
+                        }
+                        options={languageOptions}
+                        placeholder="选择语言"
+                        multiple
+                    />
+                </FormRow>
+                <FormRow
+                    label="永不翻译"
+                    description="选中的语言将不会被自动翻译"
+                >
+                    <CustomSelect
+                        value={config.neverTranslateLanguages || []}
+                        onChange={value =>
+                            updateConfig({
+                                neverTranslateLanguages: value as string[]
+                            })
+                        }
+                        options={languageOptions}
+                        placeholder="选择语言"
+                        withinPortal
+                        multiple
+                    />
+                </FormRow>
+            </OptionsSection>
+
+            <OptionsSection title="翻译网址配置" layout="grid" artwork="garden">
+                <FormRow
+                    label="总是翻译"
+                    description="在这些网址上将自动启用翻译"
+                >
+                    <UrlManager
+                        urls={config.alwaysTranslateUrls || []}
+                        onUrlsChange={urls => {
+                            updateConfig({ alwaysTranslateUrls: urls })
+                        }}
+                        placeholder="输入网址，如：example.com"
+                        emptyText="暂无配置"
+                    />
+                </FormRow>
+                <FormRow
+                    label="永不翻译"
+                    description="在这些网址上将永不启用翻译"
+                >
+                    <UrlManager
+                        urls={config.neverTranslateUrls || []}
+                        onUrlsChange={urls =>
+                            updateConfig({ neverTranslateUrls: urls })
+                        }
+                        placeholder="输入网址，如：example.com"
+                        emptyText="暂无配置"
+                    />
+                </FormRow>
+            </OptionsSection>
+
+            <OptionsFeatureCards label="阅读功能设置">
+                <OptionsSection title="段落翻译" artwork="desk" icon="book">
+                    <ReadingFormRow
+                        label="启用段落翻译"
+                        description="鼠标指向文字时，按快捷键翻译该段落，可补译整页翻译遗漏的内容；代码与编辑区域保持原样。"
+                        controlId="enable-paragraph-translation"
+                    >
+                        <CustomToggle
+                            id="enable-paragraph-translation"
+                            aria-label="启用段落翻译"
+                            checked={config.enableParagraphTranslation ?? true}
+                            onChange={checked =>
+                                updateConfig({
+                                    enableParagraphTranslation: checked
+                                })
+                            }
+                        />
+                    </ReadingFormRow>
+                    <ReadingFormRow
+                        label="显示段落悬浮提示"
+                        description="鼠标悬停时显示段落高亮框和快捷键提示，默认关闭。"
+                        controlId="enable-paragraph-hover-preview"
+                    >
+                        <CustomToggle
+                            id="enable-paragraph-hover-preview"
+                            aria-label="显示段落悬浮提示"
+                            checked={
+                                config.enableParagraphHoverPreview ?? false
+                            }
+                            disabled={
+                                config.enableParagraphTranslation === false
+                            }
+                            onChange={checked =>
+                                updateConfig({
+                                    enableParagraphHoverPreview: checked
+                                })
+                            }
+                        />
+                    </ReadingFormRow>
+                    <ReadingFormRow
+                        label="翻译快捷键"
+                        description="点击后按下单键或组合键录制；输入文字时不触发。浏览器保留的快捷键可能不可用。"
+                        controlId="paragraph-translation-shortcut"
+                    >
+                        <ParagraphShortcutInput
+                            value={
+                                config.paragraphTranslationShortcut ??
+                                DEFAULT_PARAGRAPH_SHORTCUT
+                            }
+                            disabled={
+                                config.enableParagraphTranslation === false
+                            }
+                            onChange={value =>
+                                updateConfig({
+                                    paragraphTranslationShortcut: value
+                                })
+                            }
+                            conflictingShortcut={
+                                config.pageSummaryShortcut ??
+                                DEFAULT_PAGE_SUMMARY_SHORTCUT
+                            }
+                        />
+                    </ReadingFormRow>
+                </OptionsSection>
+                <OptionsSection title="阅读翻译" artwork="desk" icon="book">
+                    <ReadingFormRow
+                        label="按阅读范围翻译"
+                        description="仅翻译当前屏及上下各一屏，快速滚动时暂停新请求，停下后优先翻译正在阅读的内容，减少额度消耗。"
+                        controlId="enable-viewport-translation"
+                    >
+                        <CustomToggle
+                            id="enable-viewport-translation"
+                            aria-label="按阅读范围翻译"
+                            checked={config.enableViewportTranslation ?? true}
+                            onChange={checked =>
+                                updateConfig({
+                                    enableViewportTranslation: checked
+                                })
+                            }
+                        />
+                    </ReadingFormRow>
+                </OptionsSection>
+
+                <OptionsSection title="页面总结" artwork="desk" icon="book">
+                    <ReadingFormRow
+                        label="打开总结快捷键"
+                        description="点击后按键录制，清除可禁用；关闭自动总结后仍可手动打开。输入文字时不触发，浏览器保留的快捷键可能不可用。"
+                        controlId="page-summary-shortcut"
+                    >
+                        <ShortcutInput
+                            id="page-summary-shortcut"
+                            label="页面总结快捷键"
+                            value={
+                                config.pageSummaryShortcut ??
+                                DEFAULT_PAGE_SUMMARY_SHORTCUT
+                            }
+                            defaultValue={DEFAULT_PAGE_SUMMARY_SHORTCUT}
+                            resetLabel="恢复页面总结默认快捷键"
+                            allowClear
+                            conflictingShortcut={
+                                config.paragraphTranslationShortcut ??
+                                DEFAULT_PARAGRAPH_SHORTCUT
+                            }
+                            conflictMessage="此快捷键已用于段落翻译，请选择其他按键。"
+                            onChange={value =>
+                                updateConfig({ pageSummaryShortcut: value })
+                            }
+                        />
+                    </ReadingFormRow>
+                    <ReadingFormRow
+                        label="自动总结页面"
+                        description="自动提炼页面重点；页面内容将发送到当前所选翻译模型。"
+                        controlId="enable-page-summary"
+                    >
+                        <SummaryControls>
+                            <CustomToggle
+                                id="enable-page-summary"
+                                aria-label="自动总结页面"
+                                checked={
+                                    hasUsableGenerativeModel &&
+                                    (config.enablePageSummary ?? false)
+                                }
+                                disabled={!hasUsableGenerativeModel}
+                                onChange={checked =>
+                                    updateConfig({ enablePageSummary: checked })
+                                }
+                            />
+                            <Tooltip
+                                content="总结与翻译使用同一模型，请确认页面内容适合发送给该服务。"
+                                position="top"
+                                width={240}
+                                trigger="both"
+                            >
+                                <SummaryHelp
+                                    type="button"
+                                    aria-label="了解页面总结的数据使用方式"
+                                >
+                                    <Icon name="help" size={16} />
+                                </SummaryHelp>
+                            </Tooltip>
+                        </SummaryControls>
+                        {!hasUsableGenerativeModel && (
+                            <FeatureAvailability
+                                available={false}
+                                saved={config.enablePageSummary}
+                                message={PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
+                            />
+                        )}
+                    </ReadingFormRow>
+                </OptionsSection>
+            </OptionsFeatureCards>
+
+            <OptionsSection
+                title="显示设置"
+                layout="grid"
+                artwork="postcards"
+                icon="picture"
+            >
+                <FormRow
+                    label="翻译偏好"
+                    description="选择翻译后的显示方式：双语对照或仅显示译文"
+                    controlId="translation-display-mode"
+                >
+                    <CustomSelect
+                        id="translation-display-mode"
+                        aria-label="翻译偏好"
+                        value={config.translationDisplayMode ?? "bilingual"}
+                        onChange={value =>
+                            updateConfig({
+                                translationDisplayMode:
+                                    value as TranslationDisplayMode
+                            })
+                        }
+                        options={[
+                            { value: "bilingual", label: "双语对照" },
+                            { value: "translation", label: "仅显示译文" }
+                        ]}
+                    />
+                </FormRow>
+                <FormRow
+                    label="译文显示样式"
+                    description="选择翻译文本的显示样式"
+                >
+                    <CustomSelect
+                        value={
+                            config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
+                        }
+                        onChange={value =>
+                            updateConfig({
+                                translationStyle: value as TranslationStyleType
+                            })
+                        }
+                        options={TRANSLATION_STYLE_OPTIONS}
+                        placeholder="选择译文样式"
+                    />
+                    <StylePreview
+                        style={
+                            config.translationStyle ?? DEFAULT_TRANSLATION_STYLE
+                        }
+                    />
+                </FormRow>
+
+                <FormRow
+                    label="自动翻译延迟"
+                    description="网页自动翻译时等待网页加载多少毫秒"
+                >
+                    <NumberInput
+                        value={
+                            config.autoTranslateDelay ||
+                            DEFAULT_VALUES.autoTranslateDelay
+                        }
+                        onChange={value =>
+                            updateConfig({ autoTranslateDelay: value })
+                        }
+                        placeholder={String(DEFAULT_VALUES.autoTranslateDelay)}
+                        min={100}
+                        max={3000}
+                    />
+                </FormRow>
+            </OptionsSection>
+        </>
+    )
+}

@@ -8,7 +8,7 @@ import PageReadingControls from "../src/components/PageReadingControls"
 import type {
     PageActionExecutor,
     ReadingState
-} from "../src/reading/pageActions"
+} from "../src/features/reading/pageActions"
 
 let root: ReturnType<typeof createRoot>
 afterEach(async () => {

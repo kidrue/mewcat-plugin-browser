@@ -1,6 +1,6 @@
 import { defineContentScript } from "#imports"
 
-import { initializeSentry } from "@/monitoring"
+import { initializeSentry } from "@/services/monitoring"
 
 export default defineContentScript({
     matches: ["<all_urls>"],

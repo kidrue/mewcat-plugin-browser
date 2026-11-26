@@ -3,7 +3,7 @@ import {
     MEWCAT_TRANSLATE_MODEL_ID,
     MICROSOFT_TRANSLATE_MODEL_ID
 } from "@/constants/translationServices"
-import { migrateLegacyModel } from "@/model-management/catalog"
+import { migrateLegacyModel } from "@/features/model-management/catalog"
 import type { BaseModel } from "@/types"
 import type { ExtensionConfig } from "@/types/config"
 import { repairExtensionConfig } from "@/types/extensionConfigSchema"

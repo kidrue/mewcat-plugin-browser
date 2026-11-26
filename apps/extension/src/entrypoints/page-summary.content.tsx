@@ -4,11 +4,11 @@ import { useEffect, useState } from "react"
 import { defineContentScript } from "#imports"
 
 import { MonitoringErrorBoundary } from "@/components/MonitoringErrorBoundary"
-import { PageSummaryController } from "@/page-summary/PageSummaryController"
+import { PageSummaryController } from "@/features/page-summary/PageSummaryController"
 import {
     DEFAULT_PAGE_SUMMARY_SHORTCUT,
     installPageSummaryShortcut
-} from "@/page-summary/pageSummaryShortcut"
+} from "@/features/page-summary/pageSummaryShortcut"
 import { configAtom } from "@/state"
 import { registerUiFonts } from "@/utils/fonts"
 import { Toast, ToastType } from "@/utils/toast"
@@ -33,9 +33,11 @@ export default defineContentScript({
     }
 })
 
-function PageSummaryApp() {
+export const PageSummaryApp: React.FC = () => {
     const config = useAtomValue(configAtom)
+
     const [controller] = useState(() => new PageSummaryController(config))
+
     useEffect(() => {
         if (config.extensionEnabled === false) {
             return

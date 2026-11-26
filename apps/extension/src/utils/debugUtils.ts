@@ -1,7 +1,5 @@
-/**
- * ImmersiveTranslator 调试工具
- * 提供规则匹配、DOM节点、翻译状态等调试信息
- */
+// ImmersiveTranslator 调试工具
+// 提供规则匹配、DOM节点、翻译状态等调试信息
 
 import type { TranslationRule } from "../types"
 
@@ -78,9 +76,7 @@ export interface DebugSummary {
     translationStartTime?: number
 }
 
-/**
- * 获取元素的XPath路径（调试用）
- */
+// 获取元素的XPath路径（调试用）
 export function getDebugElementXPath(element: HTMLElement): string {
     if (element.id) {
         return `//*[@id="${element.id}"]`
@@ -120,9 +116,7 @@ export function getDebugElementXPath(element: HTMLElement): string {
     return "/" + path.join("/")
 }
 
-/**
- * 获取元素的CSS选择器路径
- */
+// 获取元素的CSS选择器路径
 export function getElementCSSSelector(element: HTMLElement): string {
     if (element.id) {
         return `#${element.id}`
@@ -164,9 +158,7 @@ export function getElementCSSSelector(element: HTMLElement): string {
     return path.join(" > ")
 }
 
-/**
- * 计算DOM元素的深度
- */
+// 计算DOM元素的深度
 export function getElementDepth(element: HTMLElement): number {
     let depth = 0
     let current = element.parentElement
@@ -179,9 +171,7 @@ export function getElementDepth(element: HTMLElement): number {
     return depth
 }
 
-/**
- * 检查元素是否可见
- */
+// 检查元素是否可见
 export function isElementVisible(element: Element): boolean {
     const style = window.getComputedStyle(element)
     const rect = element.getBoundingClientRect()
@@ -195,9 +185,7 @@ export function isElementVisible(element: Element): boolean {
     )
 }
 
-/**
- * 格式化调试信息为表格数据
- */
+// 格式化调试信息为表格数据
 export function formatDebugDataForConsole(debugNodes: DebugNodeInfo[]): void {
     console.group("🔍 ImmersiveTranslator Debug Information")
 
@@ -219,9 +207,7 @@ export function formatDebugDataForConsole(debugNodes: DebugNodeInfo[]): void {
     console.groupEnd()
 }
 
-/**
- * 格式化规则调试信息
- */
+// 格式化规则调试信息
 export function formatRuleDebugInfo(debugRules: DebugRuleInfo[]): void {
     console.group("📋 Translation Rules Debug Information")
 
@@ -242,9 +228,7 @@ export function formatRuleDebugInfo(debugRules: DebugRuleInfo[]): void {
     console.groupEnd()
 }
 
-/**
- * 高亮显示调试节点
- */
+// 高亮显示调试节点
 export function highlightDebugNode(
     element: HTMLElement,
     color = "#ff6b6b",
@@ -269,9 +253,7 @@ export function highlightDebugNode(
     }, duration)
 }
 
-/**
- * 创建调试面板DOM元素
- */
+// 创建调试面板DOM元素
 export function createDebugPanel(): HTMLElement {
     const panel = document.createElement("div")
     panel.id = "immersive-translator-debug-panel"
@@ -299,9 +281,7 @@ export function createDebugPanel(): HTMLElement {
     return panel
 }
 
-/**
- * 更新调试面板内容
- */
+// 更新调试面板内容
 export function updateDebugPanel(
     panel: HTMLElement,
     summary: DebugSummary,
@@ -417,9 +397,7 @@ export function updateDebugPanel(
     }
 }
 
-/**
- * 切换调试面板的展开/收起状态
- */
+// 切换调试面板的展开/收起状态
 export function toggleDebugPanel(): void {
     console.log("toggleDebugPanel called")
 
@@ -479,9 +457,7 @@ export function toggleDebugPanel(): void {
     })
 }
 
-/**
- * 导出调试数据为JSON
- */
+// 导出调试数据为JSON
 export function exportDebugData(
     summary: DebugSummary,
     nodes: DebugNodeInfo[],

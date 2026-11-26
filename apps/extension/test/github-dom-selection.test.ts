@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import rules from "../src/public/assets/rule.json"
-import { DomSelector } from "../src/translation/DomSelector"
+import { DomSelector } from "../src/features/translation/DomSelector"
 
 beforeEach(() => {
     document.body.innerHTML = ""

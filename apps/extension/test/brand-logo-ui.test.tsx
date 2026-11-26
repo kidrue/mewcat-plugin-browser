@@ -39,7 +39,7 @@ vi.mock("@/state/config", () => ({
     useConfig: () => mocks.config
 }))
 
-vi.mock("@/translation/translationService", () => ({
+vi.mock("@/features/translation/translationService", () => ({
     getSelectedGenerativeModel: () => undefined,
     translateText: vi.fn()
 }))
@@ -174,7 +174,7 @@ describe("brand logo placement", () => {
     })
 
     it("shows the generated extension icon in the sidepanel header", async () => {
-        const { default: SidePanel } = await import("../src/sidepanel")
+        const { default: SidePanel } = await import("../src/pages/sidepanel")
         await act(async () => root?.render(<SidePanel />))
 
         expectGeneratedExtensionLogo()

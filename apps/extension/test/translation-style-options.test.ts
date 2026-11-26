@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest"
 
 import { TRANSLATION_STYLE_OPTIONS } from "@/constants/options"
-import { ImmersiveTranslator } from "@/translation/ImmersiveTranslator"
+import { ImmersiveTranslator } from "@/features/translation/ImmersiveTranslator"
 import { ExtensionConfigSchema } from "@/types/extensionConfigSchema"
 import { TranslationStyle } from "@/types/translationStyle"
 import {

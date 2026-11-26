@@ -4,14 +4,20 @@ import { STORAGE_NAMES, toWxtSyncStorageKey } from "@/constants/storage"
 import {
     decorateBlocksWithColors,
     type VisionPixelBuffer
-} from "@/image-translation"
-import { VisionProviderError } from "@/image-translation/errors"
-import { prepareVisionImage } from "@/image-translation/preprocess"
-import { translateWithVisionModel } from "@/image-translation/providers"
+} from "@/features/image-translation"
+import { VisionProviderError } from "@/features/image-translation/errors"
+import { prepareVisionImage } from "@/features/image-translation/preprocess"
+import { translateWithVisionModel } from "@/features/image-translation/providers"
 import type {
     PreparedVisionImage,
     VisionTranslationResult
-} from "@/image-translation/types"
+} from "@/features/image-translation/types"
+import {
+    createImageTranslationCacheKey,
+    getCachedImageTranslation,
+    setCachedImageTranslation,
+    withImageTranslationDeduplication
+} from "@/features/translation/PictureCache"
 import {
     createStrictImageTranslationUnavailableResponse,
     isTranslateImageRequest
@@ -21,12 +27,6 @@ import type {
     TranslateImageRequest,
     TranslateImageResponse
 } from "@/messaging/protocol"
-import {
-    createImageTranslationCacheKey,
-    getCachedImageTranslation,
-    setCachedImageTranslation,
-    withImageTranslationDeduplication
-} from "@/translation/PictureCache"
 import type { BaseModel } from "@/types/aiModel"
 import type { ExtensionConfig } from "@/types/config"
 import { repairAiModelList } from "@/types/extensionConfigSchema"

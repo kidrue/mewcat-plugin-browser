@@ -5,12 +5,12 @@ import type {
     ModelGatewayGenerateRequest,
     ModelGatewayResponse
 } from "../src/messaging/modelGatewayContracts"
-import type { TokenUsageEvent } from "../src/token-usage/types"
+import type { TokenUsageEvent } from "../src/features/token-usage/types"
 import {
     buildModelSummary,
     buildTranslationMessages,
     translateModelBatch
-} from "../src/translation/modelTranslation"
+} from "../src/features/translation/modelTranslation"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
 
 const createModel = (

@@ -3,14 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import rules from "../src/public/assets/rule.json"
 import { defaultExtensionConfig } from "../src/state/constants"
-import { DomSelector } from "../src/translation/DomSelector"
-import { ImmersiveTranslator } from "../src/translation/ImmersiveTranslator"
+import { DomSelector } from "../src/features/translation/DomSelector"
+import { ImmersiveTranslator } from "../src/features/translation/ImmersiveTranslator"
 
 vi.mock("../src/utils/environment", async importOriginal => ({
     ...(await importOriginal<typeof import("../src/utils/environment")>()),
     isDevelopment: () => false
 }))
-vi.mock("../src/translation/translationService", () => ({
+vi.mock("../src/features/translation/translationService", () => ({
     translateBatch: async (_config: unknown, messages: { content: string }[]) =>
         messages[0].content
             .replaceAll("Alpha", "甲译文")

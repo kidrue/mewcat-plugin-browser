@@ -4,7 +4,7 @@ import { loadEnv } from "vite"
 
 import { withFailureCause } from "../src/background/lib/failure-cause"
 import { monitorBackgroundHandler } from "../src/background/lib/monitor-background-handler"
-import { flushSentry, initializeSentry } from "../src/monitoring/sentry"
+import { flushSentry, initializeSentry } from "../src/services/monitoring/sentry"
 
 const env = { ...loadEnv("production", process.cwd(), ""), ...process.env }
 const dsn = env.WXT_SENTRY_DSN?.trim()

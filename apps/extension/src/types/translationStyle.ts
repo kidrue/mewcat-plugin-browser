@@ -1,7 +1,5 @@
-/**
- * 翻译样式枚举
- * 定义支持的翻译文本显示样式类型
- */
+// 翻译样式枚举
+// 定义支持的翻译文本显示样式类型
 export enum TranslationStyle {
     /** 无样式 - 使用译文字体，不添加装饰 */
     NONE = "none",
@@ -39,10 +37,8 @@ export enum TranslationStyle {
     BUBBLE_ORANGE = "bubble-orange"
 }
 
-/**
- * 翻译样式联合类型
- * 为了向后兼容，保留字符串字面量类型
- */
+// 翻译样式联合类型
+// 为了向后兼容，保留字符串字面量类型
 export type TranslationStyleType =
     | TranslationStyle
     | "none"

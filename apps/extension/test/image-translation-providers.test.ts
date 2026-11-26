@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { translateWithVisionModel } from "../src/image-translation/providers"
-import type { PreparedVisionImage } from "../src/image-translation/types"
+import { translateWithVisionModel } from "../src/features/image-translation/providers"
+import type { PreparedVisionImage } from "../src/features/image-translation/types"
 import type { ModelGatewayRequest } from "../src/messaging/modelGatewayContracts"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
 

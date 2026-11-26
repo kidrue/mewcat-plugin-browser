@@ -17,11 +17,11 @@ import {
     createImageTranslationOverlay,
     hasSupportedTargetTransform
 } from "@/contents/imageTranslationOverlay"
-import { captureExtensionException } from "@/monitoring"
 import {
     translateStructuredImageViaBackground,
     validateImage
 } from "@/services/imageTranslation"
+import { captureExtensionException } from "@/services/monitoring"
 import { configAtom } from "@/state"
 import type { CanvasHookMeta } from "@/types/canvas-hook"
 import { Toast, ToastType } from "@/utils/toast"
@@ -434,7 +434,7 @@ export const ImageTranslate: React.FC = () => {
 }
 
 // 导出组件
-export default function ImageTranslateContent() {
+export const ImageTranslateContent: React.FC = () => {
     const shadowHost = document.getElementById(getShadowHostId())
     if (!shadowHost?.shadowRoot) {
         return null
@@ -450,3 +450,5 @@ export default function ImageTranslateContent() {
         </StyleSheetManager>
     )
 }
+
+export default ImageTranslateContent

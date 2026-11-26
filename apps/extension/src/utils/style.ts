@@ -1,9 +1,7 @@
 import { extensionShadowRootContainerId } from "../constants/dom"
 import { UI_FONT_FAMILY } from "../constants/fonts"
-/**
- * 翻译样式相关工具函数
- * 根据配置提供不同的翻译文本显示样式
- */
+// 翻译样式相关工具函数
+// 根据配置提供不同的翻译文本显示样式
 
 import {
     DEFAULT_TRANSLATION_STYLE,
@@ -107,12 +105,9 @@ function getSurfaceTextCSS(color: string): string {
     `
 }
 
-/**
- * 获取翻译样式的CSS文本
- *
- * 注意：译文注入的是任意第三方页面，拿不到扩展的 CSS 变量，
- * 因此这里的天空蓝 / 纸 / 深蓝灰都必须写字面值，与 theme.scss 的 token 保持一致。
- */
+// 获取翻译样式的CSS文本
+// 注意：译文注入的是任意第三方页面，拿不到扩展的 CSS 变量，
+// 因此这里的天空蓝 / 纸 / 深蓝灰都必须写字面值，与 theme.scss 的 token 保持一致。
 export function getTranslationStyleCSS(
     style: TranslationStyleType = DEFAULT_TRANSLATION_STYLE
 ): string {
@@ -311,9 +306,7 @@ export function getTranslationStyleCSS(
     }
 }
 
-/**
- * 根据样式类型调整插入策略
- */
+// 根据样式类型调整插入策略
 export function shouldInsertAsBlock(style: TranslationStyleType): boolean {
     switch (style) {
         case TranslationStyle.NONE:
@@ -326,16 +319,12 @@ export function shouldInsertAsBlock(style: TranslationStyleType): boolean {
     }
 }
 
-/**
- * 获取翻译容器的标签类型
- */
+// 获取翻译容器的标签类型
 export function getTranslationElementTag(style: TranslationStyleType): string {
     return shouldInsertAsBlock(style) ? "div" : "span"
 }
 
-/**
- * 获取样式的描述信息
- */
+// 获取样式的描述信息
 export function getStyleDescription(style: TranslationStyleType): string {
     const bubble = getBubbleTheme(style)
     if (bubble) {

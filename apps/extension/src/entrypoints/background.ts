@@ -2,7 +2,7 @@ import { defineBackground } from "#imports"
 
 import { registerBackgroundListeners } from "@/background"
 import { migrateRequestConcurrency } from "@/background/messages/update-config"
-import { initializeSentry } from "@/monitoring"
+import { initializeSentry } from "@/services/monitoring"
 
 export default defineBackground(() => {
     initializeSentry({ runtimeContext: "background", enableReplay: false })

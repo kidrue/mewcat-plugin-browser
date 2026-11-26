@@ -4,7 +4,7 @@ import type {
     PageAction,
     PageActionExecutor,
     ReadingState
-} from "@/reading/pageActions"
+} from "@/features/reading/pageActions"
 
 export const readingStatusLabels = {
     idle: "尚未翻译",

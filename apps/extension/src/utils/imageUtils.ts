@@ -1,8 +1,6 @@
-/**
- * Validate whether an image element is eligible for translation.
- * @param element - Image or canvas element to validate
- * @returns Validation result with error message if invalid
- */
+// Validate whether an image element is eligible for translation.
+/** @param element - Image or canvas element to validate */
+/** @returns Validation result with error message if invalid */
 export function validateImage(element: HTMLImageElement | HTMLCanvasElement): {
     valid: boolean
     error?: string

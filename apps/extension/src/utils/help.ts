@@ -3,10 +3,8 @@ export function getStringByteLength(str: string) {
     return new TextEncoder().encode(str).length
 }
 
-/**
- * 获取用户当前在页面中选中的文本
- * @returns 选中的文本（若未选中则返回空字符串）
- */
+// 获取用户当前在页面中选中的文本
+/** @returns 选中的文本（若未选中则返回空字符串） */
 export function getSelectedText(): string {
     // 检查浏览器是否支持 window.getSelection()
     if (typeof window.getSelection !== "function") {
@@ -44,10 +42,8 @@ export function matchUrlPatternList(pattern: string[], url: string): boolean {
     })
 }
 
-/**
- * 获取元素的可翻译文本内容
- * 处理特殊元素的属性文本和文本节点遍历
- */
+// 获取元素的可翻译文本内容
+// 处理特殊元素的属性文本和文本节点遍历
 export function getElementText(element: Element): string {
     // 对于某些特殊元素，获取特定属性的文本
     if (element.matches("input[placeholder]")) {
@@ -89,14 +85,11 @@ export function getElementText(element: Element): string {
     return textParts.join(" ").trim()
 }
 
-/**
- * 标准化分割翻译结果
- * 处理 AI 可能返回的各种分隔符格式变体
- *
- * @param translationResults - AI 返回的翻译结果字符串
- * @param expectedCount - 期望的段落数量（用于验证）
- * @returns 分割后的翻译段落数组
- */
+// 标准化分割翻译结果
+// 处理 AI 可能返回的各种分隔符格式变体
+/** @param translationResults - AI 返回的翻译结果字符串 */
+/** @param expectedCount - 期望的段落数量（用于验证） */
+/** @returns 分割后的翻译段落数组 */
 export function splitTranslationResults(
     translationResults: string,
     expectedCount?: number

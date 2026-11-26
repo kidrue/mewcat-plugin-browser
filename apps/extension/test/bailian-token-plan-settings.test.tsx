@@ -4,11 +4,9 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import {
-    BailianOfficialEndpointFields,
-    canExplicitlyConfigureVision
-} from "../src/options/BailianOfficialEndpointFields"
+import { BailianOfficialEndpointFields } from "../src/components/BailianOfficialEndpointFields"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
+import { canExplicitlyConfigureVision } from "../src/utils/visionModels"
 
 const servicesMocks = vi.hoisted(() => ({
     config: null as { aiModelList: BaseModel[]; currentModel?: string } | null,
@@ -287,7 +285,7 @@ describe("BailianOfficialEndpointFields", () => {
             }
         })
         const { TranslateServices } = await import(
-            "../src/options/TranslateServices"
+            "../src/pages/options/TranslateServices"
         )
 
         await act(async () =>
@@ -342,7 +340,7 @@ describe("BailianOfficialEndpointFields", () => {
             currentModel: model.id
         }
         const { TranslateServices } = await import(
-            "../src/options/TranslateServices"
+            "../src/pages/options/TranslateServices"
         )
 
         await act(async () => root?.render(<TranslateServices />))

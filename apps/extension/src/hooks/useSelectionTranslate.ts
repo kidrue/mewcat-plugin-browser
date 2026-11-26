@@ -31,10 +31,8 @@ export interface UseSelectionTranslateOptions {
     config: ExtensionConfig
 }
 
-/**
- * 划词翻译 Hook
- * 根据配置处理不同的触发模式和交互方式
- */
+// 划词翻译 Hook
+// 根据配置处理不同的触发模式和交互方式
 export function useSelectionTranslate<T extends HTMLElement>({
     config
 }: UseSelectionTranslateOptions) {

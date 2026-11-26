@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
-import { buildPageSummaryPrompt } from "../src/page-summary/pageSummaryPrompts"
-import { normalizeSummaryResult } from "../src/page-summary/summaryResult"
+import { buildPageSummaryPrompt } from "../src/features/page-summary/pageSummaryPrompts"
+import { normalizeSummaryResult } from "../src/features/page-summary/summaryResult"
 
 describe("page summary prompt and output", () => {
     it("includes page type, target language and untrusted content boundary", () => {

@@ -6,7 +6,7 @@ import type {
 import type {
     TextTranslationUsageEntry,
     TextTranslationUsageRequest
-} from "@/token-usage/textTranslationUsage"
+} from "@/features/token-usage/textTranslationUsage"
 import type { BaseModel } from "@/types/aiModel"
 import type {
     AnalyticsIdentityResponse,
@@ -68,9 +68,7 @@ export interface TranslateImageRequest {
     }
 }
 
-/**
- * 仅供返回图片 URL 的旧翻译链路使用。新结构化翻译请求必须使用 TranslateImageRequest。
- */
+// 旧图片 URL 翻译链路沿用此类型，新的结构化请求使用 TranslateImageRequest。
 export interface LegacyTranslateImageRequest {
     imageUrl?: string
     targetLanguage: string
@@ -88,9 +86,7 @@ export interface LegacyTranslateImageRequest {
 
 export type ImageTextWritingMode = "horizontal" | "vertical"
 
-/**
- * 归一化图片坐标，顺序为 [ymin, xmin, ymax, xmax]，每项均为 0–1000 的整数。
- */
+// 归一化图片坐标，顺序为 [ymin, xmin, ymax, xmax]，每项均为 0–1000 的整数。
 export type NormalizedImageBox = [
     ymin: number,
     xmin: number,
@@ -132,9 +128,7 @@ export type TranslateImageResponse =
     | TranslateImageSuccessResponse
     | TranslateImageFailureResponse
 
-/**
- * 仅供尚未产生分块翻译结果的旧图片翻译链路使用。禁止作为新消息协议的响应。
- */
+// 此响应仅供尚未产生分块结果的旧图片翻译链路使用。
 export interface LegacyTranslateImageResponse {
     success: boolean
     translatedImageUrl?: string
