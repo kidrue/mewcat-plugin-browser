@@ -308,6 +308,22 @@ afterEach(async () => {
 })
 
 describe("image translation settings", () => {
+    it("groups model configuration with the shortcut and capability test cards", async () => {
+        mocks.config = createConfig()
+        const { Image } = await import("../src/options/Image")
+        root = await render(<Image />)
+
+        const group = document.querySelector(
+            '[role="group"][aria-label="图片翻译设置"]'
+        )
+        expect(group).not.toBeNull()
+        expect(
+            [...group!.querySelectorAll(":scope > section h3")].map(
+                title => title.textContent
+            )
+        ).toEqual(["服务与视觉模型", "图片快捷翻译", "视觉能力测试"])
+    })
+
     it("discovers visual models for the selected service and persists only the image model name", async () => {
         mocks.config = createConfig({
             currentModel: "text-service",

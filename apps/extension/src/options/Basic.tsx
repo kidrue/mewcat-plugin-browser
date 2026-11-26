@@ -14,6 +14,7 @@ import {
 } from "@/components"
 import FeatureAvailability from "@/components/FeatureAvailability"
 import Icon from "@/components/Icon"
+import { OptionsFeatureCards } from "@/components/OptionsPageLayout"
 import ParagraphShortcutInput from "@/components/ParagraphShortcutInput"
 import ShortcutInput from "@/components/ShortcutInput"
 import {
@@ -33,6 +34,8 @@ import {
     isPageSummaryAvailable,
     PAGE_SUMMARY_UNAVAILABLE_MESSAGE
 } from "@/utils/pageSummary"
+
+const ReadingFormRow = styled(FormRow).attrs({ compact: true })``
 
 const SummaryControls = styled.div`
     display: flex;
@@ -143,147 +146,157 @@ export const Basic: React.FunctionComponent = () => {
                 </FormRow>
             </OptionsSection>
 
-            <OptionsSection title="段落翻译" artwork="desk" icon="book">
-                <FormRow
-                    label="启用段落翻译"
-                    description="鼠标指向文字时，按快捷键翻译该段落，可补译整页翻译遗漏的内容；代码与编辑区域保持原样。"
-                    controlId="enable-paragraph-translation"
-                >
-                    <CustomToggle
-                        id="enable-paragraph-translation"
-                        aria-label="启用段落翻译"
-                        checked={config.enableParagraphTranslation ?? true}
-                        onChange={checked =>
-                            updateConfig({
-                                enableParagraphTranslation: checked
-                            })
-                        }
-                    />
-                </FormRow>
-                <FormRow
-                    label="显示段落悬浮提示"
-                    description="鼠标悬停时显示段落高亮框和快捷键提示，默认关闭。"
-                    controlId="enable-paragraph-hover-preview"
-                >
-                    <CustomToggle
-                        id="enable-paragraph-hover-preview"
-                        aria-label="显示段落悬浮提示"
-                        checked={config.enableParagraphHoverPreview ?? false}
-                        disabled={config.enableParagraphTranslation === false}
-                        onChange={checked =>
-                            updateConfig({
-                                enableParagraphHoverPreview: checked
-                            })
-                        }
-                    />
-                </FormRow>
-                <FormRow
-                    label="翻译快捷键"
-                    description="点击后按下单键或组合键录制；输入文字时不触发。浏览器保留的快捷键可能不可用。"
-                    controlId="paragraph-translation-shortcut"
-                >
-                    <ParagraphShortcutInput
-                        value={
-                            config.paragraphTranslationShortcut ??
-                            DEFAULT_PARAGRAPH_SHORTCUT
-                        }
-                        disabled={config.enableParagraphTranslation === false}
-                        onChange={value =>
-                            updateConfig({
-                                paragraphTranslationShortcut: value
-                            })
-                        }
-                        conflictingShortcut={
-                            config.pageSummaryShortcut ??
-                            DEFAULT_PAGE_SUMMARY_SHORTCUT
-                        }
-                    />
-                </FormRow>
-            </OptionsSection>
-            <OptionsSection title="阅读翻译" artwork="desk" icon="book">
-                <FormRow
-                    label="按阅读范围翻译"
-                    description="仅翻译当前屏及上下各一屏，快速滚动时暂停新请求，停下后优先翻译正在阅读的内容，减少额度消耗。"
-                    controlId="enable-viewport-translation"
-                >
-                    <CustomToggle
-                        id="enable-viewport-translation"
-                        aria-label="按阅读范围翻译"
-                        checked={config.enableViewportTranslation ?? true}
-                        onChange={checked =>
-                            updateConfig({ enableViewportTranslation: checked })
-                        }
-                    />
-                </FormRow>
-            </OptionsSection>
-
-            <OptionsSection title="页面总结" artwork="desk" icon="book">
-                <FormRow
-                    label="打开总结快捷键"
-                    description="点击后按键录制，清除可禁用；关闭自动总结后仍可手动打开。输入文字时不触发，浏览器保留的快捷键可能不可用。"
-                    controlId="page-summary-shortcut"
-                >
-                    <ShortcutInput
-                        id="page-summary-shortcut"
-                        label="页面总结快捷键"
-                        value={
-                            config.pageSummaryShortcut ??
-                            DEFAULT_PAGE_SUMMARY_SHORTCUT
-                        }
-                        defaultValue={DEFAULT_PAGE_SUMMARY_SHORTCUT}
-                        resetLabel="恢复页面总结默认快捷键"
-                        allowClear
-                        conflictingShortcut={
-                            config.paragraphTranslationShortcut ??
-                            DEFAULT_PARAGRAPH_SHORTCUT
-                        }
-                        conflictMessage="此快捷键已用于段落翻译，请选择其他按键。"
-                        onChange={value =>
-                            updateConfig({ pageSummaryShortcut: value })
-                        }
-                    />
-                </FormRow>
-                <FormRow
-                    label="自动总结页面"
-                    description="自动提炼页面重点；页面内容将发送到当前所选翻译模型。"
-                    controlId="enable-page-summary"
-                >
-                    <SummaryControls>
+            <OptionsFeatureCards label="阅读功能设置">
+                <OptionsSection title="段落翻译" artwork="desk" icon="book">
+                    <ReadingFormRow
+                        label="启用段落翻译"
+                        description="鼠标指向文字时，按快捷键翻译该段落，可补译整页翻译遗漏的内容；代码与编辑区域保持原样。"
+                        controlId="enable-paragraph-translation"
+                    >
                         <CustomToggle
-                            id="enable-page-summary"
-                            aria-label="自动总结页面"
-                            checked={
-                                hasUsableGenerativeModel &&
-                                (config.enablePageSummary ?? false)
-                            }
-                            disabled={!hasUsableGenerativeModel}
+                            id="enable-paragraph-translation"
+                            aria-label="启用段落翻译"
+                            checked={config.enableParagraphTranslation ?? true}
                             onChange={checked =>
-                                updateConfig({ enablePageSummary: checked })
+                                updateConfig({
+                                    enableParagraphTranslation: checked
+                                })
                             }
                         />
-                        <Tooltip
-                            content="总结与翻译使用同一模型，请确认页面内容适合发送给该服务。"
-                            position="top"
-                            width={240}
-                            trigger="both"
-                        >
-                            <SummaryHelp
-                                type="button"
-                                aria-label="了解页面总结的数据使用方式"
-                            >
-                                <Icon name="help" size={16} />
-                            </SummaryHelp>
-                        </Tooltip>
-                    </SummaryControls>
-                    {!hasUsableGenerativeModel && (
-                        <FeatureAvailability
-                            available={false}
-                            saved={config.enablePageSummary}
-                            message={PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
+                    </ReadingFormRow>
+                    <ReadingFormRow
+                        label="显示段落悬浮提示"
+                        description="鼠标悬停时显示段落高亮框和快捷键提示，默认关闭。"
+                        controlId="enable-paragraph-hover-preview"
+                    >
+                        <CustomToggle
+                            id="enable-paragraph-hover-preview"
+                            aria-label="显示段落悬浮提示"
+                            checked={
+                                config.enableParagraphHoverPreview ?? false
+                            }
+                            disabled={
+                                config.enableParagraphTranslation === false
+                            }
+                            onChange={checked =>
+                                updateConfig({
+                                    enableParagraphHoverPreview: checked
+                                })
+                            }
                         />
-                    )}
-                </FormRow>
-            </OptionsSection>
+                    </ReadingFormRow>
+                    <ReadingFormRow
+                        label="翻译快捷键"
+                        description="点击后按下单键或组合键录制；输入文字时不触发。浏览器保留的快捷键可能不可用。"
+                        controlId="paragraph-translation-shortcut"
+                    >
+                        <ParagraphShortcutInput
+                            value={
+                                config.paragraphTranslationShortcut ??
+                                DEFAULT_PARAGRAPH_SHORTCUT
+                            }
+                            disabled={
+                                config.enableParagraphTranslation === false
+                            }
+                            onChange={value =>
+                                updateConfig({
+                                    paragraphTranslationShortcut: value
+                                })
+                            }
+                            conflictingShortcut={
+                                config.pageSummaryShortcut ??
+                                DEFAULT_PAGE_SUMMARY_SHORTCUT
+                            }
+                        />
+                    </ReadingFormRow>
+                </OptionsSection>
+                <OptionsSection title="阅读翻译" artwork="desk" icon="book">
+                    <ReadingFormRow
+                        label="按阅读范围翻译"
+                        description="仅翻译当前屏及上下各一屏，快速滚动时暂停新请求，停下后优先翻译正在阅读的内容，减少额度消耗。"
+                        controlId="enable-viewport-translation"
+                    >
+                        <CustomToggle
+                            id="enable-viewport-translation"
+                            aria-label="按阅读范围翻译"
+                            checked={config.enableViewportTranslation ?? true}
+                            onChange={checked =>
+                                updateConfig({
+                                    enableViewportTranslation: checked
+                                })
+                            }
+                        />
+                    </ReadingFormRow>
+                </OptionsSection>
+
+                <OptionsSection title="页面总结" artwork="desk" icon="book">
+                    <ReadingFormRow
+                        label="打开总结快捷键"
+                        description="点击后按键录制，清除可禁用；关闭自动总结后仍可手动打开。输入文字时不触发，浏览器保留的快捷键可能不可用。"
+                        controlId="page-summary-shortcut"
+                    >
+                        <ShortcutInput
+                            id="page-summary-shortcut"
+                            label="页面总结快捷键"
+                            value={
+                                config.pageSummaryShortcut ??
+                                DEFAULT_PAGE_SUMMARY_SHORTCUT
+                            }
+                            defaultValue={DEFAULT_PAGE_SUMMARY_SHORTCUT}
+                            resetLabel="恢复页面总结默认快捷键"
+                            allowClear
+                            conflictingShortcut={
+                                config.paragraphTranslationShortcut ??
+                                DEFAULT_PARAGRAPH_SHORTCUT
+                            }
+                            conflictMessage="此快捷键已用于段落翻译，请选择其他按键。"
+                            onChange={value =>
+                                updateConfig({ pageSummaryShortcut: value })
+                            }
+                        />
+                    </ReadingFormRow>
+                    <ReadingFormRow
+                        label="自动总结页面"
+                        description="自动提炼页面重点；页面内容将发送到当前所选翻译模型。"
+                        controlId="enable-page-summary"
+                    >
+                        <SummaryControls>
+                            <CustomToggle
+                                id="enable-page-summary"
+                                aria-label="自动总结页面"
+                                checked={
+                                    hasUsableGenerativeModel &&
+                                    (config.enablePageSummary ?? false)
+                                }
+                                disabled={!hasUsableGenerativeModel}
+                                onChange={checked =>
+                                    updateConfig({ enablePageSummary: checked })
+                                }
+                            />
+                            <Tooltip
+                                content="总结与翻译使用同一模型，请确认页面内容适合发送给该服务。"
+                                position="top"
+                                width={240}
+                                trigger="both"
+                            >
+                                <SummaryHelp
+                                    type="button"
+                                    aria-label="了解页面总结的数据使用方式"
+                                >
+                                    <Icon name="help" size={16} />
+                                </SummaryHelp>
+                            </Tooltip>
+                        </SummaryControls>
+                        {!hasUsableGenerativeModel && (
+                            <FeatureAvailability
+                                available={false}
+                                saved={config.enablePageSummary}
+                                message={PAGE_SUMMARY_UNAVAILABLE_MESSAGE}
+                            />
+                        )}
+                    </ReadingFormRow>
+                </OptionsSection>
+            </OptionsFeatureCards>
 
             <OptionsSection
                 title="显示设置"

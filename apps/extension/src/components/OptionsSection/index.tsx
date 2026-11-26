@@ -1,8 +1,8 @@
 import React from "react"
-import styled from "styled-components"
+import styled, { css } from "styled-components"
 
 import {
-    getSkySceneUrl,
+    skyCardArtwork,
     SkyIllustratedIcon,
     type SkyIllustration,
     type SkyScene
@@ -27,12 +27,16 @@ const Section = styled.section<{ $artwork?: SkyScene }>`
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xl);
     background-color: var(--bg-secondary);
-    background-image: ${props =>
-        props.$artwork
-            ? `linear-gradient(105deg, rgba(255,255,255,0.98) 15%, rgba(255,255,255,0.95) 55%, rgba(255,255,255,0.82)), url("${getSkySceneUrl(props.$artwork)}")`
-            : "linear-gradient(135deg, #ffffff 60%, #f3f9ff)"};
-    background-size: cover;
-    background-position: right center;
+    ${({ $artwork }) =>
+        $artwork
+            ? skyCardArtwork($artwork)
+            : css`
+                  background-image: linear-gradient(
+                      135deg,
+                      #ffffff 60%,
+                      #f3f9ff
+                  );
+              `}
     box-shadow: var(--shadow-sm);
 
     &:last-child {

@@ -48,7 +48,7 @@ const SelectButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background: var(--bg-secondary);
+    background: var(--options-input-background, var(--bg-secondary));
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     font-size: var(--font-size-sm);
@@ -67,6 +67,7 @@ const SelectButton = styled.button`
     }
 
     &:disabled {
+        background: var(--bg-secondary);
         opacity: 0.6;
         cursor: not-allowed;
     }

@@ -10,7 +10,10 @@ import {
     Switch
 } from "@/components"
 import FeatureAvailability from "@/components/FeatureAvailability"
-import { OptionsPageIntro } from "@/components/OptionsPageLayout"
+import {
+    OptionsFeatureCards,
+    OptionsPageIntro
+} from "@/components/OptionsPageLayout"
 import { useModelDiscovery } from "@/hooks/useModelDiscovery"
 import { translateStructuredImageViaBackground } from "@/services/imageTranslation"
 import { configAtom, updateConfigAtom } from "@/state"
@@ -229,159 +232,166 @@ export const Image: React.FunctionComponent = () => {
                 title="图片翻译"
                 description="让图片里的文字也能读懂。复用已配置的服务，为图片单独选择合适的视觉模型。"
             />
-            <OptionsSection
-                artwork="garden"
-                icon="picture"
-                title="图片翻译"
-                description="配置好视觉模型后，即可在网页图片上开启快捷翻译。"
-            >
-                <FeatureAvailability
-                    available={hasSelectedModel}
-                    saved={config.enableImageTranslateButton}
-                    section="image"
-                />
-                <FormRow
-                    label="图片上显示快捷翻译按钮"
-                    description="鼠标悬浮在图片上时显示翻译按钮，点击可翻译图片"
-                    controlId="enable-image-translate-button"
+            <OptionsFeatureCards label="图片翻译设置">
+                <OptionsSection
+                    artwork="postcards"
+                    icon="mail"
+                    title="服务与视觉模型"
+                    description="图片翻译独立使用这里的模型，不影响文本翻译设置。"
                 >
-                    <Switch
-                        id="enable-image-translate-button"
-                        aria-describedby="enable-image-translate-button-description"
-                        checked={
-                            hasSelectedModel &&
-                            Boolean(config.enableImageTranslateButton)
-                        }
-                        disabled={!hasSelectedModel}
-                        onChange={checked =>
-                            hasSelectedModel &&
-                            updateConfig({
-                                enableImageTranslateButton: checked
-                            })
-                        }
+                    <FormRow
+                        compact
+                        label="翻译服务"
+                        description="选择“模型”设置中已添加的 AI 服务配置"
+                        controlId="image-translation-service"
+                    >
+                        <NativeSelect
+                            id="image-translation-service"
+                            aria-describedby="image-translation-service-description"
+                            value={selectedService?.id ?? ""}
+                            onChange={handleServiceChange}
+                            disabled={visionServiceOptions.length === 0}
+                            options={visionServiceOptions}
+                            placeholder="请选择翻译服务"
+                        />
+                    </FormRow>
+                    <FormRow
+                        compact
+                        label="视觉模型"
+                        description="图片翻译使用独立模型，不会更改当前文本翻译服务"
+                        controlId="image-translation-model"
+                    >
+                        {manualEntry ? (
+                            <ManualModelInput
+                                id="image-translation-model"
+                                aria-describedby="image-translation-model-description"
+                                value={selectedModelName}
+                                onChange={event =>
+                                    updateConfig({
+                                        imageTranslationModelName:
+                                            event.target.value
+                                    })
+                                }
+                                placeholder="请输入视觉模型名称"
+                            />
+                        ) : (
+                            <NativeSelect
+                                id="image-translation-model"
+                                aria-describedby="image-translation-model-description"
+                                value={selectedModelName}
+                                onChange={imageTranslationModelName =>
+                                    updateConfig({ imageTranslationModelName })
+                                }
+                                disabled={
+                                    !selectedService ||
+                                    isLoading ||
+                                    visionModelOptions.length === 0
+                                }
+                                options={visionModelOptions}
+                                placeholder={
+                                    isLoading
+                                        ? "正在获取模型列表…"
+                                        : "请选择支持图片输入的模型"
+                                }
+                            />
+                        )}
+                        {selectedService && (
+                            <Button
+                                onClick={refresh}
+                                disabled={isLoading || manualEntry}
+                            >
+                                {isLoading ? "获取中…" : "刷新模型列表"}
+                            </Button>
+                        )}
+                        {!hasSelectedModel && (
+                            <Guidance>
+                                {!selectedService
+                                    ? "请先在‘模型’设置中添加并启用 AI 平台并填写 API Key"
+                                    : isLoading
+                                      ? "正在获取模型列表…"
+                                      : visionModelOptions.length === 0 &&
+                                          !manualEntry
+                                        ? "未发现支持图片的模型，请刷新或手动填写模型名称"
+                                        : "请选择视觉模型后再启用图片翻译或运行能力测试。"}
+                            </Guidance>
+                        )}
+                        {errorMessage && (
+                            <Guidance role="alert">{errorMessage}</Guidance>
+                        )}
+                    </FormRow>
+                </OptionsSection>
+                <OptionsSection
+                    artwork="garden"
+                    icon="picture"
+                    title="图片快捷翻译"
+                    description="配置好视觉模型后，即可在网页图片上开启快捷翻译。"
+                >
+                    <FeatureAvailability
+                        available={hasSelectedModel}
+                        saved={config.enableImageTranslateButton}
+                        section="image"
                     />
-                </FormRow>
-            </OptionsSection>
-            <OptionsSection
-                artwork="postcards"
-                icon="mail"
-                title="服务与视觉模型"
-                description="图片翻译独立使用这里的模型，不影响文本翻译设置。"
-            >
-                <FormRow
-                    label="翻译服务"
-                    description="选择“模型”设置中已添加的 AI 服务配置"
-                    controlId="image-translation-service"
-                >
-                    <NativeSelect
-                        id="image-translation-service"
-                        aria-describedby="image-translation-service-description"
-                        value={selectedService?.id ?? ""}
-                        onChange={handleServiceChange}
-                        disabled={visionServiceOptions.length === 0}
-                        options={visionServiceOptions}
-                        placeholder="请选择翻译服务"
-                    />
-                </FormRow>
-                <FormRow
-                    label="视觉模型"
-                    description="图片翻译使用独立模型，不会更改当前文本翻译服务"
-                    controlId="image-translation-model"
-                >
-                    {manualEntry ? (
-                        <ManualModelInput
-                            id="image-translation-model"
-                            aria-describedby="image-translation-model-description"
-                            value={selectedModelName}
-                            onChange={event =>
+                    <FormRow
+                        compact
+                        label="图片上显示快捷翻译按钮"
+                        description="鼠标悬浮在图片上时显示翻译按钮，点击可翻译图片"
+                        controlId="enable-image-translate-button"
+                    >
+                        <Switch
+                            id="enable-image-translate-button"
+                            aria-describedby="enable-image-translate-button-description"
+                            checked={
+                                hasSelectedModel &&
+                                Boolean(config.enableImageTranslateButton)
+                            }
+                            disabled={!hasSelectedModel}
+                            onChange={checked =>
+                                hasSelectedModel &&
                                 updateConfig({
-                                    imageTranslationModelName:
-                                        event.target.value
+                                    enableImageTranslateButton: checked
                                 })
                             }
-                            placeholder="请输入视觉模型名称"
                         />
-                    ) : (
-                        <NativeSelect
-                            id="image-translation-model"
-                            aria-describedby="image-translation-model-description"
-                            value={selectedModelName}
-                            onChange={imageTranslationModelName =>
-                                updateConfig({ imageTranslationModelName })
-                            }
-                            disabled={
-                                !selectedService ||
-                                isLoading ||
-                                visionModelOptions.length === 0
-                            }
-                            options={visionModelOptions}
-                            placeholder={
-                                isLoading
-                                    ? "正在获取模型列表…"
-                                    : "请选择支持图片输入的模型"
-                            }
-                        />
-                    )}
-                    {selectedService && (
-                        <Button
-                            onClick={refresh}
-                            disabled={isLoading || manualEntry}
-                        >
-                            {isLoading ? "获取中…" : "刷新模型列表"}
-                        </Button>
-                    )}
-                    {!hasSelectedModel && (
-                        <Guidance>
-                            {!selectedService
-                                ? "请先在‘模型’设置中添加并启用 AI 平台并填写 API Key"
-                                : isLoading
-                                  ? "正在获取模型列表…"
-                                  : visionModelOptions.length === 0 &&
-                                      !manualEntry
-                                    ? "未发现支持图片的模型，请刷新或手动填写模型名称"
-                                    : "请选择视觉模型后再启用图片翻译或运行能力测试。"}
-                        </Guidance>
-                    )}
-                    {errorMessage && (
-                        <Guidance role="alert">{errorMessage}</Guidance>
-                    )}
-                </FormRow>
-            </OptionsSection>
-            <OptionsSection
-                artwork="desk"
-                title="视觉能力测试"
-                description="准备好后，用一张测试图片确认模型可以识别并翻译文字。"
-            >
-                <FormRow
-                    label="视觉能力测试"
-                    description="使用运行时生成的图片验证所选模型能否识别并翻译图片文字"
+                    </FormRow>
+                </OptionsSection>
+                <OptionsSection
+                    artwork="desk"
+                    title="视觉能力测试"
+                    description="准备好后，用一张测试图片确认模型可以识别并翻译文字。"
                 >
-                    <Button
-                        onClick={handleCapabilityTest}
-                        disabled={
-                            !hasSelectedModel || testStatus.state === "loading"
-                        }
+                    <FormRow
+                        compact
+                        label="视觉能力测试"
+                        description="使用运行时生成的图片验证所选模型能否识别并翻译图片文字"
                     >
-                        {testStatus.state === "loading"
-                            ? "测试中…"
-                            : "测试视觉能力"}
-                    </Button>
-                    {testStatus.state === "success" && (
-                        <TestStatus $status="success" role="status">
-                            视觉能力测试成功
-                        </TestStatus>
-                    )}
-                    {testStatus.state === "error" && (
-                        <TestStatus $status="error" role="alert">
-                            视觉能力测试失败：{testStatus.message}
-                        </TestStatus>
-                    )}
-                    <Notice>
-                        能力测试和实际翻译会将图片发送给所选模型服务商，可能产生服务商费用；API
-                        Key 仅由扩展后台读取。
-                    </Notice>
-                </FormRow>
-            </OptionsSection>
+                        <Button
+                            onClick={handleCapabilityTest}
+                            disabled={
+                                !hasSelectedModel ||
+                                testStatus.state === "loading"
+                            }
+                        >
+                            {testStatus.state === "loading"
+                                ? "测试中…"
+                                : "测试视觉能力"}
+                        </Button>
+                        {testStatus.state === "success" && (
+                            <TestStatus $status="success" role="status">
+                                视觉能力测试成功
+                            </TestStatus>
+                        )}
+                        {testStatus.state === "error" && (
+                            <TestStatus $status="error" role="alert">
+                                视觉能力测试失败：{testStatus.message}
+                            </TestStatus>
+                        )}
+                        <Notice>
+                            能力测试和实际翻译会将图片发送给所选模型服务商，可能产生服务商费用；API
+                            Key 仅由扩展后台读取。
+                        </Notice>
+                    </FormRow>
+                </OptionsSection>
+            </OptionsFeatureCards>
         </>
     )
 }

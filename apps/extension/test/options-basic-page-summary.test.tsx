@@ -82,6 +82,18 @@ async function renderBasic() {
 }
 
 describe("options page summary setting", () => {
+    it("keeps paragraph translation, reading translation and summary as separate cards in one group", async () => {
+        await renderBasic()
+        const group = document.querySelector(
+            '[role="group"][aria-label="阅读功能设置"]'
+        )
+        expect(group).not.toBeNull()
+        const cards = [...group!.querySelectorAll(":scope > section")]
+        expect(
+            cards.map(card => card.querySelector("h3")?.textContent)
+        ).toEqual(["段落翻译", "阅读翻译", "页面总结"])
+    })
+
     it("enables summary when mewCat is selected", async () => {
         mocks.config = createConfig({ currentModel: "mewcat-translate" })
         await renderBasic()

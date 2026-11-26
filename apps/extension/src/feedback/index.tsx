@@ -3,6 +3,7 @@ import styled from "styled-components"
 
 import BrandLogo from "@/components/BrandLogo"
 import Button from "@/components/Button"
+import { skyCardArtwork } from "@/components/SkyArtwork"
 import { EXTENSION_INFO } from "@/constants/options"
 import { submitFeedback } from "@/services/feedback"
 import { feedbackSubmissionSchema } from "@/types/feedback"
@@ -40,6 +41,7 @@ const Card = styled.section`
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xl);
     background: var(--bg-secondary);
+    ${skyCardArtwork("feedbackLetter")}
     box-shadow: var(--shadow-sm);
     @media (max-width: 480px) {
         padding: var(--space-4);

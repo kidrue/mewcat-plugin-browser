@@ -108,14 +108,26 @@ async function renderSettingsPanel(executePageAction?: PageActionExecutor) {
 }
 
 async function clickAdvancedSettings() {
-    const button = Array.from(document.querySelectorAll("button")).find(
-        item => item.textContent?.trim() === "高级设置"
+    const button = document.querySelector<HTMLButtonElement>(
+        'button[aria-label="高级设置"]'
     )
-    expect(button).toBeDefined()
+    expect(button).not.toBeNull()
     await act(async () => button!.click())
 }
 
 describe("quick settings page summary setting", () => {
+    it("shows GitHub separately from the feedback and settings icon buttons in the popup header", async () => {
+        await renderSettingsPanel()
+        const github = document.querySelector('a[aria-label="GitHub 项目"]')
+        const feedback = document.querySelector('button[aria-label="意见反馈"]')
+        const settings = document.querySelector('button[aria-label="高级设置"]')
+        expect(settings).not.toBeNull()
+        expect(settings?.textContent).toBe("")
+        expect(settings?.querySelector("svg")).not.toBeNull()
+        expect(feedback?.nextElementSibling).toBe(settings)
+        expect(github?.nextElementSibling).toBe(feedback?.parentElement)
+    })
+
     it("enables summary when mewCat is selected", async () => {
         mocks.config = createConfig({ currentModel: "mewcat-translate" })
         await renderSettingsPanel()

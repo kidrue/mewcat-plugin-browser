@@ -1,4 +1,4 @@
-import styled from "styled-components"
+import styled, { css } from "styled-components"
 
 const getAssetUrl = (path: string) => {
     if (typeof chrome !== "undefined" && chrome.runtime?.getURL) {
@@ -25,13 +25,38 @@ export const SKY_SCENES = {
     desk: "reading-desk.png",
     garden: "hydrangea-garden.png",
     postcards: "blue-postcards.png",
-    archive: "letter-archive.png"
+    archive: "letter-archive.png",
+    sidepanel: "sidepanel-post-office.webp",
+    usagePrivacy: "usage-privacy.webp",
+    usageLedger: "usage-ledger.webp",
+    localData: "local-data.webp",
+    analyticsTrends: "analytics-trends.webp",
+    analyticsServices: "analytics-services.webp",
+    analyticsRecords: "analytics-records.webp",
+    analyticsDevices: "analytics-devices.webp",
+    analyticsLanguages: "analytics-languages.webp",
+    readingGuide: "reading-guide.webp",
+    feedbackLetter: "feedback-letter.webp"
 } as const
 
 export type SkyScene = keyof typeof SKY_SCENES
 
 export const getSkySceneUrl = (scene: SkyScene) =>
     getAssetUrl(`assets/sky-letter/${SKY_SCENES[scene]}`)
+
+export const skyCardArtwork = (scene: SkyScene) => css`
+    background-image:
+        linear-gradient(
+            105deg,
+            rgb(255 255 255 / calc(1 - 0.15 * var(--card-artwork-opacity))) 15%,
+            rgb(255 255 255 / calc(1 - 0.35 * var(--card-artwork-opacity))) 55%,
+            rgb(255 255 255 / calc(1 - var(--card-artwork-opacity)))
+        ),
+        url("${getSkySceneUrl(scene)}");
+    background-repeat: no-repeat;
+    background-position: right center;
+    background-size: cover;
+`
 
 export type SkyIllustration = "mail" | "book" | "picture" | "ledger"
 

@@ -141,7 +141,7 @@ export function Analytics() {
                 </Button>
             </OptionsPageIntro>
             {forbidden ? (
-                <Card>
+                <Card $artwork="usagePrivacy">
                     <h3>{error.message}</h3>
                     <Muted>
                         如需访问，请将本设备 ID 提供给服务管理员加入白名单。

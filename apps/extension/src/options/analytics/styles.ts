@@ -1,5 +1,7 @@
 import styled from "styled-components"
 
+import { skyCardArtwork, type SkyScene } from "@/components/SkyArtwork"
+
 export const Page = styled.div`
     display: grid;
     gap: var(--space-6);
@@ -84,12 +86,13 @@ export const Tabs = styled.div`
         color: var(--primary-color);
     }
 `
-export const Card = styled.section`
+export const Card = styled.section<{ $artwork?: SkyScene }>`
     min-width: 0;
     padding: var(--space-6);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-xl);
     background: var(--bg-secondary);
+    ${({ $artwork = "usageLedger" }) => skyCardArtwork($artwork)}
     box-shadow: var(--shadow-sm);
     @media (max-width: 600px) {
         padding: var(--space-4);

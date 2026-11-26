@@ -124,7 +124,7 @@ export function Overview({ data }: { data: AnalyticsOverview }) {
                 ))}
             </Metrics>
             <OptionsCardGrid>
-                <Card>
+                <Card $artwork="analyticsTrends">
                     <Row>
                         <h3>每日趋势</h3>
                         <Button
@@ -247,14 +247,14 @@ export function Overview({ data }: { data: AnalyticsOverview }) {
                         <Muted>此区间暂无已采集的趋势数据</Muted>
                     )}
                 </Card>
-                <Card>
+                <Card $artwork="analyticsLanguages">
                     <h3>常用语言</h3>
                     <Languages items={data.languages} />
                     <Muted>仅已执行的翻译具有语言信息，展示前 20 项。</Muted>
                 </Card>
             </OptionsCardGrid>
             <OptionsCardGrid>
-                <Card>
+                <Card $artwork="analyticsServices">
                     <h3>服务表现</h3>
                     <TableScroll>
                         <table>
@@ -305,7 +305,7 @@ export function Overview({ data }: { data: AnalyticsOverview }) {
                         <Muted>保留的调用明细中暂无翻译错误</Muted>
                     )}
                 </Card>
-                <Card>
+                <Card $artwork="analyticsDevices">
                     <AnalysisStatus data={data.analysis} />
                 </Card>
             </OptionsCardGrid>

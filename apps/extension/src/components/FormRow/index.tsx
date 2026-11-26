@@ -76,17 +76,46 @@ const Field = styled.div`
     }
 `
 
+const CompactRow = styled(Row)`
+    @media (min-width: 901px) {
+        flex-wrap: nowrap;
+        gap: var(--space-4);
+
+        ${Term} {
+            flex-basis: min(42%, 208px);
+            min-width: 0;
+        }
+
+        ${Field} {
+            flex: 1 1 0;
+        }
+    }
+
+    @media (max-width: 900px) {
+        ${Term} {
+            display: contents;
+        }
+
+        ${Description} {
+            order: 1;
+            margin: 0;
+        }
+    }
+`
+
 const FormRowComponent: React.FC<FormRowProps> = ({
     label,
     description,
+    compact,
     required,
     controlId,
     children,
     className,
     style
 }) => {
+    const Layout = compact ? CompactRow : Row
     return (
-        <Row className={className} style={style}>
+        <Layout className={className} style={style}>
             <Term>
                 <Label $required={!!required} htmlFor={controlId}>
                     {label}
@@ -100,7 +129,7 @@ const FormRowComponent: React.FC<FormRowProps> = ({
                 )}
             </Term>
             <Field>{children}</Field>
-        </Row>
+        </Layout>
     )
 }
 

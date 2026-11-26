@@ -149,6 +149,14 @@ const HeaderTitle = styled.h1`
     line-height: var(--line-height-tight);
 `
 
+const HeaderVersion = styled.span`
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-secondary);
+    letter-spacing: normal;
+    white-space: nowrap;
+`
+
 const HeaderSubtitle = styled.span`
     font-size: var(--font-size-xs);
     color: var(--text-tertiary);
@@ -417,22 +425,6 @@ const PanelContainer = styled.div<{ $variant: "floating" | "embedded" }>`
                       background: rgba(255, 255, 255, 0.46);
                       border-color: rgba(116, 158, 194, 0.48);
                   }
-
-                  ${SettingsButton} {
-                      position: relative;
-                      z-index: 1;
-                      background: #f8fbff;
-                      border-color: var(--border-color);
-                      box-shadow: 0 3px 12px rgba(32, 74, 112, 0.08);
-                      border-radius: var(--radius-lg);
-                      color: var(--text-primary);
-
-                      &:hover {
-                          background: rgba(255, 255, 255, 0.86);
-                          border-color: var(--primary-muted);
-                          color: var(--primary-hover);
-                      }
-                  }
               `}
 `
 
@@ -459,21 +451,22 @@ const HeaderActions = styled.div`
     }
 `
 
-const RepositoryLink = styled.a`
+const PopupIconButton = styled.button`
     display: flex;
     align-items: center;
     justify-content: center;
     width: 32px;
     height: 32px;
-    margin: 0;
+    padding: 0;
+    cursor: pointer;
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     background: var(--bg-secondary);
     color: var(--text-secondary);
 
     svg {
-        width: 20px;
-        height: 20px;
+        width: 16px;
+        height: 16px;
     }
 
     &:hover {
@@ -484,6 +477,18 @@ const RepositoryLink = styled.a`
     &:focus-visible {
         outline: 2px solid var(--primary-color);
         outline-offset: 2px;
+    }
+`
+
+const RepositoryLink = styled(PopupIconButton)`
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+
+    svg {
+        width: 20px;
+        height: 20px;
     }
 `
 
@@ -530,7 +535,13 @@ const MoreActions = styled.details`
 `
 
 const GearPath = () => (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        aria-hidden="true"
+    >
         <circle cx="12" cy="12" r="3" />
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
@@ -656,12 +667,23 @@ function SettingsPanel({
             <Header>
                 <HeaderLogo size={40} />
                 <HeaderInfo>
-                    <HeaderTitle>译趣喵</HeaderTitle>
+                    <HeaderTitle>
+                        译趣喵
+                        {variant === "embedded" && (
+                            <>
+                                {" "}
+                                <HeaderVersion>
+                                    {EXTENSION_INFO.version}
+                                </HeaderVersion>
+                            </>
+                        )}
+                    </HeaderTitle>
                     <HeaderSubtitle>晴空来信 · 智能翻译助手</HeaderSubtitle>
                 </HeaderInfo>
                 {variant === "embedded" && (
-                    <HeaderActions>
+                    <>
                         <RepositoryLink
+                            as="a"
                             href={EXTENSION_INFO.repositoryUrl}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -670,8 +692,18 @@ function SettingsPanel({
                         >
                             <GitHubIcon />
                         </RepositoryLink>
-                        <FeedbackButton iconOnly />
-                    </HeaderActions>
+                        <HeaderActions>
+                            <FeedbackButton iconOnly />
+                            <PopupIconButton
+                                type="button"
+                                aria-label="高级设置"
+                                title="高级设置"
+                                onClick={handleOpenSettings}
+                            >
+                                <GearPath />
+                            </PopupIconButton>
+                        </HeaderActions>
+                    </>
                 )}
                 {variant === "embedded" ? (
                     <PopupPortrait aria-hidden="true">
@@ -897,10 +929,12 @@ function SettingsPanel({
                 </MoreActions>
             </LanguageRow>
 
-            <SettingsButton onClick={handleOpenSettings}>
-                <GearPath />
-                高级设置
-            </SettingsButton>
+            {variant === "floating" && (
+                <SettingsButton type="button" onClick={handleOpenSettings}>
+                    <GearPath />
+                    高级设置
+                </SettingsButton>
+            )}
         </PanelContainer>
     )
 }

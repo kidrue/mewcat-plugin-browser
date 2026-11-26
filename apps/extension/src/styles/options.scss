@@ -8,6 +8,8 @@ html {
 }
 
 body {
+    --options-input-background: rgba(255, 255, 255, 0.65);
+
     margin: 0;
     padding: 0;
     font-size: var(--font-size-base);
@@ -15,6 +17,14 @@ body {
     line-height: var(--line-height-normal);
     color: var(--text-primary);
     background: var(--bg-primary);
+
+    :is(
+            input:not([type="checkbox"], [type="radio"], [type="range"]),
+            textarea,
+            select
+        ):enabled {
+        background-color: var(--options-input-background);
+    }
 }
 
 #root {

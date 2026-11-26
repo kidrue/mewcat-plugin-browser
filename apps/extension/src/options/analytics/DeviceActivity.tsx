@@ -144,7 +144,7 @@ function DailyActivity({ days }: { days: OverviewData["days"] }) {
         ...days.flatMap(day => trend.series.map(series => day[series.key]))
     )
     return (
-        <Card>
+        <Card $artwork="analyticsTrends">
             <Row>
                 <h3>每日设备趋势</h3>
                 {trends.map(item => (
@@ -321,7 +321,7 @@ export function DeviceActivityProfile({ clientId }: { clientId: string }) {
     })
     const profile = data?.operation === "profile" ? data : null
     return (
-        <Card aria-label="设备使用统计">
+        <Card $artwork="analyticsDevices" aria-label="设备使用统计">
             <h3>设备使用统计</h3>
             {profile ? (
                 <>

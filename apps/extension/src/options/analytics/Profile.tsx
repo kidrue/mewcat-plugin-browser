@@ -126,7 +126,7 @@ export function Profile({
             {loading && !profile && <Muted role="status">正在读取画像…</Muted>}
             {profile && (
                 <>
-                    <Card>
+                    <Card $artwork="analyticsDevices">
                         <h3>{profile.client.name}</h3>
                         <Muted>
                             注册于 {localTime(profile.client.createdAt)} ·{" "}
@@ -159,7 +159,7 @@ export function Profile({
                             </Metric>
                         ))}
                     </Metrics>
-                    <Card>
+                    <Card $artwork="analyticsLanguages">
                         <h3>行为与语言</h3>
                         <Languages items={profile.languages} />
                         <Muted>
@@ -179,7 +179,7 @@ export function Profile({
                             </Muted>
                         ))}
                     </Card>
-                    <Card>
+                    <Card $artwork="analyticsRecords">
                         <AnalysisStatus data={profile.analysis} />
                         {profile.topics.length > 0 && (
                             <>

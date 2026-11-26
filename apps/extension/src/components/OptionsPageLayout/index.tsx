@@ -128,6 +128,48 @@ export const OptionsCardGrid = styled.div`
     }
 `
 
+const FeatureCardContainer = styled.div`
+    container-type: inline-size;
+    margin-bottom: var(--space-6);
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+`
+
+const FeatureCardGrid = styled(OptionsCardGrid)`
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+
+    > section {
+        margin-bottom: 0;
+    }
+
+    @container (min-width: 960px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+
+        > section:first-child {
+            grid-row: span 2;
+        }
+    }
+`
+
+export function OptionsFeatureCards({
+    label,
+    children
+}: {
+    label: string
+    children: React.ReactNode
+}) {
+    return (
+        <FeatureCardContainer>
+            <FeatureCardGrid role="group" aria-label={label}>
+                {children}
+            </FeatureCardGrid>
+        </FeatureCardContainer>
+    )
+}
+
 interface OptionsPageIntroProps {
     title: string
     description: string

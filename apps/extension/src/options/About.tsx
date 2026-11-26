@@ -205,7 +205,7 @@ function DeviceActivitySection() {
     }
 
     return (
-        <OptionsSection title="使用统计" icon="ledger">
+        <OptionsSection title="使用统计" artwork="usagePrivacy" icon="ledger">
             <FormRow
                 label="分享使用统计"
                 controlId={controlId}

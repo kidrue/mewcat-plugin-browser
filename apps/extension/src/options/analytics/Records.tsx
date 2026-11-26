@@ -103,7 +103,7 @@ export function Devices({
     onProfile: (id: string) => void
 }) {
     return (
-        <Card>
+        <Card $artwork="analyticsDevices">
             <h3>设备画像</h3>
             <Muted>
                 按设备 ID
@@ -176,7 +176,7 @@ export function Devices({
 }
 export function Calls({ data }: { data: AnalyticsCalls }) {
     return (
-        <Card>
+        <Card $artwork="analyticsRecords">
             <h3>调用记录</h3>
             <Muted>
                 时间按浏览器时区显示；仅展示受控元数据，按时间正序分页。

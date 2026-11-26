@@ -4,6 +4,7 @@ import React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import packageMetadata from "../package.json"
 import type { ExtensionConfig } from "../src/types/config"
 import { TranslationStyle } from "../src/types/translationStyle"
 import * as translationDom from "../src/utils/dom"
@@ -158,6 +159,18 @@ describe("brand logo placement", () => {
         await act(async () => root?.render(<SettingsPanel />))
 
         expectGeneratedExtensionLogo()
+        expect(container.querySelector("h1")?.textContent).toBe("译趣喵")
+    })
+
+    it("shows the current version next to the popup title", async () => {
+        const { default: SettingsPanel } = await import(
+            "../src/components/SettingsPanel"
+        )
+        await act(async () => root?.render(<SettingsPanel variant="embedded" />))
+
+        expect(container.querySelector("h1")?.textContent).toBe(
+            `译趣喵 v${packageMetadata.version}`
+        )
     })
 
     it("shows the generated extension icon in the sidepanel header", async () => {

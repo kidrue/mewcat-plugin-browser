@@ -6,6 +6,7 @@ import { STORAGE_NAMES } from "@/constants/storage"
 
 import Button from "../Button"
 import NativeSelect from "../NativeSelect"
+import { skyCardArtwork } from "../SkyArtwork"
 
 const Card = styled.section`
     margin: 12px 0;
@@ -13,6 +14,7 @@ const Card = styled.section`
     border: 1px solid var(--border-color, #cfe0ef);
     border-radius: 12px;
     background: var(--bg-secondary, white);
+    ${skyCardArtwork("readingGuide")}
     font-size: 13px;
     line-height: 1.7;
     h2 {
