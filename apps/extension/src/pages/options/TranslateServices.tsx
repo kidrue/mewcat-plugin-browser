@@ -40,10 +40,13 @@ import { DEFAULT_VALUES, platformNameMap } from "@/constants"
 import { AiRoleOptions, AiRoleSystemPrompts } from "@/constants/aiRole"
 import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import {
+    canExplicitlyConfigureVision,
     getGenerationBaseUrl,
+    isVisionCapableModel,
     PROVIDER_REGISTRY
-} from "@/features/model-management/providers"
-import { testConfiguredModel } from "@/features/translation/translationService"
+} from "@/features/model-management"
+import { isTranslationContextAvailable } from "@/features/page-summary"
+import { testConfiguredModel } from "@/features/translation-services"
 import {
     configAtom,
     getTranslationServiceOptions,
@@ -56,12 +59,7 @@ import type { AiModel_Platform_Enum } from "@/types"
 import { AiRole, type BaseModel } from "@/types"
 import { MEWCAT_TRANSLATION_PROMPT_MAX_LENGTH } from "@/types/config"
 import { getModelByModelList, isModelThinkingCapable } from "@/utils/llmModel"
-import { isTranslationContextAvailable } from "@/utils/pageSummary"
 import { Toast, ToastType } from "@/utils/toast"
-import {
-    canExplicitlyConfigureVision,
-    isVisionCapableModel
-} from "@/utils/visionModels"
 
 import { AI_MODEL_UI_LIST } from "./constants"
 
@@ -1206,8 +1204,9 @@ export const TranslateServices: React.FC = () => {
                                                 mewcatTranslationPrompt: value
                                             })
                                         ).catch(() => {
-                                            if (field.value.trim() === value)
+                                            if (field.value.trim() === value) {
                                                 field.value = previous
+                                            }
                                             Toast.show({
                                                 type: ToastType.ERROR,
                                                 message:

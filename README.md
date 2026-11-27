@@ -4,32 +4,33 @@
 
 [隐私政策](PRIVACY.md)
 
-| 包 | 目录 | 用途 |
-| --- | --- | --- |
-| `@mewcat/extension` | `apps/extension` | WXT / React 浏览器扩展 |
-| `@mewcat/service` | `apps/service` | Fastify / Prisma 翻译及反馈服务 |
-| `@mewcat/protocol` | `packages/mewcat-protocol` | 加密协议、校验和公共类型 |
-| `@mewcat/client` | `packages/mewcat-client` | 浏览器 SDK 和 IndexedDB 身份存储 |
+| 包                  | 目录                       | 用途                             |
+| ------------------- | -------------------------- | -------------------------------- |
+| `@mewcat/extension` | `apps/extension`           | WXT / React 浏览器扩展           |
+| `@mewcat/service`   | `apps/service`             | Fastify / Prisma 翻译及反馈服务  |
+| `@mewcat/protocol`  | `packages/mewcat-protocol` | 加密协议、校验和公共类型         |
+| `@mewcat/client`    | `packages/mewcat-client`   | 浏览器 SDK 和 IndexedDB 身份存储 |
 
-## 本地使用
+## 本地开发
 
 ```bash
 pnpm install --frozen-lockfile
-# 首次使用时复制 .env.example 为根目录 .env.local，再填写需要的配置。
-# 已有 .env.local 的环境不要覆盖它。
-
-pnpm dev:extension   # 扩展开发服务使用 3001 端口
-pnpm dev:service     # 后端默认使用 3000 端口
+pnpm dev:extension
 ```
 
-后端首次启动前还需要初始化本地数据库及密钥：
+首次配置时，按根目录 `.env.example` 创建 `.env.local`。应用命令优先使用进程环境，配置值中的 `$` 原样保留。`pnpm install` 会构建共享包并准备 WXT 和 Prisma 生成文件。
+
+首次运行后端时，初始化本地密钥和数据库后启动服务。
 
 ```bash
 pnpm --filter @mewcat/service admin keys
 pnpm --filter @mewcat/service db:migrate
+pnpm dev:service
 ```
 
-本地应用命令统一读取仓库根目录 `.env.local`，已有进程环境变量优先，密码中的 `$` 原样保留。后端的数据和密钥默认位于 `apps/service/data` 和 `apps/service/secrets`。扩展继续使用原有生产服务地址及公钥指纹。
+后端默认监听 `127.0.0.1:3000`。数据和密钥默认位于 `apps/service/data` 和 `apps/service/secrets`，相对路径以服务端目录为基准。
+
+## 验证与发布
 
 ```bash
 pnpm check                    # workspace、共享包和两应用的检查
@@ -41,14 +42,14 @@ pnpm build:service            # 后端构建
 pnpm format                  # 格式化
 ```
 
-生产扩展加载目录为 `apps/extension/.output/chrome-mv3`，开发目录为 `apps/extension/.output/chrome-mv3-dev`；迁移前加载根 `.output` 的 Chrome 扩展需要改为新目录。
+扩展加载目录为 `apps/extension/.output/chrome-mv3`，开发产物位于 `apps/extension/.output/chrome-mv3-dev`。
 
-## 自动化流程
+- PR 始终生成 `CI 结果`，按改动范围验证受影响的应用。
+- 推送 `main` 时，按应用目录及公共构建路径触发对应流程。仅修改根 README 或根 `docs/` 时跳过两条发布流程。
+- 扩展以 `apps/extension/package.json` 的版本发布。后端镜像以提交 SHA 标识，生产部署由 `SERVICE_DEPLOY_ENABLED` 控制。
 
-- PR：始终生成 `CI 结果` 检查，按改动范围验证受影响应用；文档 PR 也能正常完成检查。
-- 扩展：推送 `main` 且涉及扩展、共享包或公共构建配置时检查并构建；扩展版本升级后才发布到 GitHub Release / Chrome Web Store。
-- 后端：推送 `main` 且涉及后端、共享包或公共构建配置时运行检查并构建镜像。`SERVICE_DEPLOY_ENABLED=true` 时，`deploy-service.yml` 会将镜像发布到阿里云生产环境。
+## 文档
 
-详细触发规则、Docker 验收和生产发布配置见 [monorepo 使用说明](docs/monorepo.md)。
-
-扩展功能说明见 [扩展 README](apps/extension/README.md)；服务端接口与运行说明见 [服务端 README](apps/service/README.md)。
+- 扩展：[开发与使用](apps/extension/README.md)、[架构](apps/extension/docs/architecture.md)、[发布手册](apps/extension/docs/chrome-web-store-automation.md)、[测试与浏览器复验](apps/extension/test/README.md)。
+- 后端：[本地运行](apps/service/README.md)、[API](apps/service/docs/api.md)、[加密协议](apps/service/docs/protocol.md)、[部署与 Docker 验收](apps/service/docs/deploy.md)、[统计与管理](apps/service/docs/analytics.md)。
+- 维护：[协作规范](AGENTS.md)、[项目减法与性能优化计划](docs/superpowers/plans/2026-11-24-project-simplification.md)。

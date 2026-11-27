@@ -3,14 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import rules from "../src/public/assets/rule.json"
 import { defaultExtensionConfig } from "../src/state/constants"
-import * as translationCache from "../src/features/translation/cache"
-import { DomSelector } from "../src/features/translation/DomSelector"
-import { ImmersiveTranslator } from "../src/features/translation/ImmersiveTranslator"
-import { extractTranslationContext } from "../src/features/translation/pageTranslationContext"
+import * as translationCache from "../src/features/translation-cache"
+import { DomSelector } from "../src/features/page-translation/DomSelector"
+import { ImmersiveTranslator } from "../src/features/page-translation/ImmersiveTranslator"
+import { extractTranslationContext } from "../src/features/page-translation/pageTranslationContext"
 import { AiRole } from "../src/types/config"
 
 const service = vi.hoisted(() => ({ translate: vi.fn() }))
-vi.mock("../src/features/translation/translationService", () => ({
+vi.mock("../src/features/translation-services/translationService", () => ({
     translateBatch: service.translate,
     buildAiSummary: vi.fn(),
     hasAITranslationEnabled: () => false

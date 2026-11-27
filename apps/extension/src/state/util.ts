@@ -1,19 +1,12 @@
 import { storage } from "#imports"
 
-import {
-    STORAGE_NAMES,
-    toWxtLocalStorageKey,
-    toWxtSyncStorageKey
-} from "@/constants/storage"
+import { STORAGE_NAMES, toWxtSyncStorageKey } from "@/constants/storage"
 
 const PERSISTED_ATOM_KEYS: Readonly<Record<string, string>> = {
     "extension-config": STORAGE_NAMES.extensionConfig,
     accessToken: STORAGE_NAMES.accessToken,
     refreshToken: STORAGE_NAMES.refreshToken
 }
-
-const toLocalStorageKey = (key: string): `local:${string}` =>
-    toWxtLocalStorageKey(PERSISTED_ATOM_KEYS[key] ?? key)
 
 const toSyncStorageKey = (key: string): `sync:${string}` =>
     toWxtSyncStorageKey(PERSISTED_ATOM_KEYS[key] ?? key)

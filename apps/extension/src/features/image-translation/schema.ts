@@ -34,7 +34,9 @@ const normalizeCoordinate = (coordinate: number): number =>
     Math.min(1000, Math.max(0, Math.round(coordinate)))
 
 const parseValue = (value: unknown): unknown => {
-    if (typeof value !== "string") return value
+    if (typeof value !== "string") {
+        return value
+    }
     try {
         return JSON.parse(stripJsonFence(value))
     } catch {

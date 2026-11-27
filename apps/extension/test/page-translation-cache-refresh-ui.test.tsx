@@ -61,7 +61,7 @@ vi.mock("../src/hooks/useDrag", () => ({
     })
 }))
 
-vi.mock("../src/features/translation/ImmersiveTranslator", () => ({
+vi.mock("../src/features/page-translation/ImmersiveTranslator", () => ({
     ImmersiveTranslator: class {
         constructor(config: {
             onRequestStateChange?: (loading: boolean) => void

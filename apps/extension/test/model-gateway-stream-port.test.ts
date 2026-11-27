@@ -6,7 +6,7 @@ import {
     type ModelGatewayGenerateRequest
 } from "../src/messaging/modelGatewayContracts"
 import { requestModelGatewayStream } from "../src/messaging/modelGatewayStream"
-import { streamConceptExplanation } from "../src/features/translation/translationService"
+import { streamConceptExplanation } from "../src/features/translation-services/translationService"
 import { AiModel_Platform_Enum, AiRole } from "../src/types"
 
 function event<T>() {

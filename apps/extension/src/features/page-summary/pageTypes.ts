@@ -25,11 +25,15 @@ export function classifyPageType(document: Document): PageType {
     })
 
     const structured = normalize(structuredTypes.join(" "))
-    if (structured.includes("news")) return "news"
+    if (structured.includes("news")) {
+        return "news"
+    }
     if (structured.includes("scholarly") || structured.includes("academic")) {
         return "academic"
     }
-    if (structured.includes("product")) return "product"
+    if (structured.includes("product")) {
+        return "product"
+    }
 
     const text = normalize(
         `${document.title} ${document.body?.textContent?.slice(0, 5000) ?? ""}`

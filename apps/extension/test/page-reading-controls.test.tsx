@@ -63,3 +63,28 @@ it("disables translation on unsupported pages and displays the reason", async ()
     expect(document.querySelector("button")?.disabled).toBe(true)
     expect(document.body.textContent).toContain("浏览器内部页不支持翻译")
 })
+
+it("enables controls for a new page while discarding the previous page's pending action", async () => {
+    const idle: ReadingState = { status: "idle", translated: 0, failed: 0 }
+    let finish!: (state: ReadingState) => void
+    const request = new Promise<ReadingState>(resolve => {
+        finish = resolve
+    })
+    await render(async ({ action }) => (action === "start" ? request : idle))
+    const translate = () => document.querySelector("button")!
+
+    await act(async () => translate().click())
+    expect(translate().disabled).toBe(true)
+
+    const execute: PageActionExecutor = async () => idle
+    await act(async () =>
+        root.render(<PageReadingControls execute={execute} />)
+    )
+    expect(translate().disabled).toBe(false)
+
+    await act(async () =>
+        finish({ status: "complete", translated: 4, failed: 0 })
+    )
+    expect(document.body.textContent).toContain("尚未翻译")
+    expect(translate().disabled).toBe(false)
+})

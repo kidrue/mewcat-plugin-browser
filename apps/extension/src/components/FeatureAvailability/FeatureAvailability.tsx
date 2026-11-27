@@ -1,6 +1,6 @@
 import type React from "react"
 
-import { openReadingSettings } from "@/features/reading/pageActions"
+import { openReadingSettings } from "@/features/reading"
 
 import Button from "../Button"
 import type { FeatureAvailabilityProps } from "./types"

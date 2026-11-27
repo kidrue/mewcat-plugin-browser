@@ -14,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 }))
 vi.mock("@/messaging", () => ({ sendMessage: mocks.send }))
 vi.mock("@/services/monitoring", () => ({ captureExtensionException: vi.fn() }))
-vi.mock("../src/utils/pageSummary", () => ({
+vi.mock("../src/features/page-summary/availability", () => ({
     selectPageSummaryModel: () => mocks.model
 }))
 vi.mock("../src/features/page-summary/PageSummaryRenderer", () => ({

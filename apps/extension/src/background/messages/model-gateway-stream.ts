@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { PROVIDER_REGISTRY } from "@/features/model-management/providers"
+import { PROVIDER_REGISTRY } from "@/features/model-management"
 import {
     MODEL_GATEWAY_STREAM_PORT,
     MODEL_GATEWAY_STREAM_TIMEOUT_MS,
@@ -49,13 +49,17 @@ export function handleModelGatewayStreamPort(
     port: chrome.runtime.Port,
     dependencies: ModelGatewayDependencies = {}
 ): void {
-    if (port.name !== MODEL_GATEWAY_STREAM_PORT) return
+    if (port.name !== MODEL_GATEWAY_STREAM_PORT) {
+        return
+    }
     const controller = new AbortController()
     let started = false
     let closed = false
     let heartbeatId: ReturnType<typeof setInterval> | undefined
     const cleanup = () => {
-        if (closed) return
+        if (closed) {
+            return
+        }
         closed = true
         clearTimeout(startTimeoutId)
         clearInterval(heartbeatId)
@@ -69,7 +73,9 @@ export function handleModelGatewayStreamPort(
         }
     }
     const post = (event: ModelGatewayStreamEvent) => {
-        if (closed) return
+        if (closed) {
+            return
+        }
         try {
             port.postMessage(event)
         } catch {
@@ -81,7 +87,9 @@ export function handleModelGatewayStreamPort(
         cleanup()
     }
     const onMessage = (message: unknown) => {
-        if (closed || started) return
+        if (closed || started) {
+            return
+        }
         const parsed = startSchema.safeParse(message)
         if (!parsed.success) {
             finish({

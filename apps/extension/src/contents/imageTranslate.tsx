@@ -1,9 +1,7 @@
 import { useAtomValue } from "jotai"
 import React, { useCallback, useEffect, useRef, useState } from "react"
-import { StyleSheetManager } from "styled-components"
 
 import { ImageTranslateButton } from "@/components/ImageTranslateButton"
-import { extensionShadowRootContainerId } from "@/constants"
 import {
     ensureCanvasHookInjected,
     ensureCanvasId,
@@ -18,6 +16,10 @@ import {
     hasSupportedTargetTransform
 } from "@/contents/imageTranslationOverlay"
 import {
+    createVisionModelSelectionKey,
+    isImageTranslationEnabled
+} from "@/features/model-management"
+import {
     translateStructuredImageViaBackground,
     validateImage
 } from "@/services/imageTranslation"
@@ -25,10 +27,6 @@ import { captureExtensionException } from "@/services/monitoring"
 import { configAtom } from "@/state"
 import type { CanvasHookMeta } from "@/types/canvas-hook"
 import { Toast, ToastType } from "@/utils/toast"
-import {
-    createVisionModelSelectionKey,
-    isImageTranslationEnabled
-} from "@/utils/visionModels"
 
 import "@/styles/theme.scss"
 
@@ -432,23 +430,3 @@ export const ImageTranslate: React.FC = () => {
         />
     )
 }
-
-// 导出组件
-export const ImageTranslateContent: React.FC = () => {
-    const shadowHost = document.getElementById(getShadowHostId())
-    if (!shadowHost?.shadowRoot) {
-        return null
-    }
-
-    return (
-        <StyleSheetManager
-            target={shadowHost.shadowRoot as unknown as HTMLElement}
-        >
-            <div id={extensionShadowRootContainerId}>
-                <ImageTranslate />
-            </div>
-        </StyleSheetManager>
-    )
-}
-
-export default ImageTranslateContent

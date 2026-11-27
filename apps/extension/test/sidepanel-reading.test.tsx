@@ -19,12 +19,15 @@ const config = {
 vi.mock("@/state/config", () => ({
     useConfig: () => config
 }))
-vi.mock("@/features/translation/translationService", async importOriginal => ({
-    ...(await importOriginal<
-        typeof import("@/features/translation/translationService")
-    >()),
-    translateText: mocks.translate
-}))
+vi.mock(
+    "@/features/translation-services/translationService",
+    async importOriginal => ({
+        ...(await importOriginal<
+            typeof import("@/features/translation-services/translationService")
+        >()),
+        translateText: mocks.translate
+    })
+)
 vi.mock("@/components/BrandLogo", () => ({ default: () => null }))
 vi.mock("@/components/TranslationMark", () => ({ default: () => null }))
 
@@ -363,19 +366,85 @@ it("uses the selected role for automatic paste translation", async () => {
 
 it("restores pinned roles on reopen and removes unpinned tags", async () => {
     await render()
-    await selectOption("翻译角色", "意译大师")
-    await act(async () => button("固定").click())
+    await selectOption("添加常用翻译角色", "意译大师")
+    expect(labeledButton("翻译角色").textContent).toBe("标准翻译")
     await act(async () => root.unmount())
     await render()
     expect(labeledButton("翻译角色").textContent).toBe("标准翻译")
     await act(async () => roleTag("意译大师")!.click())
     expect(labeledButton("翻译角色").textContent).toBe("意译大师")
     expect(roleTag("意译大师")?.getAttribute("aria-pressed")).toBe("true")
-    await act(async () => button("取消固定").click())
+    await act(async () => labeledButton("从常用翻译角色移除意译大师").click())
     await act(async () => root.unmount())
     await render()
     expect(roleTag("意译大师")).toBeUndefined()
     expect(roleTag("标准翻译")).toBeDefined()
+})
+
+it("filters unpinned roles by label or identifier and appends them before the add button", async () => {
+    await render()
+    await selectOption("添加常用翻译角色", "意译大师")
+    const add = labeledButton("添加常用翻译角色")
+    await act(async () => add.click())
+    const options = () =>
+        [...document.querySelectorAll('[role="option"]')].map(
+            option => option.textContent
+        )
+    expect(options()).not.toContain("标准翻译")
+    expect(options()).not.toContain("意译大师")
+
+    const search = document.querySelector<HTMLInputElement>(
+        'input[aria-label="搜索翻译角色"]'
+    )!
+    await vi.waitFor(() => expect(document.activeElement).toBe(search))
+    const searchFor = async (query: string) => {
+        await act(async () => {
+            Object.getOwnPropertyDescriptor(
+                HTMLInputElement.prototype,
+                "value"
+            )!.set!.call(search, query)
+            search.dispatchEvent(new Event("input", { bubbles: true }))
+        })
+    }
+    await searchFor("科技")
+    expect(options()).toEqual(["科技翻译"])
+    await searchFor(" GITHUB_TRANSLATOR ")
+    expect(options()).toEqual(["GitHub翻译"])
+    await act(async () =>
+        document.querySelector<HTMLButtonElement>('[role="option"]')!.click()
+    )
+
+    expect(search.isConnected).toBe(false)
+    expect(roleTag("意译大师")?.parentElement?.nextElementSibling).toBe(
+        roleTag("GitHub翻译")?.parentElement
+    )
+    expect(
+        add
+            .closest('[aria-label="常用翻译角色"]')
+            ?.lastElementChild?.contains(add)
+    ).toBe(true)
+    expect(labeledButton("翻译角色").textContent).toBe("标准翻译")
+})
+
+it("lists the most common translation roles first", async () => {
+    await render()
+    await act(async () => labeledButton("翻译角色").click())
+    expect(
+        [...document.querySelectorAll('[role="option"]')]
+            .slice(0, 10)
+            .map(option => option.textContent)
+    ).toEqual([
+        "标准翻译",
+        "意译大师",
+        "段落总结",
+        "英文简化",
+        "词汇助手",
+        "科技翻译",
+        "GitHub翻译",
+        "学术论文",
+        "新闻媒体",
+        "小说翻译"
+    ])
 })
 
 it("uses source and target options from the sidebar dropdowns", async () => {
@@ -390,8 +459,8 @@ it("uses source and target options from the sidebar dropdowns", async () => {
 
 it("removes a pinned tag without changing the selected role", async () => {
     await render()
+    await selectOption("添加常用翻译角色", "意译大师")
     await selectOption("翻译角色", "意译大师")
-    await act(async () => button("固定").click())
     const remove = labeledButton("从常用翻译角色移除意译大师")
     expect(remove).not.toBeNull()
     await act(async () => {
@@ -409,12 +478,12 @@ it("removes a pinned tag without changing the selected role", async () => {
 
 it("can remove a pinned role even when the current engine disables role selection", async () => {
     await render()
-    await selectOption("翻译角色", "意译大师")
-    await act(async () => button("固定").click())
+    await selectOption("添加常用翻译角色", "意译大师")
     await act(async () => root.unmount())
     config.currentModel = "google-translate"
     await render()
     expect(roleTag("意译大师")?.disabled).toBe(true)
+    expect(labeledButton("添加常用翻译角色").disabled).toBe(true)
     const remove = labeledButton("从常用翻译角色移除意译大师")
     expect(remove.disabled).toBe(false)
     await act(async () => remove.click())

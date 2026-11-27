@@ -1,2 +1,5 @@
-export { FormRowComponent } from "./FormRowComponent"
-export { FormRowComponent as default } from "./FormRowComponent"
+export {
+    FormRow,
+    FormRow as default,
+    FormRow as FormRowComponent
+} from "./FormRow"

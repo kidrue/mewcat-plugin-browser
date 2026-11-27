@@ -9,7 +9,7 @@ import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
 import {
     getSelectedGenerativeModel,
     translateText
-} from "@/features/translation/translationService"
+} from "@/features/translation-services"
 import { useConfig } from "@/state/config"
 import { AiRole } from "@/types/config"
 
@@ -46,7 +46,7 @@ const Header = styled.div`
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-4);
-    background: var(--bg-secondary);
+    background: var(--control-surface-bg);
     flex-shrink: 0;
     /* 信纸折痕 */
     position: relative;
@@ -107,7 +107,7 @@ const HeaderMascot = styled(SkyMascot)`
 // ============================================
 
 const TranslatePane = styled.div`
-    --translation-text-bg: rgba(255, 255, 255, 0.65);
+    --options-input-background: var(--control-surface-bg);
 
     flex: 1;
     min-height: 0;
@@ -129,7 +129,6 @@ const LanguageRow = styled.div`
     padding: var(--space-2);
     border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
-    background: rgba(255, 255, 255, 0.7);
 `
 
 const LangBox = styled.div`
@@ -142,7 +141,7 @@ const SwapButton = styled.button`
     height: var(--language-control-size);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
-    background: var(--bg-secondary);
+    background: var(--control-surface-bg);
     color: var(--text-tertiary);
     cursor: pointer;
     display: flex;
@@ -159,7 +158,7 @@ const SwapButton = styled.button`
     &:hover {
         border-color: var(--primary-color);
         color: var(--primary-color);
-        background: var(--primary-light);
+        background: var(--control-surface-active-bg);
     }
 `
 
@@ -175,7 +174,7 @@ const StyledTextarea = styled.textarea`
     min-height: 120px;
     padding: var(--space-3);
     padding-right: var(--space-8);
-    background: var(--translation-text-bg);
+    background: var(--control-surface-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     font-size: var(--font-size-sm);
@@ -301,7 +300,7 @@ const ResultBox = styled.div`
     min-height: 0;
     display: flex;
     flex-direction: column;
-    background: var(--translation-text-bg);
+    background: var(--control-surface-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
     padding: var(--space-3);
@@ -370,11 +369,10 @@ const LoadingBox = styled.div`
     font-size: var(--font-size-xs);
 `
 
-// ============================================
-// Component
-// ============================================
+const sourceOptions = [AUTO_DETECT_OPTION, ...languages.languages]
+const targetOptions = languages.languages
 
-export const SlidePanel: React.FC = () => {
+export const SidePanel: React.FC = () => {
     const config = useConfig()
 
     const [inputText, setInputText] = useState("")
@@ -385,45 +383,37 @@ export const SlidePanel: React.FC = () => {
     const [sourceLang, setSourceLang] = useState("auto")
     const [targetLang, setTargetLang] = useState(config.targetLanguage)
     const [selectedRole, setSelectedRole] = useState(AiRole.DEFAULT)
+    const [notice, setNotice] = useState("")
+
+    const requestRef = useRef(0)
+    const copyTimer = useRef<ReturnType<typeof setTimeout>>()
+    const pasteTimer = useRef<ReturnType<typeof setTimeout>>()
+
     const supportsRoles =
         config.currentModel === MEWCAT_TRANSLATE_MODEL_ID ||
         Boolean(getSelectedGenerativeModel(config))
     const aiRole = supportsRoles ? selectedRole : AiRole.DEFAULT
-    const requestRef = useRef(0)
-
-    const [notice, setNotice] = useState("")
-
-    const copyTimer = useRef<ReturnType<typeof setTimeout>>()
-    const pasteTimer = useRef<ReturnType<typeof setTimeout>>()
 
     const invalidate = useCallback((keepResult = false) => {
         requestRef.current++
         clearTimeout(pasteTimer.current)
         pasteTimer.current = undefined
         setLoading(false)
-        if (!keepResult) setResult("")
+        if (!keepResult) {
+            setResult("")
+        }
         setError("")
         setNotice("")
         setCopied(false)
     }, [])
 
-    useEffect(
-        () => () => {
-            requestRef.current++
-            clearTimeout(copyTimer.current)
-            clearTimeout(pasteTimer.current)
-        },
-        []
-    )
-
-    const sourceOptions = [AUTO_DETECT_OPTION, ...languages.languages]
-    const targetOptions = languages.languages
-
     const translateInput = useCallback(
         async (value: string) => {
             const text = value.trim()
             invalidate()
-            if (!text) return
+            if (!text) {
+                return
+            }
 
             const request = requestRef.current
 
@@ -442,7 +432,9 @@ export const SlidePanel: React.FC = () => {
                     [{ role: "user", content: text }],
                     targetLang
                 )
-                if (request === requestRef.current) setResult(translated || "")
+                if (request === requestRef.current) {
+                    setResult(translated || "")
+                }
             } catch (e) {
                 if (
                     request === requestRef.current &&
@@ -451,14 +443,18 @@ export const SlidePanel: React.FC = () => {
                     setError((e as Error)?.message || "翻译失败，请重试")
                 }
             } finally {
-                if (request === requestRef.current) setLoading(false)
+                if (request === requestRef.current) {
+                    setLoading(false)
+                }
             }
         },
         [config, sourceLang, targetLang, aiRole, invalidate]
     )
 
     const handleTranslate = useCallback(() => {
-        if (!loading) void translateInput(inputText)
+        if (!loading) {
+            void translateInput(inputText)
+        }
     }, [inputText, loading, translateInput])
 
     const handleTextPaste = useCallback(
@@ -466,20 +462,22 @@ export const SlidePanel: React.FC = () => {
             if (
                 event.defaultPrevented ||
                 !event.clipboardData.getData("text/plain")
-            )
+            ) {
                 return
+            }
             invalidate()
             const request = requestRef.current
             const textarea = event.currentTarget
             const nativeEvent = event.nativeEvent
-            // 保留浏览器的光标插入、选区替换与撤销栈；默认粘贴完成后再读取全文。
+            // 在原生粘贴结束后读取全文，以保留选区替换和撤销功能。
             pasteTimer.current = setTimeout(() => {
                 pasteTimer.current = undefined
                 if (
                     nativeEvent.defaultPrevented ||
                     request !== requestRef.current
-                )
+                ) {
                     return
+                }
                 const text = textarea.value
                 setInputText(text)
                 void translateInput(text)
@@ -493,19 +491,24 @@ export const SlidePanel: React.FC = () => {
         const request = requestRef.current
         try {
             const text = await navigator.clipboard.readText()
-            if (request !== requestRef.current) return
+            if (request !== requestRef.current) {
+                return
+            }
             setInputText(text)
             void translateInput(text)
         } catch {
-            if (request === requestRef.current)
+            if (request === requestRef.current) {
                 setNotice(
                     "无法读取剪贴板，请使用 Ctrl+V（Mac 使用 ⌘V）手动粘贴。"
                 )
+            }
         }
     }, [invalidate, translateInput])
 
     const handleSwapLang = useCallback(() => {
-        if (sourceLang === "auto") return
+        if (sourceLang === "auto") {
+            return
+        }
         invalidate()
         setSourceLang(targetLang)
         setTargetLang(sourceLang)
@@ -514,17 +517,22 @@ export const SlidePanel: React.FC = () => {
     }, [sourceLang, targetLang, result, invalidate])
 
     const handleCopy = useCallback(async () => {
-        if (!result) return
+        if (!result) {
+            return
+        }
         const request = requestRef.current
         try {
             await navigator.clipboard.writeText(result)
-            if (request !== requestRef.current) return
+            if (request !== requestRef.current) {
+                return
+            }
             setCopied(true)
             clearTimeout(copyTimer.current)
             copyTimer.current = setTimeout(() => setCopied(false), 1500)
         } catch {
-            if (request === requestRef.current)
+            if (request === requestRef.current) {
                 setNotice("复制失败，请选中译文手动复制。")
+            }
         }
     }, [result])
 
@@ -537,13 +545,25 @@ export const SlidePanel: React.FC = () => {
                 e.altKey ||
                 e.nativeEvent.isComposing ||
                 e.nativeEvent.keyCode === 229
-            )
+            ) {
                 return
+            }
 
             e.preventDefault()
-            if (!e.repeat) handleTranslate()
+            if (!e.repeat) {
+                handleTranslate()
+            }
         },
         [handleTranslate]
+    )
+
+    useEffect(
+        () => () => {
+            requestRef.current++
+            clearTimeout(copyTimer.current)
+            clearTimeout(pasteTimer.current)
+        },
+        []
     )
 
     return (
@@ -611,7 +631,9 @@ export const SlidePanel: React.FC = () => {
                     value={aiRole}
                     disabled={!supportsRoles}
                     onChange={role => {
-                        if (role === aiRole) return
+                        if (role === aiRole) {
+                            return
+                        }
                         invalidate(true)
                         setSelectedRole(role)
                     }}
@@ -625,7 +647,9 @@ export const SlidePanel: React.FC = () => {
                                 pasteTimer.current !== undefined &&
                                 (e.nativeEvent as InputEvent).inputType ===
                                     "insertFromPaste"
-                            if (!isPendingPaste) invalidate()
+                            if (!isPendingPaste) {
+                                invalidate()
+                            }
                             setInputText(e.target.value)
                         }}
                         onPaste={handleTextPaste}
@@ -757,4 +781,4 @@ export const SlidePanel: React.FC = () => {
     )
 }
 
-export default SlidePanel
+export default SidePanel

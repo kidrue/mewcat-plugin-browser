@@ -1,4 +1,5 @@
 import type { Placement } from "@floating-ui/react"
+import type { ComponentPropsWithRef, ReactElement } from "react"
 
 export interface SelectOption {
     value: string | number
@@ -17,5 +18,7 @@ export interface SelectProps {
     multiple?: boolean
     withinPortal?: boolean
     placement?: Placement
+    renderTrigger?: (props: ComponentPropsWithRef<"button">) => ReactElement
+    dropdownWidth?: number
     onChange: (value: string | number | string[] | number[]) => void
 }

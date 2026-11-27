@@ -5,7 +5,7 @@ import { createTranslationServiceStorageAdapter } from "../src/state/translation
 import { AiModel_Platform_Enum } from "../src/types/aiModel"
 import type { ExtensionConfig } from "../src/types/config"
 import { repairExtensionConfig } from "../src/types/extensionConfigSchema"
-import { normalizeImageTranslationSelection } from "../src/utils/visionModels"
+import { normalizeImageTranslationSelection } from "../src/features/model-management/visionModels"
 
 vi.mock("@/messaging", () => import("./mocks/config-messaging"))
 

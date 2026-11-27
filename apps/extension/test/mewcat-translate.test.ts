@@ -11,7 +11,7 @@ import {
 import {
     createMewCatBatches,
     MewCatTranslator
-} from "@/features/translation/MewCatTranslator"
+} from "@/features/translation-services/MewCatTranslator"
 import { RequestType } from "@/types/request"
 
 const { backgroundTranslate, backgroundAbortAll } = vi.hoisted(() => ({

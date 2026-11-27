@@ -7,18 +7,8 @@ export const RoleControls = styled.div`
     min-width: 0;
 `
 
-export const RoleRow = styled.div`
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-`
-
-export const RoleSelectBox = styled.div`
-    flex: 1;
-    min-width: 0;
-`
-
 export const TagList = styled.div`
+    --role-tag-height: 32px;
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
@@ -26,18 +16,21 @@ export const TagList = styled.div`
 
 const rolePill = css`
     flex: none;
+    box-sizing: border-box;
+    height: var(--role-tag-height);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-full);
-    background: var(--bg-secondary);
+    background: var(--control-surface-bg);
     color: var(--text-secondary);
     font-family: inherit;
     font-size: var(--font-size-xs);
 
     &[aria-pressed="true"],
+    &[aria-expanded="true"],
     &:has(> button[aria-pressed="true"]),
     &:hover:not(:disabled) {
         border-color: var(--primary-color);
-        background: var(--primary-light);
+        background: var(--control-surface-active-bg);
         color: var(--primary-hover);
     }
 `
@@ -64,6 +57,19 @@ export const RoleAction = styled.button`
 
 export const RoleButton = styled(RoleAction)`
     ${rolePill}
+`
+
+export const AddRoleButton = styled(RoleButton)`
+    display: grid;
+    place-items: center;
+    width: 44px;
+    padding: 0;
+
+    svg {
+        width: 16px;
+        height: 16px;
+        fill: currentColor;
+    }
 `
 
 export const RoleTag = styled.div`

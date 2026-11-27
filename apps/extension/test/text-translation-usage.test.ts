@@ -20,7 +20,7 @@ import {
     translateBatch,
     translateText,
     type TranslationRuntimeConfig
-} from "../src/features/translation/translationService"
+} from "../src/features/translation-services/translationService"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
 
 const { sendMessage } = vi.hoisted(() => ({ sendMessage: vi.fn() }))

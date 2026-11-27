@@ -2,19 +2,21 @@ import { generateObject } from "@xsai/generate-object"
 import { generateText } from "@xsai/generate-text"
 import { streamText } from "@xsai/stream-text"
 
-import { visionTranslationPrompt } from "@/features/image-translation/prompt"
-import { visionTranslationSchema } from "@/features/image-translation/schema"
+import {
+    visionTranslationPrompt,
+    visionTranslationSchema
+} from "@/features/image-translation"
 import {
     getGenerationBaseUrl,
     isTokenPlanEndpoint,
     ProviderConfigurationError
-} from "@/features/model-management/providers"
+} from "@/features/model-management"
 import {
     estimateUsage,
-    normalizeReportedUsage
-} from "@/features/token-usage/estimate"
-import { recordTokenUsage } from "@/features/token-usage/storage"
-import type { TokenUsageEvent } from "@/features/token-usage/types"
+    normalizeReportedUsage,
+    recordTokenUsage
+} from "@/features/token-usage"
+import type { TokenUsageEvent } from "@/features/token-usage"
 import type {
     ModelGatewayErrorCode,
     ModelGatewayFailureResponse,
@@ -251,7 +253,9 @@ export async function handleModelGatewayStream(
     const { controller, timeoutId } = createController(request.timeoutMs)
     const abort = () => controller.abort()
     options.signal?.addEventListener("abort", abort, { once: true })
-    if (options.signal?.aborted) abort()
+    if (options.signal?.aborted) {
+        abort()
+    }
     let text = ""
     let usage: unknown
     let reader: ReadableStreamDefaultReader<string> | undefined
@@ -279,7 +283,9 @@ export async function handleModelGatewayStream(
                 if (event.type === "finish") {
                     finished = event.finishReason === "stop"
                     usage = event.usage ?? usage
-                } else if (event.type === "error") {
+                    return
+                }
+                if (event.type === "error") {
                     streamError = event.error
                 }
             }
@@ -304,12 +310,16 @@ export async function handleModelGatewayStream(
         while (true) {
             const chunk = await Promise.race([reader.read(), aborted])
             controller.signal.throwIfAborted()
-            if (chunk.done) break
+            if (chunk.done) {
+                break
+            }
             text += chunk.value
             options.onDelta(chunk.value)
         }
         await finalUsage
-        if (streamError) throw streamError
+        if (streamError) {
+            throw streamError
+        }
         return text.trim() && finished
             ? { success: true, text: text.trim() }
             : failure("INVALID_RESPONSE", "模型未返回完整解释，请重试")

@@ -2,9 +2,9 @@ import type React from "react"
 import { useCallback, useState } from "react"
 
 import {
-    formatParagraphShortcut,
+    formatKeyboardShortcut,
     shortcutFromEvent
-} from "@/features/translation/paragraphShortcut"
+} from "@/utils/keyboardShortcut"
 
 import { Controls, ErrorMessage } from "./styles"
 import type { ShortcutInputProps } from "./types"
@@ -23,7 +23,7 @@ export const ShortcutInput: React.FC<ShortcutInputProps> = ({
 }) => {
     const [recording, setRecording] = useState(false)
     const [error, setError] = useState("")
-    const displayValue = value ? formatParagraphShortcut(value) : "已禁用"
+    const displayValue = value ? formatKeyboardShortcut(value) : "已禁用"
     const save = useCallback(
         (next: string) => {
             if (next && next === conflictingShortcut) {

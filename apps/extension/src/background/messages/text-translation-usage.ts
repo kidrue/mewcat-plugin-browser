@@ -5,7 +5,7 @@ import {
     localTextTranslationUsageDate,
     type TextTranslationUsageEntry,
     type TextTranslationUsageRequest
-} from "@/features/token-usage/textTranslationUsage"
+} from "@/features/token-usage"
 
 const key = STORAGE_NAMES.textTranslationUsage
 const retentionDays = 62

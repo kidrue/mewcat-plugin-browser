@@ -1,4 +1,4 @@
-import { readTextTranslationUsage } from "@/features/token-usage/textTranslationUsage"
+import { readTextTranslationUsage } from "@/features/token-usage"
 
 import type { CharacterUsageState } from "./types"
 

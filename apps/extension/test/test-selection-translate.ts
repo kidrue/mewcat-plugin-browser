@@ -3,7 +3,7 @@ import { JSDOM } from "jsdom"
 
 import { NAVIGATION_ITEMS } from "../src/constants/options"
 import { defaultExtensionConfig } from "../src/state/constants"
-import * as selectionTranslation from "../src/features/translation/selectionTranslation"
+import * as selectionTranslation from "../src/features/selection-translation/selectionTranslation"
 import * as domUtils from "../src/utils/dom"
 
 assert.equal(

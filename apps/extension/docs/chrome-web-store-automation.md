@@ -1,6 +1,6 @@
 # Chrome Web Store 自动发布配置
 
-项目在 `package.json.version` 升级并推送到 `main` 后，会先执行全量检查和构建，把固定产物保存到 draft GitHub Release，再通过 Chrome Web Store API V2 上传同一份 ZIP、提交审核；商店提交成功后将 draft 转为 GitHub pre-release，商店审核通过后自动发布扩展。
+扩展版本由 `apps/extension/package.json` 的 `version` 决定。[发布工作流](../../../.github/workflows/release-extension.yml)在 `main` 的相关路径更新后自动触发，也支持手动派发。Linux runner 检查和构建扩展，将固定产物保存到 draft GitHub Release，通过 Chrome Web Store API V2 上传同一份 ZIP 并提交审核。商店步骤成功后，工作流将 draft 转为正式 GitHub Release 并标记为 latest。商店上架仍须经过 Chrome Web Store 审核。
 
 ## 安全模型
 
@@ -9,7 +9,7 @@
 - 不创建或保存 Google Service Account JSON 私钥
 - 不把访问令牌、Publisher ID 或 Extension ID 写入仓库文件
 - OIDC 只允许指定 GitHub 仓库的 `main` 分支模拟 Service Account
-- 工作流只把短期令牌传给 `scripts/chrome-web-store.cjs`，脚本不会输出令牌或请求头
+- 工作流通过 `id-token: write` 取得 GitHub OIDC 凭证，交换 `chromewebstore` scope 的访问令牌，只传给 `apps/extension/scripts/chrome-web-store.cjs`。脚本不会输出令牌或请求头
 - 第三方 GitHub Actions 固定到完整 commit SHA，不依赖可变 major tag
 - `.env.local` 不参与 CI，禁止在其中保存生产发布凭据后再提交
 
@@ -123,41 +123,30 @@ IAM 配置可能需要几分钟才能生效。
 
 这些值不需要发送给 Codex，也不要写进提交。GitHub Actions Secret 中继续保留现有的 `CRX_PRIVATE_KEY_B64`。
 
-## 发布流程
+## 4. 配置 CRX 签名与 Sentry
 
-生产构建启用 Sentry 错误诊断。GitHub Actions Variables 需要配置 `WXT_SENTRY_DSN`、`SENTRY_ORG`、`SENTRY_PROJECT`，Secret 需要配置 `SENTRY_AUTH_TOKEN`。本地可把这些值放在不提交的 `.env.local`。构建会生成隐藏 Source Map，上传到 Sentry 后从 ZIP/CRX 中移除；缺少任一项配置时 CI 拒绝发布。`SENTRY_AUTH_TOKEN` 仅用于构建，不进入扩展运行时。
+- GitHub 工作流需要 `contents: write`。在仓库 **Settings → Actions → General → Workflow permissions** 检查其写入权限。
+- Actions Secret `CRX_PRIVATE_KEY_B64` 保存现有 RSA 私钥的单行 base64 或完整 PEM。首次生成可用 `node apps/extension/scripts/gen-crx-key.cjs`。固定私钥用于保持 CRX 扩展 ID，使手动安装用户可以升级。妥善备份并保留 `.gitignore` 对本地 `key.pem` 的排除。
+- Actions Variables 配置 `WXT_SENTRY_DSN`、`SENTRY_ORG`、`SENTRY_PROJECT`，Actions Secret 配置 `SENTRY_AUTH_TOKEN`。新版本构建检查四项值。生产构建保留运行时 DSN，将隐藏 Source Map 上传到 Sentry 后从构建目录清理，ZIP 和 CRX 仅包含运行时文件。`SENTRY_AUTH_TOKEN` 只用于构建。
 
-商店数据使用披露需要与扩展行为一致：生产环境会把错误堆栈、浏览网页的完整 URL（包括查询参数和片段）发送给 Sentry，用于定位和修复故障。网页 content script 与 background 不启用 Replay；Replay 仅用于 popup、options、sidepanel 中错误发生前的交互，并遮盖所有文字和输入、阻挡媒体。扩展不主动上报账号、手机号、Cookie、API Key、翻译原文、译文、Prompt、图片或请求体。完整 URL 仍可能包含敏感信息，商店后台应按浏览历史与用户活动等实际数据类别披露，并在隐私政策中说明第三方 Sentry 处理和诊断用途。代码文档不代替商店后台的人工披露更新。上报复验步骤见 [Sentry 上报修复与验证](sentry-reporting-verification.md)。
+## 发布与恢复
 
-从 1.1.14 起，商店隐私实践与公开隐私政策还需要说明扩展「关于 → 使用统计」的可选上报。可使用以下说明：
+1. 提高 `apps/extension/package.json` 中的 `version`，提交并推送到 `main`。
+2. Linux runner 安装锁定依赖，运行 workspace 测试、共享包构建、扩展检查和 `pnpm build:verify extension`。检查通过后判断该版本是否需要发布。
+3. 新版本运行 `pnpm build:extension`，使用固定私钥签名 CRX，计算 `SHA256SUMS`。工作流先把 ZIP、CRX、校验文件组成的恢复包上传到 draft，再同步三个独立附件。
+4. Chrome Web Store 脚本校验 ZIP 内版本、检查商店状态、上传 ZIP，等待包处理完成，然后使用 `DEFAULT_PUBLISH`。同版本已发布或在审核中会跳过上传，已暂存的同版本使用 `STAGED_PUBLISH`。商店警告、下架、存在其他待审版本或同版本被拒时，在商店后台核对状态。
+5. 商店步骤成功后，工作流执行 `gh release edit`，取消 draft 和 prerelease 标记并设为 latest。在 Chrome Web Store Developer Dashboard 确认商店审核和上架状态。
 
-> 使用统计默认关闭。开启后，译趣喵服务会接收随机设备 ID、授权安装与卸载回执及整页翻译使用记录，用于统计功能使用情况。扩展在本地根据网页地址生成加盐标识，服务器据此统计去重页数。该统计不上报网站地址、IP、地理位置、原文或译文。页面明细最多保留 90 天。关闭使用统计会立即停止本机上报，设备重新连接服务后删除该设备的统计数据。
+失败时重新运行同一提交。工作流校验恢复包中 ZIP 和 CRX 的哈希，再复用原包；缺少恢复包的 draft 可以从同一提交重建。已完成的 GitHub Release 会跳过。工作流拒绝覆盖异提交的同版本 draft，以及已有同名 tag 但无 Release 的版本。无论成功或失败，工作流都会清理 runner 中的 `key.pem`、`.output/`、`release/` 和 `dist-assets/`。
 
-Chrome Web Store 的隐私披露与公开隐私政策链接在开发者后台维护。自动发布工作流上传扩展包并提交审核。参见 [Chrome Web Store 隐私字段说明](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy)。
+如果后端生产开关已启用，且同一次推送会匹配扩展和后端两个发布工作流，只发扩展时可在完成本地 `pnpm check` 和构建验证后，为发布提交加 `[skip ci]`，再手动派发 `release-extension.yml` 到 `main`。手动发布仍执行第 2 步检查。
 
-1. 修改 `package.json` 的 `version`，版本必须高于商店当前版本。
-2. 提交并推送到 `main`。
-3. GitHub Actions 执行 `pnpm check`、构建 ZIP/CRX，生成 `SHA256SUMS`，并把三者组成的单一 recovery bundle 保存到 draft GitHub Release。
-4. 工作流把 ZIP、CRX 和校验文件同步为独立 Release assets；同步失败可从 recovery bundle 重试。
-5. OIDC 换取短期 Chrome Web Store access token。
-6. `scripts/chrome-web-store.cjs` 校验 ZIP 内版本、检查当前商店状态、上传 ZIP、等待异步处理结束并使用 `DEFAULT_PUBLISH` 提交审核；提交成功后将 draft 转为 GitHub pre-release，商店审核通过后自动发布扩展。
+## 商店资料与隐私披露
 
-若工作流中途失败，重新运行同一提交即可：工作流会从 draft Release 下载 recovery bundle、校验哈希并恢复原始 ZIP/CRX，确保商店与 GitHub Release 始终使用同一份产物。若 draft 创建时连 recovery bundle 都未上传成功，自动化会清理这个尚不可能触发过商店发布的不完整 draft，再从同一提交重建。脚本发现相同版本已提交或已发布时会跳过重复上传；后续提交若仍使用同一版本，工作流会拒绝覆盖并要求先升级 `package.json.version`。
+商品说明、隐私实践和公开隐私政策链接在开发者后台维护。中文商品说明见[商店文案](chrome-web-store-listing-copy.md)。诊断上报包含错误堆栈和完整页面 URL（含查询参数及片段）。Replay 用于 Popup、Options 和侧边栏中的故障诊断，遮盖文字和输入并阻挡媒体。商店披露应涵盖相应的浏览历史与用户活动，并说明第三方 Sentry 的用途。“关于 → 使用统计”默认关闭，用户开启后的数据范围和保留时间见公开隐私政策。[隐私政策](../../../PRIVACY.md) · [Chrome Web Store 隐私字段](https://developer.chrome.com/docs/webstore/cws-dashboard-privacy)
 
-## 本地测试
+## 本地验证
 
-### 临时文件清理
+在 `apps/extension` 运行 `pnpm test:chrome-web-store`，可使用模拟响应验证商店脚本、打包及 Sentry 构建规则。站点规则的跨平台生成验证使用 `pnpm check:hotlink-rules`。
 
-发布任务使用 GitHub 托管 runner，无需在自己的服务器缓存安装包。工作流无论成功或失败，都会清理工作目录中的 `key.pem`、`.output/`、`release/` 和 `dist-assets/`；GitHub Release 中的固定产物继续保留，失败重试时复用同一份 ZIP。清理本地临时产物不会删除远端历史版本。
-
-### 跨平台生成检查
-
-站点规则生成器统一使用 `/` 记录源文件路径，并规范化 Windows 与 Linux 的换行符。`pnpm check:hotlink-rules` 同时验证跨平台生成结果，避免 Windows 本地通过、GitHub Linux runner 报告生成文件过期。
-
-自动测试不会访问 Chrome Web Store，也不需要任何凭据：
-
-```bash
-pnpm test:chrome-web-store
-```
-
-不要在本地命令历史中直接粘贴长期访问令牌。若必须手工诊断，应通过 `gcloud auth print-access-token` 生成短期令牌，并在完成后清理当前终端环境变量。
+需要复验正式包上报时，在仓库根 `.env.local` 配置上述 Sentry 变量。从 `apps/extension` 运行 `pnpm build`，确认日志包含 `Sentry Source Map：uploaded`，并检查 ZIP 内的运行时 DSN、构建令牌和 Source Map 是否符合上面的构建约定。`pnpm sentry:smoke` 会发送合成错误，用输出的事件 ID 检查请求是否被接收。再用独立的 Chrome 测试配置加载 `.output/chrome-mv3`，在后台和本地测试网页的扩展环境中触发合成异常，按 `environment:production`、`release:mewcat@<version>` 和 `runtime_context` 检查 Sentry 事件入库与堆栈解析。HTTP 200 只确认接收端接受，入库和 Source Map 解析以 Sentry 后台所见为准。

@@ -1,3 +1,10 @@
+export {
+    createImageTranslationCacheKey,
+    getCachedImageTranslation,
+    getCachedTranslation,
+    setCachedImageTranslation,
+    withImageTranslationDeduplication
+} from "./cache"
 export { VisionProviderError } from "./errors"
 export type { VisionPixelBuffer } from "./colors"
 export {

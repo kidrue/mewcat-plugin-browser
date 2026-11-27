@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { BailianOfficialEndpointFields } from "../src/components/BailianOfficialEndpointFields"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
-import { canExplicitlyConfigureVision } from "../src/utils/visionModels"
+import { canExplicitlyConfigureVision } from "../src/features/model-management/visionModels"
 
 const servicesMocks = vi.hoisted(() => ({
     config: null as { aiModelList: BaseModel[]; currentModel?: string } | null,

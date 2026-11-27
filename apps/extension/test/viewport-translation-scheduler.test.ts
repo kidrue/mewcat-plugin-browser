@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import {
     InsertPosition,
     type TranslationNode
-} from "../src/features/translation/DOMTraverser"
-import { ViewportTranslationScheduler } from "../src/features/translation/ViewportTranslationScheduler"
+} from "../src/features/page-translation/DOMTraverser"
+import { ViewportTranslationScheduler } from "../src/features/page-translation/ViewportTranslationScheduler"
 
 const schedulers: ViewportTranslationScheduler[] = []
 function deferred<T>() {

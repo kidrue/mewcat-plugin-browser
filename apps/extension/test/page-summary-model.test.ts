@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
-import { selectPageSummaryModel } from "../src/utils/pageSummary"
+import { selectPageSummaryModel } from "../src/features/page-summary/availability"
 
 const configuredModel: BaseModel = {
     id: "configured-model",

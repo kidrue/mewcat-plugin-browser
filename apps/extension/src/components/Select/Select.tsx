@@ -40,7 +40,9 @@ export const Select: React.FC<SelectProps> = ({
     id,
     "aria-label": ariaLabel,
     withinPortal,
-    multiple = false
+    multiple = false,
+    renderTrigger,
+    dropdownWidth
 }) => {
     const [isOpen, setIsOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
@@ -67,8 +69,10 @@ export const Select: React.FC<SelectProps> = ({
     const selectedValues =
         multiple && Array.isArray(value) ? value : EMPTY_VALUES
 
-    const dropDownWidth =
-        containerRef.current?.getBoundingClientRect().width ?? 0
+    const resolvedDropdownWidth =
+        dropdownWidth ??
+        containerRef.current?.getBoundingClientRect().width ??
+        0
 
     const { refs, floatingStyles, context } = useFloating({
         open: isOpen && !disabled,
@@ -80,11 +84,8 @@ export const Select: React.FC<SelectProps> = ({
     })
 
     const click = useClick(context, { enabled: !disabled })
-
     const role = useRole(context)
-
     const dismiss = useDismiss(context)
-
     const { getReferenceProps, getFloatingProps } = useInteractions([
         click,
         role,
@@ -106,36 +107,42 @@ export const Select: React.FC<SelectProps> = ({
         [handleOpenChange, multiple, onChange, selectedValues]
     )
 
+    const triggerProps: React.ComponentPropsWithRef<"button"> = {
+        type: "button",
+        id,
+        "aria-label": ariaLabel,
+        disabled,
+        ref: refs.setReference,
+        ...getReferenceProps()
+    }
+
     return (
-        <SelectContainer ref={containerRef}>
-            <SelectButton
-                type="button"
-                id={id}
-                aria-label={ariaLabel}
-                disabled={disabled}
-                ref={refs.setReference}
-                {...getReferenceProps()}
-            >
-                <SelectText>
-                    {multiple
-                        ? selectedValues.length > 0
-                            ? `已选择 ${selectedValues.length} 项`
-                            : placeholder
-                        : selectedOption
-                          ? selectedOption.label
-                          : placeholder}
-                </SelectText>
-                <ArrowIcon $isOpen={isOpen && !disabled}>
-                    <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                    >
-                        <path d="M6 9l6 6 6-6" />
-                    </svg>
-                </ArrowIcon>
-            </SelectButton>
+        <SelectContainer ref={containerRef} $customTrigger={!!renderTrigger}>
+            {renderTrigger ? (
+                renderTrigger(triggerProps)
+            ) : (
+                <SelectButton {...triggerProps}>
+                    <SelectText>
+                        {multiple
+                            ? selectedValues.length > 0
+                                ? `已选择 ${selectedValues.length} 项`
+                                : placeholder
+                            : selectedOption
+                              ? selectedOption.label
+                              : placeholder}
+                    </SelectText>
+                    <ArrowIcon $isOpen={isOpen && !disabled}>
+                        <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                        >
+                            <path d="M6 9l6 6 6-6" />
+                        </svg>
+                    </ArrowIcon>
+                </SelectButton>
+            )}
 
             {isOpen && !disabled && (
                 <FloatingPortal
@@ -149,7 +156,7 @@ export const Select: React.FC<SelectProps> = ({
                             ref={refs.setFloating}
                             style={floatingStyles}
                             {...getFloatingProps()}
-                            width={dropDownWidth}
+                            width={resolvedDropdownWidth}
                         >
                             <SearchHeader>
                                 <SearchInput

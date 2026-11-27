@@ -2,10 +2,7 @@ import type React from "react"
 import { useCallback, useMemo } from "react"
 import { useAsyncRetry } from "react-use"
 
-import {
-    executeTabAction,
-    type PageActionRequest
-} from "@/features/reading/pageActions"
+import { executeTabAction, type PageActionRequest } from "@/features/reading"
 
 import "@/styles/popup.scss"
 import "@/styles/theme.scss"
@@ -33,13 +30,14 @@ export const IndexPopup: React.FC = () => {
     const execute = useCallback(
         async (request: PageActionRequest) => {
             const tab = currentTab
-            if (!tab?.id || !tab.url || !/^https?:/.test(tab.url))
+            if (!tab?.id || !tab.url || !/^https?:/.test(tab.url)) {
                 return {
                     status: "unavailable" as const,
                     translated: 0,
                     failed: 0,
                     reason: "浏览器内部页等页面不支持翻译，请打开普通网页。"
                 }
+            }
             return executeTabAction(tab.id, { ...request, pageUrl: tab.url })
         },
         [currentTab]

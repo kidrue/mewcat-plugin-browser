@@ -33,7 +33,9 @@ const sharedEnvironmentIntegrations = new Set([
 ])
 
 function registerGlobalErrors(runtimeContext: RuntimeContext): void {
-    if (typeof globalThis.addEventListener !== "function") return
+    if (typeof globalThis.addEventListener !== "function") {
+        return
+    }
     const extensionOrigin = globalThis.chrome?.runtime?.getURL("")
     const belongsToExtension = (error: unknown, filename?: string) =>
         runtimeContext !== "content" ||
@@ -44,7 +46,9 @@ function registerGlobalErrors(runtimeContext: RuntimeContext): void {
                         error.stack?.includes(extensionOrigin)))
         )
     globalThis.addEventListener("error", (event: ErrorEvent) => {
-        if (!belongsToExtension(event.error, event.filename)) return
+        if (!belongsToExtension(event.error, event.filename)) {
+            return
+        }
         captureExtensionException(
             event.error ?? new Error("Uncaught extension runtime error"),
             { feature: "runtime", operation: "uncaught-error" }
@@ -53,7 +57,9 @@ function registerGlobalErrors(runtimeContext: RuntimeContext): void {
     globalThis.addEventListener(
         "unhandledrejection",
         (event: PromiseRejectionEvent) => {
-            if (!belongsToExtension(event.reason)) return
+            if (!belongsToExtension(event.reason)) {
+                return
+            }
             captureExtensionException(event.reason, {
                 feature: "runtime",
                 operation: "unhandled-rejection"
@@ -82,8 +88,9 @@ export function initializeSentry(options: InitializeSentryOptions): boolean {
     if (!config.enabled) {
         return false
     }
-    if (runtimeGlobal[stateKey])
+    if (runtimeGlobal[stateKey]) {
         return runtimeGlobal[stateKey].client.getOptions().enabled !== false
+    }
     try {
         const isolated = ["content", "background"].includes(
             options.runtimeContext
@@ -121,12 +128,15 @@ export function initializeSentry(options: InitializeSentryOptions): boolean {
             !client ||
             client.getOptions().enabled === false ||
             !client.getDsn()
-        )
+        ) {
             return false
+        }
         const scope = new Sentry.Scope()
         scope.setClient(client)
         scope.setTags(config.tags)
-        if (options.pageUrl) scope.setContext("page", { url: options.pageUrl })
+        if (options.pageUrl) {
+            scope.setContext("page", { url: options.pageUrl })
+        }
         const state = { client, scope, reported: new WeakSet<object>() }
         runtimeGlobal[stateKey] = state
         if (isolated) {
@@ -144,22 +154,35 @@ export function captureExtensionException(
     error: unknown,
     context: CaptureContext
 ): string | undefined {
-    if (error instanceof BackgroundResponseError) return undefined
+    if (error instanceof BackgroundResponseError) {
+        return undefined
+    }
     const state = runtimeGlobal[stateKey]
-    if (!state) return undefined
+    if (!state) {
+        return undefined
+    }
     const object =
         typeof error === "object" && error !== null ? error : undefined
-    if (object && state.reported.has(object)) return undefined
+    if (object && state.reported.has(object)) {
+        return undefined
+    }
     try {
         const scope = state.scope.clone()
         scope.setTag("feature", context.feature)
         scope.setTag("operation", context.operation)
-        if (context.errorCode) scope.setTag("error_code", context.errorCode)
-        if (context.status !== undefined)
+        if (context.errorCode) {
+            scope.setTag("error_code", context.errorCode)
+        }
+        if (context.status !== undefined) {
             scope.setTag("http_status", context.status)
-        if (context.pageUrl) scope.setContext("page", { url: context.pageUrl })
+        }
+        if (context.pageUrl) {
+            scope.setContext("page", { url: context.pageUrl })
+        }
         const eventId = scope.captureException(error)
-        if (object) state.reported.add(object)
+        if (object) {
+            state.reported.add(object)
+        }
         return eventId
     } catch {
         return undefined

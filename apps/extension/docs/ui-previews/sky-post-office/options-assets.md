@@ -1,8 +1,8 @@
 # 晴空来信 · Options 素材与提示词
 
-本轮使用内置 image_gen 生成，新增 5 张场景、4 枚透明底插画图标、1 张阅读肖像。资源位于 `src/public/assets/sky-letter/`，通过 `SkyArtwork` 统一解析扩展本地路径。原有 `sky-post-office.png` 与 `chengyu.png` 保留。
+场景、透明底插画图标与阅读肖像位于 `src/public/assets/sky-letter/`，通过 `SkyArtwork` 统一解析扩展本地路径。
 
-[打开素材预览册](./materials-preview.html)
+[打开素材预览册](./materials-preview.html) · [邮局与澄羽原始提示词](./assets/prompts.txt)
 
 ## 接入与使用
 

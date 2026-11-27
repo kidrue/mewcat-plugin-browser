@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import type { ConceptExplanationInput } from "@/features/translation/modelTranslation"
-import { parseSelectionAnalysis } from "@/features/translation/selectionAnalysis"
-import { translateSelectedText } from "@/features/translation/selectionTranslation"
+import {
+    parseSelectionAnalysis,
+    translateSelectedText
+} from "@/features/selection-translation"
+import type { ConceptExplanationInput } from "@/features/translation-services"
 import {
     getSelectedGenerativeModel,
     streamConceptExplanation,
     translateText,
     TranslationServiceUnavailableError,
     type TranslationRuntimeConfig
-} from "@/features/translation/translationService"
+} from "@/features/translation-services"
 
 export interface SelectionResult {
     mode: "analyzing" | "translate" | "explain"
@@ -52,15 +54,21 @@ export function useSelectionTranslation(
         const controller = new AbortController()
         const { signal } = controller
         const publish = (result: SelectionResult) => {
-            if (!signal.aborted) setSnapshot({ request, result })
+            if (!signal.aborted) {
+                setSnapshot({ request, result })
+            }
         }
         retryTranslation.current = undefined
         publish(request.initial)
-        if (!active || !text) return () => controller.abort()
+        if (!active || !text) {
+            return () => controller.abort()
+        }
 
         let translating = false
         const translate = async (notice?: string) => {
-            if (signal.aborted || translating) return
+            if (signal.aborted || translating) {
+                return
+            }
             translating = true
             retryTranslation.current = () => void translate(notice)
             publish({ mode: "translate", value: "", loading: true, notice })
@@ -73,8 +81,9 @@ export function useSelectionTranslation(
                     text,
                     { targetLanguage }
                 )
-                if (!value.trim())
+                if (!value.trim()) {
                     throw new Error("Empty selection translation")
+                }
                 publish({ mode: "translate", value, loading: false, notice })
             } catch (error) {
                 publish({
@@ -106,7 +115,9 @@ export function useSelectionTranslation(
                     {
                         signal,
                         onDelta: delta => {
-                            if (signal.aborted) return
+                            if (signal.aborted) {
+                                return
+                            }
                             accumulated += delta
                             const parsed = parseSelectionAnalysis(accumulated)
                             if (parsed.mode === "explain" && parsed.value) {
@@ -115,7 +126,9 @@ export function useSelectionTranslation(
                         }
                     }
                 )
-                if (signal.aborted) return
+                if (signal.aborted) {
+                    return
+                }
                 const parsed = parseSelectionAnalysis(response, true)
                 if (parsed.mode === "explain") {
                     publish({ ...parsed, loading: false })
@@ -123,8 +136,9 @@ export function useSelectionTranslation(
                     await translate()
                 }
             } catch {
-                if (!signal.aborted)
+                if (!signal.aborted) {
                     await translate("术语解释暂不可用，已使用普通翻译")
+                }
             }
         }
         void run()

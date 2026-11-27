@@ -22,18 +22,18 @@ import {
     languages,
     TRANSLATION_STYLE_OPTIONS
 } from "@/constants"
-import { DEFAULT_PAGE_SUMMARY_SHORTCUT } from "@/features/page-summary/pageSummaryShortcut"
-import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/features/translation/paragraphShortcut"
+import { DEFAULT_PAGE_SUMMARY_SHORTCUT } from "@/constants/shortcuts"
+import {
+    isPageSummaryAvailable,
+    PAGE_SUMMARY_UNAVAILABLE_MESSAGE
+} from "@/features/page-summary"
+import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/features/paragraph-translation"
 import { configAtom, updateConfigAtom } from "@/state"
 import type { TranslationDisplayMode } from "@/types/config"
 import {
     DEFAULT_TRANSLATION_STYLE,
     type TranslationStyleType
 } from "@/types/translationStyle"
-import {
-    isPageSummaryAvailable,
-    PAGE_SUMMARY_UNAVAILABLE_MESSAGE
-} from "@/utils/pageSummary"
 
 const ReadingFormRow = styled(FormRow).attrs({ compact: true })``
 

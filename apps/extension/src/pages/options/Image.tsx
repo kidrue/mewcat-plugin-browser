@@ -14,15 +14,15 @@ import {
     OptionsFeatureCards,
     OptionsPageIntro
 } from "@/components/OptionsPageLayout"
-import { useModelDiscovery } from "@/hooks/useModelDiscovery"
-import { translateStructuredImageViaBackground } from "@/services/imageTranslation"
-import { configAtom, updateConfigAtom } from "@/state"
 import {
     buildVisionModelSelectionOptions,
     createVisionModelSelectionKey,
     getImageTranslationConfigRepair,
     getVisionServiceOptions
-} from "@/utils/visionModels"
+} from "@/features/model-management"
+import { useModelDiscovery } from "@/hooks/useModelDiscovery"
+import { translateStructuredImageViaBackground } from "@/services/imageTranslation"
+import { configAtom, updateConfigAtom } from "@/state"
 
 const Guidance = styled.p`
     margin: 0;

@@ -9,7 +9,7 @@ import {
 import type { MewCatCompletionRequest } from "../src/messaging/mewcatCompletion"
 import type { ModelGatewayRequest } from "../src/messaging/modelGatewayContracts"
 import { normalizeTranslationServiceSelection } from "../src/state/translationService"
-import type { TranslateRequestSender } from "../src/features/translation/GoogleTranslator"
+import type { TranslateRequestSender } from "../src/features/translation-services/GoogleTranslator"
 import {
     ConceptExplanationUnavailableError,
     explainConcept,
@@ -19,7 +19,7 @@ import {
     translateBatch,
     translateText,
     type TranslationRuntimeConfig
-} from "../src/features/translation/translationService"
+} from "../src/features/translation-services/translationService"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
 import { RequestType } from "../src/types/request"
 

@@ -3,9 +3,8 @@ import { createRoot } from "react-dom/client"
 import { createShadowRootUi, defineContentScript } from "#imports"
 
 import { MonitoringErrorBoundary } from "@/components/MonitoringErrorBoundary"
-import ImageTranslateContent, {
-    getShadowHostId
-} from "@/contents/imageTranslate"
+import { getShadowHostId } from "@/contents/imageTranslate"
+import { ImageTranslateContent } from "@/contents/ImageTranslateContent"
 import { registerUiFonts } from "@/utils/fonts"
 
 export default defineContentScript({

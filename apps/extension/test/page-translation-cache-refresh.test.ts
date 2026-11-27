@@ -2,9 +2,9 @@
 
 import { afterEach, describe, expect, it } from "vitest"
 
-import { TieredTranslationCache } from "../src/features/translation/cache/TieredTranslationCache"
-import type { CacheKeyParams } from "../src/features/translation/cache/types"
-import { ImmersiveTranslator } from "../src/features/translation/ImmersiveTranslator"
+import { TieredTranslationCache } from "../src/features/translation-cache/TieredTranslationCache"
+import type { CacheKeyParams } from "../src/features/translation-cache/types"
+import { ImmersiveTranslator } from "../src/features/page-translation/ImmersiveTranslator"
 
 describe("page translation cache refresh", () => {
     let cache: TieredTranslationCache | undefined

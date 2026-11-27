@@ -1,7 +1,6 @@
-Generated on 2026-09-10 using built-in image_gen__imagegen. No CLI or external API fallback.
+晴空邮局与澄羽立绘的原始提示词。运行时资源位于 src/public/assets/sky-letter/。
 
 Asset: sky-post-office.png
-Source: C:\Users\Administrator\.codex\generated_images\01a0872c-6741-7543-a75e-027944c010bd\exec-e38cd2d2-6881-400a-b4e7-5993f5c42b99.png
 Prompt:
 Use case: stylized-concept
 Asset type: illustrated hero backdrop for the options page and preview of a blue-white anime browser translation extension.
@@ -12,7 +11,6 @@ Style: polished original anime background illustration, fine painterly environme
 Constraints: no people, no characters, absolutely no text, no lettering, no logos, no watermark, no UI, no screenshot, no giant oversized objects. A real full-scene raster illustration.
 
 Asset: chengyu.png
-Source: C:\Users\Administrator\.codex\generated_images\01a0872c-6741-7543-a75e-027944c010bd\exec-777f32fc-1ff7-4ccd-97a7-94d744100681.png
 Prompt:
 Use case: stylized-concept
 Asset type: transparent full-body anime mascot cutout for a blue-white website and translation browser extension.
@@ -22,5 +20,3 @@ Pose and framing: one single full-length standing character, whole head, shoes, 
 Style/medium: polished original Japanese anime illustration, exceptionally clean fine lineart, soft cel shading, nuanced blue-white light, delicate adult facial proportions, tasteful detail, charming and legible at small web sizes. High quality visual-novel character sprite.
 Background: genuinely transparent PNG with actual alpha channel, no opaque background at all. Do not paint a checkerboard. No backdrop, no floor, no shadow plane.
 Constraints: exactly one adult female character, no text, no logos, no watermark, no UI, no frames, no decorative scenery; preserve clean alpha around hair and cape edges.
-
-Validation: Both images were inspected with view_image. chengyu.png was verified as Format32bppArgb with corner alpha = 0; original generated alpha preserved by binary copy.

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react"
 
-import { PROVIDER_REGISTRY } from "@/features/model-management/providers"
+import { PROVIDER_REGISTRY } from "@/features/model-management"
 import { useModelDiscovery } from "@/hooks/useModelDiscovery"
 
 import ApiKeyInput from "../ApiKeyInput"

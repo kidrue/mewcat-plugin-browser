@@ -1,6 +1,28 @@
 import assert from "node:assert/strict"
 import { existsSync, readdirSync } from "node:fs"
+import { join, relative, sep } from "node:path"
 import { test } from "node:test"
+import { fileURLToPath } from "node:url"
+
+test("扩展 src 除 public 外最多包含两层目录", () => {
+    const source = fileURLToPath(
+        new URL("../apps/extension/src/", import.meta.url)
+    )
+    const tooDeep = readdirSync(source, { withFileTypes: true })
+        .filter(entry => entry.isDirectory() && entry.name !== "public")
+        .flatMap(entry =>
+            readdirSync(join(source, entry.name), {
+                recursive: true,
+                withFileTypes: true
+            })
+        )
+        .filter(entry => entry.isDirectory())
+        .map(entry => relative(source, join(entry.parentPath, entry.name)))
+        .filter(directory => directory.split(sep).length > 2)
+        .sort()
+
+    assert.deepEqual(tooDeep, [])
+})
 
 test("扩展组件根目录只允许 index.ts 作为单独文件", () => {
     const directory = new URL(
@@ -30,6 +52,22 @@ test("扩展组件根目录只允许 index.ts 作为单独文件", () => {
                 .map(member => member.name),
             [],
             `${entry.name} 的组件和辅助文件应同级存放`
+        )
+    }
+})
+
+test("扩展功能模块通过同级 index.ts 公开入口", () => {
+    const directory = new URL(
+        "../apps/extension/src/features/",
+        import.meta.url
+    )
+
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        assert.ok(entry.isDirectory(), `请将 ${entry.name} 放到所属功能目录`)
+        assert.match(entry.name, /^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+        assert.ok(
+            existsSync(new URL(`${entry.name}/index.ts`, directory)),
+            `${entry.name} 缺少 index.ts 导出入口`
         )
     }
 })

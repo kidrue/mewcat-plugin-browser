@@ -1,6 +1,6 @@
 import type React from "react"
 
-import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/features/translation/paragraphShortcut"
+import { DEFAULT_PARAGRAPH_SHORTCUT } from "@/features/paragraph-translation"
 
 import ShortcutInput from "../ShortcutInput"
 import type { ParagraphShortcutInputProps } from "./types"

@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef } from "react"
 import type { Components } from "react-markdown"
 import Markdown from "react-markdown"
 
-import { notifySelectionTranslationFinished } from "@/features/translation/selectionTranslation"
+import { notifySelectionTranslationFinished } from "@/features/selection-translation"
 import { useSelectionTranslation } from "@/hooks/useSelectionTranslation"
 import { useConfig } from "@/state/config"
 

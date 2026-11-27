@@ -183,7 +183,9 @@ export const createMewCatService = (
         async analyticsIdentity() {
             const client = await getClient(AbortSignal.timeout(30_000))
             const clientId = client.getState().clientId
-            if (!clientId) throw new Error("Missing device identity")
+            if (!clientId) {
+                throw new Error("Missing device identity")
+            }
             return { clientId, serviceOrigin: MEWCAT_SERVICE_ORIGIN }
         },
         async queryAnalytics(
@@ -194,7 +196,9 @@ export const createMewCatService = (
                 ? AbortSignal.any([callerSignal, AbortSignal.timeout(30_000)])
                 : AbortSignal.timeout(30_000)
             const client = await getClient(signal)
-            if (!client.queryAnalytics) throw { code: "ANALYTICS_UNAVAILABLE" }
+            if (!client.queryAnalytics) {
+                throw { code: "ANALYTICS_UNAVAILABLE" }
+            }
             return client.queryAnalytics(input, { signal, timeoutMs: 30_000 })
         },
         async queryDeviceActivity(
@@ -267,12 +271,16 @@ export const createMewCatService = (
                 controller.signal,
                 AbortSignal.timeout(MEWCAT_TRANSLATE_TIMEOUT_MS)
             ])
-            if (cancelWithTranslation) activeControllers.add(controller)
+            if (cancelWithTranslation) {
+                activeControllers.add(controller)
+            }
             try {
                 const client = await getClient(signal)
                 return await client.chatCompletions(input, { signal })
             } catch (error) {
-                if (controller.signal.aborted) throw new ManualAbortError()
+                if (controller.signal.aborted) {
+                    throw new ManualAbortError()
+                }
                 throw mapServiceError(error)
             } finally {
                 activeControllers.delete(controller)

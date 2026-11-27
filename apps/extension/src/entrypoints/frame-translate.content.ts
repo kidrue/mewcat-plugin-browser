@@ -1,7 +1,7 @@
 import { defineContentScript } from "#imports"
 
-import { createFrameTranslationRuntime } from "@/features/translation/frameTranslationRuntime"
-import { ImmersiveTranslator } from "@/features/translation/ImmersiveTranslator"
+import { createFrameTranslationRuntime } from "@/features/frame-translation"
+import { ImmersiveTranslator } from "@/features/page-translation"
 import { defaultExtensionConfig } from "@/state/constants"
 import { createTranslationServiceStorageAdapter } from "@/state/translationService"
 import { chromeStorageAdapter } from "@/state/util"
@@ -10,11 +10,15 @@ export default defineContentScript({
     matches: ["<all_urls>"],
     registration: "runtime",
     main(ctx) {
-        if (window === window.top) return
+        if (window === window.top) {
+            return
+        }
         const frameWindow = window as Window & {
             __mewcatFrameTranslationCleanup?: () => void
         }
-        if (frameWindow.__mewcatFrameTranslationCleanup) return
+        if (frameWindow.__mewcatFrameTranslationCleanup) {
+            return
+        }
         const adapter =
             createTranslationServiceStorageAdapter(chromeStorageAdapter)
         const runtime = createFrameTranslationRuntime(
@@ -37,8 +41,9 @@ export default defineContentScript({
             if (
                 sender.id === chrome.runtime.id &&
                 message?.type === "MEWCAT_FRAME_APPLY"
-            )
+            ) {
                 apply(message.state)
+            }
         }
         const dispose = () => {
             runtime.dispose()
@@ -51,7 +56,9 @@ export default defineContentScript({
         window.addEventListener("pagehide", dispose, { once: true })
         chrome.runtime.onMessage.addListener(listener)
         chrome.runtime.sendMessage({ type: "MEWCAT_FRAME_GET" }, state => {
-            if (!chrome.runtime.lastError) apply(state)
+            if (!chrome.runtime.lastError) {
+                apply(state)
+            }
         })
     }
 })

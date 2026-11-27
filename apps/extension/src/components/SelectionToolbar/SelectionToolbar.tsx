@@ -41,14 +41,19 @@ export const SelectionToolbar: React.FC<SelectionToolbarProps> = ({
                     ? `译文：${result.value}\n\n术语解释：${result.explanation}`
                     : result.value
             await navigator.clipboard.writeText(content)
-            if (currentVersion !== version.current) return
+            if (currentVersion !== version.current) {
+                return
+            }
             setNotice("已复制")
             noticeTimer.current = setTimeout(() => setNotice(""), 1800)
         } catch {
-            if (currentVersion === version.current)
+            if (currentVersion === version.current) {
                 setNotice("复制失败，请选中内容手动复制")
+            }
         } finally {
-            if (currentVersion === version.current) setCopying(false)
+            if (currentVersion === version.current) {
+                setCopying(false)
+            }
         }
     }, [result.explanation, result.mode, result.value])
     const copyLabel = notice === "已复制" ? "已复制" : "复制结果"

@@ -4,27 +4,29 @@ import { useClickAway, useLatest } from "react-use"
 import styled, { StyleSheetManager } from "styled-components"
 
 import { languages } from "@/constants"
-import { PAGE_SUMMARY_DOCK_EVENT } from "@/features/page-summary/PageSummaryRenderer"
+import {
+    notifyFrameTranslation,
+    type FrameTranslationState
+} from "@/features/frame-translation"
+import { PAGE_SUMMARY_DOCK_EVENT } from "@/features/page-summary"
+import {
+    ImmersiveTranslator,
+    isSameTranslationPage
+} from "@/features/page-translation"
+import {
+    DEFAULT_PARAGRAPH_SHORTCUT,
+    installParagraphShortcut
+} from "@/features/paragraph-translation"
 import {
     readingStatus,
     type PageActionRequest,
     type ReadingState
-} from "@/features/reading/pageActions"
+} from "@/features/reading"
 import { captureExtensionException } from "@/services/monitoring"
 
 import BrandLogo from "../components/BrandLogo"
 import Icon from "../components/Icon"
 import Tooltip from "../components/Tooltip"
-import {
-    notifyFrameTranslation,
-    type FrameTranslationState
-} from "../features/translation/frameTranslation"
-import { ImmersiveTranslator } from "../features/translation/ImmersiveTranslator"
-import { isSameTranslationPage } from "../features/translation/pageNavigation"
-import {
-    DEFAULT_PARAGRAPH_SHORTCUT,
-    installParagraphShortcut
-} from "../features/translation/paragraphShortcut"
 import { useDrag } from "../hooks/useDrag"
 import { configAtom } from "../state"
 import { detectPageLanguage } from "../utils/detectPageLanguage"
@@ -338,8 +340,9 @@ export const TranslationControlCenter: React.FC = () => {
             _sender: chrome.runtime.MessageSender,
             respond: (state: FrameTranslationState) => void
         ) => {
-            if (message?.type === "MEWCAT_FRAME_STATE")
+            if (message?.type === "MEWCAT_FRAME_STATE") {
                 respond(frameSession.current)
+            }
         }
         chrome.runtime.onMessage.addListener(listener)
         return () => chrome.runtime.onMessage.removeListener(listener)
@@ -454,7 +457,9 @@ export const TranslationControlCenter: React.FC = () => {
                 return false
             }
 
-            if (pageSession.current.busy) return true
+            if (pageSession.current.busy) {
+                return true
+            }
             const sourceLanguage = resolveSourceLanguage()
             const generation = ++pageSession.current.generation
             pageSession.current.active = true
@@ -476,8 +481,9 @@ export const TranslationControlCenter: React.FC = () => {
                     !res &&
                     started &&
                     generation === pageSession.current.generation
-                )
+                ) {
                     pageSession.current.reason = "已开启翻译，等待可翻译内容。"
+                }
                 if (!started && generation === pageSession.current.generation) {
                     pageSession.current.active = false
                     syncFrames(false)
@@ -534,12 +540,15 @@ export const TranslationControlCenter: React.FC = () => {
     )
 
     useEffect(() => {
-        if (config.extensionEnabled === false) onClearTranslate()
+        if (config.extensionEnabled === false) {
+            onClearTranslate()
+        }
     }, [config.extensionEnabled, onClearTranslate])
 
     useEffect(() => {
-        if (frameSession.current.enabled && config.extensionEnabled !== false)
+        if (frameSession.current.enabled && config.extensionEnabled !== false) {
             syncFrames(true)
+        }
     }, [config, syncFrames])
 
     useEffect(() => {
@@ -638,14 +647,17 @@ export const TranslationControlCenter: React.FC = () => {
                 !engine ||
                 (request.pageUrl &&
                     !isSameTranslationPage(request.pageUrl, location.href))
-            )
+            ) {
                 return {
                     status: "unavailable",
                     translated: 0,
                     failed: 0,
                     reason: "页面已变化，请重新打开翻译面板。"
                 }
-            if (request.action === "clear") onClearTranslate()
+            }
+            if (request.action === "clear") {
+                onClearTranslate()
+            }
             if (
                 request.action === "start" &&
                 (!pageSession.current.active ||
@@ -654,10 +666,11 @@ export const TranslationControlCenter: React.FC = () => {
                 pageSession.current.paused = false
                 void doTranslate(true)
             }
-            if (request.action === "retry")
+            if (request.action === "retry") {
                 void engine.retryFailedTranslations().catch(() => {
                     pageSession.current.reason = "重试失败，请稍后再试。"
                 })
+            }
             if (
                 request.action === "source" &&
                 (request.sourceLanguage === "auto" ||
@@ -668,7 +681,9 @@ export const TranslationControlCenter: React.FC = () => {
                 const active = pageSession.current.active
                 const paragraph =
                     active && engine.getTranslationScope() === "paragraph"
-                if (!paragraph) onClearTranslate()
+                if (!paragraph) {
+                    onClearTranslate()
+                }
                 pageSession.current.source = request.sourceLanguage!
                 if (request.sourceLanguage === "auto") {
                     pageSession.current.detectedSource = undefined
@@ -676,12 +691,14 @@ export const TranslationControlCenter: React.FC = () => {
                 engine.setSourceLanguage(resolveSourceLanguage())
                 if (active) {
                     pageSession.current.paused = false
-                    if (paragraph)
+                    if (paragraph) {
                         void engine.restartParagraphTranslations().catch(() => {
                             pageSession.current.reason =
                                 "段落翻译失败，请重试。"
                         })
-                    else void doTranslate(true)
+                    } else {
+                        void doTranslate(true)
+                    }
                 }
             }
             const progress = engine.getReadingProgress()
@@ -707,7 +724,9 @@ export const TranslationControlCenter: React.FC = () => {
             _sender: chrome.runtime.MessageSender,
             respond: (state: ReadingState) => void
         ) => {
-            if (request.type !== "MEWCAT_PAGE_ACTION") return
+            if (request.type !== "MEWCAT_PAGE_ACTION") {
+                return
+            }
             void executePageActionRef
                 .current(request)
                 .then(respond)
@@ -811,13 +830,16 @@ export const TranslationControlCenter: React.FC = () => {
         if (
             config.extensionEnabled === false ||
             config.enableParagraphTranslation === false
-        )
+        ) {
             return
+        }
         return installParagraphShortcut(
             config.paragraphTranslationShortcut ?? DEFAULT_PARAGRAPH_SHORTCUT,
             target => {
                 const engine = immersiveTranslatorRef.current
-                if (!engine || refreshing) return
+                if (!engine || refreshing) {
+                    return
+                }
                 const generation = pageSession.current.generation
                 engine.setSourceLanguage(resolveSourceLanguage())
                 const wasActive = pageSession.current.active
@@ -827,8 +849,9 @@ export const TranslationControlCenter: React.FC = () => {
                 void engine
                     .translateParagraph(target)
                     .then(translated => {
-                        if (generation !== pageSession.current.generation)
+                        if (generation !== pageSession.current.generation) {
                             return
+                        }
                         if (
                             !translated &&
                             !wasActive &&
@@ -914,7 +937,9 @@ export const TranslationControlCenter: React.FC = () => {
             isAlwayTranslateSite
         ) {
             timer = setTimeout(() => {
-                if (!pageSession.current.paused) doTranslate()
+                if (!pageSession.current.paused) {
+                    doTranslate()
+                }
             }, autoTranslateDelayRef.current)
         }
 

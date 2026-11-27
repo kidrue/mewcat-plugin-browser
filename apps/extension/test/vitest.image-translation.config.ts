@@ -27,6 +27,7 @@ export default defineConfig({
         }
     },
     test: {
+        include: ["test/**/*.test.{ts,tsx}"],
         // Bound simultaneous React/jsdom imports to avoid cold-start timeouts on Windows.
         maxWorkers: 4,
         exclude: [...configDefaults.exclude, ".worktrees/**"]

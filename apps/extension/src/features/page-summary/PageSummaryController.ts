@@ -1,5 +1,5 @@
 import { MEWCAT_TRANSLATE_MODEL_ID } from "@/constants/translationServices"
-import type { SummaryActionResult } from "@/features/reading/summaryActions"
+import type { SummaryActionResult } from "@/features/reading"
 import { sendMessage } from "@/messaging"
 import { BackgroundResponseError } from "@/messaging/BackgroundResponseError"
 import { requestMewCatCompletion } from "@/messaging/mewcatCompletion"
@@ -10,7 +10,7 @@ import { matchUrlPatternList } from "@/utils/help"
 import {
     PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
     selectPageSummaryModel
-} from "../../utils/pageSummary"
+} from "./availability"
 import { extractPageContent } from "./pageContent"
 import {
     buildPageSummaryInstruction,
@@ -49,31 +49,42 @@ export class PageSummaryController {
     updateConfig(config: ExtensionConfig): boolean {
         const nextKey = summaryConfigKey(config)
         this.config = config
-        if (nextKey === this.configKey) return false
+        if (nextKey === this.configKey) {
+            return false
+        }
         this.configKey = nextKey
         this.cancel()
         return true
     }
 
     start(trigger: "auto" | "manual" = "auto"): Promise<SummaryActionResult> {
-        if (this.pageUrl !== window.location.href) this.cancel()
-        if (trigger === "auto" && !this.config.enablePageSummary)
+        if (this.pageUrl !== window.location.href) {
+            this.cancel()
+        }
+        if (trigger === "auto" && !this.config.enablePageSummary) {
             return Promise.resolve({
                 success: false,
                 message: "自动总结未开启。"
             })
+        }
         if (this.pending) {
-            if (trigger === "manual") this.handle?.open()
+            if (trigger === "manual") {
+                this.handle?.open()
+            }
             return this.pending
         }
         if (this.completed) {
-            if (trigger === "manual") this.handle?.open()
+            if (trigger === "manual") {
+                this.handle?.open()
+            }
             return Promise.resolve(this.completed)
         }
         const task = this.generate(trigger)
         this.pending = task
         const cleanup = () => {
-            if (this.pending === task) this.pending = null
+            if (this.pending === task) {
+                this.pending = null
+            }
         }
         void task.then(cleanup, cleanup)
         return task
@@ -82,8 +93,9 @@ export class PageSummaryController {
     private async generate(
         trigger: "auto" | "manual"
     ): Promise<SummaryActionResult> {
-        if (!/^https?:$/.test(window.location.protocol))
+        if (!/^https?:$/.test(window.location.protocol)) {
             return { success: false, message: "此页面不支持总结。" }
+        }
         if (
             matchUrlPatternList(
                 this.config.neverTranslateUrls ?? [],
@@ -101,8 +113,9 @@ export class PageSummaryController {
         }
 
         const snapshot = extractPageContent(document)
-        if (!snapshot.anchor || snapshot.text.length < 80)
+        if (!snapshot.anchor || snapshot.text.length < 80) {
             return { success: false, message: "页面正文不足，暂时无法总结。" }
+        }
         this.handle?.remove()
         const generation = ++this.generation
         const pageUrl = window.location.href
@@ -112,7 +125,9 @@ export class PageSummaryController {
             this.handle = renderPageSummary(snapshot.anchor, {
                 status: "unavailable"
             })
-            if (trigger === "manual") this.handle.open()
+            if (trigger === "manual") {
+                this.handle.open()
+            }
             return {
                 success: false,
                 message: PAGE_SUMMARY_UNAVAILABLE_MESSAGE,
@@ -122,7 +137,9 @@ export class PageSummaryController {
 
         const pageType = classifyPageType(document)
         this.handle = renderPageSummary(snapshot.anchor, { status: "loading" })
-        if (trigger === "manual") this.handle.open()
+        if (trigger === "manual") {
+            this.handle.open()
+        }
         try {
             const text =
                 model && !useMewCat
@@ -143,11 +160,12 @@ export class PageSummaryController {
                           ],
                           enableThinking: this.config.enableThinking
                       }).then(response => {
-                          if (response.success === false)
+                          if (response.success === false) {
                               throw new BackgroundResponseError(
                                   response.error.code,
                                   response.error.message
                               )
+                          }
                           return response.text
                       })
                     : await requestMewCatCompletion({
@@ -172,11 +190,12 @@ export class PageSummaryController {
             if (
                 generation !== this.generation ||
                 pageUrl !== window.location.href
-            )
+            ) {
                 return {
                     success: false,
                     message: "页面已变化，本次总结已取消。"
                 }
+            }
             this.handle?.update(
                 summary
                     ? { status: "success", summary, pageType }
@@ -188,14 +207,17 @@ export class PageSummaryController {
                     ? "总结已显示在页面中。"
                     : "未生成有效总结，请重试。"
             }
-            if (result.success) this.completed = result
+            if (result.success) {
+                this.completed = result
+            }
             return result
         } catch (error) {
             if (
                 generation !== this.generation ||
                 pageUrl !== window.location.href
-            )
+            ) {
                 return { success: false, message: "本次总结已取消。" }
+            }
             captureExtensionException(error, {
                 feature: "page-summary",
                 operation: "generate",

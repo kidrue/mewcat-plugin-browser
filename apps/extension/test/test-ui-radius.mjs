@@ -58,7 +58,7 @@ const injectedStyleExpectations = {
         "border-radius: 12px;",
         "border-radius: 16px;"
     ],
-    "src/features/translation/DebugManager.ts": ["border-radius: 9999px;"]
+    "src/features/page-translation/DebugManager.ts": ["border-radius: 9999px;"]
 }
 
 for (const [path, expectedDeclarations] of Object.entries(

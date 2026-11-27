@@ -1,7 +1,7 @@
 import React, { useCallback } from "react"
 
-import { Button } from "@/components"
-import { translateModelBatch } from "@/features/translation/modelTranslation"
+import Button from "@/components/Button"
+import { translateModelBatch } from "@/features/translation-services"
 import { AiRole } from "@/types"
 
 import {

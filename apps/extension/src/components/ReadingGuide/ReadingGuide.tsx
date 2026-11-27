@@ -22,22 +22,30 @@ export const ReadingGuide: React.FC<ReadingGuideProps> = ({
     const [error, setError] = useState("")
 
     useEffect(() => {
-        if (helpOnly) return
+        if (helpOnly) {
+            return
+        }
         let active = true
         void Promise.resolve()
             .then(() => chrome.storage.local.get(storageKey))
             .then(value => {
-                if (active) setOpen(value[storageKey] !== true)
+                if (active) {
+                    setOpen(value[storageKey] !== true)
+                }
             })
             .catch(() => {
-                if (active) setError("无法读取引导状态，可手动打开使用引导。")
+                if (active) {
+                    setError("无法读取引导状态，可手动打开使用引导。")
+                }
             })
         return () => {
             active = false
         }
     }, [helpOnly])
     useEffect(() => {
-        if (!open) setTarget(targetLanguage)
+        if (!open) {
+            setTarget(targetLanguage)
+        }
     }, [targetLanguage, open])
 
     const finish = useCallback(
@@ -45,7 +53,9 @@ export const ReadingGuide: React.FC<ReadingGuideProps> = ({
             setBusy(true)
             setError("")
             try {
-                if (saveLanguage) await onTargetLanguageChange(target)
+                if (saveLanguage) {
+                    await onTargetLanguageChange(target)
+                }
                 await chrome.storage.local.set({ [storageKey]: true })
                 setOpen(false)
             } catch {

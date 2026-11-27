@@ -6,7 +6,7 @@ import type {
 import type {
     TextTranslationUsageEntry,
     TextTranslationUsageRequest
-} from "@/features/token-usage/textTranslationUsage"
+} from "@/features/token-usage"
 import type { BaseModel } from "@/types/aiModel"
 import type {
     AnalyticsIdentityResponse,

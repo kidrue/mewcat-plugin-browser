@@ -1,5 +1,7 @@
-import { VisionProviderError } from "@/features/image-translation/errors"
-import { getCachedTranslation } from "@/features/translation/PictureCache"
+import {
+    getCachedTranslation,
+    VisionProviderError
+} from "@/features/image-translation"
 import type {
     LegacyTranslateImageRequest,
     LegacyTranslateImageResponse

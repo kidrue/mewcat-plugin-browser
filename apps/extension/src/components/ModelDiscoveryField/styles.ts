@@ -1,6 +1,6 @@
 import styled from "styled-components"
 
-import type { DiscoveredModel } from "@/features/model-management/catalog"
+import type { DiscoveredModel } from "@/features/model-management"
 
 export const FieldStack = styled.div`
     display: flex;

@@ -19,7 +19,9 @@ export function requestModelGatewayStream(
         let settled = false
         let timeoutId: ReturnType<typeof setTimeout> | undefined
         const finish = (response: ModelGatewayResponse) => {
-            if (settled) return
+            if (settled) {
+                return
+            }
             settled = true
             clearTimeout(timeoutId)
             options.signal?.removeEventListener("abort", abort)
@@ -45,14 +47,18 @@ export function requestModelGatewayStream(
             fail("NETWORK_FAILURE", "解释连接已断开，请重试")
         }
         const onMessage = (event: ModelGatewayStreamEvent) => {
-            if (settled) return
+            if (settled) {
+                return
+            }
             if (event?.type === "delta" && typeof event.text === "string") {
                 try {
                     options.onDelta(event.text)
                 } catch {
                     fail("NETWORK_FAILURE", "概念解释失败，请稍后重试")
                 }
-            } else if (event?.type === "complete") {
+                return
+            }
+            if (event?.type === "complete") {
                 const response = event.response
                 if (
                     (response?.success === true &&

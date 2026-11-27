@@ -17,8 +17,9 @@ import "../constants"
 
 import { useCallback, useMemo, useState } from "react"
 
+import { getSelectionPanelVisibility } from "@/features/selection-translation"
+
 import { INTERACTION_MODE_OPTIONS, TRIGGER_MODE_OPTIONS } from "../constants"
-import { getSelectionPanelVisibility } from "../features/translation/selectionTranslation"
 import { useSelectionTranslate } from "../hooks/useSelectionTranslate"
 import { configAtom } from "../state"
 

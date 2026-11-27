@@ -43,6 +43,12 @@
     --bg-primary: #f2f8fe; // 晴空底
     --bg-secondary: #ffffff; // 纸面（抬起）
     --bg-tertiary: #e8f2fb; // 蓝色凹陷
+    --control-surface-bg: rgba(255, 255, 255, 0.65);
+    --control-surface-active-bg: color-mix(
+        in srgb,
+        var(--primary-light) 65%,
+        transparent
+    );
     --paper-3: #e8f2fb; // 语义别名，供新代码使用
     --card-artwork-opacity: 0.34; // 卡片渐变末端的插画透出比例
 

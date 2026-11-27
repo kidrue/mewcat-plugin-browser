@@ -2,9 +2,9 @@ import styled from "styled-components"
 
 import { hideScrollBar } from "../../styles/scroll"
 
-export const SelectContainer = styled.div`
+export const SelectContainer = styled.div<{ $customTrigger: boolean }>`
     position: relative;
-    width: 100%;
+    width: ${({ $customTrigger }) => ($customTrigger ? "fit-content" : "100%")};
 `
 
 export const SelectButton = styled.button`
@@ -33,7 +33,6 @@ export const SelectButton = styled.button`
     }
 
     &:disabled {
-        background: var(--bg-secondary);
         opacity: 0.6;
         cursor: not-allowed;
     }
@@ -71,6 +70,7 @@ export const Dropdown = styled.div<{ width: number }>`
     border-radius: var(--radius-lg);
     z-index: var(--z-dropdown);
     width: ${({ width }) => width}px;
+    max-width: calc(100vw - 2 * var(--space-2));
     max-height: 300px;
     display: flex;
     flex-direction: column;

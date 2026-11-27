@@ -4,8 +4,8 @@ import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { TranslateTextPanel } from "../src/components/TranslateTextPanel"
-import { parseSelectionAnalysis } from "../src/features/translation/selectionAnalysis"
-import { TranslationServiceUnavailableError } from "../src/features/translation/translationService"
+import { parseSelectionAnalysis } from "../src/features/selection-translation/selectionAnalysis"
+import { TranslationServiceUnavailableError } from "../src/features/translation-services/translationService"
 import { AiModel_Platform_Enum } from "../src/types/aiModel"
 import type { ExtensionConfig } from "../src/types/config"
 
@@ -15,9 +15,9 @@ const mocks = vi.hoisted(() => ({
     explainConcept: vi.fn()
 }))
 vi.mock("@/state/config", () => ({ useConfig: () => mocks.config }))
-vi.mock("@/features/translation/translationService", async importOriginal => ({
+vi.mock("@/features/translation-services/translationService", async importOriginal => ({
     ...(await importOriginal<
-        typeof import("../src/features/translation/translationService")
+        typeof import("../src/features/translation-services/translationService")
     >()),
     translateText: mocks.translateText,
     streamConceptExplanation: mocks.explainConcept

@@ -3,11 +3,13 @@ import {
     MEWCAT_TRANSLATE_MODEL_ID,
     MICROSOFT_TRANSLATE_MODEL_ID
 } from "@/constants/translationServices"
-import { migrateLegacyModel } from "@/features/model-management/catalog"
+import {
+    migrateLegacyModel,
+    normalizeImageTranslationSelection
+} from "@/features/model-management"
 import type { BaseModel } from "@/types"
 import type { ExtensionConfig } from "@/types/config"
 import { repairExtensionConfig } from "@/types/extensionConfigSchema"
-import { normalizeImageTranslationSelection } from "@/utils/visionModels"
 
 import { defaultExtensionConfig } from "./constants"
 

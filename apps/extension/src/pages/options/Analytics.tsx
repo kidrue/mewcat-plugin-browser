@@ -2,29 +2,27 @@ import { analyticsQuerySchema, type AnalyticsInput } from "@mewcat/client"
 import React, { useCallback, useEffect, useState } from "react"
 
 import {
+    Alert,
+    Button,
     Calls,
+    Card,
+    copyDeviceId,
     DeviceActivityOverview,
     DeviceId,
     Devices,
-    Overview,
-    Profile,
-    RecordFilterForm,
-    type RecordFilters
-} from "@/components/Analytics"
-import { copyDeviceId } from "@/components/Analytics/clipboard"
-import {
-    Alert,
-    Button,
-    Card,
     Field,
     LoadingCards,
     localTime,
     Muted,
+    Overview,
     Page,
+    Profile,
+    RecordFilterForm,
     Row,
     Tabs,
-    Toolbar
-} from "@/components/Analytics/styles"
+    Toolbar,
+    type RecordFilters
+} from "@/components/Analytics"
 import { OptionsPageIntro } from "@/components/OptionsPageLayout"
 import { useAnalyticsRequest } from "@/hooks/useAnalyticsRequest"
 import { useDeviceActivity } from "@/hooks/useDeviceActivity"

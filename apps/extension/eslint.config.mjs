@@ -3,6 +3,8 @@ import prettierRecommended from "eslint-plugin-prettier/recommended"
 import reactHooks from "eslint-plugin-react-hooks"
 import tseslint from "typescript-eslint"
 
+import { moduleBoundaries } from "./scripts/lint-module-boundaries.mjs"
+
 export default [
     {
         ignores: [
@@ -61,6 +63,13 @@ export default [
         }
     },
     prettierRecommended,
+    {
+        files: ["src/**/*.{ts,tsx}"],
+        plugins: {
+            mewcat: { rules: { "module-boundaries": moduleBoundaries } }
+        },
+        rules: { "mewcat/module-boundaries": "error" }
+    },
     {
         rules: {
             // 保留与 Prettier 兼容的花括号检查。

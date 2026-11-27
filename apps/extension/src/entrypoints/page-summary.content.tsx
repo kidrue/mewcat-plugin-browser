@@ -4,11 +4,11 @@ import { useEffect, useState } from "react"
 import { defineContentScript } from "#imports"
 
 import { MonitoringErrorBoundary } from "@/components/MonitoringErrorBoundary"
-import { PageSummaryController } from "@/features/page-summary/PageSummaryController"
+import { DEFAULT_PAGE_SUMMARY_SHORTCUT } from "@/constants/shortcuts"
 import {
-    DEFAULT_PAGE_SUMMARY_SHORTCUT,
-    installPageSummaryShortcut
-} from "@/features/page-summary/pageSummaryShortcut"
+    installPageSummaryShortcut,
+    PageSummaryController
+} from "@/features/page-summary"
 import { configAtom } from "@/state"
 import { registerUiFonts } from "@/utils/fonts"
 import { Toast, ToastType } from "@/utils/toast"
@@ -65,7 +65,9 @@ export const PageSummaryApp: React.FC = () => {
         )
     }, [config.pageSummaryShortcut, config.extensionEnabled, controller])
     useEffect(() => {
-        if (controller.updateConfig(config)) void controller.start()
+        if (controller.updateConfig(config)) {
+            void controller.start()
+        }
     }, [config, controller])
     useEffect(() => {
         void controller.start()
@@ -74,7 +76,9 @@ export const PageSummaryApp: React.FC = () => {
             _sender: chrome.runtime.MessageSender,
             respond: (value: unknown) => void
         ) => {
-            if (message.type !== "MEWCAT_SUMMARY_ACTION") return
+            if (message.type !== "MEWCAT_SUMMARY_ACTION") {
+                return
+            }
             if (message.pageUrl && message.pageUrl !== location.href) {
                 respond({ success: false, message: "页面已变化，请重新尝试。" })
                 return

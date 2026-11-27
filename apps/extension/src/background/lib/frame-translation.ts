@@ -1,20 +1,25 @@
 import {
     isFrameTranslationState,
     type FrameTranslationState
-} from "@/features/translation/frameTranslation"
+} from "@/features/frame-translation"
 
 export function registerFrameTranslation(): void {
     const injected = new Map<string, string>()
     const pending = new Map<string, Promise<void>>()
     const tabContexts = new Map<number, object>()
     const getContext = (tabId: number) => {
-        if (!tabContexts.has(tabId)) tabContexts.set(tabId, {})
+        if (!tabContexts.has(tabId)) {
+            tabContexts.set(tabId, {})
+        }
         return tabContexts.get(tabId)
     }
     const clearTab = (tabId: number) => {
         tabContexts.delete(tabId)
-        for (const key of injected.keys())
-            if (key.startsWith(`${tabId}:`)) injected.delete(key)
+        for (const key of injected.keys()) {
+            if (key.startsWith(`${tabId}:`)) {
+                injected.delete(key)
+            }
+        }
     }
     const sendToFrame = (
         tabId: number,
@@ -50,16 +55,22 @@ export function registerFrameTranslation(): void {
         const context = getContext(tabId)
         // 顶层已卸载时只允许用它最后的关闭状态清理子框架。
         const state = (await getState(tabId)) ?? finalState
-        if (!state || tabContexts.get(tabId) !== context) return
+        if (!state || tabContexts.get(tabId) !== context) {
+            return
+        }
         const frames =
             (await chrome.webNavigation.getAllFrames({ tabId })) ?? []
-        if (tabContexts.get(tabId) !== context) return
+        if (tabContexts.get(tabId) !== context) {
+            return
+        }
         const liveKeys = new Set(
             frames.map(frame => `${tabId}:${frame.frameId}`)
         )
-        for (const key of injected.keys())
-            if (key.startsWith(`${tabId}:`) && !liveKeys.has(key))
+        for (const key of injected.keys()) {
+            if (key.startsWith(`${tabId}:`) && !liveKeys.has(key)) {
                 injected.delete(key)
+            }
+        }
         await Promise.allSettled(
             frames
                 .filter(
@@ -89,17 +100,22 @@ export function registerFrameTranslation(): void {
                                     ]
                                 })
                                 .then(() => {
-                                    if (tabContexts.get(tabId) === context)
+                                    if (tabContexts.get(tabId) === context) {
                                         injected.set(key, documentKey)
+                                    }
                                 })
                                 .finally(() => pending.delete(pendingKey))
                             pending.set(pendingKey, injection)
                         }
                         await injection
                     }
-                    if (tabContexts.get(tabId) !== context) return
+                    if (tabContexts.get(tabId) !== context) {
+                        return
+                    }
                     const latest = (await getState(tabId)) ?? finalState
-                    if (!latest || tabContexts.get(tabId) !== context) return
+                    if (!latest || tabContexts.get(tabId) !== context) {
+                        return
+                    }
                     await sendToFrame(
                         tabId,
                         { type: "MEWCAT_FRAME_APPLY", state: latest },
@@ -115,8 +131,9 @@ export function registerFrameTranslation(): void {
         if (
             message?.type !== "MEWCAT_FRAME_GET" &&
             message?.type !== "MEWCAT_FRAME_SYNC"
-        )
+        ) {
             return
+        }
         const tabId = sender.tab?.id
         if (
             sender.id !== chrome.runtime.id ||
@@ -141,12 +158,17 @@ export function registerFrameTranslation(): void {
         return true
     })
     chrome.webNavigation.onCompleted.addListener(details => {
-        if (details.frameId === 0) return
+        if (details.frameId === 0) {
+            return
+        }
         return sync(details.tabId, details.frameId).catch(() => undefined)
     })
     chrome.webNavigation.onCommitted.addListener(details => {
-        if (details.frameId === 0) clearTab(details.tabId)
-        else injected.delete(`${details.tabId}:${details.frameId}`)
+        if (details.frameId === 0) {
+            clearTab(details.tabId)
+        } else {
+            injected.delete(`${details.tabId}:${details.frameId}`)
+        }
     })
     chrome.tabs.onRemoved.addListener(clearTab)
 }

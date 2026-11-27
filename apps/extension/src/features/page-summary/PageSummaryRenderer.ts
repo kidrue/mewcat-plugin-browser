@@ -1,6 +1,6 @@
 import { UI_FONT_FAMILY } from "@/constants/fonts"
-import { PAGE_SUMMARY_UNAVAILABLE_MESSAGE } from "@/utils/pageSummary"
 
+import { PAGE_SUMMARY_UNAVAILABLE_MESSAGE } from "./availability"
 import type { PageType } from "./pageTypes"
 
 // cspell:ignore haspopup labelledby

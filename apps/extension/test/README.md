@@ -1,143 +1,46 @@
-# 测试目录说明
+# 扩展测试
 
-## 扩展功能人工验收
+以下命令在 `apps/extension` 执行。全量检查运行 `pnpm check`。示例页和几何测试可在不调用付费 API 的情况下验收主要交互。
 
-运行 `pnpm example`，使用已加载 mewCat 的 Chrome 打开 <http://127.0.0.1:4173>。
-页面提供沉浸式翻译、划词、多语言、动态内容、图片翻译和页面总结素材，以及人工验收勾选。
-完整步骤与记录模板见 [example/README.md](../example/README.md)。
+## 自动化测试
 
-## 按阅读范围翻译验收
-
-设置入口：基础设置 → 阅读翻译 → 按阅读范围翻译，默认开启。
-
-自动回归（也已纳入 `pnpm check`）：
+`pnpm test:vitest` 运行 `test/` 下的全部 `*.test.ts` 和 `*.test.tsx` 文件。新增 Vitest 用例按这个约定命名即可进入 `pnpm check`。可以传入文件路径筛选用例，也可用原有分组命令单独复验。
 
 ```bash
-pnpm exec vitest run --config test/vitest.image-translation.config.ts test/viewport-translation-scheduler.test.ts test/viewport-translation.test.ts
+pnpm test:vitest test/model-management.test.ts
+pnpm exec vitest list --filesOnly --config test/vitest.image-translation.config.ts
 ```
 
-真实浏览器几何验收：运行 `pnpm exec vite --config test/vite.viewport.config.ts`，打开 <http://127.0.0.1:5178/viewport-translation.html> 并点击“运行浏览器验收”。该页面使用生产调度器和模拟翻译响应，不消耗第三方 API 额度；覆盖三屏边界、快速滚动暂停、停下后补译、内部容器尺寸变化和销毁清理。
+`pnpm check` 同时通过 `check:hotlink-rules` 和 `test:chrome-web-store` 运行 Node 测试，通过 `test:google` 和 `test:selection:tsx` 运行独立交互脚本。源码目录中的缓存测试在浏览器环境下手工运行。
 
-2026-09-15 验证记录：27 项调度及集成测试、5 项真实浏览器验收、完整 `pnpm check` 和本地生产构建通过。审查发现的同文本节点重建、已删除原文残留任务、缓存等待期间过期结果渲染均已加入回归测试。
+## 浏览器功能与阅读流程
 
-## 目录结构
+运行 `pnpm example`，用已加载 mewCat 的 Chrome 打开 <http://127.0.0.1:4173>。页面提供沉浸式翻译、划词、多语言、动态内容、图片翻译和页面总结的验收素材与记录模板。加载新构建后先刷新已打开的测试页。详见[示例说明](../example/README.md)。
 
-```
-test/
-├── README.md                    # 本文件：测试目录说明
-├── test-401-interceptor.ts      # 401 响应拦截器测试 ✨ NEW
-├── test-token-refresh.ts        # Token 刷新机制测试（需要额外依赖）
-├── test-token-refresh.html      # Token 刷新测试（浏览器版）
-└── archive/                     # 已归档的测试文件
-    └── web3-test.js             # Web3 连接测试（已停用）
-```
+真实浏览器复验覆盖长文和多个标签页、SPA 导航、受限页面、连续翻译或清理、未配置模型、设置页窄屏和键盘操作。检查“设置 → 基础设置 → 阅读翻译 → 按阅读范围翻译”默认开启。使用生产调度器和模拟响应的几何测试覆盖三屏范围、快速滚动暂停、停下后补译、内层滚动容器尺寸变化和销毁清理。
 
-## 测试文件说明
-
-### 1. Token 刷新测试
-
-**test-401-interceptor.ts** - 401 响应拦截器测试 ✨ **推荐使用**
-- 在测试脚本内模拟旧版 401 拦截器的行为
-- **无需额外依赖**，使用 Node.js 内置功能和 axios
-- 测试场景：
-  1. ✅ 单个请求触发 401，自动刷新 token
-  2. ✅ 多个并发请求触发 401，只刷新一次 token
-  3. ✅ refresh token 无效，清除 token 并返回错误
-- 状态：**所有测试通过** ✅
-
-运行方式：
 ```bash
-pnpm test:401
-# 或
-pnpm run test:401
+pnpm test:vitest test/viewport-translation-scheduler.test.ts test/viewport-translation.test.ts
+pnpm exec vite --config test/vite.viewport.config.ts
 ```
 
----
+打开 <http://127.0.0.1:5178/viewport-translation.html>，点击“运行浏览器验收”。
 
-**test-token-refresh.ts** - Token 刷新机制测试（旧版）
-- 在测试脚本内复现旧版 401 响应拦截器
-- 验证 token 自动刷新机制
-- 测试场景：
-  1. 单个请求触发 401，自动刷新 token
-  2. 多个并发请求触发 401，只刷新一次 token
-  3. refresh token 无效，清除 token 并返回错误
-- 依赖：`axios-mock-adapter`（需要安装）
+## 配置持久化
 
-当前状态：需要安装 `axios-mock-adapter` 才能运行
+修改当前翻译服务，随后打开 Popup 确认已同步。依次设置小圆点、Shift 和 Ctrl 并在多个标签页之间切换，确认旧页面不会覆盖触发方式。可同时从不同页面修改触发方式和图片翻译开关，检查两处设置均已保存。跨设备同字段的变更遵循 Chrome 同步机制。
 
-**test-token-refresh.html** - Token 刷新测试（浏览器可视化）
-- 可视化模拟 token 刷新流程
-- 包含完整的测试场景模拟
-- 实时显示 Storage 状态
-- 详细的日志输出
-
-运行方式：
-直接用浏览器打开 test-token-refresh.html 文件
-
----
-
-### 2. 已归档测试
-
-**archive/web3-test.js** - Web3 连接测试
-- 原因：项目已移除 web3 依赖
-- 内容：测试 Sepolia 测试网连接
-- 状态：已停用
-- 功能：
-  - 连接到 Sepolia 测试网
-  - 获取网络信息、区块号、Gas 价格
-  - 创建测试账户
-  - 查询地址余额
-
-如需恢复此测试，需要重新安装 web3 依赖：
 ```bash
-pnpm add -D web3
+pnpm test:config-migration
+pnpm test:vitest test/config-persistence.test.ts test/extension-config-validation.test.ts
 ```
 
----
+## 反馈排查
 
-## 如何运行测试
+`pnpm test:feedback` 覆盖表单、后台消息来源和参数、身份初始化、取消隔离、超时及错误提示。手工测试可从 Popup 底部或“设置 → 关于”打开反馈，确认已有反馈页重新激活，发送失败后原输入仍保留，提交中无法重复发送。
 
-### 运行 401 拦截器测试 ✨ 推荐
-```bash
-pnpm test:401
-# 或
-pnpm run test:401
-```
+本地运行 `pnpm dev` 时，反馈仍和免费翻译一样连接 [MEWCAT_SERVICE_ORIGIN](../src/constants/translationServices.ts) 中的生产地址。线上 `POST /v1/feedback` 返回 `404 / NOT_FOUND` 时，先核对后端部署是否包含反馈接口。无有效信封的请求会返回 `400 / INVALID_REQUEST`，可用于确认路由存在。SMTP 配置和收件排查见[服务部署手册](../../service/docs/deploy.md)，接口和错误码见[服务 API](../../service/docs/api.md)。
 
-### 运行 Token 刷新测试
-由于需要额外依赖，暂时未添加到 package.json，可以：
-1. 安装依赖：`pnpm add -D axios-mock-adapter`
-2. 运行：`npx tsx ./test/test-token-refresh.ts`
-3. 或直接打开 HTML 版本
+## 兼容测试脚本
 
----
-
-## 测试维护说明
-
-### 添加新测试
-1. 在 test/ 目录下创建测试文件
-2. 命名规范：`test-<功能名>.ts` 或 `test-<功能名>.html`
-3. 在本 README.md 中添加说明
-4. 在 package.json 的 scripts 中添加快捷命令
-
-### 归档测试
-当测试不再适用或依赖已移除时：
-1. 将文件移至 `test/archive/` 目录
-2. 在本 README.md 中标注归档原因
-3. 从 package.json 中移除相关脚本
-
----
-
-## 注意事项
-
-1. **环境要求**:
-   - Node.js 版本：建议使用项目指定版本
-   - 包管理器：强制使用 pnpm
-2. **Mock 依赖**: token 刷新测试需要 `axios-mock-adapter`，暂未添加到项目依赖中
-3. **浏览器测试**: HTML 测试文件可直接在浏览器中打开，或通过本地服务器访问
-
----
-
-## 相关文档
-
-- [Axios 拦截器文档](https://axios-http.com/docs/interceptors)
+`pnpm test:401` 模拟旧版 401 拦截器，可用于复查其行为。反馈、免费翻译和设备身份以当前共享 SDK 的测试为准。扩展发布包和 Sentry 上报的复验步骤见[发布手册](../docs/chrome-web-store-automation.md)。

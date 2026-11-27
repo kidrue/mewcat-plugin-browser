@@ -1,4 +1,4 @@
-import type { PageActionExecutor } from "@/features/reading/pageActions"
+import type { PageActionExecutor } from "@/features/reading"
 
 export interface SettingsPanelProps {
     executePageAction?: PageActionExecutor

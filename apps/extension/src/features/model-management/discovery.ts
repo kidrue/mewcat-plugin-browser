@@ -280,7 +280,9 @@ async function discoverSiliconFlowModels(
                 "硅基流动 API Key 无效或没有模型访问权限"
             )
         }
-        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+        }
 
         const body: unknown = await response.json()
         if (!isRecord(body) || !Array.isArray(body.data)) {
@@ -288,7 +290,9 @@ async function discoverSiliconFlowModels(
         }
         return toSiliconFlowDiscoveredModels(body.data)
     } catch (error) {
-        if (signal?.aborted || error instanceof ModelDiscoveryError) throw error
+        if (signal?.aborted || error instanceof ModelDiscoveryError) {
+            throw error
+        }
         throw new ModelDiscoveryError(
             "NETWORK_FAILURE",
             "无法获取硅基流动模型列表，请检查 API Key 和网络连接"

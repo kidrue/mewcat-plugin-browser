@@ -1,9 +1,11 @@
 import type React from "react"
 
-export const ErrorFallback: React.FC<{
-    error: Error
-    resetErrorBoundary: () => void
-}> = ({ error, resetErrorBoundary }) => (
+import type { ErrorFallbackProps } from "./types"
+
+export const ErrorFallback: React.FC<ErrorFallbackProps> = ({
+    error,
+    resetErrorBoundary
+}) => (
     <div
         style={{
             color: "red",

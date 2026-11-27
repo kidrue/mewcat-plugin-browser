@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { isValidParagraphShortcut } from "@/features/translation/paragraphShortcut"
+import { isValidKeyboardShortcut } from "@/utils/keyboardShortcut"
 
 import { AiModel_Platform_Enum } from "./aiModel"
 import type { BaseModel } from "./aiModel"
@@ -47,7 +47,7 @@ const extensionConfigShape = {
     enableParagraphHoverPreview: z.boolean().optional(),
     paragraphTranslationShortcut: z
         .string()
-        .refine(isValidParagraphShortcut)
+        .refine(isValidKeyboardShortcut)
         .optional(),
     enableGoogleTranslate: z.boolean().optional(),
     enableMicrosoftTranslate: z.boolean().optional(),
@@ -78,7 +78,7 @@ const extensionConfigShape = {
     enablePageSummary: z.boolean().optional(),
     pageSummaryShortcut: z
         .string()
-        .refine(value => value === "" || isValidParagraphShortcut(value))
+        .refine(value => value === "" || isValidKeyboardShortcut(value))
         .optional(),
     pageSummaryDisabledSites: z.array(z.string()).optional(),
     enableImageTranslateButton: z.boolean().optional(),

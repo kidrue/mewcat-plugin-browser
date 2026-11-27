@@ -27,8 +27,12 @@ export function readingStatus(
     let status: ReadingState["status"] = "idle"
     if (active) {
         status = "complete"
-        if (failed) status = "partial"
-        if (busy) status = "translating"
+        if (failed) {
+            status = "partial"
+        }
+        if (busy) {
+            status = "translating"
+        }
     }
     return {
         status,
@@ -48,8 +52,12 @@ export function websiteRulePatch(
     const neverTranslateUrls = (config.neverTranslateUrls ?? []).filter(
         site => site !== hostname
     )
-    if (rule === "always") alwaysTranslateUrls.push(hostname)
-    if (rule === "never") neverTranslateUrls.push(hostname)
+    if (rule === "always") {
+        alwaysTranslateUrls.push(hostname)
+    }
+    if (rule === "never") {
+        neverTranslateUrls.push(hostname)
+    }
     return { alwaysTranslateUrls, neverTranslateUrls }
 }
 

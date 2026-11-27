@@ -1,4 +1,4 @@
-import type { DiscoveredModel } from "@/features/model-management/catalog"
+import type { DiscoveredModel } from "@/features/model-management"
 import type { BaseModel } from "@/types/aiModel"
 
 import type { ModelSelectionOption } from "./types"

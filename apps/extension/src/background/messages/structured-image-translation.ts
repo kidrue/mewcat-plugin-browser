@@ -2,22 +2,25 @@ import { storage } from "wxt/utils/storage"
 
 import { STORAGE_NAMES, toWxtSyncStorageKey } from "@/constants/storage"
 import {
+    createImageTranslationCacheKey,
     decorateBlocksWithColors,
+    getCachedImageTranslation,
+    prepareVisionImage,
+    setCachedImageTranslation,
+    translateWithVisionModel,
+    VisionProviderError,
+    withImageTranslationDeduplication,
     type VisionPixelBuffer
 } from "@/features/image-translation"
-import { VisionProviderError } from "@/features/image-translation/errors"
-import { prepareVisionImage } from "@/features/image-translation/preprocess"
-import { translateWithVisionModel } from "@/features/image-translation/providers"
 import type {
     PreparedVisionImage,
     VisionTranslationResult
-} from "@/features/image-translation/types"
+} from "@/features/image-translation"
 import {
-    createImageTranslationCacheKey,
-    getCachedImageTranslation,
-    setCachedImageTranslation,
-    withImageTranslationDeduplication
-} from "@/features/translation/PictureCache"
+    createVisionModelSelectionKey,
+    getVisionServiceOptions,
+    isVisionCapableModel
+} from "@/features/model-management"
 import {
     createStrictImageTranslationUnavailableResponse,
     isTranslateImageRequest
@@ -30,13 +33,9 @@ import type {
 import type { BaseModel } from "@/types/aiModel"
 import type { ExtensionConfig } from "@/types/config"
 import { repairAiModelList } from "@/types/extensionConfigSchema"
-import {
-    createVisionModelSelectionKey,
-    getVisionServiceOptions,
-    isVisionCapableModel
-} from "@/utils/visionModels"
 
 import { withFailureCause } from "../lib/failure-cause"
+import { handleModelGatewayRequest } from "./model-gateway"
 import { captureImageForTranslation } from "./translate-image"
 
 type ImageTranslationConfig = Pick<
@@ -119,13 +118,16 @@ export function resolveImageTranslationModel(
     if (!getVisionServiceOptions([model]).length) {
         return failure("MODEL_UNAVAILABLE")
     }
-    if (config?.imageTranslationModelId !== modelId)
+    if (config?.imageTranslationModelId !== modelId) {
         return failure("MODEL_NOT_FOUND")
+    }
     const modelName =
         config.imageTranslationModelName === undefined
             ? model.params.modelName.trim()
             : config.imageTranslationModelName.trim()
-    if (!modelName) return failure("MODEL_NOT_FOUND")
+    if (!modelName) {
+        return failure("MODEL_NOT_FOUND")
+    }
     return {
         model: { ...model, params: { ...model.params, modelName } },
         selectionKey: createVisionModelSelectionKey(modelId, modelName)
@@ -345,7 +347,8 @@ const browserDependencies: StructuredImageTranslationDependencies = {
     getCache: getCachedImageTranslation,
     setCache: setCachedImageTranslation,
     deduplicate: withImageTranslationDeduplication,
-    translate: translateWithVisionModel,
+    translate: (image, model) =>
+        translateWithVisionModel(image, model, handleModelGatewayRequest),
     createPixelBuffer: createBrowserVisionPixelBuffer,
     decorate: decorateBlocksWithColors,
     isVisionCapable: isVisionCapableModel,

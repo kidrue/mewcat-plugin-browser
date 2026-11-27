@@ -2,7 +2,7 @@ import * as React from "react"
 
 import FormRow from "@/components/FormRow"
 import NativeSelect from "@/components/NativeSelect"
-import { getOfficialEndpointOptions } from "@/features/model-management/providers"
+import { getOfficialEndpointOptions } from "@/features/model-management"
 import { AiModel_Platform_Enum } from "@/types/aiModel"
 
 import { ConfigurationError, TokenPlanNote } from "./styles"

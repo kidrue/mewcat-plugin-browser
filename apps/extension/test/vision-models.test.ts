@@ -14,7 +14,7 @@ import {
     isVisionCapableModel,
     normalizeImageTranslationModelSelection,
     normalizeImageTranslationSelection
-} from "../src/utils/visionModels"
+} from "../src/features/model-management/visionModels"
 
 const createModel = (
     id: string,

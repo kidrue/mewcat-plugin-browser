@@ -10,7 +10,7 @@ import {
     buildModelSummary,
     buildTranslationMessages,
     translateModelBatch
-} from "../src/features/translation/modelTranslation"
+} from "../src/features/translation-services/modelTranslation"
 import { AiModel_Platform_Enum, AiRole, type BaseModel } from "../src/types"
 
 const createModel = (

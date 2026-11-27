@@ -46,7 +46,7 @@ jobs:
       - &a4
         name: 安装 workspace 依赖
         run: pnpm install --frozen-lockfile
-      - run: pnpm test:workspace
+      - run: pnpm test:workspace && pnpm format:check
   extension:
     needs: changes
     if: needs.changes.outputs.extension == 'true'

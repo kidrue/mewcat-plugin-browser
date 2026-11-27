@@ -1,6 +1,7 @@
 import type React from "react"
 import { useCallback, useEffect, useRef, useState } from "react"
 
+import { AddIcon } from "@/components/Icon"
 import Select from "@/components/Select"
 import { AiRoleOptions } from "@/constants/aiRole"
 import { withEnvironmentSuffix } from "@/constants/storage"
@@ -9,15 +10,16 @@ import { AiRole } from "@/types/config"
 import { roleLabels } from "./constants"
 import { PinnedRoleTag } from "./PinnedRoleTag"
 import {
+    AddRoleButton,
     RoleButton,
     RoleControls,
     RoleHint,
-    RoleRow,
-    RoleSelectBox,
     TagList
 } from "./styles"
 import type { TranslationRolePickerProps } from "./types"
 import { parsePinnedRoles } from "./utils"
+
+type SelectChange = React.ComponentProps<typeof Select>["onChange"]
 
 const PINNED_ROLES_KEY = withEnvironmentSuffix(
     "sidepanel-pinned-roles",
@@ -32,6 +34,14 @@ function loadPinnedRoles(): AiRole[] {
     }
 }
 
+function renderAddRoleTrigger(props: React.ComponentPropsWithRef<"button">) {
+    return (
+        <AddRoleButton {...props}>
+            <AddIcon />
+        </AddRoleButton>
+    )
+}
+
 export const TranslationRolePicker: React.FC<TranslationRolePickerProps> = ({
     value,
     disabled,
@@ -41,24 +51,21 @@ export const TranslationRolePicker: React.FC<TranslationRolePickerProps> = ({
     const [storageFailed, setStorageFailed] = useState(false)
 
     const defaultRoleRef = useRef<HTMLButtonElement>(null)
-    const isPinned = pinnedRoles.includes(value)
 
-    useEffect(() => {
-        const syncPinnedRoles = (event: StorageEvent) => {
-            if (event.key === PINNED_ROLES_KEY || event.key === null) {
-                setPinnedRoles(loadPinnedRoles())
-            }
-        }
-        window.addEventListener("storage", syncPinnedRoles)
-        return () => window.removeEventListener("storage", syncPinnedRoles)
-    }, [])
+    const availableRoles = AiRoleOptions.filter(
+        ({ value: role }) =>
+            role !== AiRole.DEFAULT && !pinnedRoles.includes(role)
+    )
 
     const setRolePinned = useCallback(
         (role: AiRole, pinned: boolean) => {
             const update = (roles: AiRole[]) => {
                 const next = new Set(roles)
-                if (pinned) next.add(role)
-                else next.delete(role)
+                if (pinned) {
+                    next.add(role)
+                } else {
+                    next.delete(role)
+                }
                 return [...next]
             }
             let next: AiRole[]
@@ -78,6 +85,21 @@ export const TranslationRolePicker: React.FC<TranslationRolePickerProps> = ({
         [pinnedRoles, storageFailed]
     )
 
+    const selectRole = useCallback<SelectChange>(
+        role => onChange(role as AiRole),
+        [onChange]
+    )
+
+    const selectDefaultRole = useCallback(
+        () => onChange(AiRole.DEFAULT),
+        [onChange]
+    )
+
+    const addRole = useCallback<SelectChange>(
+        role => setRolePinned(role as AiRole, true),
+        [setRolePinned]
+    )
+
     const removeRole = useCallback(
         (role: AiRole, restoreFocus: boolean) => {
             if (restoreFocus) {
@@ -88,34 +110,32 @@ export const TranslationRolePicker: React.FC<TranslationRolePickerProps> = ({
         [setRolePinned]
     )
 
+    useEffect(() => {
+        const syncPinnedRoles = (event: StorageEvent) => {
+            if (event.key === PINNED_ROLES_KEY || event.key === null) {
+                setPinnedRoles(loadPinnedRoles())
+            }
+        }
+        window.addEventListener("storage", syncPinnedRoles)
+        return () => window.removeEventListener("storage", syncPinnedRoles)
+    }, [])
+
     return (
         <RoleControls>
-            <RoleRow>
-                <RoleSelectBox>
-                    <Select
-                        aria-label="翻译角色"
-                        value={value}
-                        onChange={role => onChange(role as AiRole)}
-                        options={AiRoleOptions}
-                        disabled={disabled}
-                        withinPortal
-                    />
-                </RoleSelectBox>
-                {!disabled && value !== AiRole.DEFAULT && (
-                    <RoleButton
-                        type="button"
-                        onClick={() => setRolePinned(value, !isPinned)}
-                    >
-                        {isPinned ? "取消固定" : "固定"}
-                    </RoleButton>
-                )}
-            </RoleRow>
+            <Select
+                aria-label="翻译角色"
+                value={value}
+                onChange={selectRole}
+                options={AiRoleOptions}
+                disabled={disabled}
+                withinPortal
+            />
             <TagList role="group" aria-label="常用翻译角色">
                 <RoleButton
                     ref={defaultRoleRef}
                     type="button"
                     aria-pressed={value === AiRole.DEFAULT}
-                    onClick={() => onChange(AiRole.DEFAULT)}
+                    onClick={selectDefaultRole}
                 >
                     {roleLabels.get(AiRole.DEFAULT)}
                 </RoleButton>
@@ -129,6 +149,21 @@ export const TranslationRolePicker: React.FC<TranslationRolePickerProps> = ({
                         onRemove={removeRole}
                     />
                 ))}
+                <Select
+                    aria-label="添加常用翻译角色"
+                    searchPlaceholder="搜索翻译角色"
+                    emptyMessage={
+                        availableRoles.length ? undefined : "所有角色均已添加"
+                    }
+                    value=""
+                    onChange={addRole}
+                    options={availableRoles}
+                    disabled={disabled}
+                    renderTrigger={renderAddRoleTrigger}
+                    dropdownWidth={240}
+                    placement="bottom-end"
+                    withinPortal
+                />
             </TagList>
             {disabled && (
                 <RoleHint>

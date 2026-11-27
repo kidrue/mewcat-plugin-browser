@@ -3,7 +3,12 @@ import type React from "react"
 import { useCallback } from "react"
 
 import { AUTO_DETECT_OPTION, EXTENSION_INFO, languages } from "@/constants"
-import { websiteRulePatch } from "@/features/reading/pageActions"
+import {
+    isPageSummaryAvailable,
+    isTranslationContextAvailable,
+    PAGE_SUMMARY_UNAVAILABLE_MESSAGE
+} from "@/features/page-summary"
+import { websiteRulePatch } from "@/features/reading"
 import {
     readingStatusLabels,
     usePageReadingControls
@@ -13,11 +18,6 @@ import {
     getTranslationServiceOptions,
     updateConfigAtom
 } from "@/state"
-import {
-    isPageSummaryAvailable,
-    isTranslationContextAvailable,
-    PAGE_SUMMARY_UNAVAILABLE_MESSAGE
-} from "@/utils/pageSummary"
 
 import Button from "../Button"
 import FeatureAvailability from "../FeatureAvailability"
@@ -179,10 +179,11 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                 { value: "never", label: "不自动翻译" }
             ]}
             onChange={rule => {
-                if (currentTabUrl?.hostname)
+                if (currentTabUrl?.hostname) {
                     void updateConfig(
                         websiteRulePatch(config, currentTabUrl.hostname, rule)
                     )
+                }
             }}
         />
     )
@@ -311,7 +312,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                             !/^https?:$/.test(currentTabUrl.protocol)
                         }
                         onChange={checked => {
-                            if (currentTabUrl?.hostname)
+                            if (currentTabUrl?.hostname) {
                                 void updateConfig(
                                     websiteRulePatch(
                                         config,
@@ -319,6 +320,7 @@ export const SettingsPanel: React.FC<SettingsPanelProps> = ({
                                         checked ? "always" : "default"
                                     )
                                 )
+                            }
                         }}
                     />
                 </ListItem>

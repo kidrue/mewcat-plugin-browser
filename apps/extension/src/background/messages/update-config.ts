@@ -71,8 +71,9 @@ export function migrateRequestConcurrency(): Promise<ExtensionConfig> {
             typeof version === "number" &&
             Number.isFinite(version) &&
             version >= 1
-        )
+        ) {
             return current
+        }
         // Keep this one-time target independent of defaults in future releases.
         const next = { ...current, maxRequestsPerSecond: 8 }
         // Both keys use sync storage, so WXT persists them in one storage.sync.set.

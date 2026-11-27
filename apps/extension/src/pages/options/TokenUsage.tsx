@@ -3,13 +3,13 @@ import styled from "styled-components"
 
 import { OptionsPageIntro } from "@/components/OptionsPageLayout"
 import OptionsSection from "@/components/OptionsSection"
-import { CharacterUsage } from "@/components/UsageStats"
 import {
     Actions,
     Button,
     Card,
     CardLabel,
     Cards,
+    CharacterUsage,
     Empty,
     ErrorMessage,
     format,
@@ -17,13 +17,13 @@ import {
     Table,
     TableWrap,
     Total
-} from "@/components/UsageStats/styles"
-import { clearTokenUsage, readTokenUsage } from "@/features/token-usage/storage"
+} from "@/components/UsageStats"
+import { clearTokenUsage, readTokenUsage } from "@/features/token-usage"
 import type {
     TokenUsageEntry,
     TokenUsageFeature,
     TokenUsageStore
-} from "@/features/token-usage/types"
+} from "@/features/token-usage"
 
 const Page = styled.div`
     display: grid;

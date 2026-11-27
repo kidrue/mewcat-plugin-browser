@@ -1,16 +1,14 @@
+import { EDITABLE_SELECTOR } from "@/features/paragraph-translation"
 import {
-    EDITABLE_SELECTOR,
-    isValidParagraphShortcut,
+    isValidKeyboardShortcut,
     shortcutFromEvent
-} from "@/features/translation/paragraphShortcut"
-
-export const DEFAULT_PAGE_SUMMARY_SHORTCUT = "Alt+KeyS"
+} from "@/utils/keyboardShortcut"
 
 export function installPageSummaryShortcut(
     shortcut: string,
     onOpen: () => void
 ): () => void {
-    if (!isValidParagraphShortcut(shortcut)) {
+    if (!isValidKeyboardShortcut(shortcut)) {
         return () => undefined
     }
     const keydown = (event: KeyboardEvent) => {

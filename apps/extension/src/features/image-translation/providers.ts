@@ -1,5 +1,4 @@
-import { handleModelGatewayRequest } from "@/background/messages/model-gateway"
-import { isTokenPlanEndpoint } from "@/features/model-management/providers"
+import { isTokenPlanEndpoint } from "@/features/model-management"
 import type {
     ModelGatewayGenerateVisionRequest,
     ModelGatewayResponse
@@ -13,9 +12,6 @@ import type { PreparedVisionImage, VisionTranslationResult } from "./types"
 export type VisionGatewaySender = (
     request: ModelGatewayGenerateVisionRequest
 ) => Promise<ModelGatewayResponse>
-
-const sendToModelGateway: VisionGatewaySender = request =>
-    handleModelGatewayRequest(request)
 
 const isTokenPlanModel = (model: BaseModel): boolean => {
     try {
@@ -90,7 +86,7 @@ const mapGatewayFailure = (
 export async function translateWithVisionModel(
     image: PreparedVisionImage,
     model: BaseModel,
-    sender: VisionGatewaySender = sendToModelGateway
+    sender: VisionGatewaySender
 ): Promise<VisionTranslationResult> {
     const response = await sender({
         type: "generate-vision",

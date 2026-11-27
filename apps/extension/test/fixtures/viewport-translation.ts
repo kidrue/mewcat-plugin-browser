@@ -1,5 +1,5 @@
-import type { TranslationNode } from "../../src/features/translation/DOMTraverser"
-import { ViewportTranslationScheduler } from "../../src/features/translation/ViewportTranslationScheduler"
+import type { TranslationNode } from "../../src/features/page-translation/DOMTraverser"
+import { ViewportTranslationScheduler } from "../../src/features/page-translation/ViewportTranslationScheduler"
 
 const stage = document.querySelector<HTMLDivElement>("#stage")!
 const report = document.querySelector<HTMLPreElement>("#report")!

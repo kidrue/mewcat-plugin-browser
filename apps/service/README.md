@@ -1,10 +1,10 @@
 ﻿# mewCat 翻译后端
 
-Fastify + Prisma + SQLite 翻译与反馈服务。workspace 用法及部署边界见 [根 README](../../README.md) 和 [monorepo 说明](../../docs/monorepo.md)。
+Fastify、Prisma 和 SQLite 实现的翻译、对话生成与反馈服务。workspace 用法见 [仓库 README](../../README.md)。
 
 ## 本地运行
 
-需要 Node.js 22.12+ 和 pnpm 10.20.0。配置只读取根 `.env.local`，进程环境优先，不要覆盖已有配置。
+需要 Node.js 22.12+ 和 pnpm 10.20.0。先在根 `.env.local` 配置 `SILICONFLOW_API_KEY` 和 `SILICONFLOW_MODEL`。进程环境优先。
 
 ```bash
 pnpm install --frozen-lockfile
@@ -13,29 +13,16 @@ pnpm --filter @mewcat/service db:migrate
 pnpm dev:service
 ```
 
-默认监听 `http://127.0.0.1:3000`，密钥和数据默认位于本应用的 `secrets/` 与 `data/`。生产单进程运行，不能多副本共享 SQLite。
+服务默认监听 `http://127.0.0.1:3000`，密钥和数据默认位于本应用的 `secrets/` 与 `data/`。生产由单个 API 进程访问 SQLite。
 
-默认每设备、每 IP 每个 UTC 日各 500,000 字符，全站不设置字符或请求次数日上限。`GLOBAL_DAILY_CHARACTERS=0` 和 `GLOBAL_DAILY_REQUESTS=0` 表示关闭对应的全站日限额；分钟限流仍单独生效。
+## 专题文档
 
-## 调用留存与画像
+- [API](docs/api.md) 提供 SDK 接入、路由、限额与错误码。
+- [加密协议](docs/protocol.md) 定义 `v1` 签名加密、设备注册和响应校验。
+- [调用留存与设备翻译统计](docs/analytics.md) 说明管理员授权、用户同意、数据口径和管理命令。
+- [部署与运维](docs/deploy.md) 包含 Docker 验收、生产部署、反馈邮件、备份与恢复。
 
-默认保存已知接口的成功/失败调用及设备行为日汇总。原文/译文采集和模型主题分析需通过 `ANALYTICS_CAPTURE_CONTENT`、`ANALYTICS_AUTO_ANALYZE` 及专用内容密钥显式启用。开启采集后内容加密保存 30 天，调用与分析明细默认 90 天，日汇总默认 365 天；均可配置。
-
-提供设备活跃、语言、UTC 时段、错误分布、内容主题和关键词分析，以及游标查询、JSONL 导出、限量分析、重试和清除。只统计经过本后端的请求；画像身份是设备，不代表自然人或跨设备账号。配置、费用预算和隐私行为见 [调用留存与画像](docs/analytics.md)。
-
-```bash
-pnpm --filter @mewcat/service admin analytics help
-pnpm --filter @mewcat/service admin analytics summary
-pnpm --filter @mewcat/service admin analytics profile <clientId>
-```
-
-## API 与协议
-
-业务接口包含设备注册、翻译、对话生成、用量和反馈。扩展通过 `POST /v1/chat/completions` 使用自有服务翻译和总结，业务数据通过加密信封发送。
-
-共享 SDK 为 `@mewcat/client`，协议为 `@mewcat/protocol`。详见 [API](docs/api.md) 和 [协议](docs/protocol.md)。
-
-## 验证和部署
+## 验证
 
 ```bash
 pnpm build:packages
@@ -44,6 +31,4 @@ pnpm build:verify service
 pnpm --filter @mewcat/service smoke
 ```
 
-测试使用临时 SQLite、本地模拟供应商和假密钥，不调用付费 API。Docker 专属检查在 Linux CI 执行。
-
-生产发布使用当前仓库的 `deploy-service.yml`，通过 `SERVICE_DEPLOY_ENABLED=true` 启用。配置和恢复步骤见 [GitHub Actions 自动部署](docs/github-actions-deploy.md)。内容采集和付费分析各自通过运行时配置启用。
+测试使用临时 SQLite、本地模拟供应商及测试密钥。Docker 专项检查在 Linux CI 执行。

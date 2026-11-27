@@ -1,6 +1,8 @@
 /** Normalize SSE framing for xsAI 0.4, including split UTF-8 and CRLF. */
 export function normalizeModelStreamResponse(response: Response): Response {
-    if (!response.ok || !response.body) return response
+    if (!response.ok || !response.body) {
+        return response
+    }
     const decoder = new TextDecoder()
     const encoder = new TextEncoder()
     let buffer = ""

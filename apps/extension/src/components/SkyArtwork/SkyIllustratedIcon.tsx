@@ -2,12 +2,13 @@ import type React from "react"
 
 import { getAssetUrl } from "./assets"
 import { ArtworkImage } from "./styles"
-import type { SkyArtworkProps, SkyIllustration } from "./types"
+import type { SkyIllustratedIconProps } from "./types"
 
 /** 独立透明底插画图标，仅作装饰，不代替操作按钮的可访问名称。 */
-export const SkyIllustratedIcon: React.FC<
-    SkyArtworkProps & { kind: SkyIllustration }
-> = ({ kind, className }) => {
+export const SkyIllustratedIcon: React.FC<SkyIllustratedIconProps> = ({
+    kind,
+    className
+}) => {
     return (
         <ArtworkImage
             className={className}

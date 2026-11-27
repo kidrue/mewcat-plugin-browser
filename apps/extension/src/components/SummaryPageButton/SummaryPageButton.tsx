@@ -1,9 +1,9 @@
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 
-import type { SummaryActionResult } from "@/features/reading/summaryActions"
-import { summarizeCurrentPage } from "@/features/reading/summaryActions"
-import { PAGE_SUMMARY_UNAVAILABLE_MESSAGE } from "@/utils/pageSummary"
+import { PAGE_SUMMARY_UNAVAILABLE_MESSAGE } from "@/features/page-summary"
+import type { SummaryActionResult } from "@/features/reading"
+import { summarizeCurrentPage } from "@/features/reading"
 
 import Button from "../Button"
 import FeatureAvailability from "../FeatureAvailability"

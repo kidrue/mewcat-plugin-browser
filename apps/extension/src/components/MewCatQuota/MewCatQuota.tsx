@@ -25,7 +25,9 @@ export const MewCatQuota: React.FC = () => {
             } catch {
                 response = { success: false }
             }
-            if (active) setResult({ request, response })
+            if (active) {
+                setResult({ request, response })
+            }
         }
         void load()
         return () => {

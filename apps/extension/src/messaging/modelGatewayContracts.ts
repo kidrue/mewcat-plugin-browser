@@ -1,4 +1,4 @@
-import type { TokenUsageFeature } from "@/features/token-usage/types"
+import type { TokenUsageFeature } from "@/features/token-usage"
 import type { BaseModel } from "@/types/aiModel"
 
 export interface ModelGatewayMessage {

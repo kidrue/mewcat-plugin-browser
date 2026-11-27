@@ -27,7 +27,9 @@ async function reportFailure(
             ...(errorCode ? { errorCode } : {}),
             ...(status !== undefined ? { status } : {})
         })
-        if (eventId) await flushSentry(2000)
+        if (eventId) {
+            await flushSentry(2000)
+        }
     } catch {
         /* Monitoring must not change a business response. */
     }
@@ -43,8 +45,9 @@ async function reportFailureResponse(
         typeof result !== "object" ||
         !("success" in result) ||
         result.success !== false
-    )
+    ) {
         return
+    }
     const response = result as {
         error?: string | { code?: string; message?: string; status?: number }
         errorCode?: string
@@ -56,8 +59,9 @@ async function reportFailureResponse(
     const message =
         detail?.message ??
         (typeof response.error === "string" ? response.error : response.message)
-    if (expectedFailureCodes.has(code) || /请求已取消$/.test(message ?? ""))
+    if (expectedFailureCodes.has(code) || /请求已取消$/.test(message ?? "")) {
         return
+    }
     const error = new Error(`${operation} failed (${code})`)
     error.name = "BackgroundResponseError"
     const cause = getFailureCause(result)

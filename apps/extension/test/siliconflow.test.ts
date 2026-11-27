@@ -4,9 +4,9 @@ import { handleModelGatewayRequest } from "../src/background/messages/model-gate
 import { discoverModels } from "../src/features/model-management/discovery"
 import { defaultExtensionConfig } from "../src/state/constants"
 import { normalizeStoredConfig } from "../src/state/translationService"
-import { translateBatch } from "../src/features/translation/translationService"
+import { translateBatch } from "../src/features/translation-services/translationService"
 import { AiModel_Platform_Enum, type BaseModel } from "../src/types/aiModel"
-import { selectPageSummaryModel } from "../src/utils/pageSummary"
+import { selectPageSummaryModel } from "../src/features/page-summary/availability"
 
 const modelId = "Pro/deepseek-ai/DeepSeek-V4-Flash"
 const connection = {

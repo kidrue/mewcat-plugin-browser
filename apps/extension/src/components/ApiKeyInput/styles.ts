@@ -20,8 +20,12 @@ export const Input = styled.input<{ $isValid?: boolean; $actionCount: number }>`
     box-sizing: border-box;
     padding: 0 var(--space-4);
     padding-right: ${props => {
-        if (props.$actionCount > 1) return "80px"
-        if (props.$actionCount === 1) return "44px"
+        if (props.$actionCount > 1) {
+            return "80px"
+        }
+        if (props.$actionCount === 1) {
+            return "44px"
+        }
         return "var(--space-4)"
     }};
     height: 36px;

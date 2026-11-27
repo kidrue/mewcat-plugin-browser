@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest"
 
-import {
-    installParagraphShortcut,
-    shortcutFromEvent
-} from "../src/features/translation/paragraphShortcut"
+import { installParagraphShortcut } from "../src/features/paragraph-translation/paragraphShortcut"
+import { shortcutFromEvent } from "../src/utils/keyboardShortcut"
 
 let cleanup: (() => void) | undefined
 afterEach(() => {

@@ -19,8 +19,8 @@ import {
     setCachedImageTranslation,
     withImageTranslationDeduplication,
     type ImageTranslationCacheStorage
-} from "../src/features/translation/PictureCache"
-import { createVisionModelSelectionKey } from "../src/utils/visionModels"
+} from "../src/features/image-translation/cache"
+import { createVisionModelSelectionKey } from "../src/features/model-management/visionModels"
 
 const encoder = new TextEncoder()
 

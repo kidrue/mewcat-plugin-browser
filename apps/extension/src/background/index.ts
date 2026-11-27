@@ -239,7 +239,9 @@ export function registerBackgroundListeners() {
 
     chrome.runtime.onMessage.addListener(
         (message: { type?: string }, sender, respond) => {
-            if (message.type !== "SUMMARIZE_PAGE") return
+            if (message.type !== "SUMMARIZE_PAGE") {
+                return
+            }
             const run = async () => {
                 const tab =
                     sender.tab ??

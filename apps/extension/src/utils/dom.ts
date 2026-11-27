@@ -249,7 +249,9 @@ export function setTranslationDisplayContent(element: Element, text: string) {
     // 还原标签沿用有底色主题的固定前景色，避免继承网页的浅色文字。
     if (wrapper.style.getPropertyPriority("color") === "important") {
         for (const child of element.querySelectorAll("*")) {
-            if (!(child instanceof HTMLElement)) continue
+            if (!(child instanceof HTMLElement)) {
+                continue
+            }
             child.style.setProperty("color", "inherit", "important")
             child.style.setProperty(
                 "-webkit-text-fill-color",

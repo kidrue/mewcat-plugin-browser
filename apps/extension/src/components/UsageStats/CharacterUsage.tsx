@@ -4,7 +4,7 @@ import OptionsSection from "@/components/OptionsSection"
 import {
     clearTextTranslationUsage,
     summarizeTextTranslationUsage
-} from "@/features/token-usage/textTranslationUsage"
+} from "@/features/token-usage"
 
 import { CHARACTER_PERIODS } from "./constants"
 import { loadCharacterUsage } from "./storage"

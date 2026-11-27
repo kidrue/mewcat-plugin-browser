@@ -203,7 +203,9 @@ export function useSelectionTranslate<T extends HTMLElement>({
             }
         }
         const handleKeyUp = (e: KeyboardEvent) => {
-            if (pinnedRef.current) return
+            if (pinnedRef.current) {
+                return
+            }
             // 根据配置的触发模式检查对应的按键
             const triggerKeyText = e.key.toUpperCase()
             // 检查是否为精确的 Shift 触发
@@ -236,7 +238,9 @@ export function useSelectionTranslate<T extends HTMLElement>({
             return
         }
         const handleMouseDown = (e: MouseEvent) => {
-            if (pinnedRef.current) return
+            if (pinnedRef.current) {
+                return
+            }
             selectionAtMouseDownRef.current = getSelectionSnapshot(
                 window.getSelection()
             )
@@ -251,7 +255,9 @@ export function useSelectionTranslate<T extends HTMLElement>({
         }
 
         const handleMouseUp = (e: MouseEvent) => {
-            if (pinnedRef.current) return
+            if (pinnedRef.current) {
+                return
+            }
             if (ignoreMouseUpRef.current) {
                 ignoreMouseUpRef.current = false
                 selectionAtMouseDownRef.current = null
